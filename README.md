@@ -1,8 +1,9 @@
-# BPDN-VELONIXNET — Panduan MikroTik, Huawei & Aplikasi e-monev
+# BPDN-VELONIXNET — Panduan MikroTik, Huawei, Proxmox & Server
 
 Situs dokumentasi **offline** untuk kerja NOC harian: panduan praktis berbahasa
-Indonesia untuk **MikroTik RouterOS** dan **switch Huawei**, panduan aplikasi
-**e-monev PUPR**, plus salinan lengkap manual resmi **RouterOS 7.26**.
+Indonesia untuk **MikroTik RouterOS**, **switch Huawei**, **Proxmox VE & PBS**,
+**server BPTR**, panduan aplikasi **e-monev PUPR**, plus salinan lengkap manual
+resmi **RouterOS 7.26**.
 
 Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
 `index.html` di browser, semuanya jalan tanpa internet.
@@ -26,8 +27,14 @@ Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
 - **`manual/`** (**Panduan MikroTik V7**) — salinan lengkap manual resmi
   RouterOS 7.26 (23 bab) dalam bahasa Inggris, dari *Overview* sampai
   *CLI Reference* dan *Hardware Guides*. Salinan manual **V6 belum tersedia**.
+- **`server/`** — 3 bab **Server & Infrastruktur BPTR** (Bahasa Indonesia):
+  arsitektur server & Docker, deploy aplikasi `program.jambiprov.go.id`,
+  troubleshooting/backup/maintenance Docker.
+- **`ebook.html`** — **Ebook & Cetak PDF**: sampul buku (memakai logo) + seluruh
+  panduan berbahasa Indonesia digabung jadi satu dokumen (47 bab, 5 grup),
+  siap dicetak/di-*Save as PDF* dengan pemilih grup yang akan disertakan.
 
-Total **282 halaman HTML**.
+Total **286 halaman HTML**.
 
 ## Fitur
 
@@ -35,6 +42,7 @@ Total **282 halaman HTML**.
 - Mode terang / gelap (tombol di kanan atas)
 - Sidebar navigasi, breadcrumb, dan tombol Sebelumnya/Berikutnya
 - Blok kode dengan tombol **Copy**
+- **Ebook & Cetak PDF** — tombol printer di topbar (sampul + semua panduan ID, siap print-out)
 - Responsif penuh (HP, tablet, desktop) — sidebar jadi laci geser di layar kecil
 - 100% offline — tanpa dependensi eksternal
 

@@ -26,6 +26,7 @@
   function buildSidebar(){
     var sb=document.getElementById('sidebar'); if(!sb) return;
     var h='<a class="nav-home'+(isActive('index.html')?' active':'')+'" href="'+urlEncode(abs('index.html'))+'">&#127968; Beranda</a>';
+    h+='<a class="nav-home'+(isActive('ebook.html')?' active':'')+'" href="'+urlEncode(abs('ebook.html'))+'">&#128424; Ebook &amp; Cetak PDF</a>';
     h+='<div class="nav-group"><div class="nav-title">Panduan Praktis (ID)</div><ul>';
     NAV.panduan.forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
