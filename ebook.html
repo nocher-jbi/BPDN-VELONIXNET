@@ -12,6 +12,7 @@
 <style>
 /* ---------- sampul buku ---------- */
 .cover-wrap{container-type:inline-size;max-width:660px;margin:6px auto 26px}
+.cov-safe{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column}
 .ebook-cover{position:relative;overflow:hidden;color:#fff;isolation:isolate;
   font-size:12px;font-size:3.1cqw;
   width:100%;aspect-ratio:210/297;border-radius:12px;
@@ -67,7 +68,7 @@
 /* ---------- sampul belakang ---------- */
 .ebook-back{position:relative;overflow:hidden;color:#fff;isolation:isolate;
   font-size:12px;font-size:2.6cqw;width:100%;aspect-ratio:210/297;border-radius:12px;
-  margin:0;display:flex;flex-direction:column;
+  margin:0;
   background:radial-gradient(135% 95% at 50% 112%, #1a4a8f 0%, #0d2a5e 42%, #061633 100%);
   box-shadow:0 24px 54px rgba(3,20,48,.45)}
 .cov-art.mirror{transform:scaleX(-1)}
@@ -96,6 +97,9 @@
 .ebook-controls input{width:16px;height:16px;accent-color:var(--brand)}
 .ebook-controls .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .ebook-controls .hintline{font-size:12.4px;color:var(--muted);margin:10px 0 0;line-height:1.55}
+.ebook-controls .bleedrow{display:flex;align-items:center;gap:8px;margin:12px 0 0;font-size:13.6px;cursor:pointer}
+.ebook-controls .bleedrow input{width:16px;height:16px;accent-color:var(--brand);flex:0 0 auto}
+.ebook-controls .bleedrow span{font-size:12.4px;color:var(--muted)}
 .ebook-toc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:26px}
 .ebook-toc ol,.ebook-toc ul{list-style:none;padding-left:0;margin:0}
 .ebook-toc .toc-group{margin:.55em 0;font-weight:700}
@@ -112,6 +116,7 @@
 /* ---------- print / PDF ---------- */
 @page{size:A4;margin:16mm 14mm 18mm}
 @page cover{size:A4;margin:0}
+@page coverbleed{size:220mm 307mm;margin:0}
 @media print{
   :root{--topbar-h:0px}
   html,body{background:#fff!important;color:#000!important}
@@ -127,6 +132,11 @@
     -webkit-print-color-adjust:exact;print-color-adjust:exact}
   .ebook-cover{page-break-after:always}
   .ebook-back{page-break-before:always}
+  /* mode bleed 5 mm: kotak sampul 220x307, isi tetap di area aman 210x297 */
+  .bleed .cover-wrap{width:210mm!important}
+  .bleed .ebook-cover,.bleed .ebook-back{page:coverbleed;width:220mm!important;height:307mm!important;
+    margin-left:0!important;box-sizing:border-box}
+  .bleed .cov-safe{inset:5mm}
   .cov-art i,.cov-logo-band,.cov-logo-band::before,.cov-title,.cov-list li,.cov-inst{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .cov-title,.cov-list li,.cov-inst{text-shadow:none!important}
   .bc-blurb,.bc-inst,.bc-kicker,.bc-h,.bc-note,.bc-sub{text-shadow:none!important}
@@ -171,6 +181,7 @@
           <i class="acc bl1"></i><i class="acc bl2"></i>
           <i class="acc br1"></i><i class="acc br2"></i>
         </div>
+        <div class="cov-safe">
         <div class="cov-logo-band">
           <img src="assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi">
         </div>
@@ -181,6 +192,7 @@
         <div class="cov-foot">
           <p class="cov-inst">DINAS PEKERJAAN UMUM DAN TATA RUANG<br>PEMERINTAH PROVINSI JAMBI</p>
           <p class="cov-meta">Edisi 26 November 2026 &middot; 47 bab</p>
+        </div>
         </div>
       </section>
       </div>
@@ -199,6 +211,11 @@
           <button class="btn" id="allBtn" type="button">Pilih semua</button>
           <button class="btn" id="noneBtn" type="button">Kosongkan</button>
         </div>
+        <label class="bleedrow" for="bleedChk">
+          <input type="checkbox" id="bleedChk">
+          <span><strong>Bleed 5&nbsp;mm</strong> &mdash; sampul dicetak 220&times;307&nbsp;mm (5&nbsp;mm lebih besar tiap sisi),
+          supaya setelah dipotong tepinya pas A4. Isi halaman tetap A4.</span>
+        </label>
         <p class="hintline">Di dialog cetak pilih tujuan <strong>&ldquo;Save as PDF&rdquo;</strong>, ukuran <strong>A4</strong>,
         dan aktifkan <strong>&ldquo;Background graphics&rdquo;</strong> agar blok perintah &amp; sampul ikut tercetak.
         Panduan ini bisa langsung diprint-out. Manual MikroTik V7 (bahasa Inggris) tidak dimasukkan ke ebook karena
@@ -3724,6 +3741,7 @@ kalau menyalin perintah dari skrip lama ke terminal interaktif.</p>
           <i class="acc bl1"></i><i class="acc bl2"></i>
           <i class="acc br1"></i><i class="acc br2"></i>
         </div>
+        <div class="cov-safe">
         <div class="cov-logo-band">
           <img src="assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi">
         </div>
@@ -3742,6 +3760,7 @@ kalau menyalin perintah dari skrip lama ke terminal interaktif.</p>
         <div class="bc-foot">
           <p class="bc-inst">DINAS PEKERJAAN UMUM DAN TATA RUANG<br>PEMERINTAH PROVINSI JAMBI</p>
           <p class="bc-sub">Edisi 26 November 2026 &middot; 47 bab &middot; 5 panduan</p>
+        </div>
         </div>
       </section>
       </div>
@@ -3774,6 +3793,15 @@ kalau menyalin perintah dari skrip lama ke terminal interaktif.</p>
   document.getElementById('noneBtn').addEventListener('click',function(){
     document.querySelectorAll('#gchoice input').forEach(function(i){i.checked=false;}); apply();});
   document.getElementById('printBtn').addEventListener('click',function(){window.print();});
+  var bc=document.getElementById('bleedChk');
+  if(bc){
+    try{ bc.checked = localStorage.getItem('bleed')==='1'; }catch(e){}
+    document.documentElement.classList.toggle('bleed', bc.checked);
+    bc.addEventListener('change',function(){
+      document.documentElement.classList.toggle('bleed', bc.checked);
+      try{ localStorage.setItem('bleed', bc.checked?'1':'0'); }catch(e){}
+    });
+  }
   apply();
 })();
 </script>
