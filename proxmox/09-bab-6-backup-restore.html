@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB VI — Backup, Verifikasi &amp; Restore &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="backup-verifikasi-restore">BAB VI — Backup, Verifikasi &amp; Restore</h1>
+<h2 id="61-penjadwalan-backup-otomatis-backup-jobs">6.1 Penjadwalan Backup Otomatis (Backup Jobs)</h2>
+<p>Konfigurasi dilakukan terpusat di <strong>Datacenter &gt; Backup &gt; Add</strong>:</p>
+<ul><li><strong>Node:</strong> All</li><li><strong>Storage:</strong><code>pbs-dputr</code></li><li><strong>Schedule:</strong> Di luar jam kerja kantor (contoh: 01:00 setiap hari).</li><li><strong>Selection mode:</strong> All (atau pilih VM/CT produksi yang diprioritaskan).</li><li><strong>Mode:</strong> Snapshot (memungkinkan backup berjalan tanpa mematikan VM).</li><li><strong>Notification:</strong> Atur pengiriman laporan email jika terjadi kegagalan backup (<em>On failure only</em> atau <em>Always</em>).</li></ul>
+<h2 id="62-kebijakan-retensi-prune-verifikasi-dan-garbage-collection-di-pbs">6.2 Kebijakan Retensi (Prune), Verifikasi, dan Garbage Collection di PBS</h2>
+<p>Seluruh pemeliharaan data backup dilakukan langsung pada Web GUI PBS (<strong>Datastore &gt; backup-produksi &gt; Prune &amp; GC dan Verify Jobs</strong>):</p>
+<div class="table-scroll"><table><thead><tr><th>Jenis Tugas</th><th>Jadwal Rekomendasi</th><th>Konfigurasi Standar</th><th>Fungsi</th></tr></thead><tbody><tr><td>Prune Job</td><td>Harian (03:00)</td><td>Keep Daily: 7, Keep Weekly: 4, Keep Monthly: 6</td><td>Menghapus salinan backup usang secara otomatis sesuai kebijakan retensi.</td></tr><tr><td>Garbage Collection (GC)</td><td>Mingguan (Minggu, 04:00)</td><td>Otomatis</td><td>Membebaskan kapasitas disk fisik dari potongan data (chunks) yang tidak lagi terpakai pasca-Prune.</td></tr><tr><td>Verify Job</td><td>Mingguan (Sabtu, 02:00)</td><td>Re-verify after 30 days</td><td>Memeriksa integritas checksum seluruh file backup untuk memastikan data tidak korup dan pasti bisa di-restore.</td></tr></tbody></table></div>
+<h2 id="63-prosedur-pemulihan-restore">6.3 Prosedur Pemulihan (Restore)</h2>
+<ol><li><strong>Pemulihan Penuh (Full VM/CT Restore):</strong> Buka <strong>Node &gt; Storage pbs-dputr &gt; Backups</strong>. Pilih titik waktu backup VM/CT yang diinginkan, klik <strong>Restore</strong>. Tentukan Storage tujuan dan VM ID (gunakan ID baru jika hanya ingin melakukan pengujian tanpa menimpa VM produksi). Klik <strong>Restore</strong>.</li><li><strong>Pemulihan Berkas Tunggal (File-Level Restore):</strong> Pada daftar backup di <code>pbs-dputr</code>, pilih backup yang dimaksud lalu klik <strong>File Restore</strong>. Telusuri direktori di dalam disk VM/CT dan unduh berkas tertentu tanpa perlu memulihkan keseluruhan server.</li></ol>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

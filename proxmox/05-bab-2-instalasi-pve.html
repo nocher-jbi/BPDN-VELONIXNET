@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB II — Instalasi &amp; Konfigurasi Proxmox VE &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="instalasi-konfigurasi-proxmox-ve">BAB II — Instalasi &amp; Konfigurasi Proxmox VE</h1>
+<p>Lakukan seluruh langkah pada bab ini secara bergantian pada <code>pve-node1</code> dan <code>pve-node2</code>.</p>
+<h2 id="21-prosedur-instalasi-proxmox-ve">2.1 Prosedur Instalasi Proxmox VE</h2>
+<ol><li><strong>Booting Media Instalasi:</strong> Nyalakan server, masuk ke Boot Menu, dan pilih USB bootable Proxmox VE. Pilih <em>Install Proxmox VE (Graphical)</em>.</li><li><strong>Persetujuan Lisensi (EULA):</strong> Baca ketentuan lisensi lalu klik <em>I agree</em>.</li><li><strong>Target Harddisk &amp; Filesystem:</strong> Pilih disk tujuan instalasi. Klik <em>Options</em> untuk memilih filesystem: gunakan ZFS (RAID1) jika tersedia 2 disk OS tanpa Hardware RAID, atau ext4 / LVM jika menggunakan Hardware RAID.</li><li><strong>Lokasi dan Zona Waktu:</strong> Atur Country ke Indonesia, Time zone ke Asia/Jakarta (atau sesuai zona waktu kantor), dan Keyboard Layout ke U.S. English.</li><li><strong>Kredensial Administrator:</strong> Masukkan kata sandi root yang kuat (kombinasi huruf besar, kecil, angka, dan simbol) serta alamat email resmi tim IT untuk notifikasi sistem.</li><li><strong>Konfigurasi Jaringan:</strong> Pilih antarmuka manajemen (Management Interface). Masukkan Hostname (FQDN) (contoh: <code>pve-node1.dputr.local</code>), IP Address (CIDR), Gateway, dan DNS Server internal.</li><li><strong>Konfirmasi dan Instalasi:</strong> Periksa ringkasan konfigurasi, pastikan opsi <em>Automatically reboot after successful installation</em> dicentang, lalu klik <em>Install</em>. Cabut USB instalasi saat server melakukan reboot.</li></ol>
+<h2 id="22-akses-antarmuka-web-web-gui">2.2 Akses Antarmuka Web (Web GUI)</h2>
+<p>Setelah server menyala kembali, akses antarmuka manajemen melalui peramban web pada komputer admin:</p>
+<ul><li><strong>URL:</strong><code>https://&lt;IP-Node&gt;:8006</code> (contoh: <code>https://192.168.10.11:8006</code>)</li><li><strong>Username:</strong><code>root</code> | <strong>Realm:</strong><code>Linux PAM standard authentication</code></li></ul>
+<h2 id="23-konfigurasi-pasca-instalasi-wajib">2.3 Konfigurasi Pasca-Instalasi (Wajib)</h2>
+<p>Lakukan langkah berikut pada kedua node segera setelah instalasi selesai:</p>
+<ol><li><strong>Pengaturan Repositori:</strong> Jika kantor tidak menggunakan lisensi berbayar (Enterprise), buka menu <strong>Node &gt; Updates &gt; Repositories</strong>. Pilih repositori <code>pve-enterprise</code> dan <code>ceph (enterprise)</code>, lalu klik <strong>Disable</strong>. Klik <strong>Add</strong>, lalu tambahkan repositori <code>No-Subscription</code>.</li><li><strong>Pembaruan Sistem:</strong> Buka <strong>Node &gt; Shell</strong> dan jalankan perintah berikut untuk memperbarui paket sistem dan kernel:</li></ol>
+<pre><code>apt update &amp;&amp; apt full-upgrade -y</code></pre>
+<p>Lakukan reboot jika terdapat pembaruan kernel (<code>reboot</code>).<br>3. <strong>Sinkronisasi Waktu (NTP):</strong> Pastikan waktu antar server sinkron agar Corosync Cluster dan jadwal backup berjalan akurat. Periksa status melalui shell:</p>
+<pre><code>chronyc tracking</code></pre>
+<p>Jika server tidak terhubung langsung ke internet, arahkan konfigurasi <code>/etc/chrony/chrony.conf</code> ke NTP Server internal kantor, lalu jalankan <code>systemctl restart chrony</code>.</p>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

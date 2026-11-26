@@ -18,11 +18,16 @@ Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
   Hardware & Diagnostics, Wired Switching, Network Services, Routing, MPLS & VPN,
   Reliability, QoS, Security, WLAN AC, Developer Guides, CLI Reference, Appendices.
   Mencakup seri campus (S220/S310/S530/S620, S5700/S6700) dan data center (CloudEngine).
+- **`proxmox/`** — 11 bab **Panduan Proxmox & Proxmox Backup Server** (Bahasa
+  Indonesia) untuk Tim IT: ringkasan konsep & alur kerja harian, lembar parameter
+  pra-implementasi, arsitektur + persiapan, instalasi Proxmox VE, cluster 2-node
+  & QDevice, instalasi/integrasi PBS, operasional VM/Container/migrasi,
+  kebijakan backup & restore, keamanan & penanganan gangguan, checklist produksi.
 - **`manual/`** (**Panduan MikroTik V7**) — salinan lengkap manual resmi
   RouterOS 7.26 (23 bab) dalam bahasa Inggris, dari *Overview* sampai
   *CLI Reference* dan *Hardware Guides*. Salinan manual **V6 belum tersedia**.
 
-Total **270 halaman HTML**.
+Total **282 halaman HTML**.
 
 ## Fitur
 
