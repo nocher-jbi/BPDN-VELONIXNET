@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPLS &amp; VPN &middot; Huawei Support</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="mpls-vpn">MPLS &amp; VPN</h1>
+<h2 id="061-mpls-ldp">06.1 MPLS LDP</h2>
+<pre><code class="language-bash">[HUAWEI] mpls lsr-id 10.10.10.2
+[HUAWEI] mpls
+[HUAWEI-mpls] mpls ldp
+[HUAWEI-mpls-ldp] quit
+[HUAWEI-mpls] quit
+
+[HUAWEI] interface vlanif 10
+[HUAWEI-Vlanif10] mpls
+[HUAWEI-Vlanif10] mpls ldp
+[HUAWEI-Vlanif10] quit
+</code></pre>
+<h2 id="062-l3vpn-mpls-vpn">06.2 L3VPN (MPLS VPN)</h2>
+<pre><code class="language-bash">[HUAWEI] ip vpn-instance CUSTOMER_A
+[HUAWEI-vpn-instance-CUSTOMER_A] ipv4-family
+[HUAWEI-vpn-instance-CUSTOMER_A-ipv4] route-distinguisher 100:1001
+[HUAWEI-vpn-instance-CUSTOMER_A-ipv4] vpn-target 100:1001 export-extcommunity
+[HUAWEI-vpn-instance-CUSTOMER_A-ipv4] vpn-target 100:1001 import-extcommunity
+[HUAWEI-vpn-instance-CUSTOMER_A-ipv4] quit
+
+[HUAWEI] interface vlanif 100
+[HUAWEI-Vlanif100] ip binding vpn-instance CUSTOMER_A
+[HUAWEI-Vlanif100] ip address 192.168.100.1 255.255.255.0
+[HUAWEI-Vlanif100] quit
+
+[HUAWEI] bgp 65001
+[HUAWEI-bgp] ipv4-family vpn-instance CUSTOMER_A
+[HUAWEI-bgp-ipv4-CUSTOMER_A] peer 192.168.100.2 as-number 65002
+[HUAWEI-bgp-ipv4-CUSTOMER_A] import-route direct
+[HUAWEI-bgp-ipv4-CUSTOMER_A] quit
+</code></pre>
+<h2 id="063-evpn-vxlan-data-center-fabric">06.3 EVPN / VXLAN (Data Center Fabric)</h2>
+<pre><code class="language-bash">[HUAWEI] vxlan enable
+[HUAWEI] bridge-domain 100
+[HUAWEI-bd100] vxlan vni 10100
+[HUAWEI-bd100] vxlan encapsulation vxlan
+[HUAWEI-bd100] quit
+
+[HUAWEI] interface nve 1
+[HUAWEI-Nve1] source 10.10.10.2
+[HUAWEI-Nve1] vni 10100 head-end peer-list 10.10.10.3 10.10.10.4
+[HUAWEI-Nve1] quit
+
+[HUAWEI] evpn vpn-instance evpn1 bd-mode
+[HUAWEI-evpn-instance-evpn1] route-distinguisher 100:1
+[HUAWEI-evpn-instance-evpn1] vpn-target 1:1 export-extcommunity
+[HUAWEI-evpn-instance-evpn1] vpn-target 1:1 import-extcommunity
+[HUAWEI-evpn-instance-evpn1] quit
+
+[HUAWEI] bgp 65001
+[HUAWEI-bgp] l2vpn-family evpn
+[HUAWEI-bgp-af-evpn] peer 10.10.10.254 enable
+[HUAWEI-bgp-af-evpn] peer 10.10.10.254 advertise encap-type vxlan
+[HUAWEI-bgp-af-evpn] quit
+</code></pre>
+<h2 id="064-segment-routing-sr-mpls-srv6">06.4 Segment Routing (SR-MPLS / SRv6)</h2>
+<pre><code class="language-bash"># SR-MPLS
+[HUAWEI] segment-routing
+[HUAWEI-segment-routing] ipv4 adjacency-sid allocate 1000
+[HUAWEI-segment-routing] quit
+
+[HUAWEI] isis 1
+[HUAWEI-isis-1] segment-routing mpls
+[HUAWEI-isis-1] segment-routing global-block 16000 23999
+[HUAWEI-isis-1] quit
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

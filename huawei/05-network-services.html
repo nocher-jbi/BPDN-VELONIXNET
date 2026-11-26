@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Services &middot; Huawei Support</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="network-services">Network Services</h1>
+<h2 id="041-dhcp-server-interface-based">04.1 DHCP Server (Interface-based)</h2>
+<pre><code class="language-bash">[HUAWEI] dhcp enable
+[HUAWEI] interface vlanif 20
+[HUAWEI-Vlanif20] ip address 192.168.20.1 255.255.255.0
+[HUAWEI-Vlanif20] dhcp select interface
+[HUAWEI-Vlanif20] dhcp server dns-list 10.10.10.10 8.8.8.8
+[HUAWEI-Vlanif20] dhcp server gateway-list 192.168.20.1
+[HUAWEI-Vlanif20] dhcp server lease day 3 hour 0
+[HUAWEI-Vlanif20] dhcp server excluded-ip-address 192.168.20.2 192.168.20.10
+[HUAWEI-Vlanif20] quit
+</code></pre>
+<h2 id="042-dhcp-relay">04.2 DHCP Relay</h2>
+<pre><code class="language-bash">[HUAWEI] interface vlanif 30
+[HUAWEI-Vlanif30] ip address 192.168.30.1 255.255.255.0
+[HUAWEI-Vlanif30] dhcp select relay
+[HUAWEI-Vlanif30] dhcp relay server-ip 10.10.10.50
+[HUAWEI-Vlanif30] dhcp relay server-detect
+[HUAWEI-Vlanif30] quit
+</code></pre>
+<h2 id="043-dhcp-snooping-dai-ipsg">04.3 DHCP Snooping + DAI + IPSG</h2>
+<pre><code class="language-bash">[HUAWEI] dhcp snooping enable
+[HUAWEI] vlan 20
+[HUAWEI-vlan20] dhcp snooping enable
+[HUAWEI-vlan20] dhcp snooping check arp enable      # DAI
+[HUAWEI-vlan20] quit
+
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] dhcp snooping trusted
+[HUAWEI-GigabitEthernet0/0/25] quit
+
+[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] dhcp snooping limit rate 10
+[HUAWEI-port-group-access_ports] ip source check user-bind enable   # IPSG
+[HUAWEI-port-group-access_ports] quit
+</code></pre>
+<h2 id="044-dns-client">04.4 DNS Client</h2>
+<pre><code class="language-bash">[HUAWEI] dns resolve
+[HUAWEI] dns server 10.10.10.10
+[HUAWEI] dns server 8.8.8.8
+</code></pre>
+<h2 id="045-arp-nd">04.5 ARP &amp; ND</h2>
+<pre><code class="language-bash">[HUAWEI] arp aging-time 1200
+[HUAWEI] arp anti-attack gateway-duplicate enable
+[HUAWEI] arp anti-attack user-valid enable
+</code></pre>
+<h2 id="046-vrrp-gateway-ha">04.6 VRRP (Gateway HA)</h2>
+<pre><code class="language-bash">[HUAWEI] interface vlanif 20
+[HUAWEI-Vlanif20] vrrp vrid 1 virtual-ip 192.168.20.254
+[HUAWEI-Vlanif20] vrrp vrid 1 priority 120
+[HUAWEI-Vlanif20] vrrp vrid 1 preempt-mode timer delay 30
+[HUAWEI-Vlanif20] vrrp vrid 1 track interface gigabitethernet 0/0/25 reduced 30
+[HUAWEI-Vlanif20] vrrp vrid 1 version 3
+[HUAWEI-Vlanif20] quit
+</code></pre>
+<h2 id="047-ip-performance-udp-helper">04.7 IP Performance / UDP Helper</h2>
+<pre><code class="language-bash">[HUAWEI] ip forwarding
+[HUAWEI] ip ttl-expires enable
+[HUAWEI] interface vlanif 20
+[HUAWEI-Vlanif20] ip helper-address 10.10.10.50    # DHCP relay alternative
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

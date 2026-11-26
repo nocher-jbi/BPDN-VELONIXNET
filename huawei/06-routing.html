@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing &middot; Huawei Support</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="routing">Routing</h1>
+<h2 id="051-static-routes">05.1 Static Routes</h2>
+<pre><code class="language-bash">[HUAWEI] ip route-static 0.0.0.0 0.0.0.0 10.10.10.1          # Default
+[HUAWEI] ip route-static 192.168.100.0 255.255.255.0 10.10.10.50   # Specific
+[HUAWEI] ip route-static 10.0.0.0 8 10.10.10.100 preference 80   # Floating static
+[HUAWEI] ip route-static vpn-instance MGMT 0.0.0.0 0.0.0.0 10.10.10.1  # VRF
+</code></pre>
+<h2 id="052-ospf-single-multi-area">05.2 OSPF (Single / Multi-Area)</h2>
+<pre><code class="language-bash">[HUAWEI] ospf 1 router-id 10.10.10.2
+[HUAWEI-ospf-1] silent-interface vlanif 10
+[HUAWEI-ospf-1] area 0.0.0.0
+[HUAWEI-ospf-1-area-0.0.0.0] network 10.10.10.0 0.0.0.255
+[HUAWEI-ospf-1-area-0.0.0.0] network 192.168.20.0 0.0.0.255
+[HUAWEI-ospf-1-area-0.0.0.0] quit
+
+[HUAWEI-ospf-1] area 0.0.0.1
+[HUAWEI-ospf-1-area-0.0.0.1] network 192.168.30.0 0.0.0.255
+[HUAWEI-ospf-1-area-0.0.0.1] quit
+
+[HUAWEI-ospf-1] default-route-advertise always
+[HUAWEI-ospf-1] quit
+</code></pre>
+<h2 id="053-is-is-large-scale-sp">05.3 IS-IS (Large Scale / SP)</h2>
+<pre><code class="language-bash">[HUAWEI] isis 1
+[HUAWEI-isis-1] is-level level-1-2
+[HUAWEI-isis-1] network-entity 10.0000.0000.0001.00
+[HUAWEI-isis-1] quit
+
+[HUAWEI] interface vlanif 10
+[HUAWEI-Vlanif10] isis enable 1
+[HUAWEI-Vlanif10] quit
+</code></pre>
+<h2 id="054-bgp-internet-dc-l3vpn">05.4 BGP (Internet / DC / L3VPN)</h2>
+<pre><code class="language-bash">[HUAWEI] bgp 65001
+[HUAWEI-bgp] router-id 10.10.10.2
+[HUAWEI-bgp] peer 10.10.10.254 as-number 65000
+[HUAWEI-bgp] peer 10.10.10.254 connect-interface loopback0
+
+# IPv4 Unicast
+[HUAWEI-bgp] ipv4-family unicast
+[HUAWEI-bgp-af-ipv4] peer 10.10.10.254 enable
+[HUAWEI-bgp-af-ipv4] network 192.168.20.0 255.255.255.0
+[HUAWEI-bgp-af-ipv4] quit
+
+# EVPN (VXLAN)
+[HUAWEI-bgp] l2vpn-family evpn
+[HUAWEI-bgp-af-evpn] peer 10.10.10.254 enable
+[HUAWEI-bgp-af-evpn] peer 10.10.10.254 advertise encap-type vxlan
+[HUAWEI-bgp-af-evpn] quit
+
+[HUAWEI-bgp] quit
+</code></pre>
+<h2 id="055-route-policy-prefix-list">05.5 Route Policy / Prefix List</h2>
+<pre><code class="language-bash">[HUAWEI] ip prefix-list DEFAULT_ROUTE permit 0.0.0.0 0
+[HUAWEI] route-policy EXPORT_OSPF permit node 10
+[HUAWEI-route-policy] if-match ip-prefix DEFAULT_ROUTE
+[HUAWEI-route-policy] apply cost 100
+[HUAWEI-route-policy] quit
+</code></pre>
+<h2 id="056-vrf-vpn-instance">05.6 VRF / VPN Instance</h2>
+<pre><code class="language-bash">[HUAWEI] ip vpn-instance MGMT
+[HUAWEI-vpn-instance-MGMT] ipv4-family
+[HUAWEI-vpn-instance-MGMT-ipv4] route-distinguisher 100:10
+[HUAWEI-vpn-instance-MGMT-ipv4] vpn-target 100:10 export-extcommunity
+[HUAWEI-vpn-instance-MGMT-ipv4] vpn-target 100:10 import-extcommunity
+[HUAWEI-vpn-instance-MGMT-ipv4] quit
+
+[HUAWEI] interface Meth0/0/0
+[HUAWEI-MEth0/0/0] ip binding vpn-instance MGMT
+[HUAWEI-MEth0/0/0] ip address 10.10.10.2 255.255.255.0
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

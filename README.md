@@ -12,10 +12,15 @@ Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
   dasar RouterOS & akses, IP & routing, firewall & keamanan, DHCP/DNS/NAT,
   bridge & VLAN, PPPoE server/client, queue & bandwidth, routing (statis/OSPF/BGP),
   VPN (WireGuard/IPsec/L2TP), maintenance & monitoring.
+- **`huawei/`** — 14 bab panduan konfigurasi switch **Huawei** (Bahasa Indonesia),
+  disusun mengikuti struktur manual MikroTik: Getting Started, Management Plane,
+  Hardware & Diagnostics, Wired Switching, Network Services, Routing, MPLS & VPN,
+  Reliability, QoS, Security, WLAN AC, Developer Guides, CLI Reference, Appendices.
+  Mencakup seri campus (S220/S310/S530/S620, S5700/S6700) dan data center (CloudEngine).
 - **`manual/`** — salinan lengkap manual resmi RouterOS 7.26 (23 bab) dalam
   bahasa Inggris, dari *Overview* sampai *CLI Reference* dan *Hardware Guides*.
 
-Total **246 halaman HTML**.
+Total **261 halaman HTML**.
 
 ## Fitur
 
