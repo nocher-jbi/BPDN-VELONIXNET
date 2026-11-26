@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arsitektur Server BPTR &amp; Docker &middot; MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi&hellip;" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Server &amp; Infrastruktur BPTR (Bahasa Indonesia)</p>
+      <h1 id="arsitektur-server-bptr">Arsitektur Server BPTR &amp; Docker</h1>
+
+<p>Server BPTR adalah satu host Linux yang menjalankan <strong>semua</strong> aplikasi
+web Dinas PUPR Provinsi Jambi (e-monev, program/e-proposal, awasi, TTE) sebagai
+container <strong>Docker</strong> yang terpisah-pisah. Bab ini menjelaskan spesifikasi
+server, cara akses, dan daftar lengkap container yang berjalan.</p>
+
+<h2 id="spesifikasi-host">Spesifikasi host</h2>
+<table>
+<thead><tr><th>Item</th><th>Nilai</th></tr></thead>
+<tbody>
+<tr><td>OS</td><td>Ubuntu 22.04 LTS</td></tr>
+<tr><td>CPU</td><td>4 vCPU</td></tr>
+<tr><td>RAM</td><td>7,6 GB (biasanya &plusmn;2 GB terpakai, sisanya cache)</td></tr>
+<tr><td>Disk</td><td>48 GB (volume LVM), rutin terpakai sekitar 50&ndash;55%</td></tr>
+<tr><td>Docker</td><td>Docker Engine 29.x + Docker Compose v5 (plugin <code>docker compose</code>, bukan <code>docker-compose</code> lama)</td></tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>PENTING</strong></p>
+<p>Disk cukup pas-pasan (48 GB untuk semua aplikasi + database + image Docker).
+Build cache Docker yang menumpuk pernah membuat disk sampai 88% penuh. Lihat
+bab <a href="03-troubleshooting-maintenance.html">Troubleshooting &amp; Maintenance</a>
+untuk cara membersihkannya.</p>
+</div>
+
+<h2 id="cara-akses">Cara akses server</h2>
+<pre><code>ssh BPTR
+</code></pre>
+<p>Login sebagai user <strong>bptr</strong> (bukan root). Semua aplikasi ada di
+<code>/home/bptr/apps/</code>, dikelompokkan per bidang:</p>
+<ul>
+<li><code>/home/bptr/apps/bidang-monev/</code> &mdash; e-monev, awasi, TTE (lihat
+<a href="../aplikasi/01-pengenalan-login.html">Panduan Aplikasi e-monev</a>)</li>
+<li><code>/home/bptr/apps/bidang-program/</code> &mdash; aplikasi program.jambiprov.go.id
+(admin-panel, proposal, sinkron, backend, database)</li>
+</ul>
+
+<h2 id="daftar-container">Daftar container yang berjalan</h2>
+<p>Perintah <code>docker ps</code> menampilkan semua container aktif:</p>
+<table>
+<thead><tr><th>Nama container</th><th>Port host</th><th>Keterangan</th></tr></thead>
+<tbody>
+<tr><td><code>emonev_web</code></td><td>9090&rarr;80</td><td>e-monev PUPR (CodeIgniter 3, PHP 7.4 + Apache)</td></tr>
+<tr><td><code>web-admin-panel</code></td><td>3001&rarr;3000</td><td>Admin Panel / E-POKIR program.jambiprov (Nuxt 2)</td></tr>
+<tr><td><code>web-proposal</code></td><td>3002&rarr;3000</td><td>E-Proposal program.jambiprov, publik (Nuxt 2)</td></tr>
+<tr><td><code>web-sinkron</code></td><td>3003&rarr;3000</td><td>E-Sinkron program.jambiprov (Nuxt 2)</td></tr>
+<tr><td><code>backend-apps-proporsi</code></td><td>8080&rarr;8080</td><td>Backend API program.jambiprov (Go/Gin), dipakai ketiga app Nuxt di atas</td></tr>
+<tr><td><code>web-awasi</code></td><td>3004&rarr;3000</td><td>Aplikasi Awasi (pengawas lapangan e-monev)</td></tr>
+<tr><td><code>backend-apps-awasi</code></td><td>3008&rarr;3001</td><td>Backend API Awasi</td></tr>
+<tr><td><code>web-tte</code></td><td>3007&rarr;3000</td><td>Front-end Tanda Tangan Elektronik</td></tr>
+<tr><td><code>database-db-program-1</code></td><td>3310&rarr;3306 (hanya ke 172.17.0.1)</td><td>MySQL 8.0 &mdash; database <code>programdb</code> (dipakai backend proporsi)</td></tr>
+<tr><td><code>database-db-monev-1</code></td><td>3311&rarr;3306 (hanya ke 172.17.0.1)</td><td>MySQL 8.0 &mdash; database <code>monevdb</code> (dipakai e-monev)</td></tr>
+<tr><td><code>portainer_agent</code></td><td>9001</td><td>Agent Portainer, untuk manajemen Docker lewat GUI (jika dipakai)</td></tr>
+</tbody>
+</table>
+<p class="hint">Jalankan <code>docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"</code>
+untuk melihat daftar ini secara langsung, lengkap dengan image dan lama berjalan (uptime).</p>
+
+<h2 id="database">Database &amp; akses dari laptop</h2>
+<p>Kedua database MySQL hanya mendengarkan di alamat internal Docker
+(<code>172.17.0.1</code>), tidak langsung dibuka ke publik. Untuk mengaksesnya dari
+laptop (misalnya pakai DBeaver/TablePlus), buat SSH tunnel dulu:</p>
+<pre><code># Database program (programdb)
+ssh -L 3310:172.17.0.1:3310 BPTR
+
+# Database e-monev (monevdb)
+ssh -L 3311:172.17.0.1:3311 BPTR
+</code></pre>
+<p>Setelah tunnel aktif, koneksi dari laptop ke <code>127.0.0.1:3310</code> /
+<code>127.0.0.1:3311</code> seperti biasa. Kredensial database disimpan di file
+<code>docker-compose.yml</code> masing-masing stack dan di
+<code>/home/bptr/apps/.secrets-20261103</code> (mode file <code>600</code>,
+hanya root/owner yang bisa baca) &mdash; <strong>jangan pernah disalin ke chat, commit
+git, atau dokumen yang bisa diakses orang lain.</strong></p>
+
+<h2 id="catatan-jaringan">Catatan jaringan</h2>
+<p>Dari dalam server, mengakses domain publik aplikasi sendiri (misalnya
+<code>curl https://program.jambiprov.go.id</code>) biasanya <strong>timeout</strong>
+(hairpin NAT) &mdash; ini normal. Untuk tes cepat dari server, akses langsung lewat
+<code>localhost:&lt;port&gt;</code> sesuai tabel di atas (mis. <code>curl localhost:8080/api/v1/...</code>).</p>
+<p>Reverse proxy / TLS untuk domain publik (program.jambiprov.go.id dan
+subdomain-subdomainnya) <strong>tidak berjalan di server BPTR ini</strong> &mdash; tidak
+ada nginx/Traefik lokal yang aktif. Routing domain ke port-port di atas diatur
+di infrastruktur lain (DNS + reverse proxy terpusat, dikelola Diskominfo/pihak
+jaringan). Lihat bab berikutnya untuk detail pemetaan domain.</p>
+
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menjalankan &amp; Deploy Aplikasi program.jambiprov.go.id &middot; MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi&hellip;" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Server &amp; Infrastruktur BPTR (Bahasa Indonesia)</p>
+      <h1 id="menjalankan-program-jambiprov">Menjalankan &amp; Deploy Aplikasi program.jambiprov.go.id</h1>
+
+<p>Aplikasi publik <strong>program.jambiprov.go.id</strong> (e-Proposal/e-POKIR
+Bappeda-PUPR) sebenarnya terdiri dari <strong>4 service Docker terpisah</strong> yang
+semuanya berjalan di server BPTR, di folder
+<code>/home/bptr/apps/bidang-program/</code>.</p>
+
+<h2 id="pemetaan-domain">Pemetaan domain &rarr; service</h2>
+<table>
+<thead><tr><th>Alamat publik</th><th>Container</th><th>Port lokal</th><th>Fungsi</th></tr></thead>
+<tbody>
+<tr><td><code>program.jambiprov.go.id/</code></td><td>&mdash;</td><td>&mdash;</td><td>Halaman portal/landing, berisi tautan ke 3 aplikasi di bawah (dihosting terpisah dari stack Docker ini)</td></tr>
+<tr><td><code>program.jambiprov.go.id/api/v1/...</code></td><td><code>backend-apps-proporsi</code></td><td>8080</td><td>Backend API (Go/Gin) &mdash; dipakai ketiga front-end di bawah</td></tr>
+<tr><td><code>e-proposal.program.jambiprov.go.id</code></td><td><code>web-proposal</code></td><td>3002</td><td><strong>E-Proposal</strong> &mdash; front-end publik untuk OPD mengajukan usulan kegiatan (Nuxt app <code>e-proposal</code>: ada halaman pendaftaran, e_proposal, cetak_all)</td></tr>
+<tr><td><code>adminpanel.program.jambiprov.go.id</code></td><td><code>web-admin-panel</code></td><td>3001</td><td><strong>E-POKIR / Admin Panel</strong> &mdash; back-office untuk mengelola usulan &amp; Pokok Pikiran DPRD (menu <em>pokir</em>, <em>sinkron</em>, <em>users</em>)</td></tr>
+<tr><td><code>e-sinkron.program.jambiprov.go.id</code></td><td><code>web-sinkron</code></td><td>3003</td><td><strong>E-Sinkron</strong> &mdash; sinkronisasi &amp; verifikasi lokasi usulan (halaman <em>usulan</em>, <em>maps</em>)</td></tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Routing domain/subdomain di atas ke port-port tersebut diatur oleh reverse
+proxy di luar server BPTR (bukan nginx/Traefik lokal). Jika perlu mengubah
+pemetaan domain atau memperbarui sertifikat TLS, koordinasikan dengan pihak
+yang mengelola DNS/reverse proxy tersebut &mdash; bukan dilakukan di server ini.</p>
+</div>
+
+<h2 id="struktur-folder">Struktur folder</h2>
+<pre><code>/home/bptr/apps/bidang-program/
+├── docker-compose.yml      # menjalankan admin-panel + proposal + sinkron sekaligus
+├── admin-panel/            # source Nuxt 2 "admin-panel" (git: e-proposal/admin-panel)
+├── proposal/                # source Nuxt 2 "e-proposal" (git: e-proposal/proposal)
+├── sinkron/                  # source Nuxt 2 "e-sinkron" (git: e-proposal/sinkron)
+├── backend/                  # backend Go (binary, TIDAK git — lihat di bawah)
+│   ├── docker-compose.yml
+│   ├── backend-apps.bin
+│   ├── config.yaml
+│   └── datafile/            # volume data (foto/file upload), jangan ikut di-build ke image
+├── database/                 # compose untuk database-db-program-1 (MySQL)
+└── nginx/                    # compose nginx lama, SAAT INI TIDAK DIPAKAI (tidak berjalan)
+</code></pre>
+
+<h2 id="start-stop-restart">Start / stop / restart</h2>
+<p>Ketiga front-end Nuxt (admin-panel, proposal, sinkron) dikelola bersama lewat
+satu <code>docker-compose.yml</code> di root folder <code>bidang-program</code>:</p>
+<pre><code>cd /home/bptr/apps/bidang-program
+
+# jalankan / pastikan semua (ulang) berjalan
+docker compose up -d
+
+# hentikan semua
+docker compose down
+
+# restart satu service saja, misalnya admin-panel
+docker compose restart admin-panel
+</code></pre>
+<p>Backend Go dikelola terpisah (compose sendiri):</p>
+<pre><code>cd /home/bptr/apps/bidang-program/backend
+docker compose up -d        # start / pastikan jalan
+docker compose restart      # restart
+docker compose down         # hentikan
+</code></pre>
+<p>Melihat log realtime salah satu service (ganti nama container sesuai tabel di
+bab sebelumnya):</p>
+<pre><code>docker logs -f web-proposal
+docker logs -f backend-apps-proporsi
+</code></pre>
+
+<h2 id="update-deploy-frontend">Update/deploy: front-end (admin-panel, proposal, sinkron)</h2>
+<p>Ketiga app ini adalah repo Git terpisah di GitLab
+(<code>gitlab.com/program-pupr/e-proposal/&lt;admin-panel|proposal|sinkron&gt;</code>).
+Alur update kode &amp; deploy ulang:</p>
+<ol>
+<li>Tarik perubahan terbaru di folder app yang bersangkutan:
+<pre><code>cd /home/bptr/apps/bidang-program/proposal   # contoh: app proposal
+git pull origin main    # atau nama branch yang dipakai
+</code></pre></li>
+<li>Build ulang image &amp; jalankan ulang container-nya saja (dari folder
+<code>bidang-program</code>, bukan dari dalam folder app):
+<pre><code>cd /home/bptr/apps/bidang-program
+docker compose build proposal
+docker compose up -d proposal
+</code></pre></li>
+</ol>
+<div class="adm adm-warning">
+<p><strong>PERINGATAN</strong></p>
+<p>Build Nuxt (<code>npm install &amp;&amp; npm run build</code>) berjalan di dalam
+image Docker setiap kali di-build ulang &mdash; proses ini bisa memakan waktu beberapa
+menit dan sedikit RAM/CPU ekstra saat berlangsung. Lakukan di luar jam sibuk
+jika memungkinkan, dan pastikan tidak menjalankan build untuk ketiga app
+sekaligus secara bersamaan di server dengan RAM terbatas (7,6 GB).</p>
+</div>
+
+<h2 id="update-deploy-backend">Update/deploy: backend Go</h2>
+<p>Berbeda dari front-end, <strong>source code backend Go tidak ada di server
+sebagai git repo</strong> &mdash; yang ada di server hanyalah binary hasil compile
+(<code>backend-apps.bin</code>) + <code>config.yaml</code>. Source code dikembangkan
+di komputer developer, lalu di-build untuk Linux dan dikirim (scp) ke server:</p>
+<pre><code># Di komputer developer (contoh, sesuaikan path source sebenarnya)
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o backend-apps.bin
+scp backend-apps.bin BPTR:/home/bptr/apps/bidang-program/backend/
+
+# Di server
+cd /home/bptr/apps/bidang-program/backend
+docker compose build
+docker compose up -d --no-deps backend
+</code></pre>
+<p>Folder <code>datafile/</code> (data/file upload) adalah <strong>volume</strong>
+yang dipasang ke container (lihat <code>docker-compose.yml</code>), bukan ikut
+di-bake ke dalam image &mdash; ini sengaja, supaya rebuild image tetap ringan dan
+data upload tidak hilang setiap kali di-deploy ulang.</p>
+
+<h2 id="database-backend">Database backend</h2>
+<p>Backend Go terhubung ke <code>database-db-program-1</code> (MySQL 8, database
+<code>programdb</code>) lewat <code>host.docker.internal</code> port 3310. Kredensial
+koneksi disetel sebagai environment variable di dalam
+<code>backend/docker-compose.yml</code> &mdash; nilai ini sensitif, jangan disalin ke
+luar server (lihat peringatan kredensial di bab
+<a href="01-arsitektur-server-bptr.html">Arsitektur Server BPTR</a>).</p>
+
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

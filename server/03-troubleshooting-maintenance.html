@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting, Backup &amp; Maintenance Docker &middot; MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi&hellip;" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Server &amp; Infrastruktur BPTR (Bahasa Indonesia)</p>
+      <h1 id="troubleshooting-maintenance">Troubleshooting, Backup &amp; Maintenance Docker</h1>
+
+<p>Checklist &amp; perintah yang berguna saat ada laporan aplikasi (e-monev,
+program.jambiprov, awasi, TTE) tidak bisa diakses atau berjalan lambat.</p>
+
+<h2 id="cek-status">1. Cek status container</h2>
+<pre><code>docker ps                 # semua container yang SEDANG berjalan
+docker ps -a               # termasuk yang berhenti/crash (kolom STATUS akan
+                            # menunjukkan "Exited (kode) ..." kalau bermasalah)
+</code></pre>
+<p>Kalau sebuah container "Exited" padahal seharusnya selalu jalan
+(<code>restart: unless-stopped</code> di compose-nya), coba jalankan ulang:</p>
+<pre><code>docker start &lt;nama-container&gt;
+# atau, dari folder compose-nya:
+docker compose up -d
+</code></pre>
+
+<h2 id="cek-log">2. Baca log</h2>
+<pre><code>docker logs --tail 200 &lt;nama-container&gt;
+docker logs -f &lt;nama-container&gt;      # ikuti log realtime (Ctrl+C untuk berhenti)
+</code></pre>
+<p>Untuk backend Go, ada juga file log lama <code>out_backend-apps.log</code> dan
+folder <code>outlog/</code> di <code>backend/</code> (log dari sebelum aplikasi
+dipindah ke Docker) &mdash; biasanya tidak relevan lagi untuk debugging terkini.</p>
+
+<h2 id="disk-penuh">3. Disk penuh / hampir penuh</h2>
+<pre><code>df -h /                     # cek persentase disk terpakai
+docker system df            # rincian pemakaian disk oleh Docker (image, container, volume, build cache)
+docker builder prune -af    # aman dijalankan — hanya bersihkan build cache lama
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>PERINGATAN</strong></p>
+<p>Jangan jalankan <code>docker system prune -a --volumes</code> tanpa memeriksa
+dulu &mdash; perintah ini bisa ikut menghapus <strong>volume data</strong> (termasuk
+<code>datafile/</code> milik backend yang berisi file upload) jika volume tersebut
+sedang tidak dipakai container manapun saat itu. Gunakan <code>docker builder prune</code>
+(hanya build cache) sebagai pilihan pertama yang aman.</p>
+</div>
+
+<h2 id="rebuild-gagal">4. Rebuild image gagal</h2>
+<p>Image <code>emonev_web</code> (PHP/Apache, berbasis Debian) pernah gagal
+di-rebuild karena perintah <code>apt-get update</code> di dalam Dockerfile-nya
+exit code 100 (kemungkinan masalah mirror/registry paket Debian yang dipakai
+image dasar tersebut sudah usang). Untuk container ini, perubahan konfigurasi
+Apache dilakukan lewat <strong>bind mount</strong> (mengubah file konfigurasi di
+host langsung), bukan dengan rebuild image. Jangan asumsikan semua image di
+server ini bisa di-rebuild dengan mulus &mdash; service berbasis Alpine (backend Go,
+Nuxt) umumnya lebih aman untuk di-rebuild dibanding image Debian/Ubuntu lama.</p>
+
+<h2 id="backup-database">5. Backup database</h2>
+<p>Untuk e-monev (database <code>monevdb</code>), sudah ada skrip siap pakai:</p>
+<pre><code>/home/bptr/apps/bidang-monev/emonev/backup-mysql.sh
+/home/bptr/apps/bidang-monev/emonev/restore-mysql.sh
+</code></pre>
+<p>Hasil backup harian tersimpan di folder <code>.../emonev/backups</code>. Untuk
+database <code>programdb</code> (dipakai backend program.jambiprov), lakukan dump
+manual lewat tunnel SSH (lihat bab <a href="01-arsitektur-server-bptr.html">Arsitektur
+Server BPTR</a>) atau <code>docker exec</code> ke container
+<code>database-db-program-1</code> langsung:</p>
+<pre><code>docker exec database-db-program-1 \
+  mysqldump -u root -p programdb &gt; programdb-backup-$(date +%Y%m%d).sql
+</code></pre>
+<p>Simpan hasil dump di luar server (unduh ke laptop/penyimpanan terpisah) &mdash;
+jangan hanya disimpan di disk server yang sama (kapasitas terbatas &amp; berisiko
+hilang bersamaan jika server bermasalah).</p>
+
+<h2 id="catatan-platform-tool">6. Alat bantu lain</h2>
+<p><strong>Portainer agent</strong> (<code>portainer_agent</code>, port 9001) berjalan
+di server untuk mendukung manajemen Docker lewat GUI Portainer, jika dipakai
+dari instance Portainer pusat (tidak ada Portainer server lokal di host ini,
+hanya agent-nya).</p>
+<p>Kebiasaan shell yang perlu diperhatikan saat menjalankan perintah di atas
+lewat skrip: Mac memakai <code>sed -i ''</code> (bukan <code>sed -i</code> polos),
+dan shell <code>zsh</code> tidak melakukan word-splitting pada
+<code>$variabel</code> tanpa quoting seperti <code>bash</code> &mdash; perhatikan ini
+kalau menyalin perintah dari skrip lama ke terminal interaktif.</p>
+
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

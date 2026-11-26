@@ -1,6 +1,6 @@
 (function () {
   var ROOT = window.ROOT || "";
-  var NAV = window.NAV || { panduan: [], aplikasi: [], manual: [] };
+  var NAV = window.NAV || { panduan: [], aplikasi: [], server: [], manual: [] };
   var SEARCH = window.SEARCH || [];
 
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -14,6 +14,7 @@
   var flat = [], lookup = {};
   NAV.panduan.forEach(function(p){ flat.push(p); lookup[p.u]={kind:'panduan',title:p.t}; });
   (NAV.aplikasi||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'aplikasi',title:p.t}; });
+  (NAV.server||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'server',title:p.t}; });
   NAV.manual.forEach(function(s){
     s.items.forEach(function(i){ flat.push(i); lookup[i.u]={kind:'manual',section:s.section,title:i.t}; });
   });
@@ -28,6 +29,9 @@
     h+='</ul></div>';
     h+='<div class="nav-group"><div class="nav-title">Panduan Aplikasi e-monev</div><ul>';
     (NAV.aplikasi||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
+    h+='</ul></div>';
+    h+='<div class="nav-group"><div class="nav-title">Server &amp; Infrastruktur BPTR</div><ul>';
+    (NAV.server||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
     h+='<div class="nav-group"><div class="nav-title">Manual Lengkap 7.26</div>';
     NAV.manual.forEach(function(sec){
@@ -49,6 +53,7 @@
       var info=lookup[flat[idx].u];
       if(info.kind==='panduan'){ h.push('<span class="sep">/</span><span>Panduan Praktis</span>'); }
       else if(info.kind==='aplikasi'){ h.push('<span class="sep">/</span><span>Panduan Aplikasi</span>'); }
+      else if(info.kind==='server'){ h.push('<span class="sep">/</span><span>Server &amp; Infrastruktur</span>'); }
       else { h.push('<span class="sep">/</span><span>Manual</span>'); h.push('<span class="sep">/</span><span>'+esc(info.section)+'</span>'); }
       h.push('<span class="sep">/</span><span>'+esc(info.title)+'</span>');
     }
