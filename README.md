@@ -1,7 +1,8 @@
-# Panduan & Manual MikroTik RouterOS (pdn-mikrotik)
+# BPDN-VELONIXNET — Panduan MikroTik, Huawei & Aplikasi e-monev
 
 Situs dokumentasi **offline** untuk kerja NOC harian: panduan praktis berbahasa
-Indonesia plus salinan lengkap manual resmi **MikroTik RouterOS 7.26**.
+Indonesia untuk **MikroTik RouterOS** dan **switch Huawei**, panduan aplikasi
+**e-monev PUPR**, plus salinan lengkap manual resmi **RouterOS 7.26**.
 
 Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
 `index.html` di browser, semuanya jalan tanpa internet.
@@ -46,7 +47,7 @@ Karena semua file ada di root repo, situs bisa langsung dipublikasikan:
 
 1. **Settings → Pages**
 2. Source: **Deploy from a branch**, branch `main`, folder `/ (root)`
-3. Situs akan tersedia di `https://nocher-jbi.github.io/pdn-mikrotik/`
+3. Situs akan tersedia di `https://nocher-jbi.github.io/BPDN-VELONIXNET/`
 
 ## Sumber
 
