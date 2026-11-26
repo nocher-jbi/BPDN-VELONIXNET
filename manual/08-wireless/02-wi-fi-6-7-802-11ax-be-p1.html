@@ -1,0 +1,2025 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wi-Fi 6 / 7 (802.11ax/be) · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="wi-fi-6-7-80211axbe-part-12">Wi-Fi 6 / 7 (802.11ax/be) (part 1/2)</h1>
+<h1 id="wi-fi">Wi-Fi</h1>
+<blockquote>
+<p>This page introduces the WiFi configuration menu in RouterOS, covering basic setup for password-protected and OWE transition mode access points. It explains configuration profiles, security settings, and includes...</p>
+</blockquote>
+<h1 id="wi-fi_1">Wi-Fi</h1>
+<p>This section covers management of <strong>Wi-Fi 6 and later</strong> (802.11ax/be) interfaces as well as <strong>Wi-Fi HaLow</strong> (802.11ah) interfaces and Wi-Fi 5 (802.11ac) devices running the <em>wifi-qcom-ac</em> driver package.</p>
+<p>These interfaces are configured in the  <strong><code>/interface/wifi</code></strong> menu.</p>
+<p>Which driver package a device needs, depends on its wireless chipset and standard.</p>
+<div class="adm adm-tip">
+<p><strong>Is this the right section for my device?</strong></p>
+<p>This menu (and this manual) is used by every device running one of these driver packages:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Package</th>
+<th style="text-align: left;">Devices</th>
+<th style="text-align: left;">Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>wifi-qcom</code></td>
+<td style="text-align: left;">Wi-Fi 6 / 6E (Qualcomm)</td>
+<td style="text-align: left;">wAP ax, cAP ax, hAP ax³</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wifi-qcom-be</code></td>
+<td style="text-align: left;">Wi-Fi 7 (Qualcomm)</td>
+<td style="text-align: left;">hAP be3 media</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wifi-mediatek</code></td>
+<td style="text-align: left;">Wi-Fi 6 / 7 (MediaTek)</td>
+<td style="text-align: left;">hAP ax S, hAP be lite</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wifi-qcom-ac</code></td>
+<td style="text-align: left;">Wi-Fi 5 / 802.11ac (Qualcomm)</td>
+<td style="text-align: left;">see <a href="../wifi-ac/index.md">Wi-Fi 5 (802.11ac)</a></td>
+</tr>
+</tbody>
+</table>
+<p>The standard is usually encoded in the model name — <strong>ax</strong> for Wi-Fi 6, <strong>be</strong> for Wi-Fi 7. For <code>wifi-qcom-ac</code> devices, see <a href="../wifi-ac/index.md">Wi-Fi 5 (802.11ac)</a> to confirm whether yours should use this menu or the legacy <code>/interface/wireless</code> one.</p>
+<p>If your device uses the legacy <code>/interface/wireless</code> menu instead, see <a href="../abgn/index.md">802.11 a/b/g/n</a>.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>In RouterOS versions before 7.13 this menu was part of a separate package called <code>wifiwave2</code>.</p>
+</div>
+<h2 id="getting-started">Getting started</h2>
+<p>New to one of these devices? Start with a task-oriented guide, then use the property reference further down this page for individual settings:</p>
+<ul>
+<li><a href="./configuring-standalone-access-point.md">Configuring a standalone access point</a></li>
+<li><a href="./configuring-repeater.md">Configuring a repeater</a></li>
+<li><a href="./configuring-outdoor-cpe-to-ap-links.md">Configuring outdoor CPE-to-AP links</a></li>
+<li><a href="./interworking-for-wifi6.md">Interworking (802.11u / Hotspot 2.0) for WiFi6</a></li>
+<li><a href="./capsman.md">Centralized management with WiFi CAPsMAN</a></li>
+<li><a href="./configuring-easymesh">Configuring EasyMesh</a></li>
+<li><a href="./configuring-meshpoint">Configuring MeshPoint</a></li>
+</ul>
+<h2 id="wifi-terminology">WiFi Terminology</h2>
+<p>Before we move on let's familiarize ourselves with terms important for understanding the operation of the menu. These terms will be used throughout the article.</p>
+<ul>
+<li><strong>Profile</strong> - refers to the configuration preset created under one of these WiFi sub-menus: <strong>aaa</strong>, <strong>channel</strong>, <strong>security</strong>, <strong>datapath</strong>, or <strong>interworking</strong>.</li>
+<li><strong>Configuration</strong> <strong>profile</strong> - configuration preset defined under <code>/interface/wifi/configuration</code>, it can reference various profiles.</li>
+<li><strong>Station</strong> - wireless client.</li>
+</ul>
+<h2 id="network">Network</h2>
+<p>The easiest way to fully configure a compatible device is through the <code>/interface/wifi/network</code> menu, which bundles SSID, security, datapath and radio settings into a single configuration entity.</p>
+<p>A network provisions interface configurations to radios, which match its <code>labels</code>.</p>
+<p>For an example of network configuration usage, see the following:</p>
+<pre><code class="language-ros"># A network provisioned to all radios
+/interface/wifi/network
+add ssid=MikroTik security.authentication-types=wpa2-psk,wpa3-psk security.passphrase=[:rndstr] datapath.bridge=bridge
+
+# Set the regulatory domain of all radios
+/interface/wifi/network/radio
+add configuration.country=Latvia
+</code></pre>
+<h3 id="network-properties">Network properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>mlo</strong> (<em>no</em> | <em>yes</em>; default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables multi-link operation for compatible (WiFi 7 and later) radios.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>labels</strong> (<em>comma-separated strings</em>; default: <strong>all</strong>)</td>
+<td style="text-align: left;">Enables the network config on radios which match any of the specified labels.RouterOS automatically assigns each radio a label such as <em>2ghz</em>, <em>5ghz</em> or <em>6ghz</em>, depending on its frequency band, as well as a label equal to its (capitalized) MAC address.The <em>all</em> label matches all radios.Additional labels can be assigned to a radio via the <code>extra-labels</code> parameter in the network radio section.Preceding a label with a <em>-</em> (the minus sign), negates its match.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string</em>)</td>
+<td style="text-align: left;">The wireless network name (ESSID).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>ap</em> | <em>station</em> | <em>station-bridge</em> | <em>station-pseudobridge</em>; default: <strong>ap</strong>)</td>
+<td style="text-align: left;">Interface operation mode.</td>
+</tr>
+</tbody>
+</table>
+<p>All security, authentication and encryption parameters share the same properties described in <a href="#security-properties">Security Properties</a>. Datapath parameters (bridge, VLAN, client isolation, traffic processing) follow <a href="#datapath-properties">Datapath Properties</a>.</p>
+<h3 id="network-radio-properties">Network radio properties</h3>
+<p>Per-radio settings under <code>/interface/wifi/network/radio</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>labels</strong> (<em>object</em>)</td>
+<td style="text-align: left;">Matches the radio config to physical radios with the given labels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extra-labels</strong> (<em>comma-separated strings</em>)</td>
+<td style="text-align: left;">Additional labels to assign to matched radios.</td>
+</tr>
+</tbody>
+</table>
+<p>Radio parameters (country, band, frequency, width, chains, power, etc.) use the same properties described in <a href="#channel-properties">Channel Properties</a> and <a href="#configuration-properties">Configuration Properties</a>.</p>
+<h3 id="converting-tofrom-network-managed-wi-fi">Converting to/from network-managed Wi-Fi</h3>
+<p>To determine, what to do with a given radio, RouterOS takes the following steps:
+1) The <code>/interface/wifi</code> menu is checked for an existing interface configuration entry for the radio's MAC address. If found, it is applied.
+2) If no such entry is found, the <code>/interface/wifi/provisioning</code> menu is consulted for explicit provisioning instructions. If one is found, it is followed.
+3) If neither an existing static configuration, nor an explicit provisioning instruction is found, the <code>/interface/wifi/network</code> menu is consulted to see if it specifies any networks for the radio.
+4) Finally, if no explicit instructions were found in the previous steps, a static disabled configuration stub is created for the radio MAC.</p>
+<p>WiFi network configurations will only affect radios already managed by a wifi network (radios whose master configuration is marked with the <em>N</em> flag) or radios whose master configurations are disabled and marked as having been created by step #4 described earlier.</p>
+<p>Adding a wifi network will therefore <strong>NOT</strong> cause a corresponding interface configuration to be created on any radios which either have an enabled non-network master interface configuration, or configurations created by explicit provisioniong rules.</p>
+<p>To convert such radios to be managed by wifi network configurations, remove any explicit provisioning rules and re-provision them.</p>
+<pre><code class="language-ros">/interface/wifi/provisioning/remove [find]
+/interface/wifi/radio/provision [find]
+</code></pre>
+<p>Interfaces created by a wifi network cannot be adjusted by other configuration methods.
+To convert a network-managed interface to a static interface configuration, use the <code>/interface/wifi/liberate</code> command.</p>
+<h2 id="basic-password-protected-ap">Basic password-protected AP</h2>
+<p>Direct per-interface setup works on every device and remains fully supported when the <code>/interface/wifi/network</code> menu is unavailable or when per-interface overrides are needed.</p>
+<pre><code class="language-ros">/interface/wifi
+set wifi1 disabled=no configuration.country=Latvia configuration.ssid=MikroTik security.authentication-types=wpa2-psk,wpa3-psk security.passphrase=8-63_characters
+</code></pre>
+<h3 id="open-ap-with-owe-transition-mode">Open AP with OWE transition mode</h3>
+<p>Opportunistic wireless encryption (OWE) allows the creation of wireless networks that do not require the knowledge of a password to connect, but still offer the benefits of traffic encryption and management frame protection. It is an improvement on regular open access points.</p>
+<p>However, since a network cannot be simultaneously encrypted and unencrypted, 2 separate interface configurations are required to offer connectivity to older devices that do not support OWE and offer the benefits of OWE to devices that do.</p>
+<p>This configuration is referred to as OWE transition mode.</p>
+<pre><code class="language-ros">/interface/wifi
+add master-interface=wifi1 name=wifi1_owe configuration.ssid=MikroTik_OWE security.authentication-types=owe security.owe-transition-interface=wifi1 configuration.hide-ssid=yes
+set wifi1 configuration.country=Latvia configuration.ssid=MikroTik security.authentication-types=&quot;&quot; security.owe-transition-interface=wifi1_owe
+enable wifi1,wifi1_owe
+</code></pre>
+<p>With such a setting, the AP will broadcast two SSIDs →  visible <code>MikroTik</code> SSID, which should have "unencrypted" access (for legacy devices that do not support OWE), and hidden SSID <code>MikroTik_OWE</code>, which should have "OWE" security (non-password protected, but encrypted). The client devices will not see the hidden <code>MikroTik_OWE</code> SSID (in the client's WiFi list), however, the beacon packets of the visible <code>MikroTik</code> SSID will advertise the link to the hidden <code>MikroTik_OWE</code> network instead, using the "OWE Transition mode" parameter (in the beacon packet). As a result, the client devices should prioritize connecting to the "OWE" network via the <code>owe-transition-interface</code> setting.</p>
+<p>Client devices that support OWE will prefer the OWE interface. If you don't see any devices in your registration table that are associated with the regular open AP, you may want to move on from running a transition mode setup to a single OWE-encrypted interface:</p>
+<pre><code class="language-ros">/interface/wifi
+set wifi1 configuration.country=Latvia configuration.ssid=MikroTik_OWE security.authentication-types=owe
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>802.11r (fast roaming) does not work over OWE networks.</p>
+</div>
+<h3 id="resetting-configuration">Resetting configuration</h3>
+<p>WiFi interface configurations can be reset by using the 'reset' command.</p>
+<pre><code class="language-ros">/interface/wifi/reset wifi1
+</code></pre>
+<p>The physical interface MAC address can be reset to default by the command 'reset-mac-address'.</p>
+<pre><code class="language-ros">/interface/wifi/reset-mac-address wifi1
+</code></pre>
+<h2 id="configuration-profiles">Configuration profiles</h2>
+<p>One of the new WiFi additions is configuration profiles. You can create various presets that can be assigned to interfaces as needed. Configuration settings for WiFi are grouped in <strong>profiles</strong> according to the parameter sections found at the end of this page - <strong>aaa</strong>, <strong>channel</strong>, <strong>configuration</strong>, <strong>datapath</strong>, <strong>interworking</strong>, and <strong>security</strong>, and can then be assigned to interfaces. <strong>Configuration</strong> <strong>profiles</strong> can include other profiles as well as separate parameters from other categories.</p>
+<p>This optional flexibility is meant to allow each user to arrange their configuration in a way that makes the most sense for them, but it also means that each parameter may have different values assigned to it in different sections of the configuration.</p>
+<p>The following priority determines which value is used:</p>
+<ol>
+<li>Value in interface settings.</li>
+<li>Value in a profile assigned to the interface.</li>
+<li>Value in a configuration profile assigned to the interface.</li>
+<li>Value in a profile assigned to the configuration profile (which in turn is assigned to the interface).</li>
+</ol>
+<p>If you are at any point unsure of which parameter value will be used for an interface, you can issue "/interface/wifi/print detail". The print command will show all values that the interface will have, including inherited values.</p>
+<p>To see only values that were configured directly on the interface, without displaying inherited ones, use "/interface/wifi/print config".</p>
+<p>For an example of configuration profile usage, see the following (example for dual-band home AP):</p>
+<pre><code class="language-ros"># Creating a security profile, which will be common for both interfaces
+/interface/wifi/security
+add name=common-auth authentication-types=wpa2-psk,wpa3-psk passphrase=&quot;diceware makes good passwords&quot; wps=disable
+# Creating a common configuration profile and linking the security profile to it
+/interface/wifi/configuration
+add name=common-conf ssid=MikroTik country=Latvia security=common-auth
+# Creating separate channel configurations for each band
+/interface/wifi/channel
+add name=ch-2ghz frequency=2412,2432,2472 width=20mhz
+add name=ch-5ghz frequency=5180,5260,5500 width=20/40/80mhz
+# Assigning to each interface the common profile as well as band-specific channel profile, in case of &quot;no supported channels&quot; message on interfaces, make sure that correct (channel) configuration is applied to each.
+set wifi1 channel=ch-5ghz configuration=common-conf disabled=no
+set wifi2 channel=ch-2ghz configuration=common-conf disabled=no
+
+#&quot;print detail&quot; will show all values that the interface will use, including inherited ones
+[admin@c52i] &gt; /interface/wifi/print detail 
+Flags: M - master; D - dynamic; B - bound; X - disabled, I - inactive, R - running 
+ 0 M B  default-name=&quot;wifi1&quot; name=&quot;wifi1&quot; l2mtu=1560 mac-address=18:FD:74:AF:F4:28 arp-timeout=auto radio-mac=18:FD:74:AF:F4:28 configuration=common-conf 
+        configuration.mode=ap .ssid=&quot;MikroTik&quot; .country=Latvia 
+        security.authentication-types=wpa2-psk,wpa3-psk .passphrase=&quot;diceware makes good passwords&quot; .wps=disable 
+        channel=ch-5ghz 
+        channel.frequency=5180,5260,5500 .width=20/40/80mhz 
+
+ 1 M B  default-name=&quot;wifi2&quot; name=&quot;wifi2&quot; l2mtu=1560 mac-address=18:FD:74:AF:F4:29 arp-timeout=auto radio-mac=18:FD:74:AF:F4:29 configuration=common-conf 
+        configuration.mode=ap .ssid=&quot;MikroTik&quot; .country=Latvia 
+        security.authentication-types=wpa2-psk,wpa3-psk .passphrase=&quot;diceware makes good passwords&quot; .wps=disable 
+        channel=ch-2ghz 
+        channel.frequency=2412,2432,2472 .width=20mhz 
+#using &quot;print detail config&quot; will show only the values that were directly configured on the interface
+[admin@c52i] &gt; /interface/wifi/print detail config  
+Flags: M - master; D - dynamic; B - bound; X - disabled, I - inactive, R - running 
+ 0 M B  default-name=&quot;wifi1&quot; name=&quot;wifi1&quot; l2mtu=1560 mac-address=18:FD:74:AF:F4:28 arp-timeout=auto radio-mac=18:FD:74:AF:F4:28 configuration=common-conf 
+        configuration.mode=ap 
+        channel=ch-5ghz 
+
+ 1 M B  default-name=&quot;wifi2&quot; name=&quot;wifi2&quot; l2mtu=1560 mac-address=18:FD:74:AF:F4:29 arp-timeout=auto radio-mac=18:FD:74:AF:F4:29 configuration=common-conf 
+        configuration.mode=ap 
+        channel=ch-2ghz 
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><code>print detail</code> and <code>print detail config</code> can also be used on <code>/interface/wifi/configuration</code> and will work in the same manner as in <code>/interface/wifi/</code> menu.</p>
+</div>
+<h2 id="access-list">Access List</h2>
+<p>The access list provides multiple ways of filtering and managing wireless connections.</p>
+<p>RouterOS will check each new connection to see if its parameters match the parameters specified in any access list rule.</p>
+<p>The rules are checked in the order they appear in the list. Only management actions specified in the first matching rule are applied to each connection.</p>
+<p>Connections, which have been accepted by an access list rule, will be periodically checked, to see if they remain within the permitted <strong>time, days</strong> and <strong>signal-range</strong>. If they do not, they will be terminated.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Take care when writing access list rules which reject clients. After being repeatedly rejected by an AP, a client device may start avoiding it. The VLAN ID can't be set by the access list to wifi-qcom-ac interface's clients, without configuring the pvid value for the interface first.</p>
+</div>
+<p>The access list has two kinds of parameters - <a href="#access-list">filtering</a>, and <a href="#access-list">action</a>. Filtering properties are only used for matching clients, to whom the access list rule should be applied to. Action parameters can change connection parameters for that specific client and potentially overriding its default connection parameters with ones specified in the access list rule.</p>
+<h3 id="mac-address-authentication">MAC address authentication</h3>
+<p>Implemented through the <strong>query-radius</strong> action, MAC address authentication is a way to implement a centralized whitelist of client MAC addresses using a RADIUS server.</p>
+<p>When a client device tries to associate with an AP, which is configured to perform MAC address authentication, the AP will send an access-request message to a RADIUS server with the device's MAC address as the user name and an empty password. If the RADIUS server answers with access-accept to such a request, the AP proceeds with whatever regular authentication procedure (passphrase or EAP authentication) is configured for the interface.</p>
+<h3 id="access-rule-examples">Access rule examples</h3>
+<p>Only accept connections to guest network from nearby devices during business hours:</p>
+<pre><code class="language-ros">/interface/wifi/access-list/print detail
+Flags: X - disabled 
+ 0   signal-range=-60..0 allow-signal-out-of-range=5m ssid-regexp=&quot;MikroTik Guest&quot; time=7h-19h days=mon,tue,wed,thu,fri action=accept
+
+ 1   ssid-regexp=&quot;MikroTik Guest&quot; action=reject 
+</code></pre>
+<p>Reject connections from locally-administered ('anonymous'/'randomized') MAC addresses:</p>
+<pre><code class="language-ros">/interface/wifi/access-list/print detail
+Flags: X - disabled
+ 0   mac-address=02:00:00:00:00:00 mac-address-mask=02:00:00:00:00:00 action=reject
+</code></pre>
+<p>Assigning a different passphrase for a specific client can be useful, if you need to provide wireless access to a client, but don't want to share your wireless password, or don't want to create a separate SSID. When the matching client connects to this network, the access list will make that client use a different password instead of using the password defined in the interface configuration. Just make sure that the specific client doesn't get matched by a more generic access list rule first.</p>
+<p>Or reject all unknown MAC addresses, can be added as an ultimate rule, at the end of the access list. - If you want to allow only specific clients on the network, make sure to also add a reject rule at the end of the access-list, as there is no implicit reject rule by default.</p>
+<pre><code class="language-ros">/interface/wifi/access-list
+add action=accept disabled=no mac-address=22:F9:70:E5:D2:8E interface=wifi1 passphrase=StrongPassword
+</code></pre>
+<h2 id="frequency-scan">Frequency scan</h2>
+<p>The <code>/interface/wifi/frequency-scan wifi1</code> command provides information about RF conditions on available channels that can be obtained by running the frequency-scan command. Used to approximate the spectrum usage, it can be useful to find less crowded frequencies.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Running a frequency scan will disconnect all connected clients, or if the interface is in station mode, it will disconnect from the AP.</p>
+</div>
+<h2 id="scan-command">Scan command</h2>
+<p>The <code>/interface/wifi/scan</code> command will scan for access points and print out information about any APs it detects. It doesn't show the frequency usage, per channel, but it will reveal all access points that are transmitting. You can use the "connect" button to initiate a connection to a specific AP.</p>
+<p>The scan command takes all the same parameters as the frequency-scan command.</p>
+<h2 id="sniffer">Sniffer</h2>
+<p>The sniffer command enables monitor mode on a wireless interface. This turns the interface into a passive receiver for all WiFi transmissions.<br />
+The command continuously prints out information on received packets and can save them locally to a pcap file or stream them using the TZSP protocol.</p>
+<p>The sniffer will operate on whichever channel is configured for the chosen interface.</p>
+<h2 id="spectral-scan">Spectral scan</h2>
+<p>The spectral scan can scan frequencies supported by your wifi interface, and plot them directly in the console.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Spectral scan is supported only by the wifi-qcom driver; it is not supported by the wifi-qcom-ac, wifi-mediatek or wifi-qcom-be driver.</p>
+</div>
+<pre><code class="language-ros">/interface/wifi/spectral-scan &lt;wifi interface name&gt;
+</code></pre>
+<p>This command continuously monitors spectral data. This command uses the same data source as <code>spectral-history</code>, and shares many parameters.</p>
+<p>Each line displays one spectrogram bucket -- frequency, magnitude (dBm), peak, and a character graphic bar. A bar shows power value with ':' characters and average peak hold with '.' characters.</p>
+<p><code>data</code> - min/max/avg, by default average is used for data. The average should be used in most scenarios, but in some cases "min" can be useful to check if there are any frequencies that have a constant signal output on them. Max represents the strongest signal that was detected during the interval of the scan, similar to the peak.<br />
+<code>duration</code> - terminate command after a specified time. Default is indefinite;<br />
+<code>freeze-frame-interval</code> - Time interval at which to update command output<br />
+<code>interval</code> - interval of how often to update the primary data values, not peak<br />
+<code>peak-mode</code> - avg/max/disabled - peak reflects the strongest signal over peak-hold-duration. By default "avg" is used. It is the average of max values over "peak-hold-duration". If "max" is used, then the highest value will be shown until the next "peak-hold-duration" update.<br />
+<code>peak-hold-duration</code> - changes the peak hold duration used by peak-mode, by default 5 seconds.<br />
+<code>range</code> - scan specific range, required;<br />
+<code>resolution</code> - frequency step for spectral scan<br />
+<code>show-interference</code> - yes/no</p>
+<p>Possible types of classified interference:</p>
+<ul>
+<li>Microwave oven (<code>MWO</code>).</li>
+<li>Continuous Wave (<code>CW</code>).</li>
+<li>WLAN (Wideband) (<code>WIFI</code>).</li>
+<li>Cordless phone 2.4 (<code>CORDLESS24</code>).</li>
+<li>Cordless phone 5 (<code>CORDLESS5</code>).</li>
+<li>Bluetooth (<code>BLUETOOTH</code>).</li>
+<li>Frequency hopping spread spectrum (<code>FHSS</code>).</li>
+</ul>
+<h2 id="spectral-history">Spectral history</h2>
+<pre><code class="language-ros">/interface/wifi/spectral-history &lt;wifi interface name&gt;
+</code></pre>
+<p>Plots a spectrogram. Power values that fall in different ranges are printed as different colored characters with the same foreground and background color, so it is possible to copy and paste the terminal output of this command.</p>
+<p><code>data</code> - min/max/avg, by default average is used for data. The average should be used in most scenarios, but in some cases "min" can be useful to check if there are any frequencies that have a constant signal output on them. Max will show the strongest signal that was detected, instead of the average signal.<br />
+<code>interval</code> - interval at which spectrogram lines are printed;<br />
+<code>duration</code> - terminate command after a specified time. Default is indefinite;<br />
+<code>range</code> - scan a specific range, required;<br />
+<code>resolution</code> - frequency step;<br />
+<code>show-interference</code> - yes/no</p>
+<p>Possible types of classified interference:</p>
+<ul>
+<li>Microwave oven (<code>O</code>).</li>
+<li>Continuous Wave (<code>C</code>).</li>
+<li>WLAN (Wideband)  (<code>W</code>).</li>
+<li>Cordless phone 2.4 (<code>T</code>).</li>
+<li>Cordless phone 5 (<code>T</code>).</li>
+<li>Bluetooth (<code>BB</code>).</li>
+<li>Frequency hopping spread spectrum (<code>F</code>).</li>
+</ul>
+<h2 id="wps">WPS</h2>
+<h3 id="wps-client">WPS client</h3>
+<p>The wps-client command enables obtaining authentication information from a WPS-enabled AP.</p>
+<pre><code class="language-ros">/interface/wifi/wps-client wifi1
+</code></pre>
+<h3 id="wps-server">WPS server</h3>
+<p>An AP can be made to accept WPS authentication by a client device for 2 minutes by running the following command.</p>
+<pre><code class="language-ros">/interface/wifi/wps-push-button wifi1
+</code></pre>
+<h2 id="radios">Radios</h2>
+<p>Information about the capabilities of each radio can be gained by running the <code>/interface/wifi/radio/print detail</code> command.  It can be useful to see what bands are supported by the interface and what channels can be selected. The country profile that is applied to the interface will influence the results.</p>
+<pre><code class="language-ros">/interface/wifi/radio/print detail 
+Flags: L - local 
+ 0 L radio-mac=48:A9:8A:0B:F7:4A phy-id=0 tx-chains=0,1 rx-chains=0,1 
+     bands=5ghz-a:20mhz,5ghz-n:20mhz,20/40mhz,5ghz-ac:20mhz,20/40mhz,20/40/80mhz,5ghz-ax:20mhz,
+      20/40mhz,20/40/80mhz 
+     ciphers=tkip,ccmp,gcmp,ccmp-256,gcmp-256,cmac,gmac,cmac-256,gmac-256 countries=all 
+     5g-channels=5180,5200,5220,5240,5260,5280,5300,5320,5500,5520,5540,5560,5580,5600,5620,5640,5660,
+            5680,5700,5720,5745,5765,5785,5805,5825 
+     max-vlans=128 max-interfaces=16 max-station-interfaces=3 max-peers=120 hw-type=&quot;QCA6018&quot; 
+     hw-caps=sniffer interface=wifi1 current-country=Latvia 
+     current-channels=5180/a,5180/n,5180/n/Ce,5180/ac,5180/ac/Ce,5180/ac/Ceee,5180/ax,5180/ax/Ce,
+                 5180/ax/Ceee,5200/a,5200/n,5200/n/eC,5200/ac,5200/ac/eC,5200/ac/eCee,5200/ax...
+                 ...5680/n/eC,5680/ac,5680/ac/eC,5680/ax,5680/ax/eC,5700/a,5700/n,5700/ac,5700/ax 
+     current-gopclasses=115,116,128,117,118,119,120,121,122,123 current-max-reg-power=30 
+</code></pre>
+<p>While Radio information gives us information about supported channel width, it is also possible to deduce this information from the product page. To do so, you need to check the following parameters: <strong>number of chains</strong>, <strong>max data rate</strong>. Once you know these parameters, you need to check the modulation and coding scheme (MCS) table, for example, here: <a href="https://mcsindex.com/">https://mcsindex.com/</a>.</p>
+<p>If we take hAP ax <sup>2</sup>, as an example, we can see that the number of chains is 2, and the max data rate is 1200 - 1201 in the MCS table. In the MCS table we need to find the entry for 2 spatial streams - chains, and the respective data rate, which in this case shows us that 80MHz is the maximum supported channel width.</p>
+<h2 id="registration-table">Registration table</h2>
+<p><code>/interface/wifi/registration-table/</code> displays a list of connected wireless clients and detailed information about them.</p>
+<h3 id="de-authentication">De-authentication</h3>
+<p>Wireless peers can be manually de-authenticated (forcing re-association) by removing them from the registration table.</p>
+<pre><code class="language-ros">/interface/wifi/registration-table/remove [find where mac-address=02:01:02:03:04:05]
+</code></pre>
+<h2 id="wifi-capsman">WiFi CAPsMAN</h2>
+<p>CAPsMAN (Controlled Access Point system Manager) for the new WiFi menu lets you apply wireless settings to many MikroTik WiFi APs from a central controller. See the dedicated page: <a href="./capsman.md">WiFi CAPsMAN</a>.</p>
+<h2 id="wifi-easymesh">WiFi EasyMesh</h2>
+<p>EasyMesh is a Wi-Fi Alliance standard for multi-AP Wi-Fi networks, where a central controller manages one or more agents, including certified devices from different vendors. See the dedicated page: <a href="./configuring-easymesh">Configuring EasyMesh</a>.</p>
+<h2 id="wifi-meshpoint">WiFi MeshPoint</h2>
+<p>MeshPoint is an IEEE 802.11s Layer 2 mesh. It works on <code>wifi-qcom-be</code> and <code>wifi-mediatek</code>, and does not work on <code>wifi-qcom</code> or <code>wifi-qcom-ac</code>. See the dedicated page: <a href="./configuring-meshpoint">Configuring MeshPoint</a>.</p>
+<h2 id="advanced-examples">Advanced examples</h2>
+<p><a href="../user-guides/enterprise-wireless-security-user.md">Enterprise wireless security with User Manager v5</a></p>
+<h2 id="replacing-wireless-package">Replacing 'wireless' package</h2>
+<p>Some MikroTik Wi-Fi 5 APs, which ship with their interfaces managed by the 'wireless' menu, can replace the 'wireless' package with the 'wifi-qcom-ac' package to make their interfaces compatible with the 'wifi' menu instead.</p>
+<p>To do this, it is necessary to uninstall the 'wireless' package, then install 'wifi-qcom-<strong>ac</strong>'.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Please note that "wifi-qcom-ac" drivers are much more resource-heavy. You will have less available RAM when using the new package and that is something to keep in mind.</p>
+</div>
+<h3 id="compatibility">Compatibility</h3>
+<p>The wifi-qcom-<strong>ac</strong> package includes alternative drivers for IPQ4018/4019 and QCA9984 radios that make them compatible with the WiFi configuration menu. For possible wifi-qcom-ac/wifi-qcom/wireless package combinations, please see the package types section <a href="../index.md">here</a>.</p>
+<p>As a rule of thumb, the package is compatible with 802.11ac products, which have an ARM CPU. It is NOT compatible with any of our 802.11ac products which have a MIPS CPU.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compatibility</th>
+<th style="text-align: left;">Devices</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Compatible</td>
+<td style="text-align: left;">Audience, Audience LTE kit, Chateau (all variants of D53), hAP ac<sup>2</sup>, hAP ac<sup>3</sup>, cAP ac, cAP XL ac, LDF 5 ac, LHG XL 5 ac, LHG XL 52 ac, NetMetal ac<sup>2</sup>, mANTBox 52 15s, wAP ac (RBwAPG-5HacD2HnD), SXTsq 5 ac</td>
+</tr>
+<tr>
+<td style="text-align: left;">Incompatible</td>
+<td style="text-align: left;">RB4011iGS+5HacQ2HnD-IN (no support for the 2.4GHz interface), Cube 60Pro ac (no support for the 60GHz interface), wAP ac (RBwAPG-5HacT2HnD) and <strong>all other devices with a MIPSBE CPU</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="benefits">Benefits</h3>
+<ul>
+<li>WPA3 authentication and OWE (opportunistic wireless encryption).</li>
+<li>802.11w standard management frame protection.</li>
+<li>802.11r/k/v.</li>
+<li>MU-MIMO and beamforming.</li>
+<li>400Mb/s maximum data rate in the 2.4GHz band for IPQ4019 interfaces.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>These benefits apply both to the wifi-qcom and wifi-qcom-ac packages.</p>
+</div>
+<h3 id="lost-features">Lost features</h3>
+<p>The following notable features are lost when running 802.11ac products with drivers that are compatible with the 'wifi' management interface:</p>
+<ul>
+<li>Nstreme and Nv2 wireless protocols.</li>
+<li>VLAN configuration in the wireless settings (Per-interface VLANs can be configured in bridge settings).</li>
+<li>Compatibility with station-bridging as implemented in the 'wireless' package. Station-bridge only works between the same type of drivers. WiFi to WiFi, and <a href="../index.md">Wireless</a> to Wireless.</li>
+</ul>
+<h2 id="property-reference">Property Reference</h2>
+<h3 id="aaa-properties">AAA properties</h3>
+<p>Properties in this category configure an access point's interaction with AAA (RADIUS) servers.</p>
+<p>Certain parameters in the table below take <em>format-string</em> as their value. In a <em>format-string</em>, certain characters are interpreted in the following way:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Character</th>
+<th style="text-align: left;">Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">a</td>
+<td style="text-align: left;">Hexadecimal character making up the MAC address of the client device in lowercase</td>
+</tr>
+<tr>
+<td style="text-align: left;">A</td>
+<td style="text-align: left;">Hexadecimal character making up the MAC address of the client device in upper case</td>
+</tr>
+<tr>
+<td style="text-align: left;">i</td>
+<td style="text-align: left;">Hexadecimal character making up the MAC address of the AP's interface in lowercase</td>
+</tr>
+<tr>
+<td style="text-align: left;">I (capital 'i')</td>
+<td style="text-align: left;">Hexadecimal character making up the MAC address of the AP's interface in upper case</td>
+</tr>
+<tr>
+<td style="text-align: left;">N</td>
+<td style="text-align: left;">The entire name of the AP's interface (e.g. 'wifi1')</td>
+</tr>
+<tr>
+<td style="text-align: left;">S</td>
+<td style="text-align: left;">The entire SSID</td>
+</tr>
+</tbody>
+</table>
+<p>All other characters are used without interpreting them in any way. For examples, see default values.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>called-format</strong> (<em>format-string</em>; default: <strong>II-II-II-II-II-II:S</strong>)</td>
+<td style="text-align: left;">Format for the value of the Called-Station-Id RADIUS attribute, in AP's messages to RADIUS servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>calling-format</strong> (<em>format-string</em>; default: <strong>AA:AA:AA:AA:AA:AA</strong>)</td>
+<td style="text-align: left;">Format for the value of the Calling-Station-Id RADIUS attribute, in AP's messages to RADIUS servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interim-update</strong> (<em>time interval</em>; default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Interval at which to send interim updates about traffic accounting to the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-caching</strong> (<em>time interval</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Length of time to cache RADIUS server replies, when MAC address authentication is enabled. This resolves issues with client device authentication timing out due to comparatively high latency of RADIUS server replies.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">A unique name for the AAA profile.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nas-identifier</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Value of the NAS-Identifier attribute, in AP's messages to RADIUS servers. Defaults to the host name of the device (/system/identity).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>password-format</strong> (<em>format-string</em>)</td>
+<td style="text-align: left;">Format for the value to use in calculating the value of the User-Password attribute in AP's messages to RADIUS servers when performing MAC address authentication.  Default value: "" (an empty string).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>username-format</strong> (<em>format-string</em>; default: <strong>AA:AA:AA:AA:AA:AA</strong>)</td>
+<td style="text-align: left;">Format for the value of the User-Name attribute in AP's messages to RADIUS servers when performing MAC address authentication.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="channel-properties">Channel properties</h3>
+<p>Properties in this category specify the desired radio channel.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>2ghz-g</em> | <em>2ghz-n</em> | <em>2ghz-ax</em>| <em>2ghz-be</em> | <em>5ghz-a</em> | <em>5ghz-ac</em> | <em>5ghz-an</em> | <em>5ghz-ax</em> | <em>5ghz-be</em>| <em>6ghz-ax</em> | <em>6ghz-be</em>)</td>
+<td style="text-align: left;">Frequency band and wireless standard that will be used by the AP. Defaults to newest supported standard. <strong>Note that band support is limited by radio capabilities.</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>deprioritize-unii-3-4</strong> (<em>no</em> | <em>yes</em>)</td>
+<td style="text-align: left;">Whether to assign lower priority to channels with a control frequency of 5720 or 5825-5885 MHz. These channels are unsupported by some client devices, making their automatic selection undesirable. Defaults to 'yes' in ETSI regulatory domains, elsewhere to 'no'.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>list of numbers or number ranges</em>)</td>
+<td style="text-align: left;">For an interface in AP mode, specifies frequencies (in MHz) to consider when picking control channel center frequency.  For an interface in station mode, specifies frequencies on which to scan for APs.  Leave unset (default) to consider all frequencies supported by the radio and permitted by the applicable regulatory profile.  The parameter can contain 1 or more comma-separated values of decimal numbers or, optionally, ranges of numbers denoted using the syntax RangeBeginning-RangeEnd:RangeStep  Examples of valid channel.frequency values: 24122412,2432,24725180-5240:20,5500-5580:20</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>preamble-puncturing</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Enables puncturing support on this interface for DFS/radar (802.11be only).  When set, the access point may disable ("puncture") only the affected 20 MHz part of a wide 80/160 MHz channel when  radar signal presence is detected, instead of switching the whole channel.  For 80 MHz channels a single 20 MHz sub-channel may be punctured.  For 160 MHz channels either one 20 MHz sub-channel or one 40 MHz block may be punctured.    The current puncturing state can be observed in <code>/interface/wifi/monitor</code> output for this interface,  where punctured sub-channels are marked with the letter <code>o</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>reselect-interval</strong> (<em>time interval</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Specifies the interval when the interface should run "rescan channel availability" and select the most appropriate one to use. Specifying the interval will allow the system to select this interval dynamically and randomly. This helps to avoid a situation when many APs at the same time scan the network, select the same channel, and prefer to use it at the same time. reselect-interval uses a background scan.  The reselect process will choose the most suitable channel considering the number of networks in the channel, channel usage, and overlap with networks in adjacent channels. It can be used with a list of frequencies defined, or with <code>frequency</code> not set - using all supported frequencies.  Example: 01:00..01:30 → Would set the rescan of channels to run every 1 hour + random time up to 30 minutes. The first time, it could run a rescan after "1 hour and 15 minutes", later, it could be "1 hour and 1 second", then, it could be "1 hour, 29 minutes and 59 seconds" ...at random, a rescan will happen between every 1 hour and 1 hour 30 minutes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>reselect-time</strong> (<em>time interval</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Specifies the clock time when the interface should run "rescan channel availability" and select the most appropriate one to use. Specifying the clock time will allow the system to select this time dynamically and randomly. This helps to avoid a situation when many APs at the same time scan the network, select the same channel, and prefer to use it at the same time. reselect-time uses a background scan.  The reselect process will choose the most suitable channel considering the number of networks in the channel, channel usage, and overlap with networks in adjacent channels. It can be used with a list of frequencies defined, or with <code>frequency</code> not set - using all supported frequencies.  Example: 01:00..01:30 → Would set the rescan of channels to run every night, once, randomly, between 01:00 AM and 01:30 AM, system clock time.14:00..14:30 → Would set the rescan of channels to run every day (after midday), once, randomly between 14:00:00 and 14:30:00 (or 2 PM to 2:30 PM), system clock time.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>secondary-frequency</strong> (<em>list of integers</em> | default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">For split 80+80MHz channels, specifies permitted center frequencies for the secondary 80MHz segment.  For 320MHz channels, specifies permitted 320MHz channel centers.  When unset (default), does not limit channel selection.  E.g.  'width=20/40/80+80mhz frequency=5180' would allow combining channel 42 with any other supported 80MHz channel. 'width=20/40/80+80mhz frequency=5180 secondary-frequency=5530' would only allow combining channels 42 and 106.  'width=20/40/80/160/320mhz frequency=6115' would allow use of either channel 31 or 63.  'width=20/40/80/160/320mhz frequency=6115 secondary-frequency=6265' allows use of only channel 63.  Refer here for lists of valid <a href="https://en.wikipedia.org/wiki/List_of_WLAN_channels#5_GHz_(802.11a/h/n/ac/ax/be)">5GHz</a> and <a href="https://en.wikipedia.org/wiki/List_of_WLAN_channels#6_GHz_(802.11ax_and_802.11be)">6GHz</a> channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>skip-dfs-channels</strong>  (<em>10min-cac</em> | <em>all</em> | <em>disabled</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Whether to avoid using channels, on which channel availability check (listening for presence of radar signals) is required. 10min-cac - interface will avoid using channels, on which 10 minute long CAC is requiredall - interface will avoid using all channels, on which CAC is requireddisabled  - interface may select any supported channel, regardless of CAC requirements</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>width</strong> ( <em>20mhz</em> | <em>20/40mhz</em> | <em>20/40mhz-Ce</em> | <em>20/40mhz-eC</em> | <em>20/40/80mhz</em> | <em>20/40/80+80mhz</em> | <em>20/40/80/160mhz</em>| <em>20/40/80/160/320mhz</em>)</td>
+<td style="text-align: left;">Width of radio channel. Defaults to widest channel supported by the radio hardware.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration-properties">Configuration properties</h3>
+<p>This section includes properties relating to the operation of the interface and the associated radio.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>antenna-gain</strong> (<em>integer 0..30</em>)</td>
+<td style="text-align: left;">Overrides the default antenna gain. The <em>master</em> interface of each radio sets the antenna gain for every interface which uses the same radio.  This setting cannot override the antenna gain to be lower than the minimum antenna gain of a radio. No default value.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>beacon-interval</strong> (<em>time interval 100ms..1s</em>; default: <strong>100ms</strong>)</td>
+<td style="text-align: left;">Interval between beacon frames of an AP.  ⚠️ <strong>Warning:</strong> Every AP running on the same radio (i.e. a master AP and all its 'virtual'/'slave' APs) must use the same beacon interval.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>chains</strong> (<em>list of integer 0..7</em> )</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/RF_chain">Radio chains</a> to use for receiving signals. Defaults to all chains available to the corresponding radio hardware.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>country</strong> (<em>name of a country</em>; default: <strong>Latvia</strong>)</td>
+<td style="text-align: left;">Determines which regulatory domain restrictions are applied to an interface. ⚠️ <strong>Warning:</strong> It is important to set this value correctly to comply with local regulations and ensure interoperability with other devices.   In a controlled environment or if you have a special permission to use it in your region, you can select <code>country=Superchannel</code> (with this country profile, router's Tx output power will not be restricted by the software, and the router will output as much power as its hardware chip allows, unless manual <code>tx-power</code> is configured to lower it). Does not work for <strong>wifi-qcom-ac</strong> drivers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>distance</strong> (<em>decimal number</em>)</td>
+<td style="text-align: left;">Maximum link distance in kilometers, needs to be set for long-range outdoor links. The value should reflect the distance to the AP or station that is furthest from the device. Default value depends on chipset. Typically no more than 2 km. ⚠️ <strong>Warning:</strong> Not all chipsets support adjusting the maximum distance. Setting the value above the actual needed value may have detrimental effects on link performance.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>dtim-period</strong> (<em>integer 1..255</em>; default: <strong>1</strong>)</td>
+<td style="text-align: left;">DTIM is a part of the beacon frame that informs power saving (sleeping) stations about incoming multicast and broadcast traffic.  The setting configures a period at which to transmit multicast or broadcast traffic, when there are client devices in power save mode connected to the AP. Expressed as a multiple of the beacon interval (e.g. with default values <code>dtim-period=1</code> and <code>beacon-interval=100ms</code>, it is sent every 1 x 100 ms = 100 ms).  Higher values enable client devices to save more energy, but increase network latency. Lower values enable clients to wake up more often, using more energy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hide-ssid</strong> (<em>no | yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">yes - AP does not include its SSID in beacon frames, and does not reply to probe requests that have broadcast SSID.no - AP includes its SSID in the beacon frames, and replies to probe requests that have broadcast SSID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-protection-mode</strong> (<em>cts-to-self</em> | none | <em>rts-cts)</em></td>
+<td style="text-align: left;">To reduce frame collisions, you can use: cts-to-self  - Interface sends CTS frame to own address before transmitting an MPDU (to notify nearby devices to hold off talking over each other);none  - Interface does not use any hardware protection mechanism;rts-cts - Interface sends an RTS frame before each MPDU (RTS is followed by a CTS from a receiver and the communication happens after that - both RTS and CTS frames can hold off other devices); Default (unset): interface sends RTS frames before re-transmitted MPDUs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>installation</strong> (<em>indoor</em>|<em>outdoor</em>; <em>default</em>: <strong>indoor</strong>)</td>
+<td style="text-align: left;">Devices installed outdoors will avoid use of indoor-only radio channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>manager</strong> (<em>capsman</em> |<em>capsman-or-local</em> | <em>easymesh</em> | <em>local</em>; default: <strong>local</strong>)</td>
+<td style="text-align: left;">capsman - the interface will act as CAP only; this option should <strong>not</strong> be passed via provisioning rules to the CAP  capsman-or-local - the interface will get configuration via CAPsMAN or use its own, if <code>/interface/wifi/cap</code> is not enabled.  easymesh - the interface is managed by EasyMesh.  local - interface won't contact CAPsMAN in order to get configuration.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-clients</strong> (<em>integer 1..1000; default: <strong>1000</strong>)</em></td>
+<td style="text-align: left;">Maximum number of associated clients.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>ap</em> | <em>station</em> | <em>station-bridge</em> | <em>station-pseudobridge</em> | <em>meshpoint</em>; default: <strong>ap</strong>)</td>
+<td style="text-align: left;">Interface operation mode ap (default) - interface operates as an access pointstation - interface acts as a client device, scanning for access points advertising the configured SSIDstation-bridge - interface acts as a client device and enables support for a 4-address frame format, so that the interface can be used as a bridge portstation-pseudobridge - the interface keeps track of outgoing IP connections and performs MAC address translation similarly to how IP masquerading worksmeshpoint - interface operates as an IEEE 802.11s mesh point and connects to other mesh nodes with the same Mesh ID. Works on <code>wifi-qcom-be</code> and <code>wifi-mediatek</code> only.🛈  <strong>Important:</strong> The 'wifi' station-bridge mode is incompatible with APs running the older 'wireless' package and vice versa.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-enhance</strong> (<em>enabled</em>| <em>disabled</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">With the multicast-enhance feature enabled, an AP will convert every multicast-addressed IP or IPv6 packet into multiple unicast-addressed frames for each connected station. This may improve link throughput and reliability since, unlike multicast frames, unicasts are acknowledged by stations and transmitted using a higher data rate.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>qos-classifier</strong> (<em>dscp-high-3-bits</em>| <em>priority</em>; default: <strong>priority</strong>)</td>
+<td style="text-align: left;">Specify which WMM ruleset to follow. APs and clients classify packets based on the priority assigned to them (as per WMM specification) → 1,2 - background; 0,3 - best effort; 4,5 - video; 6,7 - voice. "Better" access category has a higher probability of getting access to medium (e.g. voice frames will have a shorter "back off" time after medium becomes "idle", ensuring that they are more likely to be sent out sooner than "worse" category frames). dscp-high-3-bits - interface will transmit data packets using a WMM priority equal to the value of the 3 most significant bits of the IP DSCP fieldpriority - interface will transmit data packets using a WMM priority equal to that set by IP firewall or bridge filter🛈  <strong>Important:</strong> 802.11ac wireless chipsets do not support the dscp-high-3-bits classifier mode. For 802.11ac interfaces, please see <a href="../../bridging-and-switching/user-guides/wmm-and-vlan-priority.md#set-vlan-or-wmm-priority-from-dscp">DSCP from priority</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">The name of the wireless network, aka the (E)SSID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>station-roaming</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">The Wifi interface running in station or station-bridge mode will periodically scan for AP candidates to roam to. The weaker the signal to the AP is, the more often the scan will be performed. If an AP with a better signal is found, the station will roam to it. FT is supported, and the station will respond to BSS Transition Request if <code>steering.wnm</code> is enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-chains</strong> (<em>list of integer 0..7</em>)</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/RF_chain">Radio chains</a> to use for transmitting signals. Defaults to all chains available to the corresponding radio hardware.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-power</strong> (<em>integer 0..40</em>)</td>
+<td style="text-align: left;">A limit on the transmit power (in dBm) of the interface. Can not be used to set power above limits imposed by the regulatory profile. Unset by default.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="datapath-properties">Datapath properties</h3>
+<p>Parameters relating to forwarding packets to and from wireless client devices.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>bridge</strong> (<em>bridge interface</em>)</td>
+<td style="text-align: left;">Bridge interface to add interface to, as a bridge port. Virtual ('slave') interfaces are by default added to the same bridge, if any, as the corresponding master interface. Master interfaces are not by default added to any bridge.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bridge-cost</strong> (<em>integer</em>; default: <strong>10</strong>)</td>
+<td style="text-align: left;">Bridge port cost to use when adding as bridge port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bridge-horizon</strong> (<em>none</em> | <em>integer</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Bridge horizon to use when adding as bridge port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>client-isolation</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Determines whether client devices connecting to this interface are (by default) isolated from others or not. This policy can be overridden on a per-client basis using access list rules, so an AP can have a mixture of isolated and non-isolated clients. Traffic from an isolated client will not be forwarded to other clients and unicast traffic from a non-isolated client will not be forwarded to an isolated one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface-list</strong> (<em>interface list</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">List to which to add the interface as a member.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>traffic-processing</strong> (<em>on-cap | on-capsman | on-capsman-secure</em>)</td>
+<td style="text-align: left;">. <code>on-cap</code>, will make it so that the CAP itself is responsible for handling all WiFi traffic (same as any standalone AP would);<code>on-capsman</code>, will make it so that the CAP's WiFi traffic is forwarded to a pseudo-tunnel to the CAPSMAN and the CAPsMAN becomes responsible for CAP's traffic handling;<code>on-capsman-secure</code>, will make it so that the CAP's WiFi traffic is forwarded to an encrypted pseudo-tunnel to the CAPSMAN and the CAPsMAN becomes responsible for CAP's traffic handling. 🛈  <strong>Important:</strong> When using <code>traffic-processing=on-capsman</code> setting, be aware that since all the CAP's WiFi traffic now gets handled by the CAPsMAN (gets pushed into the CAPsMAN), it will increase CAPSMAN's resource consumption (CPU and RAM usage).  🛈  <strong>Important:</strong> <code>traffic-processing=on-capsman</code> forwarding is not supported with MLO/MLD interfaces at this moment.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vlan-id</strong> (none | integer 1..4095; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Default VLAN ID to assign to client devices connecting to this interface (only relevant to interfaces in AP mode). When a client is assigned a VLAN ID, traffic coming from the client is automatically tagged with the ID and only packets tagged with this ID are forwarded to the client.  ⚠️ <strong>Warning:</strong> Some radio drivers do not support VLAN offloading to wifi. Examples include 802.11ah HaLow and wifi-qcom-ac APs. Such devices can be <a href="../../bridging-and-switching/index.md#vlan-example-trunk-and-access-ports">configured</a> as VLAN access ports in bridge settings.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="security-properties">Security Properties</h3>
+<p>Parameters relating to authentication.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>authentication-types</strong> (<em>list of wpa-psk, wpa2-psk, wpa2-psk-sha2, wpa-eap, wpa2-eap, wpa3-psk, wpa3-psk-gd, owe, wpa3-eap, wpa3-eap-192</em>)</td>
+<td style="text-align: left;">Authentication types to enable on the interface.  Interfaces without a configured passphrase default to an empty list (no authentication, an open network).  Interfaces with a configured passphrase default to a set of passphrase-based authentication types, which depends on their supported WiFi standard, frequency band and interface mode. APs operating in the 6-7GHz band default to wpa3-psk and wpa3-psk-gd. WiFi 7 APs operating in the 2.4 and 5 GHz bands default to wpa2-psk,wpa3-psk and wpa3-psk-gd. WiFi 5 and 6 APs operating in the 2.4 and 5 GHz bands default wpa2-psk. Station-mode interfaces default to wpa-psk and wpa2-psk.  Station-mode interfaces with a configured <em>eap-username</em> and an <em>eap-password</em> default to wpa-eap and wpa2-eap authentication methods.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>beacon-protection</strong> (<em>disabled</em>| <em>enabled</em>)</td>
+<td style="text-align: left;">Whether to enable beacon integrity protection. Support depends on 'beacon-protection' radio capability.  Enabled by default for 802.11be interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connect-group</strong> ( <em>string</em>)</td>
+<td style="text-align: left;">APs within the same connect group do not allow more than 1 client device with the same MAC address. This is to prevent malicious authorized users from intercepting traffic intended for other users ('MacStealer' attack) or performing a denial of service attack by spoofing the MAC address of a victim.  Handling of new connections with duplicate MAC addresses depends on the connect-priority of AP interfaces involved.  By default, all APs are assigned the same connect-group.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connect-priority</strong> (accept-priority/hold-priority (<em>integers</em>))</td>
+<td style="text-align: left;">These parameters determine how a connection is handled if the MAC address of the client device is the same as that of another active connection to another AP. If (accept-priority of AP2) &lt; (hold-priority of AP1), a connection to AP2 will cause the client to be dropped from AP1. If (accept-priority of AP2) = (hold-priority of AP1), a connection to AP2 will be allowed only if the MAC address can no longer be reached via AP1. If (accept-priority of AP2) &gt; (hold-priority of AP1), a connection to AP2 will not be accepted.  If omitted, hold-priority is the same as accept-priority. By default, APs, which perform user authentication, have higher priority (lower integer value), than open APs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>dh-groups</strong> (<em>list of 19, 20, 21</em>)</td>
+<td style="text-align: left;">Identifiers of <a href="http://www.iana.org/assignments/ipsec-registry/ipsec-registry.xhtml#ipsec-registry-10">elliptic curve cryptography groups</a> to use in SAE (WPA3) authentication.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-pmkid</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">For interfaces in AP mode, disables inclusion of a PMKID in EAPOL frames. Disabling PMKID can cause compatibility issues with client devices that make use of it.yes - Do not include PMKID in EAPOL frames.no  - Include PMKID in EAPOL frames.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-accounting</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Send accounting information to RADIUS server for EAP-authenticated peers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-anonymous-identity</strong> (<em>string</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Optional anonymous identity for EAP outer authentication.  🛈  Properties related to EAP are only relevant to interfaces in station mode. APs delegate (passthrough) EAP authentication to the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-certificate-mode</strong> (<em>dont-verify-certificate</em> | <em>no-certificates</em> | <em>verify-certificate</em> | <em>verify-certificate-with-crl</em>; default: <strong>dont-verify-certificate</strong>)</td>
+<td style="text-align: left;">Policy for handling the TLS certificate of the RADIUS server. verify-certificate - require server to have a valid certificate. Check that it is signed by a trusted certificate authority.dont-verify-certificate - Do not perform any checks on the certificate.no-certificates - Attempt to establish the TLS tunnel by performing anonymous Diffie-Hellman key exchange. To be used if the RADIUS server has no certificate at all.verify-certificate-with-crl - Same as verify-certificate, but also checks if the certificate is valid by checking the Certificate Revocation List.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-methods</strong> (<em>list of</em> <em>peap, tls, ttls</em>)</td>
+<td style="text-align: left;">EAP methods to consider for authentication. Defaults to all supported methods.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-password</strong> (<em>string</em>; default: <strong>none</strong>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Password to use, when the chosen EAP method requires one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-tls-certificate</strong> (<em>certificate</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Name or id of a certificate in the device's certificate store to use, when the chosen EAP authentication method requires one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-username</strong> (<em>string</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Username to use when the chosen EAP method requires one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>encryption</strong> (<em>list of  ccmp, ccmp-256, gcmp, gcmp-256, tkip</em>; default: <strong>ccmp</strong>)</td>
+<td style="text-align: left;">A list of ciphers to support for encrypting unicast traffic.  Defaults to <em>ccmp</em>.⚠️ <strong>Caution:</strong> Take care when configuring encryption ciphers.  All client devices MUST support the group encryption cipher used by the AP to connect, and some client devices (notably, Intel® 8260) will also fail to connect if the list of unicast ciphers includes any they don't support.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft</strong> (<em>no | yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to enable 802.11r fast BSS transitions (roaming).  ⚠️ <strong>Warning:</strong> For a client device to successfully roam between 2 APs, the APs need to be managed by the same instance of RouterOS. For information on how to centrally manage multiple APs, see <a href="./capsman.md">CAPsMAN</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-mobility-domain</strong> (<em>integer 0..65535</em>; default: <strong>44484 (0xADC4)</strong>)</td>
+<td style="text-align: left;">The fast BSS transition mobility domain ID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-nas-identifier</strong> (string of <em>2..96 hex characters</em>)</td>
+<td style="text-align: left;">Fast BSS transition PMK-R0 key holder identifier. Default: MAC address of the interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-over-ds</strong> (<em>no</em> | <em>yes</em>; *default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to enable fast BSS transitions over DS (distributed system).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-preserve-vlanid</strong> (<em>no</em> | <em>yes</em> )</td>
+<td style="text-align: left;">no - when a client connects to this AP via 802.11r fast BSS transition, it is assigned a VLAN ID according to the access and/or interface settingsyes (default) - when a client connects to this AP via 802.11r fast BSS transition, it retains the VLAN ID, which it was assigned during initial authentication The default behavior is essential when relying on a RADIUS server to assign VLAN IDs to users, since a RADIUS server is only used for initial authentication.  Not supported by <strong>wifi-qcom-ac</strong> drivers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-r0-key-lifetime</strong> (<em>time interval 1s..6w3d12h15m</em>; default: <strong>600000s (~7 days)</strong>)</td>
+<td style="text-align: left;">Lifetime of the fast BSS transition PMK-R0 encryption key.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ft-reassociation-deadline</strong> (<em>time interval 0..70s</em>; default: <strong>20s</strong>)</td>
+<td style="text-align: left;">Fast BSS transition reassociation deadline.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group-encryption</strong> (<em>ccmp</em> | <em>ccmp-256</em> | <em>gcmp</em> | <em>gcmp-256</em> | <em>tkip</em>; default: <strong>ccmp</strong>)</td>
+<td style="text-align: left;">Cipher to use for encrypting multicast traffic.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group-key-update</strong> (<em>time interval</em>; default: <strong>24 hours</strong>)</td>
+<td style="text-align: left;">The interval at which the group temporal key (key for encrypting broadcast traffic) is renewed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>management-encryption</strong> (<em>cmac</em> | <em>cmac-256</em> | <em>gmac</em> | <em>gmac-256</em>; default: <strong>cmac</strong>)</td>
+<td style="text-align: left;">Cipher to use for encrypting protected management frames.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>management-protection</strong> (<em>allowed</em> | <em>disabled</em> | <em>required</em>)</td>
+<td style="text-align: left;">Whether to use 802.11w management frame protection.  The default value depends on the value of the selected authentication type. WPA2 allows the use of management protection, WPA3 requires it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multi-passphrase-group</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of <code>/interface/wifi/security/multi-passphrase/</code> group that will be used. Only a single group can be defined under the security profile.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>owe-transition-interface</strong> (<em>interface</em> | <em>auto</em>)</td>
+<td style="text-align: left;">Name of an interface whose MAC address and SSID to advertise as the matching AP when running in OWE transition mode.  Setting the value to 'auto' will make RouterOS try to automatically match open and OWE APs on the same radio.  Required for setting up open APs that offer OWE, but also work with older devices that don't support the standard. See <a href="#open-ap-with-owe-transition-mode">configuration example above</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passphrase</strong> (<em>string of up to 63 characters</em>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">The passphrase to use for PSK authentication types. Defaults to an empty string - "".  WPA-PSK and WPA2-PSK authentication requires a minimum of 8 chars, while WPA3-PSK does not have a minimum passphrase length.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sae-anti-clogging-threshold</strong> (<em>disabled</em> | <em>integer</em>; default: <strong>5</strong>)</td>
+<td style="text-align: left;">Due to SAE (WPA3) associations being CPU resource intensive, overwhelming an AP with bogus authentication requests makes for a feasible denial-of-service attack.  This parameter provides a way to mitigate such attacks by specifying a threshold of in-progress SAE authentications, at which the AP will start requesting that client devices include a cookie bound to their MAC address in their authentication requests. It will then only process authentication requests that contain valid cookies.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sae-max-failure-rate</strong> (<em>disabled</em> | <em>integer</em>; default: <strong>40</strong>)</td>
+<td style="text-align: left;">Rate of failed SAE (WPA3) associations per minute, at which the AP will stop processing new association requests.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sae-pwe</strong> (<em>both</em> | <em>hash-to-element</em> | <em>hunting-and-pecking</em>; default: <strong>both</strong>)</td>
+<td style="text-align: left;">Methods to support for deriving SAE password element.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wps</strong> (<em>disabled</em> | <em>push-button</em>; default: <strong>push-button</strong>)</td>
+<td style="text-align: left;">push-button - AP will accept WPS authentication for 2 minutes after the 'wps-push-button' command is called. Physical WPS button functionality is not yet implemented.disabled - AP will not accept WPS authentication</td>
+</tr>
+</tbody>
+</table>
+<h3 id="security-multi-passphrase-properties">Security multi-passphrase properties</h3>
+<p><code>/interface/wifi/security/multi-passphrase</code></p>
+<p><code>multi-passphrase</code> allows the use of PPSK - private pre-shared keys.
+It can be used by creating an access list entry and setting <code>multi-passphrase-group</code> name, or by assigning the group to a security profile that the interface uses.</p>
+<p>The total limit of supported passphrases is 10000. The limit is shared between all interfaces. When the interface has an associated multi-passphrase group, upon being enabled it will start caching all passphrases from the specified group. While caching is taking place, the authentication will be slower. Once caching is completed, there will be no perceptible added delay due to the use of a multi-passphrase group.</p>
+<p>If an access-list is used to apply <code>multi-passphrase-group</code>, the caching will start upon the first match for the group, and will continue until a match for the passphrase is found.</p>
+<p>If there are thousands of entries for possible passphrases under a single group - it might take a few minutes for caching to complete, depending on device configuration and model.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>multi-passphrase is not supported for the WPA3-PSK authentication type.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>group</strong> (<em>string</em>)</td>
+<td style="text-align: left;">assigning the group to a security profile or an access list will enable use of all passphrases defined under it</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passphrase</strong> (<em>string of up to 63 characters</em>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">The passphrase to use for PSK authentication types. Multiple users can use the same passphrase.  Not compatible with WPA3-PSK.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vlan-id</strong> (<em>integer 0..4095</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">vlan-id that will be assigned to clients using this passphrase   ⚠️ <strong>Caution:</strong> Devices, which do not support VLAN offloading (such as HaLow or wifi-qcom-ac APs) will refuse connection to clients assigned a vlan-id.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>expires</strong> (<em>date and time</em>; "YYYY-MM-DD HH:SS")</td>
+<td style="text-align: left;">The expiration date and time for the passphrase specified in this entry doesn't affect the whole group. Once the date is reached, existing clients using this passphrase will be disconnected, and new clients will not be able to connect using it. If not set, the passphrase can be used indefinitely.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>isolation</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Determines whether the client device using this passphrase is isolated from other clients on the AP. Traffic from an isolated client will not be forwarded to other clients and unicast traffic from a non-isolated client will not be forwarded to an isolated one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="steering-properties">Steering properties</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Unsolicited 802.11v BSS transition management request functionality is supported starting with 7.21.</p>
+</div>
+<p>Properties in this category govern mechanisms for advertising potential roaming candidates to client devices.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>2g-probe-delay</strong>(<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">If This property is set to yes on a 2.4GHz AP andsaid AP is in a steering neighbor group with at least one 5GHz AP then the 2.4GHz AP will forego responding to the first 3 probe requests from each client in a 60 second interval which have a signal-to-noise ratio of &gt; 35 dB.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>neighbor-group</strong> (<em>string</em>)</td>
+<td style="text-align: left;">When sending neighbor reports and BSS transition management requests, an AP will list all other APs within its neighbor group as potential roaming candidates.  By default, a dynamic neighbor group is created for each set of APs with the same SSID and authentication settings. APs operating in the 5GHz band are indicated to be preferable to ones operating in the 2.4GHz band.  A dynamic neighbor group will not be created if EAP is used; it needs to be defined manually.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rrm</strong> (<em>no</em> | <em>yes</em>; default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables sending of 802.11k neighbor reports.  The client may request the "neighbor report" from the AP, when the device wants to "explore/map" its surroundings (the client device can store the report, and it can use it to roam at once or later).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transition-threshold</strong> (<em>integer</em>; default: <strong>-80</strong>)</td>
+<td style="text-align: left;">Sets an RSSI threshold for sending unsolicited 802.11v BSS transition management requests. If the client device sits "below" the configured threshold for the duration of <code>transition-threshold-time</code>, it gets marked as a "transition candidate".</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transition-threshold-time</strong> (<em>time interval</em>; default: <strong>10</strong>)</td>
+<td style="text-align: left;">Defines a time, in seconds, for how long the client device can sit "below" the configured <code>transition-threshold</code> value, to be marked as "transition candidate".</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transition-request-period</strong> (<em>time interval</em>; default: <strong>30</strong>)</td>
+<td style="text-align: left;">Defines an interval in seconds, using which, the AP will send unsolicited 802.11v BSS transition management requests to the client device, if it is a "transition candidate".  E.g., using the default value (30s), a request will be sent to the client every 30 seconds for <code>transition-request-count</code> number of total requests.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transition-request-count</strong> (<em>integer</em>, unlimited; default: <strong>3</strong>)</td>
+<td style="text-align: left;">Defines how many unsolicited 802.11v BSS transition management requests should be sent out to the client marked as a "transition candidate". One request is sent out immediately after the client gets "transition candidate" status ("-1" count), and the remaining "count" will be sent every <code>transition-request-period</code>.  E.g., using the default value (3), the 1st request gets sent when a client gets "transition candidate" status; the second request gets sent after <code>transition-request-period</code> seconds and the third (last one), after another <code>transition-request-period</code>.  Set to <code>unlimited</code> if you want to send requests without a count limit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transition-time</strong> (<em>time interval</em> | <em>immediate</em> | <em>unlimited</em>; default: <strong>unlimited</strong>)</td>
+<td style="text-align: left;">Defines the time, for how long the client device can be a "transition candidate" before it gets forcefully deauthenticated. It can be a <code>time interval</code> in seconds (to deauthenticate the client after the time, which starts running/counting as soon as the device becomes a "transition candidate", expires), it can be <code>immediate</code> (to instantly deauthenticate the client after it becomes a "transition candidate") or <code>unlimited</code> (to never force the client and to continue sending transition requests for the <code>transition-request-count</code> amount, every <code>transition-request-period</code> seconds). 🛈  <strong>Important:</strong> Note that with <code>transition-time=immediate</code>, <code>transition-request-period</code> and <code>transition-request-count</code> become useless, as the client will get deauthenticated instantly after <code>transition-threshold-time</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wnm</strong> (<em>no</em> | <em>yes</em>; default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables sending of solicited 802.11v BSS transition management requests.  A client may request a "roaming suggestion" packet that contains "neighbor list", to help the device switch APs. The client device may accept the suggestion and roam at once, or it can ignore the suggestion and keep its current connection.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Please understand that <strong>the client can ignore BSS transition management requests</strong>. BSS transition request is a "suggestion" for the client to look for other-better signal APs. After receiving the transition request, it is 100% up to the client to decide whether it wants to switch APs or whether it wants to stay connected to the current AP.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Solicited 802.11v BSS transition management request behaviour:</strong></p>
+<p>A solicited 802.11v BSS transition management packet is sent to the client, per the client's own request. The client device "asks" the AP to provide a "roaming suggestion" (with a "neighbor list") and the AP responds with a transition request (containing the "neighbor list").</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Unsolicited 802.11v BSS transition management request behaviour:</strong></p>
+<p>An unsolicited 802.11v request is sent to the client, without waiting for the client to request it. The request gets sent, even if the client was not asking for it.</p>
+<p>If the client's signal gets below <code>transition-threshold</code> (default value: -80 dBm) for longer than <code>transition-threshold-time</code> (default value: 10 s), then the client gets marked as a "transition candidate". If the client's signal gets above the <code>transition-threshold</code>, then the client's "transition candidate" status gets removed.</p>
+<p>If the client is a "transition candidate", then it will start receiving <strong>unsolicited 802.11v BSS transition management request</strong> packets (packets "suggesting" to move to other nearby APs). The first such packet will be sent immediately after the client's status changes to the "transition candidate", and the follow-up packets will be sent every <code>transition-request-period</code> (default value: 30 s). The <code>transition-request-count</code> (default value: 3) number of transition requests will be sent out in total, after which, the AP will stop suggesting the transition (unless <code>transition-request-count=unlimited</code> is configured, which makes the AP send out requests non-stop, one request every <code>transition-request-period</code>). After the <code>transition-request-count</code> number runs out, the client will get the next transition request either after the client requests it itself, or after the client gets unmarked and marked as a "transition candidate" again.</p>
+<p>The value in <code>transition-time</code> defines for how long the client device can stay as a "transition candidate", before it gets forcefully disconnected. Possible <code>transition-time</code> values: <strong>unlimited</strong> (to continue sending transition requests using <code>transition-request-period</code> for the amount of <code>transition-request-count</code> and to never forcefully deauthenticate the client), <strong>configurable time</strong> in seconds (to continue sending transition requests using the <code>transition-request-period</code> interval and <code>transition-request-count</code> number, and then to disconnect the client after the configured <code>transition-time</code> has run out), and <strong>immediate</strong> (to send a transition request to the client, when it becomes a "transition candidate", and to instantly disconnect it).</p>
+</div>
+<h3 id="miscellaneous-properties">Miscellaneous properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled</em> | <em>enabled</em> | <em>local-proxy-arp</em>  | <em>proxy-arp</em> | <em>reply-only</em>; default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">Address Resolution Protocol mode:disabled - the interface will not use ARPenabled - the interface will use ARPlocal-proxy-arp - the router performs proxy ARP on the interface and sends replies to the same interfaceproxy-arp - the router performs proxy ARP on the interface and sends replies to other interfacesreply-only - the interface will only reply to requests originated from matching IP address/MAC address combinations which are entered as static entries in the  ARP table. No dynamic entries will be automatically stored in the ARP table. Therefore for communications to be successful, a valid static entry must already exist.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arp-timeout</strong> (<em>time interval</em> | <em>auto</em>; default: <strong>30s</strong>)</td>
+<td style="text-align: left;">Determines how long a dynamically added ARP table entry is considered valid since the last packet was received from the respective IP address. Value <em>auto</em> equals the value of<em>arp-timeout</em> in<em><code>/ip/settings</code></em>, which defaults to 30s.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-running-check</strong> (<em>no</em> | <em>yes</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">yes - interface's running property will be true whenever the interface is not disabledno - interface's running property will only be true when it has established a link to another device</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>no</em> | <em>yes</em>; default: <strong>yes</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">MAC address (BSSID) to use for an interface.  Hardware interfaces default to the MAC address of the associated radio interface.  Default MAC addresses for virtual interfaces are generated by Taking the MAC address of the associated master interfaceSetting the second-least-significant bit of the first octet to 1, resulting in a locally administered MAC addressIf needed, incrementing the last octet of the address to ensure it doesn't overlap with the address of another interface on the device</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer [32..2290]</em>; default: <strong>1500</strong>)</td>
+<td style="text-align: left;">Layer 3 Maximum transmission unit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-interface</strong> (<em>interface</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Specifies the affiliated MLD (Multi-Link Device) interface. When two or more wifi interfaces are assigned the same MLD interface (e.g. <em>mld-interface=mld1</em>), they operate together as a single logical AP MLD, enabling Multi-Link Operation (MLO). The MLD interface is the logical data forwarding point — traffic is handled at the MLD interface level rather than on the individual affiliated WiFi interfaces. All affiliated WiFi interfaces must share the same SSID, and all participating radios must belong to the same device. MLO requires compatible Wi-Fi 7 (802.11be) hardware.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A unique identifier that designates this interface as an MLD interface. Must be unique and explicitly set when creating an MLD interface manually.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>l2mtu</strong> (<em>integer [32..2290]</em>; default: <strong>2290</strong>)</td>
+<td style="text-align: left;">Layer 2 Maximum transmission unit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-interface</strong> (<em>interface</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Multiple interface configurations can be run simultaneously on every wireless radio.  Only one of them determines the radio's state (whether it is enabled, what frequency it's using, etc). This 'master' interface is <em>bound</em> to a radio with the corresponding <em>radio-mac.</em>  To create additional ('virtual') interface configurations on a radio, they need to be <em>bound</em> to the corresponding master interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A name for the interface. Defaults to <em>wifiN</em>, where <em>N</em> is the lowest integer that has not yet been used for naming an interface.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only-properties">Read-only properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>bound</strong> (<em>boolean</em>) (B)</td>
+<td style="text-align: left;">True for <em>master</em> interfaces that are currently available for WiFi manager.  True for a virtual interface (configurations linked to a master interface) when both the interface itself and its master interface are not disabled and the <em>master</em> interface has a bound flag.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>cap</strong> (string)</td>
+<td style="text-align: left;">Shows information about a CAP device if this router is a CAPsMAN and interface does not belong to the device itself, but a CAPsMAN-controlled CAP device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">The default name for an interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>inactive</strong> (<em>boolean</em>) (I)</td>
+<td style="text-align: left;">False for interfaces in AP mode when they've selected a channel for operation (i.e. configuration has been successfully applied).  False for interfaces in station mode when they've connected to an AP (i.e. configuration has been successfully applied, and an AP with matching settings has been found).  True otherwise.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master</strong> (<em>boolean</em>) (M)</td>
+<td style="text-align: left;">True for physical interfaces on the router itself or detected CAP if running as CAPsMAN.  False for virtual interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-mac</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">The MAC address of the associated radio.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>running</strong> (<em>boolean</em>) (R)</td>
+<td style="text-align: left;">True, when an interface has established a link to another device.  If <em>disable-running-check</em> is set to 'yes', true whenever the interface is not disabled.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="access-list_1">Access List</h3>
+<p>Filtering parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>interface</em> | <em>interface-list</em> | <em>any</em>; default: <strong>any</strong>)</td>
+<td style="text-align: left;">Match if the connection takes place on the specified interface or an interface belonging to a specified list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC address</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Match if the client device has the specified MAC address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address-mask</strong> (<em>MAC address</em>)</td>
+<td style="text-align: left;">Modifies the <strong>mac-address</strong> parameter to match if it is equal to the result of performing a bit-wise AND operation on the client MAC address and the given address mask.  default: FF:FF:FF:FF:FF:FF (i.e. client's MAC address must match value of <strong>mac-address</strong> exactly)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-range</strong> (<em>min..max</em>)</td>
+<td style="text-align: left;">Match if the strength of the received signal from the client device is within the given range. Allowed values: '-120..120'</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid-regexp</strong> (<em>regex</em>)</td>
+<td style="text-align: left;">Match if the given regular expression matches the SSID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>time</strong> (<em>start-end,days</em>)</td>
+<td style="text-align: left;">Match during the specified time of day and (optionally) days of the week. Allowed values: 0s-1d</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multi-passphrase-group</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of <code>/interface/wifi/security/multi-passphrase/</code> group that will be used. Only a single group can be set under one access list entry.</td>
+</tr>
+</tbody>
+</table>
+<p>Action parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>allow-signal-out-of-range</strong> (<em>time period</em> | <em>always</em>; default: <strong>0s</strong>)</td>
+<td style="text-align: left;">The length of time which a connected peer's signal strength is allowed to be outside the range required by the <strong>signal-range</strong> parameter, before it is disconnected.  If the value is set to 'always', peer signal strength is only checked during association.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>action</strong> (<em>accept</em> | <em>reject</em> | <em>query-radius</em>; default: <strong>accept</strong>)</td>
+<td style="text-align: left;">Whether to authorize a connection accept - connection is allowedreject - connection is not allowedquery-radius -  connection is allowed if MAC address authentication of the client's MAC address succeeds</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>client-isolation</strong> (<em>no</em> | <em>yes</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Whether to <a href="./#datapath-properties">isolate</a> the client from others connected to the same AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passphrase</strong> (<em>string</em>; default: <strong>none</strong>) <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a>*</td>
+<td style="text-align: left;">Override the default passphrase with the given value.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-accounting</strong> (<em>no</em> | <em>yes</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Override the default RADIUS accounting policy with the given value.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vlan-id</strong> (<em>none</em> | <em>integer 1..4095</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Assign the given <a href="./#datapath-properties">VLAN ID</a> to matched clients.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="frequency-scan_1">Frequency scan</h3>
+<p>Information about RF conditions on available channels can be obtained by running the frequency-scan command. 
+Command parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>duration</strong> (<em>time interval</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Length of time to perform the scan for before exiting. Useful for non-interactive use.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>freeze-frame-interval</strong> (<em>time interval</em>; default: <strong>1s</strong>)</td>
+<td style="text-align: left;">Time interval at which to update command output.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>list of frequencies/ranges)</em></td>
+<td style="text-align: left;">Frequencies to perform the scan on. See <a href="#channel-properties">channel.frequency parameter syntax</a> above for more detail. Defaults to all supported frequencies.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>number</strong> (<em>string</em>; <em>default</em>: <strong>none</strong>)</td>
+<td style="text-align: left;">Either the name or internal id of the interface to perform the scan with. Required.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rounds</strong> (<em>integer</em>; <em>default</em>: <strong>none</strong>)</td>
+<td style="text-align: left;">Number of times to go through the list of scannable frequencies before exiting. Useful for non-interactive use.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>save-file</strong> (<em>string</em>; <em>default</em>: <strong>none</strong>)</td>
+<td style="text-align: left;">Name of the file to save output to.</td>
+</tr>
+</tbody>
+</table>
+<p>Output parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Frequency (in MHz) of the channel scanned.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>networks</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Number of access points detected on the channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>load</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Percentage of time the channel was busy during the scan.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nf</strong> (integer)</td>
+<td style="text-align: left;">Noise floor (in dBm) of the channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-signal</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Maximum signal strength (in dBm) of APs detected in the channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>min-signal</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Minimum signal strength (in dBm) of APs detected in the channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>primary</strong> (<em>boolean</em>) (P)</td>
+<td style="text-align: left;">Channel is in use as the primary (control) channel by an AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>secondary</strong> (<em>boolean</em>) (S)</td>
+<td style="text-align: left;">Channel is in use as a secondary (extension) channel by an AP.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flat-snoop">Flat-snoop</h3>
+<p>The <code>/interface/wifi/flat-snoop</code> is a tool for surveying APs and stations. Monitors frequency usage, and displays which devices occupy each frequency. Provides more detailed information regarding nearby APs than scan, and offers an easy overview of frequency usage by station/AP count.
+Output parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>duration</strong> (<em>time interval</em>; <em>default</em>: <strong>none</strong>)</td>
+<td style="text-align: left;">Length of time to perform the scan before exiting. Useful for non-interactive use.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>filter-type</strong> (<em>bss | frequency | stas</em>)</td>
+<td style="text-align: left;">bss - list of active APs and their parameters.  frequency - list of station and AP count per scanned frequency  stas - a detailed list of stations on each scanned frequency  If filter-type is unspecified, all types will be returned.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>freeze-frame-interval</strong> (<em>time interval</em>; default: <strong>1s</strong>)</td>
+<td style="text-align: left;">Time interval at which to update command output.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scan-command_1">Scan command</h3>
+<p>The <code>/interface/wifi/scan</code> command will scan for access points and print out information about any APs it detects.
+The scan command takes all the same parameters as the frequency-scan command.
+Output parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>active</strong> (<em>boolean</em>) (A)</td>
+<td style="text-align: left;">This signifies that beacons from the AP have been received in the last 30 seconds.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>address</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">The MAC address (BSSID) of the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>string</em>)</td>
+<td style="text-align: left;">The control channel frequency used by the AP, its supported wireless standards and control/extension channel layout.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Authentication methods supported by the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">The signal strength of the AP's beacons (in dBm).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string</em>)</td>
+<td style="text-align: left;">The extended service set identifier of the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sta-count</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">The number of client devices associated with the AP. It is only available if the AP includes this information in its beacons.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sniffer_1">Sniffer</h3>
+<p>Command parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>duration</strong> (<em>time interval</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Automatically interrupt the sniffer after the specified time has passed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>filter</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A string that specifies a filter to apply to captured frames. Only frames matched by the filter expression will be displayed, saved or streamed.  This works similarly to filter strings in libpcap, for example.  The filter can match Address fields (addr1, addr2, addr3)Wireless frame type and subtype, including shortcuts such as 'beacon' (type == 0 &amp;&amp; subtype == 8)Flags (to-ds, from-ds, retry, power, protected) A string can include the following operators: == (exact match)!= (does not equal)&amp;&amp; (logical AND) ||  (logical OR)() (for grouping filter expressions)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>number</strong> (<em>interface</em>)</td>
+<td style="text-align: left;">Interface to use for sniffing.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>pcap-file</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Save captured frames to a file with the given name. No default value (captured frames are not saved to a file by default).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>pcap-size-limit</strong> (<em>integer</em>; <em>default</em>: <strong>none</strong>)</td>
+<td style="text-align: left;">File size limit (in bytes) when storing captured frames locally. When this limit has been reached, no new frames are added to the capture file.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>stream-address</strong> (<em>IP address</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Stream captured packets via the TZSP protocol to the given address. No default value (captured packets are not streamed anywhere by default).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>stream-rate</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Limit the rate (in packets per second) at which captured frames are streamed via TZSP.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wps_1">WPS</h3>
+<p><code>/interface/wifi/wps-client</code> 
+Command parameters:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>duration</strong> (<em>time interval</em>)</td>
+<td style="text-align: left;">Length of time after which the command will time out if no AP is found. Unlimited by default.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interval</strong> (<em>time interval</em>; default: <strong>1s</strong>)</td>
+<td style="text-align: left;">Time interval at which to update command output. Default: 1s.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Only attempt connecting to the AP with the specified MAC (BSSID).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>number</strong> (<em>string</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Name or internal id of the interface with which to attempt a connection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Only attempt to connect to APs with the specified SSID.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="radios_1">Radios</h3>
+<p>Information about the capabilities of each radio can be gained by running the <code>/interface/wifi/radio/print detail</code> command.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>2g-channels</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Frequencies supported in the 2.4GHz band.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5g-channels</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Frequencies supported in the 5GHz band.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>6g-channels</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Frequencies supported in the 6GHz band.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bands</strong> (<em>list of strings</em>)</td>
+<td style="text-align: left;">Supported frequency bands, wireless standards, and channel widths.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ciphers</strong> (<em>list of strings</em>)</td>
+<td style="text-align: left;">Supported encryption ciphers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>countries</strong> (<em>list of strings</em>)</td>
+<td style="text-align: left;">Regulatory domains supported by the interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-caps</strong> (<em>list of strings</em>)</td>
+<td style="text-align: left;">Strings representing radio firmware support for certain features.  <strong>channel-switch</strong> - ability to switch radio operating channel without interrupting connections established on the current channel  <strong>hw-protection-mode</strong> - ability to force a given RTS/CTS policy via the configuration.hw-protection-mode parameter.  <strong>qos-classifier-dscp</strong> - ability to perform traffic classification based on IP DSCP when configuration.qos-classifier is set to 'dscp-high-3-bits'  <strong>sniffer</strong> - ability to operate in monitor mode, capturing 802.11 frames  <strong>spectral</strong> - ability to operate as a spectroscope when required by the spectral-scan and spectral-history utilities.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-type</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Radio hardware model number.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-interfaces</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Maximum number of logical interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-peers</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Maximum number of associated peers (connected stations).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-station-interfaces</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Maximum number of logical interfaces in station mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-vlans</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Maximum number of different per-user VLANs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>min-antenna-gain</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Minimum antenna gain permitted for the interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ml-group</strong> (<em>MAC address</em>)</td>
+<td style="text-align: left;">Radios with a common ML (multi-link) group can be configured to take advantage of multi-link operation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>phy-id</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A unique identifier.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-mac</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">MAC address of the radio interface. Can be used to match radios to interface configurations.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-chains</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">IDs for radio chains available for receiving radio signals.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-chains</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">IDs for radio chains available for transmitting radio signals.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="radio-settings">Radio settings</h4>
+<p>Several radio-related settings can be changed in the <code>/interface/wifi/radio/settings</code> menu.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>default-country</strong> (<em>name of a country</em>)</td>
+<td style="text-align: left;">The regulatory domain to apply, if no other value is set for the master interface of any managed radio</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>external-antenna</strong> (<em>yes</em> | <em>no</em>; <em>default</em>: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to switch to the external antenna connector on devices such as LtAP ax, where both an internal antenna and an external antenna connector is available.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wifi-band</strong> (<em>2.4GHz</em> | <em>5GHz</em>; <em>default</em>: <strong>2GHz</strong>)</td>
+<td style="text-align: left;">The frequency band to use on multi-band radios.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="registration-table_1">Registration table</h3>
+<p>The registration table contains read-only information about associated wireless devices.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>authorized</strong> (<em>boolean</em>) (A)</td>
+<td style="text-align: left;">True when the peer has successfully authenticated.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>auth-type</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Authentication type used for the particular client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Band on which particular router is communicating with the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bytes</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Number of bytes in packets transmitted to a peer and received from it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of the interface, which was used to associate with the peer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>last-activity</strong>(time)</td>
+<td style="text-align: left;">last interface data tx/rx activity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">The MAC address of the peer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>packets</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Number of packets transmitted to a peer and received from it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-bits-per-second</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Rate of transmitted data to peer per second.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-bits-per-second</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Rate of received data from peer per second.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-rate</strong> <em>(string</em>)</td>
+<td style="text-align: left;">Bitrate of received transmissions from peer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Strength of signal received from the peer (in dBm).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> <em>(string</em>)</td>
+<td style="text-align: left;">The SSID on which the client is connected.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-rate</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Bitrate used for transmitting to the peer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uptime</strong> (<em>time interval</em>)</td>
+<td style="text-align: left;">Time since association.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vlan-id</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">VLAN which is assigned by AP or RADIUS for the particular peer traffic.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="wifi-capsman_1">WiFi CAPsMAN</h1>
+<blockquote>
+<p>WiFi CAPsMAN (Controlled Access Point system Manager) for the wifi-qcom / wifi-qcom-ac packages centralizes management of multiple WiFi access points. Covers CAP discovery, radio provisioning, datapath/forwarding...</p>
+</blockquote>
+<h1 id="wifi-capsman_2">WiFi CAPsMAN</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This section describes the operation of the CAPsMAN feature in the wifi-qcom and wifi-qcom-ac packages. For devices with the older "wireless" package, see <a href="../abgn/capsman/index.md">the respective manual here</a>. Here and further below, when talking about "WiFi", we mean the new WiFi menu, not the technology.</p>
+</div>
+<p>Controlled Access Point system Manager (CAPsMAN) allows applying wireless settings to multiple MikroTik WiFi AP devices from a central configuration interface, i.e. allows the centralization of wireless network management. When using CAPsMAN, the network will consist of a number of 'Controlled Access Points' (CAP) that provide wireless connectivity and a 'system Manager' (CAPsMAN) that manages the configuration of the APs, and it also takes care of client authentication.</p>
+<p>Requirements:</p>
+<ul>
+<li>Any RouterOS device, that supports the WiFi package, can be a controlled wireless access point (CAP) as long as it has at least a Level 4 RouterOS license.</li>
+<li>WiFi CAPsMAN server can be installed on any RouterOS device that supports the WiFi package, even if the device itself does not have a wireless interface.</li>
+<li>Unlimited CAPs (access points) are supported by CAPsMAN.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>WiFi CAPsMAN can only control WiFi interfaces, and WiFi CAPs can join only WiFi CAPsMAN. Similarly, regular CAPsMAN only supports non-WiFi caps.</p>
+<p>The CAPs don't send traffic usage information to CAPsMAN.</p>
+</div>
+<h3 id="capsman-discovery-by-cap">CAPsMAN Discovery by CAP</h3>
+<p>CAP discovers CAPsMAN address/hostname via:</p>
+<ul>
+<li>Layer 2 discovery.</li>
+<li>DHCP option 138 (CAPsMAN address).</li>
+<li>DHCP option 15 (custom domain): <code>resolves _capsman._tcp.&lt;domain&gt;.</code></li>
+<li>Default MikroTik 'lan' domain: <code>resolves _capsman._tcp.lan.</code></li>
+</ul>
+<h3 id="radio-provisioning">Radio Provisioning</h3>
+<p>Once configuration templates have been created, you can select which devices should be provisioned with each of the templates. Of course, in simple setups it is enough to have only one provisioning rule, but if you wish to send one configuration to 2.4GHz interfaces and a different one to 5GHz interfaces, you can create two provisioning rules and define which template is sent where, using the <code>supported-bands</code> parameter.</p>
+<p>CAPsMAN distinguishes between actual wireless interfaces (radios) based on their built-in MAC address (radio-mac). This implies that it is impossible to manage two radios with the same MAC address on one CAPsMAN. Radios currently managed by CAPsMAN (provided by connected CAPs) are listed in <code>/interface/wifi/radio</code> menu. This list will also include the built-in wifi interfaces that are present on CAPsMAN itself if there are any:</p>
+<pre><code class="language-ros">[admin@c52i] &gt; /interface/wifi/radio/print 
+Flags: L - LOCAL
+Columns: CAP, RADIO-MAC, INTERFACE
+#   CAP                  RADIO-MAC          INTERFACE 
+0 L                      18:FD:74:AF:F4:28  wifi1     
+1 L                      18:FD:74:AF:F4:29  wifi2     
+2   hapAX3@192.168.88.30  48:A9:8A:0B:F7:4B  cap1
+</code></pre>
+<p>When CAP connects, CAPsMAN at first tries to bind each CAP radio to CAPsMAN master interface based on radio-mac. If an appropriate interface is found, the radio gets set up using master interface configuration and configuration of slave interfaces that refer to a particular master interface. At this moment interfaces (both master and slaves) are considered bound to radio and radio is considered provisioned. This happens only if there were matching static entries already present under <code>/interface/wifi</code> , typically if the entry was made previously either manually, or with provisioning rules that contain action "create-enabled" or "create-disabled".</p>
+<p>If no matching master interface for radio is found, CAPsMAN executes 'provisioning rules', which are defined under <code>/interface/wifi/provisioning/</code>. Provisioning rules is an ordered list of rules that contain settings that specify which radio to match and settings that determine what action to take if a radio matches.</p>
+<p>When CAP joins CAPsMAN, and there is no matching interface for it present under<code>/interface/wifi</code> , provisioning rules will automatically be checked, once a match is found, the CAP's wireless interface will appear under <code>/interface/wifi</code>. Such an interface is "provisioned", provisioned in this context means that there is a wifi interface present for the radio, and it has a configuration profile assigned to it.</p>
+<p>There is also an option to manually provision interfaces, which will make CAPsMAN start evaluating provisioning rules against the specific interface, and a new interface will be created upon match. If there was already an entry present for the radio under <code>/interface/wifi/</code>, that entry will be deleted and re-created. Manual provisioning re-creates the interface and is <strong>generally not needed</strong>, since provisioning rules are evaluated automatically, and if you change the configuration profile associated with the provisioning rule, the changes will be applied to all wifi interfaces that use that configuration. If you manually provision interfaces, the interface ID or name can change, resulting in broken references to other objects, for example, bridge ports.</p>
+<p>Manual provision can be done under <code>/interface/wifi/capsman/remote-cap/provision</code> to provision all radios associated with specific CAPs, it can also be done under <code>/interface/wifi/radio/provision</code>, to provision specific radios.</p>
+<p>CAPsMAN cannot manage it's own wifi interfaces using <code>configuration.manager=capsman</code>, it is enough to just set the same configuration profile on local interfaces manually as you would with provisioning rules, and the end result will be the same as if they were CAPs. That being said, it is also possible to provision local interfaces via <code>/interface/wifi/radio</code> menu, it should be noted that to regain control of local interfaces after provisioning, you will need to disable the matching provisioning rules and press "provision" again, which will return local interfaces to an unconfigured state.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Provision must be done only initially, and is done automatically upon CAP joining if there are matching provisioning rules that are enabled.<br />
+If you adjust any configuration profile that is linked to the provisioned interface, all changes will be "pushed" as soon as you apply changes to the profile, with no need to re-create the already existing interface.<br />
+Provisioning itself is not for sending configuration, it is for essentially creating a new interface. In most cases, there is no reason to perform manual provisioning once you already have CAP interfaces running.</p>
+</div>
+<h3 id="capsman-datapath">CAPSMAN Datapath</h3>
+<p>Datapath settings control data forwarding related aspects. On CAPsMAN datapath settings are configured in the datapath profile menu <strong>/interface/wifi/datapath/</strong> or directly in a configuration profile or interface menu as settings with <strong>datapath.</strong> prefix.</p>
+<p>There are 2 major forwarding/traffic-processing modes:</p>
+<ul>
+<li>local forwarding mode (<code>traffic-processing=on-cap</code>), where CAP is locally forwarding data to and from wireless interface;</li>
+<li>CAPsMAN forwarding mode (<code>traffic-processing=on-capsman</code>), where CAP sends to CAPsMAN all data received over wireless and only sends out the wireless data received from CAPsMAN.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>CAPsMAN forwarding is only possible starting with <strong>7.21beta2</strong> version. <strong>On older versions, only CAP forwarding is supported.</strong></p>
+<p>CAPsMAN forwarding is not supported by <strong>wifi-qcom-ac</strong> devices (wifi-qcom-ac drivers only <strong>support</strong> <strong>local forwarding</strong>).</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>MLO does not support CAPsMAN forwarding (<code>traffic-processing=on-capsman</code>) at this time.</p>
+</div>
+<h3 id="capsman-cap-simple-configuration-example">CAPsMAN - CAP simple configuration example</h3>
+<p>CAPsMAN in WiFi uses the same menu as a regular WiFi interface, meaning when you pass configuration to CAPs, you have to use the same configuration, security, channel configuration, etc. as you would for regular WiFi interfaces.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You can configure sub-configuration menus, directly under <code>/interface/wifi/configuration</code> or reference previously created profiles in the main configuration profile</p>
+</div>
+<h4 id="capsman">CAPsMAN</h4>
+<pre><code class="language-ros">#create a security profile
+/interface/wifi/security
+add authentication-types=wpa3-psk name=sec1 passphrase=HaveAg00dDay
+
+#create configuration profiles to use for provisioning
+/interface/wifi/configuration
+add country=Latvia name=5ghz security=sec1 ssid=CAPsMAN_5
+add name=2ghz security=sec1 ssid=CAPsMAN2
+add country=Latvia name=5ghz_v security=sec1 ssid=CAPsMAN5_v
+
+#configure provisioning rules, configure band matching as needed
+/interface/wifi/provisioning
+add action=create-dynamic-enabled master-configuration=5ghz slave-configurations=5ghz_v supported-bands=\
+    5ghz-n
+add action=create-dynamic-enabled master-configuration=2ghz supported-bands=2ghz-n
+
+#enable CAPsMAN service
+/interface/wifi/capsman
+set ca-certificate=auto enabled=yes
+</code></pre>
+<p>If you want to utilize MLO (supported by WiFi 7 BE CAPs), all interfaces that form the MLD must use the same SSID:</p>
+<pre><code class="language-ros">#create configuration profiles for the main and IoT SSIDs
+/interface/wifi/configuration
+add country=Latvia disabled=no mode=ap name=cfg-main security.authentication-types=wpa3-psk security.passphrase=HaveAg00dDay ssid=main
+add country=Latvia disabled=no mode=ap name=cfg-iot security.authentication-types=wpa3-psk security.passphrase=HaveAg00dDay ssid=IoT
+
+#provision all radios and make both master and virtual interfaces MLO
+/interface/wifi/provisioning
+add action=create-dynamic-enabled disabled=no master-configuration=cfg-main multi-link-mode=auto slave-configurations=cfg-iot
+
+#enable CAPsMAN and generate the CA certificate
+/interface/wifi/capsman
+set ca-certificate=auto enabled=yes
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>If you want virtual interfaces to be basic interfaces (non-MLO), use <code>multi-link-mode=master</code> instead.</p>
+</div>
+<h4 id="cap">CAP</h4>
+<pre><code class="language-ros">#enable CAP service, in this case CAPsMAN is on the same LAN, but you can also specify &quot;caps-man-addresses=x.x.x.x&quot; here
+/interface/wifi/cap/set enabled=yes
+
+#set configuration.manager= on the WiFi interface that should act as CAP
+/interface/wifi/set wifi1,wifi2 configuration.manager=capsman-or-local
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The only difference between the non-MLO and MLO CAP scenarios is that an MLO CAP gets MLD interfaces added automatically and should have <code>mld-datapath=capdp</code> configured under <code>/interface/wifi/cap</code>.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<ul>
+<li>If the CAP is hAP ax<sup>2</sup> or hAP ax<sup>3</sup>, it is strongly recommended to enable RSTP in the bridge configuration, on the CAP.</li>
+<li>On the CAP device, configure <code>configuration.manager</code> under <code>/interface/wifi</code> for the WiFi interfaces that CAPsMAN should manage. Do not pass it from CAPsMAN through a provisioning rule or a configuration profile.</li>
+</ul>
+</div>
+<h3 id="capsman-cap-vlan-configuration-example">CAPsMAN - CAP VLAN configuration example</h3>
+<p>In this example, we will assign VLAN10 to our main SSID, and will add VLAN20 for the guest network, ether5 from CAPsMAN is connected to CAP.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>CAPs using <code>wifi-qcom</code> package can get "vlan-id" via Datapath from CAPsMAN, CAPs using <code>wifi-qcom-ac</code> package will need to use the configuration provided at the end of this example.</p>
+</div>
+<h4 id="capsman_1">CAPsMAN</h4>
+<pre><code class="language-ros">/interface/bridge
+add name=br vlan-filtering=yes
+/interface/vlan
+add interface=br name=MAIN vlan-id=10
+add interface=br name=GUEST vlan-id=20
+/interface/wifi/datapath
+add bridge=br name=MAIN vlan-id=10
+add bridge=br name=GUEST vlan-id=20
+/interface/wifi/security
+add authentication-types=wpa2-psk,wpa3-psk ft=yes ft-over-ds=yes name=Security_MAIN passphrase=HaveAg00dDay
+add authentication-types=wpa2-psk,wpa3-psk ft=yes ft-over-ds=yes name=Security_GUEST passphrase=HaveAg00dDay
+/interface/wifi/configuration
+add datapath=MAIN name=MAIN security=Security_MAIN ssid=MAIN_Network
+add datapath=GUEST name=GUEST security=Security_GUEST ssid=GUEST_Network
+/ip/pool
+add name=dhcp_pool0 ranges=192.168.1.2-192.168.1.254
+add name=dhcp_pool1 ranges=192.168.10.2-192.168.10.254
+add name=dhcp_pool2 ranges=192.168.20.2-192.168.20.254
+/ip/dhcp-server
+add address-pool=dhcp_pool0 disabled=yes interface=br name=dhcp1
+add address-pool=dhcp_pool1 interface=MAIN name=dhcp2
+add address-pool=dhcp_pool2 interface=GUEST name=dhcp3
+/interface/bridge/port
+add bridge=br interface=ether5 
+add bridge=br interface=ether4 
+add bridge=br interface=ether3 
+add bridge=br interface=ether2 
+/interface/bridge/vlan
+add bridge=br tagged=br,ether5,ether4,ether3,ether2 vlan-ids=20
+add bridge=br tagged=br,ether5,ether4,ether3,ether2 vlan-ids=10
+/interface/wifi/capsman
+set enabled=yes interfaces=br
+/interface/wifi/provisioning
+add action=create-dynamic-enabled master-configuration=MAIN slave-configurations=GUEST supported-bands=5ghz-ax
+add action=create-dynamic-enabled master-configuration=MAIN slave-configurations=GUEST supported-bands=2ghz-ax
+/ip/address
+add address=192.168.1.1/24 interface=br network=192.168.1.0
+add address=192.168.10.1/24 interface=MAIN network=192.168.10.0
+add address=192.168.20.1/24 interface=GUEST network=192.168.20.0
+/ip/dhcp-server/network
+add address=192.168.1.0/24 gateway=192.168.1.1
+add address=192.168.10.0/24 gateway=192.168.10.1
+add address=192.168.20.0/24 gateway=192.168.20.1
+/system/identity
+set name=cAP_Controller
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When you use MLO with VLANs:</p>
+<ul>
+<li>Enable only <code>wpa3-psk</code> in the security profile (MLO does not support <code>wpa2-psk</code>).</li>
+<li>Match the Wi-Fi 7 radio's supported bands in the provisioning rules, for example <code>supported-bands=5ghz-be,2ghz-be</code>, or omit <code>supported-bands</code> and keep a single provisioning rule for the same master and slave configurations so it applies to all bands.</li>
+<li>Set <code>multi-link-mode=master</code> (or <code>all</code>/<code>auto</code>) in the provisioning rule. See <a href="#provisioning">Provisioning</a>.</li>
+</ul>
+</div>
+<h4 id="cap-using-wifi-qcom-and-wifi-mediatek-packages">CAP using "wifi-qcom" and "wifi-mediatek" packages</h4>
+<pre><code class="language-ros">/interface/bridge
+add name=bridgeLocal
+/interface/wifi/datapath
+add bridge=bridgeLocal comment=defconf disabled=no name=capdp
+/interface/wifi
+set [ find default-name=wifi1 ] configuration.manager=capsman datapath=capdp disabled=no
+set [ find default-name=wifi2 ] configuration.manager=capsman datapath=capdp disabled=no
+/interface/bridge/port
+add bridge=bridgeLocal comment=defconf interface=ether1
+add bridge=bridgeLocal comment=defconf interface=ether2
+add bridge=bridgeLocal comment=defconf interface=ether3
+add bridge=bridgeLocal comment=defconf interface=ether4
+add bridge=bridgeLocal comment=defconf interface=ether5
+/interface/wifi/cap
+set discovery-interfaces=bridgeLocal enabled=yes slaves-datapath=capdp
+/ip/dhcp-client
+add interface=bridgeLocal disabled=no
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When using MLO supported CAPs, make sure <code>mld-datapath</code> under <code>/interface/wifi/cap</code> is pointing at a datapath profile that adds the MLD interfaces to the correct bridge, for example <code>mld-datapath=capdp</code>.</p>
+</div>
+<h4 id="cap-using-wifi-qcom-ac-package">CAP using "wifi-qcom-ac" package</h4>
+<pre><code class="language-ros">/interface/bridge
+add name=bridgeLocal vlan-filtering=yes
+/interface/wifi
+set [ find default-name=wifi1 ] configuration.manager=capsman disabled=no
+set [ find default-name=wifi2 ] configuration.manager=capsman disabled=no
+/interface/bridge/port
+add bridge=bridgeLocal comment=defconf interface=ether1
+add bridge=bridgeLocal comment=defconf interface=ether2
+add bridge=bridgeLocal comment=defconf interface=ether3
+add bridge=bridgeLocal comment=defconf interface=ether4
+add bridge=bridgeLocal comment=defconf interface=ether5
+add bridge=bridgeLocal interface=wifi1 pvid=10
+add bridge=bridgeLocal interface=wifi21 pvid=20
+add bridge=bridgeLocal interface=wifi2 pvid=10
+add bridge=bridgeLocal interface=wifi22 pvid=20
+/interface/bridge/vlan
+add bridge=bridgeLocal tagged=ether1 untagged=wifi1,wifi2 vlan-ids=10
+add bridge=bridgeLocal tagged=ether1 untagged=wifi21,wifi22 vlan-ids=20
+/interface/wifi/cap
+set discovery-interfaces=bridgeLocal enabled=yes slaves-static=yes
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Check the dynamically created interface and assign the PVID to the appropriate one. Make sure not to use <code>/interface/bridge/port/add bridge=bridgeLocal interface=all</code>, as this will prevent you from applying PVIDs to wifi interfaces.</p>
+</div>
+<p>Additionally, the configuration below has to be added to the <strong>CAPsMAN configuration</strong>:</p>
+<pre><code class="language-ros">/interface/wifi/datapath
+add bridge=br name=DP_AC
+/interface/wifi/configuration
+add datapath=DP_AC name=MAIN_AC security=Security_MAIN ssid=MAIN_Network
+add datapath=DP_AC name=GUEST_AC security=Security_GUEST ssid=GUEST_Network
+/interface/wifi/provisioning
+add action=create-dynamic-enabled master-configuration=MAIN_AC slave-configurations=GUEST_AC supported-bands=5ghz-ac
+add action=create-dynamic-enabled master-configuration=MAIN_AC slave-configurations=GUEST_AC supported-bands=2ghz-n
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Passing datapaths "MAIN/GUEST" from the start of the example to "wifi-qcom-ac" CAP would be a misconfiguration, make sure to use datapath without "vlan-id" specified to such devices.</p>
+<p>With wifi-qcom-ac drivers, datapath setting on the CAPSMAN is not needed. The example, simply, showcases that "vlan-id" must be omitted.</p>
+</div>
+<h3 id="capsman-owe-configuration-example">CAPsMAN - OWE configuration example</h3>
+<h4 id="capsman_2">CAPsMAN</h4>
+<pre><code class="language-ros">/interface/wifi/configuration
+add country=Latvia disabled=no hide-ssid=yes name=OWE security.authentication-types=owe .owe-transition-interface=auto ssid=MikroTik_OWE
+add country=Latvia disabled=no name=open security.owe-transition-interface=auto ssid=Mikrotik_open
+
+/interface/wifi/provisioning
+add action=create-dynamic-enabled disabled=no master-configuration=open slave-configurations=OWE
+
+/interface/wifi/capsman
+set ca-certificate=auto enabled=yes
+</code></pre>
+<h4 id="cap_1">CAP</h4>
+<pre><code class="language-ros">/interface/wifi/cap/set enabled=yes
+/interface/wifi/set wifi1,wifi2 configuration.manager=capsman-or-local
+</code></pre>
+<h2 id="property-reference_1">Property reference</h2>
+<h3 id="capsman-global-configuration">CAPsMAN Global Configuration</h3>
+<p>Menu: <code>/interface/wifi/capsman</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ca-certificate</strong> (<em>auto</em> | <em>certificate name</em>; default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Device CA certificate, CAPsMAN server requires a certificate, certificate on CAP is optional.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (<em>auto</em> | <em>certificate name</em> | <em>none</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Device certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>no</em> | <em>yes</em>)</td>
+<td style="text-align: left;">Disable or enable CAPsMAN functionality</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>package-path</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Folder location for the RouterOS packages. For example, use "/upgrade" to specify the upgrade folder from the files section. If an empty string is set, CAPsMAN can use built-in RouterOS packages. Note that in this case only CAPs with the same architecture as CAPsMAN will be upgraded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>require-peer-certificate</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Require all connecting CAPs to have a valid certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>upgrade-policy</strong> (<em>none</em> | <em>require-same-version</em> | <em>suggest-same-upgrade</em>; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Upgrade policy options none - do not perform upgraderequire-same-version - CAPsMAN suggests upgrading the CAP RouterOS version and, if it fails, it will not provision the CAP. (Manual provision is still possible)suggest-same-version - CAPsMAN suggests upgrading the CAP RouterOS version and if it fails, it will still be provisioned</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interfaces</strong> (<em>all</em> | <em>interface name</em> | <em>none</em>; default: <strong>all</strong>)</td>
+<td style="text-align: left;">Interfaces on which CAPsMAN will listen for layer 2 CAP connections</td>
+</tr>
+</tbody>
+</table>
+<h3 id="provisioning">Provisioning</h3>
+<p>Provisioning rules for matching radios are configured in <code>/interface/wifi/provisioning/</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>action</strong> (<em>create-disabled</em> | <em>create-enabled</em> | <em>create-dynamic-enabled</em> | none; default: <strong>none</strong>)</td>
+<td style="text-align: left;">Action to take if rule matches are specified by the following settings:create-disabled - create disabled static interfaces for radio. I.e., the interfaces will be bound to the radio, but the radio will not be operational until the interface is manually enabled;create-enabled - create enabled static interfaces. I.e., the interfaces will be bound to the radio and the radio will be operational;create-dynamic-enabled - create enabled dynamic interfaces. I.e., the interfaces will be bound to the radio, and the radio will be operational;none - do nothing, leaves radio in the non-provisioned state; The basic difference between enabled and dynamic-enabled, is that dynamic interfaces can't be manually edited to override settings and can't be referenced in firewall or other menus, since they will be recreated. In both cases any <code>/interface/wifi/configuration</code> changes will be pushed to CAP automatically.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Short description of the Provisioning rule</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>common-name-regexp</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Regular expression to match radios by common name. Each CAP's common name identifier can be found under <code>/interface/wifi/radio</code> as value "REMOTE-CAP-NAME"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supported-bands</strong> (<em>2ghz-ax</em> | <em>2ghz-be</em> | <em>2ghz-g</em> | <em>2ghz-n</em> | <em>5ghz-a</em> | <em>5ghz-ac</em> | <em>5ghz-ax</em> | <em>5ghz-be</em> | <em>5ghz-n</em> | <em>60ghz-ad</em> | <em>6ghz-ax</em> | <em>6ghz-be</em>)</td>
+<td style="text-align: left;">Match radios by supported wireless modes. This parameter accepts one or more bands as a comma-separated list (for example, <em>supported-bands=5ghz-ac,5ghz-ax</em>). When multiple bands are specified, the device must support all listed bands for the match to succeed and for the defined configuration to be applied.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supported-hw-caps</strong> (<em>beacon-protection</em> | <em>channel-switch</em> | <em>hw-protection-mode</em> | <em>mlo</em> | <em>qos-qualifier</em> | <em>sniffer</em> | <em>spectral</em>)</td>
+<td style="text-align: left;">Matches radios by their supported additional features, as reported in the <em>hw-caps</em> field under <code>/interface/wifi/radio</code>. Accepts one or more comma-separated values. A radio must support all listed capabilities to match this provisioning rule.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>identity-regexp</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Regular expression to match radios by router identity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>address-ranges</strong> (<em>IpAddressRange[,IpAddressRanges] max 100x</em>;)</td>
+<td style="text-align: left;">Match CAPs with IPs within the configured address range. Will only work for CAPs that joined CAPsMAN using IP, not MAC address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-configuration</strong> (<em>string</em>)</td>
+<td style="text-align: left;">If <strong>action</strong> specifies to create interfaces, then a new master interface with its configuration set to this configuration profile will be created</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multi-link-mode</strong> (<em>all</em> | <em>auto</em> | <em>disabled</em> | <em>master</em>; default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Controls MLO (Multi-Link Operation) behavior during provisioning.all  or auto - CAPsMAN will automatically assign the provisioned WiFi interfaces as affiliated links of an MLD interface. If a matching MLD interface does not already exist, one will be created using the corresponding configuration. This applies to both master and slave interfaces;disabled - no MLD interface is created or assigned during provisioning;master - same behavior as <strong>all</strong> or <strong>auto</strong>, but only the master interface is added as an affiliated MLD link;</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name-format</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Base string to use when constructing names of provisioned interfaces. Each new interface will be created by taking the base string and appending a number to the end of it. A number will only be appended if the string is not unique.  If included in the string, the character sequence <strong>%I</strong> will be replaced by the system identity of the cAP, <strong>%C</strong> will be replaced with the cAP's TLS certificate's Common Name, <strong>%R</strong>, or <strong>%r</strong> for lowercase, will be replaced with the CAP's radio MAC  Default: "cap-wifi"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slave-name-format</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Base string to use when constructing names of virtual interfaces. Each new interface will be created by taking the base string and appending a number to the end of it. A number will only be appended if the string is not unique.  If included in the string, the character sequence  <strong>%v</strong> will be replaced with "virtual", the character sequence  <strong>%m</strong> will be replaced with the name of the master interface, if included in the string, the character sequence <strong>%I</strong> will be replaced by the system identity of the cAP, <strong>%C</strong> will be replaced with the cAP's TLS certificate's Common Name, <strong>%R</strong>, or <strong>%r</strong> for lowercase, will be replaced with the CAP's radio MAC  Default: "<em>master-interface-name</em>-virtual"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-mac</strong> (<em>MAC address</em>)</td>
+<td style="text-align: left;">MAC address of radio to be matched. No default value.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slave-configurations</strong> (<em>string</em>)</td>
+<td style="text-align: left;">If the <strong>action</strong> specifies to create interfaces, then a new slave interface for each configuration profile in this list is created.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes</em> | <em>no</em>)</td>
+<td style="text-align: left;">Specifies if the provision rule is disabled.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cap-configuration">CAP configuration</h3>
+<p>Menu: <code>/interface/wifi/cap</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>caps-man-addresses</strong> (<em>list of IP addresses or host names</em> ; default: <strong>_capsman._tcp.lan</strong>)</td>
+<td style="text-align: left;">List of comma-separated Manager IP addresses or host names that CAP will attempt to contact during discovery</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>caps-man-names</strong> ()</td>
+<td style="text-align: left;">An ordered list of CAPs Manager names that the CAP will connect to, if empty - CAP does not check manager name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>discovery-interfaces</strong> (<em>list of interfaces</em>)</td>
+<td style="text-align: left;">List of interfaces over which CAP should attempt to discover the Manager</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lock-to-caps-man</strong> (<em>yes</em> | no; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Sets if CAP should lock to the first CAPsMAN it connects to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slaves-static</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Creates Static Virtual Interfaces and allows the possibility to assign IP configuration to those interfaces. MAC address is used to remember each static-interface when applying the configuration from the CAPsMAN.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-static</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">When set to yes, MLD interfaces created on cAP by CAPsMAN ar static; otherwise, they are dynamic. Static interfaces have persistent internal IDs and can be manually manipulated, added to bridges, referenced in firewall rules etc. Dynamic interfaces do not persist between reboots. They should be assigned an appopriate datapath profile.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>caps-man-certificate-common-names</strong> ()</td>
+<td style="text-align: left;">List of Manager certificate CommonNames that CAP will connect to, if empty - CAP does not check Manager certificate CommonName</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> ()</td>
+<td style="text-align: left;">Certificate to use for authenticating</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>yes</em> | <em>no</em>; default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable or enable the CAP feature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>current-caps-man-address</strong> ()</td>
+<td style="text-align: left;">Shows currently used CAPsMAN address</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>current-caps-man-identity</strong> ()</td>
+<td style="text-align: left;">Shows currently used CAPsMAN identity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slaves-datapath</strong> (<em>datapath profile</em>)</td>
+<td style="text-align: left;">Datapath profile to apply to the slave interfaces. Primarily used to designate a bridge that slave interfaces are automatically added to on the CAP. Required when using local forwarding (<em>traffic-processing=on-cap</em>), since in that mode all routing and forwarding decisions are made by the CAP itself — CAPsMAN does not include those interfaces in its own bridge, so a datapath must be set either here or manually on the CAP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-datapath</strong> (<em>datapath profile</em>)</td>
+<td style="text-align: left;">Datapath profile to apply to the MLD interfaces created by CAPsMAN. Determines how traffic is forwarded on the MLD interface, including which bridge it is added to and whether forwarding is handled locally on the CAP or centrally by CAPsMAN. Has effect only when MLD is in use.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="remote-cap">Remote CAP</h3>
+<p>Information about the remote CAPs can be seen by running the <code>/interface/wifi/capsman/remote-cap/print detail</code> command.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>address</strong>(<em>IP address/MAC address%interface</em>)</td>
+<td style="text-align: left;">IP address of CAP or MAC address used to connect to CAPsMAN</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>identity</strong> (<em>list of integers</em>)</td>
+<td style="text-align: left;">Configured system identity of CAP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>board-name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Describes the model name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>serial</strong> (<em>string</em>)</td>
+<td style="text-align: left;">The serial number of CAP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong> (<em>string</em>)</td>
+<td style="text-align: left;">RouterOS version of CAP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>base-mac</strong> (<em>MAC address</em>)</td>
+<td style="text-align: left;">Base-MAC provided by CAP in the form: '[XX:XX:XX:XX:XX:XX]'</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>common-name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Common name of the CAP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connected-time</strong> (<em>time</em>)</td>
+<td style="text-align: left;">Time interval passed since the CAP connected to CAPsMAN</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uptime</strong> (<em>time</em>)</td>
+<td style="text-align: left;">Time interval passed since boot-up</td>
+</tr>
+</tbody>
+</table>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AAA and User Management · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">AAA and User Management</p>
+      <h1 id="aaa-and-user-management">AAA and User Management</h1>
+<h1 id="aaa-and-user-management_1">AAA and User Management</h1>
+<blockquote>
+<p>Authentication, authorization and accounting in RouterOS: router users, certificates, RADIUS, User Manager, PPP users and profiles, Dot1X and the HotSpot captive portal.</p>
+</blockquote>
+<h1 id="aaa-and-user-management_2">AAA and User Management</h1>
+<p>This section is about who can use the router and the network behind it, what each user can do, and how the use is counted.</p>
+<ul>
+<li><a href="user">User</a> has the accounts that manage the router itself.</li>
+<li><a href="certificates">Certificates</a> has the certificates and keys that the secure services of the router use.</li>
+<li><a href="radius">RADIUS</a> lets a central server authenticate the users of PPP, DHCP, HotSpot, Dot1X, IPsec, wireless and the router login.</li>
+<li><a href="user-manager">User Manager</a> is a RADIUS server that runs on RouterOS.</li>
+<li><a href="ppp-aaa">PPP AAA</a> has the users and profiles of the PPP servers: PPPoE, L2TP, SSTP and others.</li>
+<li><a href="dot1x">Dot1X</a> authenticates the devices on Ethernet ports with IEEE 802.1X.</li>
+<li><a href="hotspot-captive-portal/">HotSpot</a> shows a login page to the users of a network before they get access.</li>
+</ul>
+<hr />
+<h1 id="certificates">Certificates</h1>
+<blockquote>
+<p>Certificates in MikroTik RouterOS: create a certificate authority and sign certificates on the router, use them for services, export and import them, trust other authorities, request certificates, check revocation...</p>
+</blockquote>
+<h1 id="certificates_1">Certificates</h1>
+<p>RouterOS keeps certificates and their private keys in the <code>/certificate</code> menu. Services such as WebFig over HTTPS, the API, VPN servers and clients, CAPsMAN, RADIUS and Fetch refer to a certificate by its name, and verify the certificates of other devices against the authorities this menu trusts.</p>
+<p>The page covers these tasks:</p>
+<ul>
+<li>Create a certificate authority (CA) on the router and sign server and client certificates.</li>
+<li>Assign a certificate to a service.</li>
+<li>Export certificates for other devices, and import certificates and keys.</li>
+<li>Trust the certificate authority of another device.</li>
+<li>Request a certificate from an authority outside the router.</li>
+<li>Revoke certificates and check certificate revocation lists (CRL).</li>
+<li>Enrol certificates automatically with the Simple Certificate Enrollment Protocol (SCEP).</li>
+<li>Get a public certificate with the Automatic Certificate Management Environment (ACME) client.</li>
+</ul>
+<p>The examples use two devices. The router <code>192.168.88.1</code> is the certificate authority and the HTTPS server with the name <code>router.example.com</code>. A second RouterOS device in the same network is the client.</p>
+<h2 id="create-a-certificate-authority-and-sign-certificates">Create a certificate authority and sign certificates</h2>
+<p>A certificate starts as a template. The <code>add</code> command creates the template with the subject and the key settings, and the <code>sign</code> command generates the key and turns the template into a certificate with the same name. A template signed without the <code>ca</code> parameter becomes a self-signed certificate. With <code>ca</code>, the named authority signs it.</p>
+<p>Set <code>key-usage</code> in every template. A template without it gets all the default usages, which include the right to sign other certificates. An authority has <code>key-cert-sign</code> and <code>crl-sign</code>, a server certificate has <code>tls-server</code>, and a client certificate has <code>tls-client</code>.</p>
+<p>Clients compare the name or address they connect to with the <code>subject-alt-name</code> of the server certificate. List every DNS name and IP address the server is reached by.</p>
+<p>Create the authority, a certificate for the HTTPS server of the router, and a certificate for one client:</p>
+<pre><code class="language-ros">/certificate
+add name=ca common-name=&quot;Example Root CA&quot; days-valid=3650 \
+    key-usage=key-cert-sign,crl-sign
+sign ca ca-crl-host=192.168.88.1
+add name=router common-name=router.example.com \
+    subject-alt-name=DNS:router.example.com,IP:192.168.88.1 \
+    key-usage=digital-signature,key-encipherment,tls-server
+sign router ca=ca
+add name=client1 common-name=client1 key-usage=tls-client
+sign client1 ca=ca
+</code></pre>
+<p>The <code>ca-crl-host</code> parameter makes the authority publish a certificate revocation list. The router serves the list over HTTP at this address, and every certificate the authority signs carries the link to it. The <code>www</code> service of the router serves the list on TCP port 80: keep the service enabled and reachable for the devices that check the list.</p>
+<p>Check the result:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name~&quot;ca|router|client1&quot;
+Flags: K - PRIVATE-KEY; L - CRL; A - AUTHORITY; I - ISSUED; T - TRUSTED
+Columns: NAME, TRUST-STORE, COMMON-NAME, SUBJECT-ALT-NAME
+#       NAME     TRUST-STORE  COMMON-NAME         SUBJECT-ALT-NAME
+1 KLA T ca       all          Example Root CA
+2 K  I  router   all          router.example.com  DNS:router.example.com
+                                                  IP:192.168.88.1
+3 K  I  client1  all          client1
+</code></pre>
+<p>The authority has the flags <code>K</code> (the private key is on the router), <code>L</code> (it publishes a revocation list), <code>A</code> (authority) and <code>T</code> (trusted). RouterOS trusts a self-signed authority it created. The signed certificates have the flag <code>I</code> (issued) and are not trusted as authorities.</p>
+<p>A template without <code>key-size</code> and <code>days-valid</code> gets a 2048-bit RSA key and is valid for 365 days. For an elliptic curve key, set <code>key-size</code> to a curve name, for example <code>key-size=prime256v1</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When you remove the authority certificate, RouterOS also removes all certificates it issued.</p>
+</div>
+<h2 id="assign-a-certificate-to-a-service">Assign a certificate to a service</h2>
+<p>Services take the certificate by name. Enable the HTTPS service of the router with the server certificate:</p>
+<pre><code class="language-ros">/ip/service
+set www-ssl certificate=router disabled=no
+</code></pre>
+<p>Check that the service has the certificate:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/service/print where name=www-ssl
+Columns: NAME, PORT, PROTO, CERTIFICATE, VRF, MAX-SESSIONS
+# NAME     PORT  PROTO  CERTIFICATE  VRF   MAX-SESSIONS
+0 www-ssl   443  tcp    router       main            20
+</code></pre>
+<p>Other services refer to certificates in the same way. For browser access to the router, see <a href="../management-tools/webfig#enable-https">WebFig</a>.</p>
+<h2 id="export-certificates">Export certificates</h2>
+<p>Other devices need the certificate of the authority to verify the router, and a client needs its own certificate with the private key. Export the authority certificate without its key, and the client certificate with its key in a PKCS12 file:</p>
+<pre><code class="language-ros">/certificate
+export-certificate ca file-name=example-ca
+export-certificate client1 type=pkcs12 file-name=client1 \
+    export-passphrase=Use-a-long-passphrase
+</code></pre>
+<p>The files appear in the file list:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;example-ca|client1&quot;
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME            TYPE       SIZE  LAST-MODIFIED
+1 client1.p12     .p12 file  3316  2026-11-16 09:09:18
+2 example-ca.crt  .crt file  1155  2026-11-16 09:09:18
+</code></pre>
+<ul>
+<li>Without <code>export-passphrase</code>, the command exports only the certificate, as a PEM file with the <code>.crt</code> extension. The private key stays on the router.</li>
+<li>With <code>export-passphrase</code> and the default <code>type=pem</code>, the command also writes the private key to a <code>.key</code> file, encrypted with the passphrase.</li>
+<li>With <code>type=pkcs12</code>, the command writes one <code>.p12</code> file with the certificate, its private key and the certificate of the authority, encrypted with the passphrase (AES-256).</li>
+<li>Without <code>file-name</code>, the files are named <code>cert_export_&lt;certificate name&gt;</code>.</li>
+</ul>
+<p>The <code>export-certificate</code> command requires the <code>sensitive</code> user policy. Download the files with one of the methods in <a href="../system-information-and-utilities/files">Files</a>, and delete them from the router afterwards.</p>
+<h2 id="trust-a-certificate-authority">Trust a certificate authority</h2>
+<p>A device verifies a certificate only when it trusts the authority that signed it. On the second device, a download from the router with certificate checking fails with <code>no trusted CA certificate found</code> until the authority is imported.</p>
+<p>Upload <code>example-ca.crt</code> to the second device and import it:</p>
+<pre><code class="language-ros">/certificate
+
+     certificates-imported: 1
+     private-keys-imported: 0
+            files-imported: 0
+       decryption-failures: 0
+  keys-with-no-certificate: 0
+</code></pre>
+<p>The import deletes the file. The certificate is in the store with the <code>T</code> (trusted) flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name=example-ca
+Flags: L - CRL; T - TRUSTED
+Columns: NAME, TRUST-STORE, COMMON-NAME
+#    NAME        TRUST-STORE  COMMON-NAME
+0 LT example-ca  all          Example Root CA
+</code></pre>
+<p>The device has to resolve the name of the router. When no DNS server knows the name, add a static entry:</p>
+<pre><code class="language-ros">/ip/dns/static
+add name=router.example.com address=192.168.88.1
+</code></pre>
+<p>Check that the device now verifies the router. The download succeeds only when the authority is trusted and the name in the URL is in the certificate:</p>
+<pre><code class="language-ros">/tool/fetch url=https://router.example.com/ output=none \
+    check-certificate=yes
+</code></pre>
+<pre><code class="language-text">  status: connecting
+
+      status: finished
+        code: 200
+  downloaded: 1KiB
+       total: 1KiB
+    duration: 1s
+</code></pre>
+<p>A URL with a name that is not in the certificate fails with <code>name verification failed</code>.</p>
+<h3 id="limit-the-trust-to-some-services">Limit the trust to some services</h3>
+<p>An imported certificate is trusted by all services. The <code>trust-store</code> property limits it to the listed services, and <code>trusted=no</code> removes the trust. Let only the <code>fetch</code> and <code>www</code> services use the authority:</p>
+<pre><code class="language-ros">/certificate
+set example-ca trust-store=fetch,www
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name=example-ca
+Flags: L - CRL; T - TRUSTED
+Columns: NAME, TRUST-STORE, COMMON-NAME
+#    NAME        TRUST-STORE  COMMON-NAME
+0 LT example-ca  fetch        Example Root CA
+                 www
+</code></pre>
+<p>A service that is not in the list rejects certificates signed by this authority.</p>
+<p>When you import a certificate that is not an authority, add <code>trusted=no</code> to the <code>import</code> command.</p>
+<h3 id="paste-a-certificate">Paste a certificate</h3>
+<p>A certificate in PEM format can be pasted into the command line instead of uploaded as a file. Put the whole text, with its line breaks, in quotes after <code>pem=</code>:</p>
+<pre><code class="language-ros">/certificate
+add name=example-ca pem=&quot;-----BEGIN CERTIFICATE-----
+MIIDKTCCAhGgAwIBAgIIYSWvMzKnLtQwDQYJKoZIhvcNAQELBQAwGjEYMBYGA1UE
+...
++Aw0thQcxQIt2pwFk4LLhEQODijRmWjMPrjujInd9bMmzVJoBDeTZtCV39zv
+-----END CERTIFICATE-----&quot;
+</code></pre>
+<p>The example shows only the first and the last line of the certificate, with <code>...</code> for the lines between them. Paste your own certificate with all its lines. Without the line breaks the command fails with <code>bad PEM data</code>.</p>
+<h2 id="import-a-certificate-with-its-private-key">Import a certificate with its private key</h2>
+<p>A PKCS12 file holds a certificate, its key and the authority. Upload <code>client1.p12</code> to the device and import it with the passphrase it was exported with:</p>
+<pre><code class="language-ros">/certificate
+
+    passphrase=Use-a-long-passphrase trusted=no
+     certificates-imported: 1
+     private-keys-imported: 1
+            files-imported: 1
+       decryption-failures: 0
+  keys-with-no-certificate: 0
+</code></pre>
+<p>The certificate has the <code>K</code> flag, so the device can use it to identify itself:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name~&quot;client1|example&quot;
+Flags: K - PRIVATE-KEY; L - CRL; T - TRUSTED
+Columns: NAME, TRUST-STORE, COMMON-NAME
+#     NAME        TRUST-STORE  COMMON-NAME
+1  LT example-ca  all          Example Root CA
+2 K   client1     all          client1
+</code></pre>
+<p>For a certificate and a key in separate PEM files, import the certificate first and the key file second. The key is added to the certificate it belongs to. An encrypted key needs the <code>passphrase</code> parameter.</p>
+<p>The <code>pem=</code> parameter accepts keys too, and one string can hold a certificate followed by its key. The <code>/certificate/import</code> command accepts an encrypted key together with <code>passphrase</code>. The <code>/certificate/add</code> command accepts only an unencrypted key.</p>
+<p>To keep an imported private key on the device, add <code>no-key-export=yes</code> to the <code>import</code> command. An export of this certificate with a passphrase then fails with <code>Private key export is disallowed for this entry!</code>.</p>
+<h2 id="request-a-certificate-from-another-authority">Request a certificate from another authority</h2>
+<p>When the authority is outside the device, the device creates the key and a certificate request, and the authority signs the request. The private key stays with the device.</p>
+<p>Create a template and the request on the device that needs the certificate:</p>
+<pre><code class="language-ros">/certificate
+add name=office common-name=office.example.com \
+    subject-alt-name=DNS:office.example.com \
+    key-usage=digital-signature,key-encipherment,tls-server
+create-certificate-request template=office \
+    key-passphrase=Use-a-long-passphrase
+</code></pre>
+<p>The command writes two files: the request and the private key, encrypted with <code>key-passphrase</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;certificate-request&quot;
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME                         TYPE       SIZE  LAST-MODIFIED
+0 certificate-request_key.pem  .pem file  1834  2026-11-16 09:11:20
+1 certificate-request.pem      .pem file  1017  2026-11-16 09:11:20
+</code></pre>
+<p>Send <code>certificate-request.pem</code> to the authority. Keep the key file on the device.</p>
+<p>When the authority is a RouterOS router, upload the request to it, here as <code>office.csr</code>, and sign it:</p>
+<pre><code class="language-ros">/certificate
+sign-certificate-request file-name=office.csr ca=ca
+</code></pre>
+<p>The new certificate gets the common name of the request as its name:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name~&quot;office&quot;
+Flags: I - ISSUED
+Columns: NAME, TRUST-STORE, COMMON-NAME, SUBJECT-ALT-NAME
+#   NAME                TRUST-STORE  COMMON-NAME         SUBJECT-ALT-NAME
+1 I office.example.com  all          office.example.com  DNS:office.example.com
+</code></pre>
+<p>Export it:</p>
+<pre><code class="language-ros">/certificate
+export-certificate office.example.com file-name=office
+</code></pre>
+<p>Back on the requesting device, upload the signed certificate, here <code>office.crt</code>. Import the certificate, then the key file, and remove the template:</p>
+<pre><code class="language-ros">/certificate
+
+    passphrase=Use-a-long-passphrase
+remove office
+</code></pre>
+<p>The certificate has its private key:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name~&quot;office&quot;
+Flags: K - PRIVATE-KEY
+Columns: NAME, TRUST-STORE, COMMON-NAME, SUBJECT-ALT-NAME
+#   NAME         TRUST-STORE  COMMON-NAME         SUBJECT-ALT-NAME
+0 K office-cert  all          office.example.com  DNS:office.example.com
+</code></pre>
+<h2 id="revoke-a-certificate-and-check-revocation">Revoke a certificate and check revocation</h2>
+<p>An authority with <code>ca-crl-host</code> lists the certificates it has revoked. Other devices use the list only when revocation checking is on.</p>
+<p>On the client, turn the checking on and download the lists:</p>
+<pre><code class="language-ros">/certificate/settings
+set crl-use=yes crl-download=yes
+/certificate/crl
+download
+</code></pre>
+<p>RouterOS adds the list of an authority dynamically when the imported authority certificate contains a link to it. With <code>crl-use=yes</code>, a connection fails with <code>crl not found</code> as long as the list of the authority is not downloaded. The <code>crl-download</code> setting lets the device download and update the lists by itself, and the <code>download</code> command fetches them immediately.</p>
+<p>On the authority, revoke the certificate:</p>
+<pre><code class="language-ros">/certificate
+issued-revoke router
+</code></pre>
+<p>The certificate now has the <code>R</code> (revoked) flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name=router
+Flags: K - PRIVATE-KEY; R - REVOKED
+Columns: NAME, TRUST-STORE, COMMON-NAME, SUBJECT-ALT-NAME
+#    NAME    TRUST-STORE  COMMON-NAME         SUBJECT-ALT-NAME
+0 KR router  all          router.example.com  DNS:router.example.com
+                                              IP:192.168.88.1
+</code></pre>
+<p>On the client, download the updated list. The <code>REVOKED</code> column shows how many certificates the list contains:</p>
+<pre><code class="language-ros">/certificate/crl
+download
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/crl/print
+Flags: D - DYNAMIC
+Columns: CERT, TRUST-STORE, LAST-UPDATE, NUM, REVOKED
+#   CERT        TRUST-STORE  LAST-UPDATE          NUM  REVOKED
+0 D example-ca  all          2026-11-16 14:07:24    1        1
+</code></pre>
+<p>Check that the client now refuses the revoked certificate:</p>
+<pre><code class="language-ros">/tool/fetch url=https://router.example.com/ output=none \
+    check-certificate=yes
+</code></pre>
+<pre><code class="language-text">  status: connecting
+
+      status: failed
+  downloaded: 0KiB
+
+failure: SSL: ssl: cert is revoked by crl - &quot;CN=router.example.com&quot; (6) (/tool/fetch; line 1)
+</code></pre>
+<p>The HTTPS service of the authority still uses the revoked certificate. Sign a new certificate and give it to the service:</p>
+<pre><code class="language-ros">/certificate
+add name=router2 common-name=router.example.com \
+    subject-alt-name=DNS:router.example.com,IP:192.168.88.1 \
+    key-usage=digital-signature,key-encipherment,tls-server
+sign router2 ca=ca
+/ip/service
+set www-ssl certificate=router2
+</code></pre>
+<p>The client accepts the new certificate:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/fetch url=https://router.example.com/ output=none \
+    check-certificate=yes
+  status: connecting
+
+      status: finished
+        code: 200
+  downloaded: 1KiB
+       total: 1KiB
+    duration: 1s
+</code></pre>
+<p>A certificate issued by an authority that publishes a revocation list cannot be removed from the authority, only revoked.</p>
+<h2 id="enrol-certificates-with-scep">Enrol certificates with SCEP</h2>
+<p>With the Simple Certificate Enrollment Protocol (SCEP), a device creates its key, sends the request to the authority over HTTP and receives the signed certificate without file transfers. A RouterOS router can be the SCEP server and the SCEP client.</p>
+<p>On the authority, add a SCEP server for the authority certificate:</p>
+<pre><code class="language-ros">/certificate/scep-server
+add ca-cert=ca path=/scep/example days-valid=365
+</code></pre>
+<p>Clients reach the server at <code>http://192.168.88.1/scep/example</code>. The SCEP server also uses the <code>www</code> service on TCP port 80. If the service is disabled, the certificate on the client shows the <code>requesting-ca-capabilities-failed</code> status.</p>
+<p>Generate a one-time password for the device you enrol. A request with a valid password is signed without confirmation:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/scep-server/otp/generate minutes-valid=30
+  password: a0209edb24f942297d5e
+</code></pre>
+<p>On the client, create a template and enrol it with the password:</p>
+<pre><code class="language-ros">/certificate
+add name=branch common-name=branch.example.com \
+    key-usage=digital-signature,key-encipherment,tls-client
+add-scep template=branch challenge-password=a0209edb24f942297d5e \
+    scep-url=http://192.168.88.1/scep/example
+</code></pre>
+<p>Check that the client has the certificate with its key:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print where name=branch
+Flags: K - PRIVATE-KEY; T - TRUSTED
+Columns: NAME, TRUST-STORE, COMMON-NAME
+#    NAME    TRUST-STORE  COMMON-NAME
+0 KT branch  all          branch.example.com
+</code></pre>
+<p>On the authority, the request is listed as authorized:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/scep-server/requests/print
+Columns: AUTHORITY, STATUS, COMMON-NAME, CREATED
+#  AUTHORITY  STATUS      COMMON-NAME         CREATED
+0  ca         authorized  branch.example.com  2026-11-16 09:12:37
+</code></pre>
+<p>A request without a password stays in the <code>pending</code> status. Approve it on the authority with <code>/certificate/scep-server/requests/grant</code>. The client collects the certificate the next time it asks the server.</p>
+<h2 id="acme-client">ACME client</h2>
+<p>The ACME client gets a certificate from a public certificate authority and renews it automatically. Browsers and other devices trust such a certificate without importing anything.</p>
+<h3 id="lets-encrypt-certificate">Let's Encrypt certificate</h3>
+<p>The <code>add-acme</code> command requests the certificate. Without <code>directory-url</code>, the client uses Let's Encrypt.</p>
+<p>For the <a href="../network-management/cloud/#ddns">IP Cloud</a> name of the router, the client proves the ownership of the name through DNS, so no port has to be open from the internet. Enable the IP Cloud DDNS service first, then request the certificate:</p>
+<pre><code class="language-ros">/certificate
+add-acme name=cloud-name domain-names=[/ip/cloud/get dns-name]
+</code></pre>
+<p>The certificate appears in <code>/certificate</code> with the flags <code>K</code> and <code>a</code> (ACME managed). Check its status. When the certificate is issued, the status shows the time of the next renewal:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; :put [/certificate/get cloud-name acme-status]
+next update at 2027.01.27-07:09:16
+</code></pre>
+<p>The command also accepts the wildcard of the IP Cloud name, <code>*.&lt;name&gt;.sn.mynetname.net</code>. The certificate is then valid for every name under the IP Cloud name.</p>
+<p>The client renews the certificate when 80 % of its validity time has passed. To renew it immediately, use <code>/certificate/acme-renew cloud-name</code>.</p>
+<h3 id="certificate-for-your-own-domain-name">Certificate for your own domain name</h3>
+<p>For a name that is not an IP Cloud name, the authority validates the name over HTTP. Three conditions have to be met:</p>
+<ul>
+<li>The name resolves to the public address of the router.</li>
+<li>The <code>www</code> service is enabled on TCP port 80.</li>
+<li>TCP port 80 of the router is reachable from the internet.</li>
+</ul>
+<p>Request the certificate:</p>
+<pre><code class="language-ros">/certificate
+add-acme name=public-name domain-names=router.example.com
+</code></pre>
+<p>Check the status in the same way as for the IP Cloud name. When the validation fails, the entry stays in <code>/certificate</code> with the error as its comment, for example <code>http-01 challenge validation failed</code>. Remove the entry, correct the cause and run <code>add-acme</code> again.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>An open TCP port 80 also makes the WebFig login page of the router reachable from the internet. When the IP Cloud name is enough, use it: it needs no open port.</p>
+</div>
+<h2 id="built-in-trust-store-authorities">Built-in trust store authorities</h2>
+<p>RouterOS contains a list of public root certificate authorities. Services use the list to verify public servers without importing a certificate, for example <a href="../system-information-and-utilities/fetch">Fetch</a> with <code>check-certificate=yes</code> or <a href="../network-management/dns">DNS over HTTPS</a>.</p>
+<p>The authorities are listed in <code>/certificate/builtin</code>.</p>
+<h3 id="settings">Settings</h3>
+<p>The <code>builtin-trust-store</code> setting in <code>/certificate/settings</code> selects the services that use the list:</p>
+<ul>
+<li><code>default</code> - the services in the read-only <code>current-defaults</code> setting: <code>fetch</code>, <code>mqtt</code>, <code>email</code>, <code>netwatch</code>, <code>container</code>, <code>lora</code>, <code>wiliot</code>, <code>dns</code>, <code>www</code> and <code>reverse-proxy</code>.</li>
+<li>A list of services, for example <code>fetch,dns</code> - only these services.</li>
+<li><code>untrusted</code> - no service. Every authority then has to be imported.</li>
+</ul>
+<h3 id="list-of-built-in-cas">List of built-in CAs</h3>
+<p>The following list of built-in CAs is available on all architectures except SMIPS.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Organization</th>
+<th style="text-align: left;">Common Name</th>
+<th style="text-align: left;">Subject ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Amazon</td>
+<td style="text-align: left;">Amazon Root CA 1</td>
+<td style="text-align: left;"><code>8418CC8534ECBC0C94942E08599CC7B2104E0A08</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Assured ID Root CA</td>
+<td style="text-align: left;"><code>45EBA2AFF492CB82312D518BA7A7219DF36DC80F</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Assured ID Root G2</td>
+<td style="text-align: left;"><code>CEC34AB99955F2B8DB60BFA97EBD56B59736A7D6</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Assured ID Root G3</td>
+<td style="text-align: left;"><code>CBD0BDA9E1980551A14D37A28379CE8D1D2AE484</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Global Root CA</td>
+<td style="text-align: left;"><code>03DE503556D14CBB66F0A3E21B1BC397B23DD155</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Global Root G2</td>
+<td style="text-align: left;"><code>4E2254201895E6E36EE60FFAFAB912ED06178F39</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Global Root G3</td>
+<td style="text-align: left;"><code>B3DB48A4F9A1C5D8AE3641CC1163696229BC4BC6</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert High Assurance EV Root CA</td>
+<td style="text-align: left;"><code>B13EC36903F8BF4701D498261A0802EF63642BC3</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert, Inc.</td>
+<td style="text-align: left;">DigiCert TLS ECC P384 Root G5</td>
+<td style="text-align: left;"><code>C151455059AB3EE72C5AFA2022120780887C116A</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert, Inc.</td>
+<td style="text-align: left;">DigiCert TLS RSA4096 Root G5</td>
+<td style="text-align: left;"><code>51331CED3640AF17D325CD6968F2AF4E233EB341</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Trusted Root G4</td>
+<td style="text-align: left;"><code>ECD7E382D2715D644CDF2E673FE7BA98AE1C0F4F</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;"><code>3DE629489BEA07CA21444A26DE6EDED283D09F59</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign nv-sa</td>
+<td style="text-align: left;">GlobalSign Root CA</td>
+<td style="text-align: left;"><code>607B661A450D97CA89502F7D04CD34A8FFFCFD4B</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;"><code>8FF04B7FA82E4524AE4D50FA639A8BDEE2DD1BBC</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;">GlobalSign</td>
+<td style="text-align: left;"><code>AE6C05A39313E2A2E7E2D71CD6C7F07FC86753A0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign nv-sa</td>
+<td style="text-align: left;">GlobalSign Root E46</td>
+<td style="text-align: left;"><code>310A908FB6C69DD2444B80B5A2E61FB1124F1B95</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GlobalSign nv-sa</td>
+<td style="text-align: left;">GlobalSign Root R46</td>
+<td style="text-align: left;"><code>035CAB738187A8CCB0A6D594E2369649FF05992C</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">GoDaddy.com, Inc.</td>
+<td style="text-align: left;">Go Daddy Root Certificate Authority - G2</td>
+<td style="text-align: left;"><code>3A9A8507106728B6EFF6BD05416E20C194DA0FDE</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">SSL Corporation</td>
+<td style="text-align: left;">SSL.com Root Certification Authority ECC</td>
+<td style="text-align: left;"><code>82D1857330E73504D38E0292FBE5A4D1C421E8CD</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Sectigo Limited</td>
+<td style="text-align: left;">Sectigo Public Server Authentication Root E46</td>
+<td style="text-align: left;"><code>D122DA4C59F14B5F2638AA9DD6EEEB0DC3FBA961</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Sectigo Limited</td>
+<td style="text-align: left;">Sectigo Public Server Authentication Root R46</td>
+<td style="text-align: left;"><code>5673586495F9921AB0122A046279A14015882149</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">The USERTRUST Network</td>
+<td style="text-align: left;">USERTrust ECC Certification Authority</td>
+<td style="text-align: left;"><code>3AE10986D4CF19C29676744976DCE035C663639A</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">The USERTRUST Network</td>
+<td style="text-align: left;">USERTrust RSA Certification Authority</td>
+<td style="text-align: left;"><code>5379BF5AAA2B4ACF5480E1D89BC09DF2B20366CB</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Internet Security Research Group</td>
+<td style="text-align: left;">ISRG Root X1</td>
+<td style="text-align: left;"><code>79B459E67BB6E5E40173800888C81A58F6E99B6E</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Internet Security Research Group</td>
+<td style="text-align: left;">ISRG Root X2</td>
+<td style="text-align: left;"><code>7C4296AEDE4B483BFA92F89E8CCF6D8BA9723795</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">ISRG</td>
+<td style="text-align: left;">Root YE</td>
+<td style="text-align: left;"><code>A3C8265A8EA14CD03563FC9B23C83AAE56F34F56</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">ISRG</td>
+<td style="text-align: left;">Root YR</td>
+<td style="text-align: left;"><code>DEE75B60D0226D40287D3F0D01FEA4B552B45194</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="smips-built-in-cas">SMIPS built-in CAs</h3>
+<p>SMIPS devices have a reduced built-in CA trust store:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Organization</th>
+<th style="text-align: left;">Common Name</th>
+<th style="text-align: left;">Subject ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">DigiCert Inc</td>
+<td style="text-align: left;">DigiCert Global Root G2</td>
+<td style="text-align: left;"><code>4E2254201895E6E36EE60FFAFAB912ED06178F39</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Internet Security Research Group</td>
+<td style="text-align: left;">ISRG Root X1</td>
+<td style="text-align: left;"><code>79B459E67BB6E5E40173800888C81A58F6E99B6E</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Internet Security Research Group</td>
+<td style="text-align: left;">ISRG Root X2</td>
+<td style="text-align: left;"><code>7C4296AEDE4B483BFA92F89E8CCF6D8BA9723795</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">ISRG</td>
+<td style="text-align: left;">Root YE</td>
+<td style="text-align: left;"><code>A3C8265A8EA14CD03563FC9B23C83AAE56F34F56</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">ISRG</td>
+<td style="text-align: left;">Root YR</td>
+<td style="text-align: left;"><code>DEE75B60D0226D40287D3F0D01FEA4B552B45194</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details">Technical details</h2>
+<ul>
+<li>The <code>sign</code> command keeps the name of the template.</li>
+<li>An imported certificate is trusted unless the <code>import</code> command has <code>trusted=no</code>.</li>
+<li>The <code>import</code> command reports how many certificates and private keys it imported.</li>
+<li>A certificate with a weak RSA public exponent (7 or lower) continues to work. It is marked with the comment <code>key uses insecure RSA public exponent!</code> in <code>/certificate/print</code>. Replace such a certificate with one that has a stronger key.</li>
+<li>Certificate checks compare the validity dates with the clock of the device. Set the clock, for example with the <a href="../system-information-and-utilities/ntp">NTP client</a>, before you rely on them.</li>
+</ul>
+<p>For all properties and commands, see <a href="../cli-reference/certificate/"><code>/certificate</code></a>, <a href="../cli-reference/certificate/settings"><code>/certificate/settings</code></a>, <a href="../cli-reference/certificate/crl/"><code>/certificate/crl</code></a>, <a href="../cli-reference/certificate/builtin"><code>/certificate/builtin</code></a> and <a href="../cli-reference/certificate/scep-server/"><code>/certificate/scep-server</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="dot1x">Dot1X</h1>
+<blockquote>
+<p>Dot1X is the IEEE 802.1X implementation of RouterOS: authenticate the devices on Ethernet ports with RADIUS, assign VLANs, use guest, reject and server-fail VLANs, authenticate by MAC address, add dynamic switch...</p>
+</blockquote>
+<h1 id="dot1x_1">Dot1X</h1>
+<p>Dot1X is the RouterOS implementation of IEEE 802.1X, port-based network access control. A device must authenticate before the Ethernet port that it is connected to passes its traffic. The authentication uses EAP over LAN (EAPOL). 802.1X has three roles:</p>
+<ul>
+<li>The supplicant is the device that connects, the client. RouterOS can be a supplicant: <code>/interface/dot1x/client</code>.</li>
+<li>The authenticator is the switch or router with the port. RouterOS can be an authenticator: <code>/interface/dot1x/server</code>.</li>
+<li>The authentication server is a <a href="radius">RADIUS</a> server that checks the credentials. RouterOS can be one with the <a href="user-manager">User Manager</a> package.</li>
+</ul>
+<p><em>[gambar: A supplicant connects to a port of the authenticator, and the authenticator asks the RADIUS server]</em></p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Dot1X is not available on SMIPS devices (hAP lite, hAP lite TC and hAP mini).</p>
+</div>
+<h2 id="authenticate-the-devices-on-a-port">Authenticate the devices on a port</h2>
+<p>Add the RADIUS server for the <code>dot1x</code> service, and add the port to the Dot1X server:</p>
+<pre><code class="language-ros">/radius/add address=10.1.2.3 secret=Radius-Secret-1 service=dot1x
+/interface/dot1x/server/add interface=ether2
+</code></pre>
+<ul>
+<li>The RADIUS server does not have to be in the same network as the authenticator, but the authenticator must reach it. When the path to the server is not trusted, use RadSec: see <a href="radius">RADIUS</a>.</li>
+<li><code>interface</code> is an Ethernet interface or an interface list. For many ports, use a list (the example follows).</li>
+<li>From now on the port passes only EAPOL frames until a device authenticates. Do not add the port that you manage the router through.</li>
+</ul>
+<p>One server entry with an interface list covers several ports:</p>
+<pre><code class="language-ros">/interface/list/add name=dot1x-ports
+/interface/list/member/add list=dot1x-ports interface=ether3
+/interface/list/member/add list=dot1x-ports interface=ether4
+/interface/dot1x/server/add interface=dot1x-ports
+</code></pre>
+<p><code>/interface/dot1x/server/state</code> shows the state of each port:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/state/print
+Columns: INTERFACE, STATUS
+#  INTERFACE  STATUS       
+0  ether2     un-authorized
+</code></pre>
+<p>When a device authenticates, the state changes to <code>authorized</code> and the device is listed in <code>/interface/dot1x/server/active</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/active/print detail
+0  interface=ether2 username=&quot;tst&quot; client-mac=52:54:0B:7D:02:01
+   session-id=&quot;00002086&quot; auth-info=&quot;dot1x&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">State</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>authorized</code></td>
+<td style="text-align: left;">The port passes traffic.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>un-authorized</code></td>
+<td style="text-align: left;">No device is authenticated. The port passes only EAPOL frames.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rejected-holding</code></td>
+<td style="text-align: left;">The RADIUS server rejected the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>iface-down</code></td>
+<td style="text-align: left;">The interface is not running.</td>
+</tr>
+</tbody>
+</table>
+<p>An authorized port accepts all traffic that it receives. If the port is connected to a shared medium with several devices, all of them have access after one of them authenticates. Dynamic switch rules can limit the port to the MAC address of the authenticated device.</p>
+<p>While the port waits for authentication, its bridge port is inactive and both <code>/interface</code> and <code>/interface/bridge/port</code> show the comment <code>blocked by dot1x</code>. The comment is not shown while the link is down, the same as for a port that spanning tree blocks.</p>
+<h2 id="assign-a-vlan-from-radius">Assign a VLAN from RADIUS</h2>
+<p>The RADIUS server can put the port of a device into a VLAN. The port must be in a bridge with VLAN filtering. On a router that already has a bridge, read <a href="../bridging-and-switching/user-guides/bridge-vlan-table">Bridge VLAN table</a> before you turn VLAN filtering on: a wrong order of the steps can cut your access to the router.</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1 vlan-filtering=yes
+/interface/bridge/port/add bridge=bridge1 interface=ether1
+/interface/bridge/port/add bridge=bridge1 interface=ether2
+/interface/bridge/vlan/add bridge=bridge1 tagged=ether1 vlan-ids=12
+</code></pre>
+<p><code>ether1</code> is the uplink and carries VLAN 12 tagged.</p>
+<p>The server sends the VLAN in three attributes of the Access-Accept. In the <code>users</code> file of FreeRADIUS:</p>
+<pre><code class="language-text">vlanuser  Cleartext-Password := &quot;Example-pass-1&quot;
+          Tunnel-Type = VLAN,
+          Tunnel-Medium-Type = IEEE-802,
+          Tunnel-Private-Group-Id = &quot;12&quot;
+</code></pre>
+<p>With the <code>radius,debug</code> <a href="../diagnostics-monitoring-and-troubleshooting/log/">log</a> topics, the attributes are in the log of the authenticator:</p>
+<pre><code class="language-ros">/system/logging/add topics=radius,debug action=memory
+</code></pre>
+<pre><code class="language-text">09:51:45 radius,debug,packet received Access-Accept with id 64 from 10.1.2.3:1812
+09:51:45 radius,debug,packet     Tunnel-Type = 13 
+09:51:45 radius,debug,packet     Tunnel-Medium-Type = 6 
+09:51:45 radius,debug,packet     Tunnel-Private-Group-ID = &quot;12&quot; 
+(..)
+09:51:45 radius,debug,packet     User-Name = &quot;dot1x-user&quot; 
+</code></pre>
+<p>After the authentication the session has the VLAN ID:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/active/print detail
+0  interface=ether2 username=&quot;vlanuser&quot; client-mac=52:54:0B:7D:02:01
+   session-id=&quot;0f002086&quot; vlan-id=12 auth-info=&quot;dot1x&quot;
+</code></pre>
+<p>The bridge adds the port to VLAN 12 as an untagged port. <code>/interface/bridge/vlan/print</code> shows this in a dynamic entry with the comment <code>added by pvid</code>.</p>
+<ul>
+<li>Only devices with hardware offloaded VLAN filtering do this in the switch chip.</li>
+<li>A server that authenticates with EAP-PEAP or EAP-TTLS must send the attributes in the outer reply. In FreeRADIUS this is <code>use_tunneled_reply = yes</code>.</li>
+</ul>
+<h2 id="put-devices-that-fail-into-a-vlan">Put devices that fail into a VLAN</h2>
+<p>A port can get a VLAN when the authentication does not succeed. A typical use is a guest network. All three settings need a bridge with VLAN filtering, and all are off by default.</p>
+<pre><code class="language-ros">/interface/dot1x/server/set [find interface=ether2] \
+    guest-vlan-id=50 reject-vlan-id=30 server-fail-vlan-id=40
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">The port gets the VLAN when</th>
+<th style="text-align: left;"><code>auth-info</code> of the session</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>guest-vlan-id</code></td>
+<td style="text-align: left;">The device does not answer EAP requests, because it has no supplicant. The VLAN is set after three <code>retrans-timeout</code> periods.</td>
+<td style="text-align: left;"><code>dot1x (guest vlan)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reject-vlan-id</code></td>
+<td style="text-align: left;">The RADIUS server answers with Access-Reject.</td>
+<td style="text-align: left;"><code>dot1x (reject vlan)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>server-fail-vlan-id</code></td>
+<td style="text-align: left;">The RADIUS server does not answer.</td>
+<td style="text-align: left;"><code>dot1x (server fail vlan)</code></td>
+</tr>
+</tbody>
+</table>
+<p>In each case the state of the port is <code>authorized</code> and the session shows the VLAN:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/active/print detail
+0  interface=ether2 username=&quot;vlanuser&quot; client-mac=52:54:0B:7D:02:01
+   session-id=&quot;11002086&quot; vlan-id=30 auth-info=&quot;dot1x (reject vlan)&quot;
+</code></pre>
+<ul>
+<li>With the default <code>retrans-timeout</code> of 30 seconds, a device without a supplicant gets the guest VLAN after 90 seconds.</li>
+<li>A device of a visitor that has a supplicant gets an Access-Reject and not the guest VLAN. To give all visitors the same network, set <code>reject-vlan-id</code> to the same VLAN as <code>guest-vlan-id</code>.</li>
+<li>Add the VLANs to the uplink port as tagged in the VLAN table of the bridge.</li>
+<li>When a supplicant starts on a port in the guest VLAN and authenticates, the port leaves the guest VLAN.</li>
+<li><code>reject-vlan-id</code> is not used when the RADIUS server does not answer. Without <code>server-fail-vlan-id</code>, the authentication then times out and the port stays closed.</li>
+</ul>
+<h2 id="authenticate-devices-by-mac-address">Authenticate devices by MAC address</h2>
+<p>Printers, cameras and other devices without a supplicant can be authenticated by their MAC address. The authenticator asks the RADIUS server with the MAC address of the device as the user name:</p>
+<pre><code class="language-ros">/interface/dot1x/server/set [find interface=ether2] \
+    auth-types=mac-auth
+</code></pre>
+<p>In the <code>users</code> file of FreeRADIUS, an entry for a device with the default settings accepts the MAC address without a password:</p>
+<pre><code class="language-text">52:54:0B:7D:02:01  Auth-Type := Accept
+</code></pre>
+<ul>
+<li>The authenticator learns the MAC address from a frame that the device sends. A device that sends nothing is not authenticated.</li>
+<li>With <code>mac-auth-mode=mac-as-username</code> (the default) the password of the request is empty. With <code>mac-as-username-and-password</code> the MAC address is also the password.</li>
+<li><code>radius-mac-format</code> sets how the MAC address is written. The default is <code>XX:XX:XX:XX:XX:XX</code>.</li>
+<li>The RADIUS server can send a VLAN in the same way as for a Dot1X device.</li>
+</ul>
+<p>The session has <code>auth-info="mac-auth"</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/active/print detail
+0  interface=ether2 username=&quot;52:54:0B:7D:02:01&quot; client-mac=52:54:0B:7D:02:01
+   session-id=&quot;17002086&quot; vlan-id=12 auth-info=&quot;mac-auth&quot;
+</code></pre>
+<p>With both types, the authenticator tries Dot1X first. If the device does not answer in three <code>retrans-timeout</code> periods, it tries the MAC address:</p>
+<pre><code class="language-ros">/interface/dot1x/server/set [find interface=ether2] \
+    auth-types=dot1x,mac-auth
+</code></pre>
+<p>A MAC address is easy to copy from another device. Give MAC-authenticated devices only the access that they need, for example their own VLAN.</p>
+<h2 id="re-authenticate-and-send-accounting">Re-authenticate and send accounting</h2>
+<ul>
+<li><code>reauth-period</code> makes the authenticator authenticate each device again after this time. A Dot1X device gets a new EAP request, and a MAC-authenticated device is checked with the RADIUS server again. By default devices are not authenticated again.</li>
+<li><code>accounting=yes</code> (the default) sends the start and the end of each session to the RADIUS server. <code>interim-update</code> also sends an update at this interval.</li>
+</ul>
+<pre><code class="language-ros">/interface/dot1x/server/set [find interface=ether2] \
+    reauth-period=1h interim-update=5m
+</code></pre>
+<h2 id="add-switch-rules-for-a-device">Add switch rules for a device</h2>
+<p>The RADIUS server can limit what an authenticated device can reach. It sends rules in the Mikrotik-Switching-Filter attribute, and the authenticator adds them as dynamic <a href="../bridging-and-switching/switch-chip-features">switch rules</a> on the port of the device. The rules exist while the session is active and the interface is running.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Dynamic switch rules need a switch chip with rule support: MikroTik devices with a Marvell Prestera switch chip, and the QCA8337, Atheros8327 and Atheros8316 switch chips. CRS1xx and CRS2xx series switches do not support them. Each device has a maximum number of rules: see <a href="../bridging-and-switching/marvell-prestera-switch-chip-features">MikroTik devices with Marvell Prestera switch</a> and the <a href="../bridging-and-switching/switch-chip-features">switch chip table</a>.</p>
+</div>
+<p>The format of the attribute:</p>
+<ul>
+<li>The conditions are <code>mac-protocol</code>, <code>src-mac-address</code>, <code>src-address</code> (IPv4 address and mask), <code>dst-address</code> (IPv4 address and mask), <code>protocol</code> (IPv4), <code>src-port</code> and <code>dst-port</code>.</li>
+<li><code>mac-protocol</code> and <code>protocol</code> take a decimal or a hexadecimal number, for example <code>protocol 17</code> or <code>protocol 0x11</code>.</li>
+<li><code>src-port</code> and <code>dst-port</code> take one port or a range, for example <code>src-port 10</code> or <code>src-port 10-20</code>.</li>
+<li><code>src-mac-address</code> takes the format <code>xx:xx:xx:xx:xx:xx</code> or <code>xxxxxxxxxxxx</code>. The word <code>none</code> makes a rule without a source MAC address: <code>src-mac-address none</code>.</li>
+<li>The authenticator sets <code>switch</code> and <code>ports</code> of each rule. It also sets <code>src-mac-address</code> to the address of the device, unless the attribute sets it.</li>
+<li>A rule ends with <code>action drop</code> or <code>action allow</code>. Without an action, the rule allows.</li>
+<li>Several rules are separated with commas.</li>
+</ul>
+<p>Drop ARP frames (EtherType 0x0806, decimal 2054):</p>
+<pre><code class="language-text">Mikrotik-Switching-Filter = &quot;mac-protocol 2054 action drop&quot;
+</code></pre>
+<pre><code class="language-ros">/interface/ethernet/switch/rule/print
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D ;;; dot1x dynamic
+      switch=switch1 ports=ether1 src-mac-address=CC:2D:E0:11:22:33/FF:FF:FF:FF:FF:FF mac-protocol=arp copy-to-cpu=no redirect-to-cpu=no mirror=no new-dst-ports=&quot;&quot;
+</code></pre>
+<p>Allow UDP (IP protocol 17) to the destination port 100 and drop everything else:</p>
+<pre><code class="language-text">Mikrotik-Switching-Filter = &quot;protocol 17 dst-port 100 action allow, action drop&quot;
+</code></pre>
+<pre><code class="language-ros">/interface/ethernet/switch/rule/print
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D ;;; dot1x dynamic
+      switch=switch1 ports=ether1 src-mac-address=CC:2D:E0:11:22:33/FF:FF:FF:FF:FF:FF protocol=udp dst-port=100 copy-to-cpu=no redirect-to-cpu=no mirror=no 
+
+ 1  D ;;; dot1x dynamic
+      switch=switch1 ports=ether1 src-mac-address=CC:2D:E0:11:22:33/FF:FF:FF:FF:FF:FF copy-to-cpu=no redirect-to-cpu=no mirror=no new-dst-ports=&quot;&quot;
+</code></pre>
+<p>Allow only the MAC address of the authenticated device and drop all other source addresses:</p>
+<pre><code class="language-text">Mikrotik-Switching-Filter = &quot;action allow, src-mac-address none action drop&quot;
+</code></pre>
+<pre><code class="language-ros">/interface/ethernet/switch/rule/print 
+Flags: X - disabled, I - invalid; D - dynamic 
+ 0  D ;;; dot1x dynamic
+      switch=switch1 ports=ether1 src-mac-address=CC:2D:E0:01:6D:EB/FF:FF:FF:FF:FF:FF copy-to-cpu=no redirect-to-cpu=no mirror=no 
+
+ 1  D ;;; dot1x dynamic
+      switch=switch1 ports=ether1 copy-to-cpu=no redirect-to-cpu=no mirror=no new-dst-ports=&quot;&quot; 
+</code></pre>
+<h3 id="example">Example</h3>
+<p>The device on <code>ether2</code> can reach only the network 192.168.50.0/24 on the UDP port 50. The switch rules work on hardware offloaded bridge ports, so check the <code>H</code> flag first:</p>
+<pre><code class="language-ros">/interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload 
+ #     INTERFACE                   BRIDGE                   HW  PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+ 0   H ether1                      bridge1                  yes    1     0x80         10                 10       none
+ 1   H ether2                      bridge1                  yes    1     0x80         10                 10       none
+ 2   H ether12                     bridge1                  yes    1     0x80         10                 10       none
+</code></pre>
+<p>The RADIUS server sends the attribute in the Access-Accept:</p>
+<pre><code class="language-text">02:35:38 radius,debug,packet received Access-Accept with id 121 from 10.1.2.3:1812 
+(..)
+02:35:38 radius,debug,packet     MT-Switching-Filter = &quot;mac-protocol 2048 dst-address 192.168.50.0/24 dst-port 50 protocol 17 action allow,action drop&quot;
+</code></pre>
+<p>The authenticator adds two rules:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/rule/print 
+Flags: X - disabled, I - invalid; D - dynamic 
+ 0  D ;;; dot1x dynamic
+      switch=switch1 ports=ether2 src-mac-address=CC:2D:E0:11:22:33/FF:FF:FF:FF:FF:FF mac-protocol=ip dst-address=192.168.50.0/24 protocol=udp dst-port=50 copy-to-cpu=no redirect-to-cpu=no mirror=no 
+
+ 1  D ;;; dot1x dynamic
+      switch=switch1 ports=ether2 src-mac-address=CC:2D:E0:11:22:33/FF:FF:FF:FF:FF:FF copy-to-cpu=no redirect-to-cpu=no mirror=no new-dst-ports=&quot;&quot; 
+</code></pre>
+<h2 id="connect-a-routeros-port-as-a-supplicant">Connect a RouterOS port as a supplicant</h2>
+<p>A router or switch can authenticate its own port to an 802.1X network. The methods are EAP-MSCHAPv2, EAP-PEAP (PEAPv0 with EAP-MSCHAPv2), EAP-TTLS and EAP-TLS.</p>
+<p>With a name and a password:</p>
+<pre><code class="language-ros">/interface/dot1x/client/add interface=ether2 \
+    eap-methods=eap-peap identity=tst password=Example-pass-1
+</code></pre>
+<ul>
+<li>EAP-PEAP, EAP-TTLS and EAP-TLS check the certificate of the RADIUS server. Import the certificate authority that signed it as a trusted <a href="certificates">certificate</a> first. Without it the client stays in <code>authenticating</code>, and the log has <code>no trusted CA certificate found</code>.</li>
+<li>EAP-MSCHAPv2 needs no certificate, but it does not check the server.</li>
+<li><code>anon-identity</code> is the name that EAP-PEAP and EAP-TTLS show outside the encrypted tunnel. Without it, <code>identity</code> is used. With it, the authenticator lists the session with the outer name.</li>
+<li><code>eap-methods</code> can list several methods.</li>
+</ul>
+<p>EAP-TLS uses a client certificate in place of the password. Import the certificate with its private key, and name it in <code>certificate</code>:</p>
+<pre><code class="language-ros">/interface/dot1x/client/add interface=ether2 eap-methods=eap-tls \
+    identity=tst certificate=dot1x-client
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/client/print detail
+0  ;;; d1x
+   interface=ether2 eap-methods=eap-tls identity=&quot;tst&quot; anon-identity=&quot;&quot;
+   certificate=dot1x-client status=&quot;authenticated&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Status</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>authenticated</code></td>
+<td style="text-align: left;">The authentication succeeded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>authenticating</code></td>
+<td style="text-align: left;">The client reached the authenticator and the authentication is in progress.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rejected</code></td>
+<td style="text-align: left;">The server refused the client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>disabled</code></td>
+<td style="text-align: left;">The client is disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>interface is down</code></td>
+<td style="text-align: left;">The interface is not running.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>error</code></td>
+<td style="text-align: left;">An internal error.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">What you see</th>
+<th style="text-align: left;">What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">The port stays <code>un-authorized</code>.</td>
+<td style="text-align: left;">The device has no supplicant. For such devices, use <code>guest-vlan-id</code> or <code>auth-types=dot1x,mac-auth</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The port is <code>rejected-holding</code>, the client is <code>rejected</code>.</td>
+<td style="text-align: left;">The RADIUS server refused the name, the password or the certificate. Check the log of the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The client stays <code>authenticating</code>, and its log has <code>no trusted CA certificate found</code>.</td>
+<td style="text-align: left;">Import the certificate authority of the RADIUS server on the client as a trusted certificate.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The client stays <code>authenticating</code> and the RADIUS server gets no request.</td>
+<td style="text-align: left;">The authenticator cannot reach the server. Check the <code>/radius</code> entry: it needs <code>service=dot1x</code>, the address and the secret. See <a href="radius">RADIUS</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The device is authenticated but not in the VLAN.</td>
+<td style="text-align: left;">The bridge needs <code>vlan-filtering=yes</code>, and the Access-Accept must have the three tunnel attributes. Check them with the <code>radius,debug</code> log topics.</td>
+</tr>
+</tbody>
+</table>
+<p>Keep RSTP or MSTP enabled on a bridge that has Dot1X ports: without a spanning tree protocol, EAP packets from the device may not be accepted. A bridge has <code>protocol-mode=rstp</code> by default. For a port that must not send BPDUs or must ignore received BPDUs, set <code>edge=yes</code> on the bridge port.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../cli-reference/interface/dot1x/server/"><code>/interface/dot1x/server</code></a>, <a href="../cli-reference/interface/dot1x/server/active"><code>/interface/dot1x/server/active</code></a>, <a href="../cli-reference/interface/dot1x/server/state"><code>/interface/dot1x/server/state</code></a>, <a href="../cli-reference/interface/dot1x/client"><code>/interface/dot1x/client</code></a></li>
+<li><a href="radius">RADIUS</a></li>
+<li><a href="user-manager">User Manager</a></li>
+<li><a href="certificates">Certificates</a></li>
+<li><a href="../bridging-and-switching/switch-chip-features">Switch chip features</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

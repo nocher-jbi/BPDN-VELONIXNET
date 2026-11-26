@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHCP, DNS &amp; NAT · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="dhcp-dns-nat">DHCP, DNS &amp; NAT</h1>
+<p>Membuat client di LAN otomatis dapat IP dan bisa internet.</p>
+<h2 id="1-dhcp-server-bagi-ip-ke-client">1. DHCP Server (bagi IP ke client)</h2>
+<pre><code>/ip/pool/add name=dhcp_pool ranges=192.168.88.10-192.168.88.254
+/ip/dhcp-server/add name=dhcp1 interface=bridge1 address-pool=dhcp_pool
+/ip/dhcp-server/network/add address=192.168.88.0/24 gateway=192.168.88.1 \
+    dns-server=192.168.88.1
+</code></pre>
+<p>Cara cepat (interaktif): <code>/ip/dhcp-server/setup</code> lalu tekan Enter tiap nilai.</p>
+<h2 id="2-dhcp-client-router-ambil-ip-dari-upstream">2. DHCP Client (router ambil IP dari upstream)</h2>
+<pre><code>/ip/dhcp-client/add interface=ether1 disabled=no
+</code></pre>
+<p>Cek: <code>/ip/dhcp-client/print</code></p>
+<h2 id="3-dns">3. DNS</h2>
+<pre><code>/ip/dns/set servers=1.1.1.1,8.8.8.8 allow-remote-requests=yes
+</code></pre>
+<ul>
+<li><code>allow-remote-requests=yes</code> → router melayani DNS untuk client LAN.</li>
+<li>Kalau router bukan DNS server, set <code>allow-remote-requests=no</code> biar aman.</li>
+</ul>
+<h2 id="4-nat-masquerade-client-lan-bisa-internet">4. NAT (masquerade) — client LAN bisa internet</h2>
+<p>Lewat satu IP publik dari WAN:</p>
+<pre><code>/ip/firewall/nat/add chain=srcnat out-interface-list=WAN action=masquerade \
+    comment=&quot;NAT ke internet&quot;
+</code></pre>
+<ul>
+<li>Pastikan interface WAN masuk ke interface-list <code>WAN</code>:
+  <code>/interface/list/member/add list=WAN interface=ether1</code> (atau <code>pppoe-out1</code>).</li>
+</ul>
+<h2 id="5-forward-firewall-dasar">5. Forward firewall dasar</h2>
+<p>Router dengan konfigurasi default sudah punya rule forward. Kalau dari nol,
+minimal izinkan established/related dari LAN dan drop sisanya:</p>
+<pre><code>/ip/firewall/filter
+add chain=forward action=accept connection-state=established,related
+add chain=forward action=accept in-interface-list=LAN out-interface-list=WAN
+add chain=forward action=drop connection-state=invalid
+</code></pre>
+<h2 id="6-port-forwarding-akses-server-internal-dari-luar">6. Port forwarding (akses server internal dari luar)</h2>
+<pre><code>/ip/firewall/nat/add chain=dstnat action=dst-nat protocol=tcp dst-port=8080 \
+    to-addresses=192.168.88.10 to-ports=80 comment=&quot;forward web&quot;
+</code></pre>
+<p>Hati-hati: buka port seminimal mungkin.</p>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>11 Network Services → DHCP, DNS</em></li>
+<li>Manual: <em>13 Firewall and QoS → NAT</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

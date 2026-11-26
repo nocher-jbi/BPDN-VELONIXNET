@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Private Networks · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Virtual Private Networks</p>
+      <h1 id="virtual-private-networks">Virtual Private Networks</h1>
+<h1 id="virtual-private-networks_1">Virtual Private Networks</h1>
+<blockquote>
+<p>The VPN and tunnel types of RouterOS and when to use each: WireGuard, IPsec, L2TP, SSTP, OpenVPN, PPPoE, GRE, IPIP, EoIP, 6to4, ZeroTier and PPTP.</p>
+</blockquote>
+<h1 id="virtual-private-networks_2">Virtual Private Networks</h1>
+<p>RouterOS has several ways to connect networks and remote users over another network. Some encrypt the traffic and some only carry it, so choose by what you need:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">You want to</th>
+<th style="text-align: left;">Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Connect two sites or remote users with strong encryption and little configuration</td>
+<td style="text-align: left;"><a href="wireguard">WireGuard</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Connect to devices and services of other vendors with a standard, encrypted VPN</td>
+<td style="text-align: left;"><a href="ipsec/">IPsec</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Give remote users access with a user name and a password, with clients that are built into Windows and other systems</td>
+<td style="text-align: left;"><a href="l2tp/">L2TP</a> with IPsec, or <a href="sstp">SSTP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Give remote users access where only web traffic passes the firewalls</td>
+<td style="text-align: left;"><a href="sstp">SSTP</a>, or <a href="openvpn">OpenVPN</a> over TCP</td>
+</tr>
+<tr>
+<td style="text-align: left;">Serve or connect OpenVPN clients</td>
+<td style="text-align: left;"><a href="openvpn">OpenVPN</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Connect subscribers on an Ethernet network, or connect to an internet provider</td>
+<td style="text-align: left;"><a href="pppoe/">PPPoE</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Carry IP packets between two routers without encryption, or with IPsec added</td>
+<td style="text-align: left;"><a href="gre">GRE</a>, <a href="ipip">IPIP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Carry Ethernet frames between two sites</td>
+<td style="text-align: left;"><a href="eoip">EoIP</a>, or L2TP Ether on the <a href="l2tp/">L2TP</a> page</td>
+</tr>
+<tr>
+<td style="text-align: left;">Carry IPv6 over an IPv4 network</td>
+<td style="text-align: left;"><a href="6to4">6to4</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Join a ZeroTier network</td>
+<td style="text-align: left;"><a href="zerotier">ZeroTier</a></td>
+</tr>
+</tbody>
+</table>
+<p><a href="pptp">PPTP</a> is an old protocol with weak encryption. Use it only for devices that have nothing else.</p>
+<p>The users of the L2TP, SSTP, OpenVPN, PPPoE and PPTP servers are in one database: see <a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</p>
+<hr />
+<h1 id="6to4">6to4</h1>
+<blockquote>
+<p>6to4 in RouterOS: carry IPv6 over an IPv4 network, connect two IPv6 networks with a tunnel, allow IP protocol 41 in the firewall, and get IPv6 from a tunnel broker.</p>
+</blockquote>
+<h1 id="6to4_1">6to4</h1>
+<p>A 6to4 interface carries IPv6 packets inside IPv4 packets (IP protocol 41). Use it to connect IPv6 networks over a network that has only IPv4, for example to get IPv6 from a tunnel broker when your internet provider has none. The interface works in two modes:</p>
+<ul>
+<li>With <code>remote-address</code>, it is a tunnel to one IPv4 address. All IPv6 packets that are routed to the interface go to that address.</li>
+<li>Without <code>remote-address</code>, the router takes the IPv4 destination from the IPv6 destination address. This works for addresses in 2002::/16, where the 32 bits after 2002 are an IPv4 address.</li>
+</ul>
+<p>The tunnel does not encrypt the traffic. Both routers need IPv4 addresses that the other one can reach: over the internet, these must be public addresses.</p>
+<h2 id="connect-two-ipv6-networks">Connect two IPv6 networks</h2>
+<p>In this example the office router has the IPv4 address 203.0.113.1 and the branch router 203.0.113.2. The tunnel itself uses the IPv6 network 2001:db8:ffff::/64.</p>
+<p>On the office router:</p>
+<pre><code class="language-ros">/interface/6to4/add name=6to4-branch local-address=203.0.113.1 \
+    remote-address=203.0.113.2
+/ipv6/address/add address=2001:db8:ffff::1/64 advertise=no \
+    interface=6to4-branch
+</code></pre>
+<p>On the branch router:</p>
+<pre><code class="language-ros">/interface/6to4/add name=6to4-office local-address=203.0.113.2 \
+    remote-address=203.0.113.1
+/ipv6/address/add address=2001:db8:ffff::2/64 advertise=no \
+    interface=6to4-office
+</code></pre>
+<p>Each router can now ping the other one, for example <code>/ping 2001:db8:ffff::2</code> on the office router.</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/6to4/print detail
+Flags: R - RUNNING
+0 R name=&quot;6to4-branch&quot; mtu=auto actual-mtu=1480 local-address=203.0.113.1
+    remote-address=203.0.113.2 dscp=inherit clamp-tcp-mss=yes dont-fragment=no
+</code></pre>
+<p>To reach the IPv6 network behind the other router, add a route. The branch LAN in this example is 2001:db8:b::/64:</p>
+<pre><code class="language-ros">/ipv6/route/add dst-address=2001:db8:b::/64 gateway=2001:db8:ffff::2
+</code></pre>
+<ul>
+<li>The MTU of the interface is 1480 bytes: the IPv4 header takes 20 bytes.</li>
+<li><code>keepalive=10s,3</code> sends a keepalive packet every 10 seconds and removes the running flag of the interface after 3 packets without an answer. Routes through the interface then become inactive.</li>
+</ul>
+<h2 id="allow-the-tunnel-in-the-firewall">Allow the tunnel in the firewall</h2>
+<p>The default firewall drops the packets of the tunnel that come from the internet. Accept IP protocol 41 from the address of the other router, before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept \
+    protocol=ipv6-encap src-address=203.0.113.2 \
+    comment=&quot;accept 6to4&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>The IPv6 packets from the tunnel then pass the IPv6 firewall of the router as packets from the 6to4 interface. Check that the IPv6 firewall rules treat this interface as you intend.</p>
+<h2 id="get-ipv6-from-a-tunnel-broker">Get IPv6 from a tunnel broker</h2>
+<p>A tunnel broker gives you an IPv6 connection through a 6to4 tunnel. This example uses the <a href="https://tunnelbroker.net">Hurricane Electric Tunnel Broker</a>. You need a public IPv4 address, and the broker must be able to ping it.</p>
+<p>When you create a tunnel, the broker shows the addresses of the tunnel and a routed /64 prefix for your network:</p>
+<p><em>[gambar: The tunnel details page of the tunnel broker with the IPv4 and IPv6 addresses of both ends and the routed prefix]</em></p>
+<p>The broker also shows ready commands for RouterOS in its "Example Configurations". In this example your public IPv4 address is 194.105.56.170:</p>
+<pre><code class="language-ros">/interface/6to4/add name=sit1 mtu=1280 \
+    local-address=194.105.56.170 remote-address=216.66.80.90 \
+    comment=&quot;Hurricane Electric IPv6 Tunnel Broker&quot;
+/ipv6/route/add dst-address=2000::/3 gateway=2001:470:27:37e::1
+/ipv6/address/add address=2001:470:27:37e::2/64 advertise=no \
+    interface=sit1
+</code></pre>
+<p>The router now reaches IPv6 hosts, but the devices of the LAN do not. Give the LAN bridge an address from the routed prefix, and announce it to the devices:</p>
+<pre><code class="language-ros">/ipv6/address/add address=2001:470:28:37e::/64 interface=bridge \
+    advertise=yes
+</code></pre>
+<p>Announce a DNS server to the devices, and give the router IPv6 DNS servers. These are the public DNS servers of Google; the broker has its own at 2001:470:20::2:</p>
+<pre><code class="language-ros">/ipv6/nd/set [find default=yes] advertise-dns=yes
+/ip/dns/set allow-remote-requests=yes \
+    servers=2001:4860:4860::8888,2001:4860:4860::8844
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>With a public IPv6 prefix, every device of the LAN has an address that the internet can reach. Check that the IPv6 firewall of the router protects the LAN before you announce the prefix: see <a href="../firewall-and-quality-of-service/firewall/">IPv6 firewall</a>.</p>
+</div>
+<p>Open <a href="https://test-ipv6.com/">https://test-ipv6.com</a> on a device of the LAN to test the connection.</p>
+<h2 id="automatic-6to4-addresses">Automatic 6to4 addresses</h2>
+<p>Without <code>remote-address</code>, an interface needs no tunnel for each destination. Each router makes its IPv6 address from its IPv4 address: 2002, then the IPv4 address in hexadecimal. For 10.0.1.1 this is 2002:a00:101::, and for 10.0.2.1 it is 2002:a00:201::.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>This mode does not pass traffic at present: the routers send the packets, but do not accept the packets that they receive. Use <code>remote-address</code>.</p>
+</div>
+<p><em>[gambar: Two routers with 6to4 addresses made from their IPv4 addresses]</em></p>
+<p>On the first router:</p>
+<pre><code class="language-ros">/interface/6to4/add name=6to4-tunnel1
+/ipv6/address/add address=2002:a00:101::/128 advertise=no \
+    interface=6to4-tunnel1
+/ipv6/route/add dst-address=2002::/16 gateway=6to4-tunnel1
+</code></pre>
+<p>On the second router:</p>
+<pre><code class="language-ros">/interface/6to4/add name=6to4-tunnel1
+/ipv6/address/add address=2002:a00:201::/128 advertise=no \
+    interface=6to4-tunnel1
+/ipv6/route/add dst-address=2002::/16 gateway=6to4-tunnel1
+</code></pre>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../cli-reference/interface/6to4"><code>/interface/6to4</code></a></li>
+<li><a href="gre">GRE</a>, <a href="ipip">IPIP</a>: other tunnels that can carry IPv6</li>
+</ul>
+<hr />
+<h1 id="eoip">EoIP</h1>
+<blockquote>
+<p>Ethernet over IP (EoIP) in MikroTik RouterOS is a Layer 2 tunneling protocol that carries full Ethernet frames between two routers inside GRE packets, extending one broadcast domain across any IP network - with...</p>
+</blockquote>
+<h1 id="eoip_1">EoIP</h1>
+<p>Ethernet over IP (EoIP) is a MikroTik RouterOS protocol that creates an Ethernet tunnel between two routers over an IP network. It is based on GRE encapsulation (RFC 1701 and RFC 1702) and transports full Ethernet frames across routed IP infrastructure, effectively extending one Layer 2 network between remote sites. EoIP uses its own GRE protocol type, so an EoIP tunnel does not interconnect with generic GRE or Ethernet-over-GRE tunnels. EoIP is a MikroTik protocol without a published specification. Some other systems include their own, unofficial implementation of it, for example the <code>eoip</code> interface in OpenBSD; MikroTik does not maintain these implementations and does not guarantee compatibility with them.</p>
+<p>The EoIP tunnel interface appears as a virtual Ethernet interface in RouterOS. Added to a bridge, it forwards all Ethernet traffic — broadcasts, multicast and non-IP protocols — as if the endpoints were connected by a physical Ethernet link. RouterOS connects the two endpoints over any IP transport (a direct link or the internet), so EoIP is typically used to bridge LAN segments across a routed network or a wireless link, and to extend a LAN across an encrypted tunnel when combined with IPsec.</p>
+<p>EoIP is configured in the <a href="../cli-reference/interface/eoip"><code>/interface/eoip</code></a> (over IPv4) and <a href="../cli-reference/interface/eoipv6"><code>/interface/eoipv6</code></a> (over IPv6) menus.</p>
+<h2 id="how-the-tunnel-works">How the tunnel works</h2>
+<p>Over IPv4, the router puts the whole Ethernet frame — destination and source MAC addresses, EtherType and payload — inside a GRE packet (outer IP protocol 47) and sends it to the remote tunnel endpoint. The receiving router decapsulates it and injects the original frame into its local bridge. The tunnel carries whatever the bridge on the other end sends: broadcasts, ARP, RSTP and other protocol frames travel through the tunnel, so the bridged networks behave like one Ethernet segment.</p>
+<p>EoIP over IPv6 (<code>/interface/eoipv6</code>) uses a different encapsulation, not GRE: the Ethernet frame follows a 2-byte header that carries the tunnel ID, in an IPv6 packet with next header 97 (EtherIP). The header layout differs from standard EtherIP (RFC 3378), so an EoIPv6 tunnel does not interconnect with standard EtherIP tunnels or with EoIP over GRE carried in IPv6.</p>
+<p>The router considers the tunnel <strong>running</strong> (the <code>R</code> flag) after the remote end has answered. Keepalive keeps it that way: the router probes the remote end every keepalive interval, and when the peer does not answer for <code>interval × retries</code>, the running flag is removed. Keepalive is enabled by default (<code>10s,10</code>); the minimum interval is 1 second, and setting it to a disabled value (<code>0,0</code>, <code>off</code>, <code>none</code>) is rejected. It can be turned off by unsetting the <code>keepalive</code> property (<code>/interface/eoip/unset &lt;name&gt; keepalive</code> for IPv4 tunnels or the same on <code>/interface/eoipv6</code>) — with keepalive off, the running flag is not removed when the peer stops answering. For faster failover, shorten the interval: with <code>keepalive=1s,2</code> a dead peer is detected within about two seconds.</p>
+<p>Each tunnel is identified by <code>tunnel-id</code> (any value from 0 to 65535). Both ends must use the same <code>tunnel-id</code> for traffic to pass — the router drops tunneled frames and keepalives that carry a different id. With mismatched ids the running flag does not appear, and when the id changes on one end of a running tunnel, the flag is removed after <code>interval × retries</code>. With keepalive turned off, the running flag stays up regardless of the ids.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>EoIP adds 42 bytes to every tunneled frame it sends (8-byte GRE header with key, 14-byte inner Ethernet header, 20-byte outer IP header). With the default <code>mtu=auto</code> the router sizes the tunnel accordingly: <code>actual-mtu</code> is 1458 on a 1500-byte path for EoIP over IPv4. EoIP over IPv6 adds 56 bytes (2-byte EoIPv6 header, 14-byte inner Ethernet header, 40-byte IPv6 header), so its <code>actual-mtu</code> is 1444. In both cases <code>l2mtu</code> stays at 65535. With the default <code>dont-fragment=no</code>, a frame larger than the path can carry unfragmented is split into IP fragments on the outer packet (with <code>dont-fragment=inherit</code> and the DF bit set, the frame is dropped instead). The bridge forwards frames up to <code>l2mtu</code> (65535), so oversized frames reach the tunnel and are fragmented on the outer packet — keep the underlying path MTU large enough for the frames you bridge, and avoid relying on fragmentation where jumbo or full-size frames must cross the tunnel.</p>
+</div>
+<p>All EoIP properties are described in the <a href="../cli-reference/interface/eoip"><code>/interface/eoip</code></a> and <a href="../cli-reference/interface/eoipv6"><code>/interface/eoipv6</code></a> CLI references.</p>
+<h2 id="mac-addresses">MAC addresses</h2>
+<p>Give every tunnel on a bridge its own MAC address — spanning tree and MAC learning assume each bridge port has a distinct one. The tunnel's MAC address is auto-generated as a locally administered address (such as <code>FE:...</code>), and RouterOS accepts any value you set instead. Auto-generated addresses are not guaranteed unique across routers, so with several tunnels on a bridged setup, assign each a distinct address of your own:</p>
+<pre><code class="language-ros">/interface/eoip/set eoip-main mac-address=02:00:5E:80:00:01
+</code></pre>
+<p>Set the locally administered bit (second bit of the first octet, as in <code>02:...</code>) on addresses you assign yourself; the IANA-reserved range <strong>00:00:5E:80:00:00 - 00:00:5E:FF:FF:FF</strong> is set aside for such private unicast addresses. Changing the MAC of a running tunnel briefly drops the running flag until the remote end answers again.</p>
+<h2 id="encrypting-the-tunnel">Encrypting the tunnel</h2>
+<p>Set <code>ipsec-secret</code> on both ends to encrypt the tunnel with a pre-shared key — RouterOS then creates a dynamic IPsec peer and policy for the tunnel automatically.</p>
+<p>On <code>/interface/eoip</code> (IPv4), IPsec and fast path are mutually exclusive: set <code>allow-fast-path=no</code> on the tunnel first, otherwise the router rejects the <code>ipsec-secret</code> value. Removing the secret alone does not re-enable fast path — the block lingers until the tunnel is removed (which also removes the dynamic IPsec objects). <code>/interface/eoipv6</code> has no <code>allow-fast-path</code> property, so IPsec works without that step.</p>
+<h2 id="example-bridge-two-sites-over-a-wireless-link">Example: bridge two sites over a wireless link</h2>
+<p>This example bridges the LANs of two sites over a wireless point-to-point link, so both sites share one Layer 2 broadcast domain. Wireless stations cannot be bridged directly; without WDS, an EoIP tunnel over the wireless link achieves the same result.</p>
+<p><em>[gambar: EoIP tunnel between two routers]</em></p>
+<p>The wireless link between the routers is assumed to be established — only the EoIP and bridging configuration is shown here. The same commands work over any IP link between the routers, wired or over the internet.</p>
+<p>Create the EoIP tunnel on the AP router:</p>
+<pre><code class="language-ros">/interface/eoip/add name=eoip-remote remote-address=10.0.0.2 tunnel-id=1
+</code></pre>
+<p>The names are arbitrary (<code>eoip-remote</code> on the AP, <code>eoip-main</code> on the station) — what matters is that both <code>tunnel-id</code>s match and each <code>remote-address</code> points at the other router.</p>
+<p>Verify the tunnel is created — the <code>R</code> flag appears once the remote end answers:</p>
+<pre><code class="language-ros">/interface/eoip/print
+</code></pre>
+<p>The output on a running tunnel looks like this (match the <code>R</code> flag, <code>mtu=auto</code> with <code>actual-mtu=1458</code> on a 1500-byte path, and the locally administered <code>FE:...</code> MAC):</p>
+<pre><code class="language-text">Flags: R - RUNNING
+0 R name=&quot;eoip-remote&quot; mtu=auto actual-mtu=1458 l2mtu=65535
+    mac-address=FE:7D:4A:93:14:56 arp=enabled arp-timeout=auto arp-accept=no
+    loop-protect=default loop-protect-status=off loop-protect-send-interval=5s
+    loop-protect-disable-time=5m local-address=0.0.0.0 remote-address=10.0.0.2
+    tunnel-id=1 keepalive=10s,10 dscp=inherit clamp-tcp-mss=yes
+    dont-fragment=no allow-fast-path=yes
+</code></pre>
+<p>Create the matching tunnel on the station router — the <code>tunnel-id</code> and the <code>remote-address</code> must point at the other end:</p>
+<pre><code class="language-ros">/interface/eoip/add name=eoip-main remote-address=10.0.0.1 tunnel-id=1
+</code></pre>
+<p>Bridge the local interfaces with the EoIP tunnel. Check which bridge already carries the LAN ports on each router:</p>
+<pre><code class="language-ros">/interface/bridge/port/print
+</code></pre>
+<p>On the AP router, add the EoIP interface to the bridge that carries the local LAN — the default RouterOS configuration already has one:</p>
+<pre><code class="language-ros">/interface/bridge/port/add bridge=bridge1 interface=eoip-remote
+</code></pre>
+<p>On the station router, add the EoIP tunnel to the same LAN bridge:</p>
+<pre><code class="language-ros">/interface/bridge/port/add bridge=bridge1 interface=eoip-main
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>On the default RouterOS configuration all LAN ports are already in the default bridge, so the EoIP tunnel only joins that bridge — an interface can belong to only one bridge, so do not create a second bridge for it. If a router instead starts from an empty configuration, create the bridge and add both the LAN port and the EoIP tunnel to it:</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1
+/interface/bridge/port/add bridge=bridge1 interface=ether2
+/interface/bridge/port/add bridge=bridge1 interface=eoip-main
+</code></pre>
+<p>Once both sites share one broadcast domain, only one router may act as DHCP server and gateway — the default RouterOS configuration runs a DHCP server on its LAN bridge, so disable it on the second router.</p>
+</div>
+<p>Both sites are now in the same Layer 2 broadcast domain. Verify it by assigning addresses from one subnet to the bridge at each end and pinging across the tunnel — on the AP router:</p>
+<pre><code class="language-ros">/ip/address/add address=10.1.1.10/24 interface=bridge1
+</code></pre>
+<p>and on the station router:</p>
+<pre><code class="language-ros">/ip/address/add address=10.1.1.11/24 interface=bridge1
+</code></pre>
+<p>From the station router, a ping to the AP router's bridge address crosses the tunnel:</p>
+<pre><code class="language-ros">/ping 10.1.1.10
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<ul>
+<li><strong>The tunnel has no running flag.</strong> The remote end has not answered: check with <code>/ping &lt;remote-address&gt;</code> that the tunnel endpoint is reachable, that the tunnel exists on both routers, and that <code>local-address</code> is set correctly. The running flag appears only after the remote end responds. A common cause is mismatched <code>tunnel-id</code> values on the two ends, because keepalives with a different id are dropped: check the <code>tunnel-id</code> on both routers (<code>/interface/eoip/print</code>, valid values 0 to 65535) and make them match. Also check that nothing filters IP protocol 47 (GRE), or IP protocol 97 for EoIPv6, between the endpoints and that the tunnel traffic is not NAT-ed.</li>
+<li><strong>The running flag is up but nothing passes through.</strong> With keepalive turned off, the running flag stays up even when the <code>tunnel-id</code> values do not match, so compare them on both routers.</li>
+<li><strong>Large traffic stalls or disappears.</strong> If the path between the endpoints cannot carry a full-size frame unfragmented, the tunnel fragments the outer packet, and some paths drop fragments or reorder them. Raise the path MTU where possible (for example jumbo frames on the connecting links) and avoid sizing the tunnel above the path.</li>
+<li><strong>VLAN tags do not behave on large tagged traffic.</strong> On top of paths with a tight MTU, tagged VLAN frames add another 4 bytes on top of the EoIP overhead, and in some cases the MSS clamp does not apply to tagged traffic, so large TCP connections over the tunnel can stall. Carry tagged traffic only where the path MTU leaves room for the extra bytes, or lower the MSS at the endpoints.</li>
+<li><strong>Duplicates, flapping or loops on the bridge.</strong> Bridged tunnels share the L2 domain, so every tunnel needs its own MAC address, and when several tunnels are bridged together spanning tree (RSTP) must be able to break the loop — it runs over the tunnel by default, so do not disable it.</li>
+</ul>
+<hr />
+<h1 id="gre">GRE</h1>
+<blockquote>
+<p>Generic Routing Encapsulation (GRE) is a tunneling protocol that encapsulates IP over IP as a virtual point-to-point link in RouterOS, with keepalive monitoring, MTU and MSS handling, DSCP settings and an optional...</p>
+</blockquote>
+<h1 id="gre_1">GRE</h1>
+<p>Generic Routing Encapsulation (GRE) is a tunneling protocol originally developed by Cisco to encapsulate a wide variety of network layer protocols over an IP network. It creates a virtual point-to-point link between tunnel endpoints, allowing different protocol traffic to be carried across routed infrastructure.</p>
+<p>In RouterOS, GRE is implemented as virtual interfaces in the <a href="../cli-reference/interface/gre"><code>/interface/gre</code></a> (over IPv4) and <a href="../cli-reference/interface/gre6"><code>/interface/gre6</code></a> (over IPv6) menus. The interfaces are routed (Layer 3) tunnels: a GRE tunnel carries only IP and IPv6 packets between the two endpoints. For Layer 2 connectivity over an IP network (bridging Ethernet frames), use <a href="./eoip">EoIP</a> instead.</p>
+<h2 id="how-the-tunnel-works_1">How the tunnel works</h2>
+<p>GRE is a stateless tunnel, similar in behavior to <a href="./ipip">IPIP</a> and EoIP. No session state is maintained between the endpoints: the router keeps forwarding packets toward the remote endpoint even if it becomes unreachable, and the tunneled traffic is dropped until connectivity is restored or the tunnel is reconfigured.</p>
+<p>The router considers the tunnel <strong>running</strong> (the <code>R</code> flag) after the remote end has responded at least once. Keepalive monitors the remote end from then on: the router sends GRE echo probes to the remote-address every keepalive interval and answers the remote end's probes while the tunnel is up. Keepalive is enabled by default (<code>10s,10</code> — interval 10 seconds, 10 retries) and the interval can be as short as 1 second for faster detection (a 0-second setting is rejected). If the remote end stops answering the probes, the router removes the running flag after the configured time and retries — about 100 s with the default, faster with a shorter interval — and the tunneled traffic is dropped until the remote end answers again. Without keepalive (unset) nothing removes the running flag, so a tunnel to an unreachable remote end stays running. If an automated failover must react to a dead tunnel, watch the running flag (its removal follows the keepalive timeouts) or probe the remote end directly.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>A GRE tunnel adds per-packet overhead: over IPv4 24 bytes (4-byte GRE header + 20-byte IP header), over IPv6 44 bytes (4-byte GRE header + 40-byte IPv6 header). With the default <code>mtu=auto</code> the router sets the tunnel MTU accordingly — <code>actual-mtu</code> is 1476 on a 1500-byte interface for GRE over IPv4 and 1456 for GRE over IPv6. The tunnel carries only IP and IPv6 packets (EtherType 0x0800 and 0x86DD). Do not use the "Check gateway" option <code>arp</code> when a GRE tunnel is used as a route gateway.</p>
+</div>
+<p>All GRE properties are described in the <a href="../cli-reference/interface/gre"><code>/interface/gre</code></a> and <a href="../cli-reference/interface/gre6"><code>/interface/gre6</code></a> CLI references.</p>
+<h2 id="example-connect-two-sites">Example: connect two sites</h2>
+<p>The example connects two sites over the internet with a GRE tunnel and gives each site Layer 3 access to the other site's local network.</p>
+<p><em>[gambar: GRE tunnel between two sites]</em></p>
+<p><strong>Site1</strong> has the local network <strong>10.1.101.0/24</strong>, <strong>Site2</strong> the local network <strong>10.1.202.0/24</strong>. The tunnel endpoints are the routers' public addresses, here <strong>192.168.80.1</strong> (Site1) and <strong>192.168.90.1</strong> (Site2) — substitute your routers' own internet addresses.</p>
+<p>Create the tunnel on the Site1 router:</p>
+<pre><code class="language-ros">/interface/gre/add name=myGre \
+    remote-address=192.168.90.1 local-address=192.168.80.1
+</code></pre>
+<p>And on the Site2 router:</p>
+<pre><code class="language-ros">/interface/gre/add name=myGre \
+    remote-address=192.168.80.1 local-address=192.168.90.1
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The example leaves keepalive at its default (<code>10s,10</code>). The tunnel shows the running flag after the remote end has answered, and keeps it while the remote end answers the probes. GRE is stateless: if one end becomes unreachable, the running flag is removed after the keepalive timeouts (about 100 s with the default), and traffic into the tunnel is dropped until the remote end is reachable again.</p>
+</div>
+<p>Both ends now have a tunnel, but need addresses to route over it. Give the tunnel ends addresses from a private range, and add routes to the remote site's local network. On the Site1 router:</p>
+<pre><code class="language-ros">/ip/address/add address=172.16.1.1/30 interface=myGre
+/ip/route/add dst-address=10.1.202.0/24 gateway=172.16.1.2
+</code></pre>
+<p>On the Site2 router:</p>
+<pre><code class="language-ros">/ip/address/add address=172.16.1.2/30 interface=myGre
+/ip/route/add dst-address=10.1.101.0/24 gateway=172.16.1.1
+</code></pre>
+<p>At this point both sites have Layer 3 connectivity over the GRE tunnel. Verify it end to end — the ping to the far tunnel address must be answered and the tunnel must show the <code>R</code> flag on both sites:</p>
+<pre><code class="language-ros">/ping 172.16.1.2
+/interface/gre/print where name=myGre
+</code></pre>
+<h2 id="troubleshooting_1">Troubleshooting</h2>
+<ul>
+<li><strong>The tunnel has no running flag.</strong> The remote end has not answered yet. Check with <code>/ping &lt;remote-address&gt;</code> that the tunnel endpoint is reachable, that the remote router has a matching tunnel with <code>remote-address</code> pointing back, and that the tunnel has <code>local-address</code> set correctly. The running flag appears only after the remote end responds.</li>
+<li><strong>Traffic through the tunnel is lost.</strong> GRE is stateless: when the remote end is unreachable, the router keeps sending tunneled traffic into the tunnel and it is dropped. Check the reachability of <code>remote-address</code>, and compare the tunnel's <code>actual-mtu</code> against the path MTU between the sites (an MTU mismatch drops oversized packets).</li>
+<li><strong>The tunnel is up but no traffic passes between the sites.</strong> The WAN firewalls between the sites must allow GRE (IP protocol 47) between the two tunnel endpoints — and the IPsec ports if the tunnel has an <code>ipsec-secret</code> — and the tunneled traffic must not be NATed.</li>
+<li><strong>The remote end's address changed.</strong> <code>remote-address</code> takes an IP address, not a hostname; if a site's public address changes, update the tunnel on the other end or use an endpoint with a stable address.</li>
+<li><strong>Non-IP traffic does not go through.</strong> GRE is a routed tunnel and carries only IP and IPv6 packets. To bridge Ethernet frames over an IP network, use <a href="./eoip">EoIP</a>.</li>
+</ul>
+<hr />
+<h1 id="ipip">IPIP</h1>
+<blockquote>
+<p>IPIP (IP-in-IP) tunnels carry IPv4 packets inside IPv4 or IPv6 packets between two routers. The page covers encapsulation, a routed-site example, keepalive, MTU and fragmentation, firewall matching, IPsec protection...</p>
+</blockquote>
+<h1 id="ipip_1">IPIP</h1>
+<p>IPIP (IP-in-IP) places an IPv4 packet inside another IP header and sends it between two tunnel
+endpoints. Use it for a routed link between two networks over a plain IP path, for example a
+site-to-site connection that does not need Layer 2 or encryption. The tunnel carries IPv4 only and
+adds 20 bytes of overhead over an IPv4 path, or 40 bytes over an IPv6 path.</p>
+<p>An IPIP interface is a virtual interface: assign it an address and create routes through it, as with a
+physical link. IPIP has no encryption, authentication or integrity protection. Protect the tunnel
+with IPsec, or use it only on a trusted path. For a tunnel that also carries IPv6, use
+<a href="./gre">GRE</a>; to extend a Layer 2 segment, use <a href="./eoip">EoIP</a>; for an encrypted tunnel without IPsec,
+use <a href="./wireguard">WireGuard</a>.</p>
+<p>RouterOS has two IPIP menus:</p>
+<ul>
+<li><a href="../cli-reference/interface/ipip"><code>/interface/ipip</code></a> carries IPv4 inside IPv4.</li>
+<li><a href="../cli-reference/interface/ipipv6"><code>/interface/ipipv6</code></a> carries IPv4 inside IPv6.</li>
+</ul>
+<p>Both menus share most properties; <code>/interface/ipip</code> has <code>allow-fast-path</code> and <code>/interface/ipipv6</code>
+does not. Before you begin, make sure <code>local-address</code> is an address already assigned to the router,
+each router has a route to the other router's endpoint address that does not use the tunnel, and the
+path passes the tunnel packets. The interface name is local and does not have to match on the other
+router.</p>
+<h2 id="how-the-tunnel-works_2">How the tunnel works</h2>
+<p>The sending router takes an IPv4 packet from the tunnel interface, puts it after a new outer IPv4
+header and sends the result to the remote endpoint. The outer header uses IP protocol 4. The
+receiving router removes the outer header and delivers the original packet, so the tunneled packet
+keeps its addresses and DSCP value.</p>
+<p>For <code>/interface/ipipv6</code>, the outer header is IPv6 and its next header is 4 (IPIP). The inner packet
+is still IPv4.</p>
+<p>RouterOS does not negotiate the tunnel: both endpoints must be configured, with each router's
+<code>local-address</code> set to the address that the other router reaches as <code>remote-address</code>. The tunnel
+then carries packets in both directions; the routes for the LANs are configured separately.</p>
+<p>The interface shows the <code>R</code> (running) flag when the tunnel is up. Keepalive decides when the
+flag is removed: with keepalive enabled, the router sends a probe to the remote endpoint and keeps
+the flag only while the peer answers. Without keepalive, the router does not remove the flag when
+the peer stops answering.</p>
+<p>The outer header takes space from the path MTU. With the default <code>mtu=auto</code>, the router sets
+<code>actual-mtu</code> to the MTU of the underlying interface minus 20 bytes (IPv4) or 40 bytes (IPv6): 1480
+and 1460 on a 1500-byte path. A fixed <code>mtu</code> overrides this value.</p>
+<p>By default <code>dscp=inherit</code> copies the DSCP value of the tunneled packet to the outer header. Set
+<code>dscp</code> to a number to mark the outer packets with that value instead, for example <code>dscp=46</code> for
+traffic that the network should prioritize.</p>
+<h2 id="connect-two-sites-with-an-ipip-tunnel">Connect two sites with an IPIP tunnel</h2>
+<p>The example connects R1 (LAN 192.168.10.0/24) and R2 (LAN 192.168.20.0/24) over an IPv4 path. The
+routers reach each other at 192.0.2.1 and 192.0.2.2 on a direct link, and their LAN addresses are
+192.168.10.1 and 192.168.20.1. The example assumes those addresses are already configured; replace
+them with your own, and make sure the two LAN subnets differ. The tunnel uses the subnet
+10.10.10.0/30, which gives one address to each end.</p>
+<p>On routers with the default firewall, accept protocol 4 from the peer before the tunnel can come up
+(see the firewall section below).</p>
+<p>On R1:</p>
+<pre><code class="language-ros">/interface/ipip/add name=ipip1 local-address=192.0.2.1 \
+    remote-address=192.0.2.2
+/ip/address/add address=10.10.10.1/30 interface=ipip1
+/ip/route/add dst-address=192.168.20.0/24 gateway=10.10.10.2
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/ipip/add name=ipip1 local-address=192.0.2.2 \
+    remote-address=192.0.2.1
+/ip/address/add address=10.10.10.2/30 interface=ipip1
+/ip/route/add dst-address=192.168.10.0/24 gateway=10.10.10.1
+</code></pre>
+<p>The static route sends the other site's LAN through the tunnel. Each router needs its own route;
+configuring one router does not make the return path work.</p>
+<p>Check the interface and the tunnel address:</p>
+<pre><code class="language-ros">/interface/ipip/print
+Flags: R - RUNNING
+Columns: NAME, MTU, ACTUAL-MTU, LOCAL-ADDRESS, REMOTE-ADDRESS, KEEPALIVE, 
+         DSCP
+#   NAME   MTU   ACTUAL-MTU  LOCAL-ADDRESS  REMOTE-ADDRESS  KEEPALIVE  DSCP   
+0 R ipip1  auto        1480  192.0.2.1      192.0.2.2       10s,10     inherit
+</code></pre>
+<p>The <code>R</code> flag appears after the remote endpoint answers a keepalive probe; with the default <code>10s,10</code>,
+allow up to 10 seconds. Test the tunnel and the route:</p>
+<pre><code class="language-ros">/ping 10.10.10.2 count=3
+  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 10.10.10.2                                 56  64 351us     
+    1 10.10.10.2                                 56  64 257us     
+    2 10.10.10.2                                 56  64 299us     
+    sent=3 received=3 packet-loss=0% min-rtt=257us avg-rtt=302us 
+   max-rtt=351us
+
+/ping 192.168.20.1 count=3
+  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 192.168.20.1                               56  64 198us     
+    1 192.168.20.1                               56  64 304us     
+    2 192.168.20.1                               56  64 311us     
+    sent=3 received=3 packet-loss=0% min-rtt=198us avg-rtt=271us 
+   max-rtt=311us
+</code></pre>
+<p>The first ping reaches R2's tunnel address, the second one reaches R2's LAN address through the
+tunnel. Test from a host on each LAN too, because a ping from the router does not exercise
+forwarding.</p>
+<h2 id="keepalive">Keepalive</h2>
+<p>Keepalive is on by default (<code>10s,10</code>): the router probes the remote endpoint every 10 seconds and
+removes the <code>R</code> flag after 10 unanswered probes, so about 100 seconds after the peer stops
+answering. Shorten it for faster failover, for example <code>keepalive=1s,2</code> detects a dead peer in
+about two seconds. The interval must be at least 1 second and the retry count at least 1.</p>
+<p>With keepalive enabled, the remote end must answer RouterOS keepalive probes. A Linux <code>ipip</code> tunnel
+does not answer them. The tunnel then never reaches the <code>R</code> flag, even though the peer is reachable,
+and no traffic passes. Disable keepalive on the RouterOS side in that case:</p>
+<pre><code class="language-ros">/interface/ipip/unset ipip1 keepalive
+</code></pre>
+<p>For <code>/interface/ipipv6</code>, use the same command on that menu. Without keepalive, the <code>R</code> flag stays
+set when the peer stops answering, so the tunnel cannot detect a dead peer on its own. Use it when
+the peer does not support RouterOS keepalive.</p>
+<h2 id="mtu-and-fragmentation">MTU and fragmentation</h2>
+<p><code>actual-mtu</code> is the largest inner packet that the tunnel accepts. With <code>mtu=auto</code>, it follows the MTU
+of the underlying interface: when that interface's MTU is smaller, <code>actual-mtu</code> drops by the same
+amount. Auto does not track a smaller MTU on the path beyond the router. If the path MTU is lower,
+or you want a fixed value, set <code>mtu</code> explicitly:</p>
+<pre><code class="language-ros">/interface/ipip/set ipip1 mtu=1400
+</code></pre>
+<p>Packets larger than the tunnel MTU are fragmented on the outer packet when the outer header allows
+fragmentation. To keep TCP connections working across the tunnel, <code>clamp-tcp-mss</code> (enabled by
+default) lowers the MSS in received TCP SYN packets to fit the tunnel; UDP and ICMP traffic needs a
+smaller <code>mtu</code> instead.</p>
+<p>The <code>dont-fragment</code> property controls the DF bit in the outer header: <code>no</code> (the default) clears it,
+so the outer packet can be fragmented; <code>inherit</code> copies the DF flag from the tunneled packet and
+drops an inner packet whose DF bit is set when it exceeds the tunnel MTU.</p>
+<h2 id="filter-tunnel-traffic">Filter tunnel traffic</h2>
+<p>The firewall protocol name <code>ipip</code> in RouterOS means IP protocol 94. An IPIP tunnel itself uses IP
+protocol 4, which the firewall names <code>ipencap</code>. Use <code>protocol=ipencap</code> in firewall rules; a rule with
+<code>protocol=ipip</code> never matches an IPIP tunnel.</p>
+<p>On a router with the default firewall, the input chain drops packets that do not come from the LAN,
+including tunnel packets addressed to the router. Accept them from the remote endpoint before that
+rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=ipencap \
+    src-address=192.0.2.2 \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>Use the remote endpoint address in <code>src-address</code> and create a rule for each peer. If the router does
+not have that default rule, add the accept rule at the top of the input chain instead.</p>
+<p>With <code>allow-fast-path=yes</code> (the default), packets of an established flow can bypass the firewall,
+so the rule counters do not show every packet. Set <code>allow-fast-path=no</code> on the tunnel if every
+packet must pass the firewall; see
+<a href="../firewall-and-quality-of-service/packet-flow-in-routeros">Packet flow in RouterOS</a>.</p>
+<h2 id="protect-the-tunnel-with-ipsec">Protect the tunnel with IPsec</h2>
+<p>Set the same <code>ipsec-secret</code> on both ends to encrypt the tunnel. RouterOS adds a dynamic IPsec peer
+and a transport-mode policy for the tunnel packets; keepalive packets are protected too.</p>
+<p>On <code>/interface/ipip</code>, set <code>allow-fast-path=no</code> first. RouterOS does not support FastPath together
+with IPsec, and setting the secret while FastPath is enabled fails with
+<code>cannot enable fastpath together with ipsec yet</code>:</p>
+<pre><code class="language-ros">/interface/ipip/set ipip1 allow-fast-path=no
+/interface/ipip/set ipip1 ipsec-secret=change-this-secret
+</code></pre>
+<p><code>/interface/ipipv6</code> has no <code>allow-fast-path</code> property, so set <code>ipsec-secret</code> directly there. Run the
+commands on R1 and R2, with the same secret. Check that the peer is established:</p>
+<pre><code class="language-ros">/ip/ipsec/active-peers/print
+Flags: R - RESPONDER
+Columns: STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS
+#    STATE        UPTIME  PH2-TOTAL  REMOTE-ADDRESS
+;;; ipip1
+0    established  14s             2  192.0.2.2     
+;;; ipip1
+1 R  established  8s                 192.0.2.2     
+</code></pre>
+<p>Both ends have the secret, so each router lists two sessions: the one it started and the one it
+answered, marked <code>R - RESPONDER</code>. An <code>established</code> state with a non-zero <code>PH2-TOTAL</code> shows that the
+tunnel is encrypted.</p>
+<p>IPsec adds its own overhead to the outer packet, so <code>actual-mtu</code> becomes smaller: 1438 bytes on a
+1500-byte path with the default proposal in this example. Adjust <code>mtu</code> or the MSS if connections
+through the tunnel stall on large packets.</p>
+<p>To remove the encryption and the dynamic IPsec entries, unset the secret on both ends:</p>
+<pre><code class="language-ros">/interface/ipip/unset ipip1 ipsec-secret
+</code></pre>
+<p>For <code>/interface/ipipv6</code>, unset the secret on that menu instead.</p>
+<h2 id="ipv4-over-ipv6">IPv4 over IPv6</h2>
+<p><code>/interface/ipipv6</code> carries IPv4 over an IPv6 path, for example an IPv4 site-to-site link across an
+IPv6-only provider. Use the IPv6 addresses of the two endpoints; the inner configuration is IPv4.
+The example puts the endpoints on a direct link with global addresses; in practice use the addresses
+your provider assigns.</p>
+<p>On R1:</p>
+<pre><code class="language-ros">/interface/ipipv6/add name=ipipv6-1 local-address=2001:db8:0:5::1 \
+    remote-address=2001:db8:0:5::2
+/ip/address/add address=10.20.20.1/30 interface=ipipv6-1
+</code></pre>
+<p>On R2, swap the endpoint addresses and the tunnel address:</p>
+<pre><code class="language-ros">/interface/ipipv6/add name=ipipv6-1 local-address=2001:db8:0:5::2 \
+    remote-address=2001:db8:0:5::1
+/ip/address/add address=10.20.20.2/30 interface=ipipv6-1
+</code></pre>
+<pre><code class="language-ros">/interface/ipipv6/print
+Flags: R - RUNNING
+Columns: NAME, MTU, ACTUAL-MTU, LOCAL-ADDRESS, REMOTE-ADDRESS, KEEPALIVE, 
+         DSCP
+#   NAME      MTU   ACTU  LOCAL-ADDRESS    REMOTE-ADDRESS   KEEPALIVE  DSCP   
+0 R ipipv6-1  auto  1460  2001:db8:0:5::1  2001:db8:0:5::2  10s,10     inherit
+
+/ping 10.20.20.2 count=3
+  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 10.20.20.2                                 56  64 380us     
+    1 10.20.20.2                                 56  64 402us     
+    2 10.20.20.2                                 56  64 382us     
+    sent=3 received=3 packet-loss=0% min-rtt=380us avg-rtt=388us 
+   max-rtt=402us
+</code></pre>
+<p><code>actual-mtu</code> is 1460 on a 1500-byte IPv6 path: the 40-byte IPv6 header is larger than the 20-byte
+IPv4 header. Keepalive, DSCP and MTU work as for <code>/interface/ipip</code>; IPsec works without the
+<code>allow-fast-path</code> step. Create routes for the LANs as in the IPv4 example.</p>
+<h2 id="troubleshooting_2">Troubleshooting</h2>
+<h3 id="the-tunnel-has-no-r-flag">The tunnel has no <code>R</code> flag</h3>
+<ul>
+<li><strong>Disabled interface.</strong> A disabled interface shows the <code>X</code> flag in <code>/interface/ipip/print</code>. Enable
+  it and allow up to one keepalive interval (10 seconds with the default) for the flag to appear.</li>
+<li><strong>Keepalive and the peer.</strong> The endpoint can be reachable but not answer RouterOS keepalive
+  probes, as a Linux <code>ipip</code> tunnel does. Disable keepalive with
+  <code>/interface/ipip/unset &lt;name&gt; keepalive</code> and ping the remote tunnel address: the flag no longer
+  proves the path, so the ping does.</li>
+<li><strong>Endpoint addresses.</strong> Each router must reach the other's <code>remote-address</code> through a route that
+  does not use the tunnel itself, and <code>local-address</code> must be an address assigned to the router.
+  Test the path with <code>/ping &lt;remote-address&gt; src-address=&lt;local-address&gt;</code>.</li>
+<li><strong>Firewall.</strong> The input chain must accept <code>protocol=ipencap</code> from the remote endpoint. A rule
+  written as <code>protocol=ipip</code> matches protocol 94 and does not help.</li>
+<li><strong>Both ends.</strong> The remote router must have a tunnel with the local and remote addresses reversed.
+  With keepalive enabled, a tunnel with only one end configured never gets the flag.</li>
+</ul>
+<h3 id="the-tunnel-is-running-but-traffic-does-not-pass">The tunnel is running but traffic does not pass</h3>
+<ul>
+<li><strong>Return route.</strong> Create a route on the remote router for the local LAN. A ping that works in one
+  direction and fails in the other usually misses this route.</li>
+<li><strong>Tunnel addresses.</strong> The addresses at the two ends of the tunnel must be in the same subnet and
+  must not overlap with a LAN.</li>
+<li><strong>NAT or firewall on the path.</strong> The outer packets are ordinary IP packets from the endpoint
+  addresses; a NAT rule or firewall on the path that blocks protocol 4 stops the tunnel.</li>
+<li><strong>IPsec mismatch.</strong> Both ends need the same <code>ipsec-secret</code>; with a secret on one end only, ping
+  over the tunnel fails in both directions.</li>
+</ul>
+<h3 id="large-packets-fail">Large packets fail</h3>
+<p>Reduce <code>mtu</code> on both ends to the largest inner packet that passes. For TCP, <code>clamp-tcp-mss=yes</code>
+negotiates a smaller MSS; UDP and ICMP traffic needs the smaller <code>mtu</code>. A ping with
+<code>size=1492 do-not-fragment</code> fails on a 1500-byte path because the packet exceeds the 1480-byte
+tunnel MTU. With IPsec, use a smaller value still, because the IPsec header and trailer add to the
+outer packet.</p>
+<h3 id="setting-the-ipsec-secret-fails">Setting the IPsec secret fails</h3>
+<p>On <code>/interface/ipip</code>, setting the secret fails while FastPath is enabled. Set <code>allow-fast-path=no</code>
+first; the error message is <code>cannot enable fastpath together with ipsec yet</code>.</p>
+<h2 id="technical-details">Technical details</h2>
+<p>An IPIP packet is an outer IPv4 header with protocol 4 followed by the unchanged inner IPv4 packet.
+The header adds 20 bytes, so the tunnel MTU is 20 bytes below the path MTU: a packet at the tunnel
+MTU (1480 bytes on a 1500-byte path) fills the path exactly. <code>/interface/ipipv6</code> uses an outer IPv6
+header with next header 4 and adds 40 bytes.</p>
+<p>A keepalive probe is an outer packet with an empty payload: for <code>/interface/ipip</code>, an IPv4 packet
+with protocol 4 and an inner IPv4 header without data (40-byte outer packet); for
+<code>/interface/ipipv6</code>, an IPv6 packet with next header 41 instead of the next header 4 used for data.
+The probe travels from the local endpoint to the remote endpoint, and the running flag remains while
+replies arrive.</p>
+<p>IPIP is stateless: there is no session establishment, and the running flag is the only state. The
+tunnel does not fragment the inner packet: packets above the tunnel MTU rely on outer fragmentation
+or on the sender reducing its packet size.</p>
+<p>The IPv4 encapsulation is defined in <a href="https://www.rfc-editor.org/rfc/rfc2003">RFC 2003</a>. The menus
+and every property are described in the <a href="../cli-reference/interface/ipip"><code>/interface/ipip</code></a> and
+<a href="../cli-reference/interface/ipipv6"><code>/interface/ipipv6</code></a> CLI references.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

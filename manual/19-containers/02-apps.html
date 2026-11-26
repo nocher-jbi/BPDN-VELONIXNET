@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apps · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Containers</p>
+      <h1 id="apps">Apps</h1>
+<h1 id="apps_1">Apps</h1>
+<blockquote>
+<p>Install, manage, and create container applications with the RouterOS Apps menu, including the setup wizard and custom compose YAML files.</p>
+</blockquote>
+<h1 id="apps_2">Apps</h1>
+<p>The Apps menu provides a catalog of applications you can run on RouterOS. An app can contain one or more containers, and RouterOS creates the required container configuration, VETH interface, bridge port, firewall rules, and reverse proxy entry. The catalog is maintained by MikroTik and sources images from Docker Hub, GCR, Quay, and other registries. You can edit an app's configuration before you enable it and view its YAML at any time.</p>
+<p>The <a href="available-apps">list of available Apps</a> shows the catalog. The same YAML format is used by catalog apps and custom apps.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>Install the <code>container</code> package.</li>
+<li>Use an arm64, arm32 or x86 device. Devices with an EN7562CT CPU such as hEX Refresh run only arm32v5 images, so only apps that list <code>arm_v5</code> in <code>supported-archs</code> are available.</li>
+<li>Enable container mode with <code>/system/device-mode/update container=yes</code>. This requires physical access and a reset-button confirmation or a cold reboot on x86. See <a href="../../system-information-and-utilities/device-mode/">Device mode</a>.</li>
+<li>Format a storage disk with ext4, btrfs, or xfs and mount it in <code>/disk</code>. External storage is recommended. Devices with 16 MB SPI flash need external storage for container images.</li>
+<li>Provide enough RAM for the containers. The app's current memory use is shown as <code>memory-current</code> in <code>/app/print detail</code>.</li>
+<li>Configure the app disk, router IP address, and LAN bridge in <code>/app/settings</code> or with the <a href="#setup-wizard">setup wizard</a>.</li>
+<li>For HTTPS app URLs, the router needs a working app certificate from the cloud service.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Running third-party container images can expose the device to the same security risks as the images themselves. A compromised router can also use containers to install malicious software. Review <a href="../">Container</a> before you enable container mode.</p>
+</div>
+<h2 id="setup-wizard">Setup wizard</h2>
+<p>Run <code>/app/setup</code> in the terminal or select Setup in WebFig. The wizard writes the values to <code>/app/settings</code>, where you can change them later.</p>
+<h3 id="select-the-app-disk">Select the app disk</h3>
+<p>The wizard lists disks that are formatted and mounted. Format a disk in <code>/disk</code> with ext4, btrfs, or xfs before you run the wizard.</p>
+<p>Use a disk with at least 100 MB/s sequential read/write speed and 10,000 random IOPS. Verify the disk with <code>/disk/test</code>.</p>
+<p>The wizard sets the media path to <code>&lt;disk&gt;/media</code> and the download path to <code>&lt;disk&gt;/media/downloads</code>. App images and data are stored under <code>&lt;disk&gt;/apps</code>.</p>
+<h3 id="select-the-lan-bridge">Select the LAN bridge</h3>
+<p>Select the bridge that represents your LAN. Apps with <code>network=lan</code> attach their VETH interface to this bridge and get their address from the DHCP server of the LAN, so the LAN needs a DHCP server. Some apps use the LAN for autodiscovery.</p>
+<h3 id="set-the-router-ip">Set the router IP</h3>
+<p>Select the IP address at which clients reach the router. Apps use this address in generated URLs and port-forwarding rules, so set it before you enable apps. When <code>router-ip</code> is not set, <code>/app/settings/print</code> shows <code>assumed-router-ip</code>, the address that RouterOS uses instead, for example the address of the LAN bridge. An app enabled without any router IP stays in <code>status=waiting for router ip to be configured</code>.</p>
+<h3 id="review-the-settings">Review the settings</h3>
+<p>The wizard stores the selected values in <code>/app/settings</code>. Check them with:</p>
+<pre><code class="language-routeros">/app/settings/print
+</code></pre>
+<h2 id="install-and-run-an-app">Install and run an app</h2>
+<p>Catalog apps are present but disabled. Enable an app in WebFig or in the terminal:</p>
+<pre><code class="language-routeros">/app/print
+/app/enable &lt;app&gt;
+</code></pre>
+<p>The first enable pulls and extracts the images, creates the network, and starts the containers. Check the progress with:</p>
+<pre><code class="language-routeros">/app/print detail where name=&quot;&lt;app&gt;&quot;
+</code></pre>
+<p>While the app starts, <code>status</code> shows <code>downloading/extracting</code> or <code>starting</code>. When the app runs, <code>status</code> is empty, flag <code>R</code> appears, and <code>ui-url</code> contains the access URL.</p>
+<p>With <code>use-https=yes</code>, RouterOS creates a reverse proxy rule and uses the app certificate from <code>/app/settings</code>. The URL uses the cloud hostname. Without a working app certificate, an app with <code>use-https=yes</code> stays in <code>status=wait for reverse proxy</code>; set <code>use-https=no</code> on the app to use plain HTTP instead. With <code>use-https=no</code>, the URL is <code>http://&lt;router-ip&gt;:&lt;port&gt;</code>. An app with a port named <code>web</code> gets a UI URL. See <a href="../../network-management/proxy/reverse-proxy#container-apps">Container apps</a> for the reverse proxy details.</p>
+<h2 id="manage-apps">Manage apps</h2>
+<h3 id="flags-and-status">Flags and status</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Flag</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>X</code></td>
+<td style="text-align: left;">The app is disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>R</code></td>
+<td style="text-align: left;">The app is running.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>c</code></td>
+<td style="text-align: left;">The app is a custom app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>s</code></td>
+<td style="text-align: left;">The app comes from a custom app store.</td>
+</tr>
+</tbody>
+</table>
+<p><code>app print</code> can show different columns depending on the terminal width. Use <code>print detail</code> or <code>proplist</code> to read a specific field.</p>
+<p><code>status</code> is empty while the app is running. During startup or after a failure it can show values such as <code>waiting for router ip to be configured</code>, <code>wait for reverse proxy</code>, <code>downloading/extracting</code>, or <code>starting</code>.</p>
+<h3 id="update-restart-and-stop-apps">Update, restart, and stop apps</h3>
+<pre><code class="language-routeros">/app/update &lt;app&gt;
+/app/restart &lt;app&gt;
+/app/disable &lt;app&gt;
+/app/enable &lt;app&gt;
+</code></pre>
+<p><code>/app/update</code> pulls the app images again, extracts them, and restarts the app; when the image has not changed, the log shows <code>skip importing same version</code> and the existing image is started. <code>/app/restart</code> stops and starts the containers without pulling images. <code>/app/disable</code> stops the containers and keeps them and the app data.</p>
+<p>Set <code>auto-update=yes</code> on an app to check for a new image when the app starts after a reboot. The global <code>auto-update</code> setting in <code>/app/settings</code> provides the default for installed apps. When the image has not changed, RouterOS skips the import and starts the existing image.</p>
+<h3 id="remove-apps">Remove apps</h3>
+<p><code>/app/cleanup</code> stops the app and removes its containers, data, and network configuration. The app entry remains, disabled. This operation cannot be undone:</p>
+<pre><code class="language-text">/app/cleanup &lt;app&gt;
+App data will be lost, continue? [y/N]:
+</code></pre>
+<p>Use <code>/app/remove</code> to delete the app entry itself. Run cleanup first to remove the app data.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Cleanup permanently deletes application data, configuration, and state. Back up any data you need before you continue.</p>
+</div>
+<h3 id="network-settings">Network settings</h3>
+<ul>
+<li><code>network</code> selects the app network. <code>internal</code> places the app behind NAT, <code>lan</code> attaches the VETH interface to the LAN bridge, and <code>default</code> uses the app's default network.</li>
+<li><code>network-pvid</code> sets the PVID of the app's bridge port. The default is <code>1</code>.</li>
+<li><code>network-outgoing-access=no</code> blocks outgoing connections from the app with a mangle drop rule. Please keep in mind this may interfere with your existing firewall.</li>
+<li><code>use-https</code> controls whether the app uses the HTTPS reverse proxy and cloud URL or plain HTTP with a port forwarded to the router IP.</li>
+</ul>
+<h2 id="custom-apps">Custom apps</h2>
+<p>Create a custom app when the catalog does not contain the service you need or when you need a different container configuration. Custom apps use the same compose YAML format as catalog apps and are marked with flag <code>c</code>. You can also publish custom apps in a custom app store.</p>
+<h3 id="create-a-blank-app">Create a blank app</h3>
+<p>Create an app and assign it to the LAN network:</p>
+<pre><code class="language-routeros">/app/add network=lan
+</code></pre>
+<p>The app is created disabled with the name <code>app</code> and no service containers. Add the YAML configuration in the terminal:</p>
+<pre><code class="language-routeros">/app/edit app yaml
+</code></pre>
+<p>Paste the YAML, press <kbd>Control</kbd>+<kbd>O</kbd> to save, and enable the app.</p>
+<h3 id="import-a-yaml-file">Import a YAML file</h3>
+<p>Save the compose file, upload it to the device, and use its contents as the app YAML:</p>
+<pre><code class="language-routeros">/app/add yaml=[/file/get &lt;filename&gt; contents]
+</code></pre>
+<p>The app is created disabled. Enable it after you check the imported configuration.</p>
+<h3 id="add-a-custom-app-store">Add a custom app store</h3>
+<p>Set one or more app store URLs in <code>/app/settings</code>:</p>
+<pre><code class="language-routeros">/app/settings/set app-store-urls=&quot;&lt;url&gt;&quot;
+</code></pre>
+<p>Each URL must return a YAML array in which every element is an app definition. Apps loaded from a custom store appear with flag <code>s</code>.</p>
+<h3 id="write-yaml-for-a-custom-app">Write YAML for a custom app</h3>
+<p>This example creates an iperf3 server from an openEuler image that already contains iperf3:</p>
+<pre><code class="language-yaml">name: openeuler-iperf
+descr: openEuler container running iperf3 server
+page: https://iperf.fr/
+category: networking
+default-credentials: none
+services:
+  iperf:
+    image: docker.io/openeuler/iperf:latest
+    ports:
+      - 5201:5201:tcp
+      - 5201:5201/udp:udp
+    command: /bin/sh -c &quot;iperf3 -s&quot;
+</code></pre>
+<p>The image already contains <code>iperf3</code>, the ports are forwarded to the router IP, and <code>command</code> starts the server when the container starts.</p>
+<p>To install iperf3 at container startup, use a plain base image:</p>
+<pre><code class="language-yaml">name: alpine-iperf
+descr: Alpine Linux container running iperf3 server
+page: https://iperf.fr/
+category: networking
+default-credentials: none
+services:
+  iperf:
+    image: docker.io/alpine:latest
+    command: /bin/sh -c &quot;apk add --no-cache iperf3 &amp;&amp; iperf3 -s&quot;
+networks:
+  default:
+    name: lan
+    external: true
+</code></pre>
+<p>This example installs iperf3 and starts it at every container start. The container needs internet access to download the package. The <code>networks</code> section places the app directly on the LAN instead of forwarding ports.</p>
+<p>To install a package only when it is missing, use a conditional command:</p>
+<pre><code class="language-yaml">command: /bin/sh -c &quot;if ! command -v iperf3 &gt;/dev/null 2&gt;&amp;1; then apk add --no-cache iperf3; fi; exec iperf3 -s&quot;
+</code></pre>
+<h3 id="map-ports">Map ports</h3>
+<p>Use <code>&lt;router-port&gt;:&lt;container-port&gt;</code> or <code>&lt;router-port&gt;:&lt;container-port&gt;:&lt;name&gt;</code>:</p>
+<pre><code class="language-yaml">ports:
+  - 8080:80:web
+  - 9000:9000:api
+  - 6000:6000/udp:dns
+</code></pre>
+<p>Ports are TCP unless you add <code>/udp</code>. The first TCP port becomes the web port if no port is named <code>web</code>. A port named <code>web</code> gets a reverse proxy entry and a UI URL. A <code>web</code> port with no listener inside the container keeps the app in <code>starting</code>, so name the ports explicitly.</p>
+<h3 id="set-a-url-path">Set a URL path</h3>
+<p>Use <code>url-path</code> to append a path to the generated app URL:</p>
+<pre><code class="language-yaml">url-path: /admin
+</code></pre>
+<p>The UI URL then ends with <code>/admin</code>.</p>
+<h2 id="yaml-reference">YAML reference</h2>
+<p>A YAML document defines one app. The app-level section contains metadata, and the <code>services</code> section contains one or more container definitions.</p>
+<h3 id="app-level-fields">App-level fields</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>name</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Unique name of the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>descr</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Description of the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>page</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">URL of the project page, shown as the <code>project-page</code> property.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>category</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Classification group shown in the app list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>default-credentials</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Login credentials in <code>username:password</code> format. Informative only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>icon</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">URL of an icon shown in WebFig.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>url-path</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Path appended to the app URL, for example <code>/login</code> or <code>/web</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>auto-update</code></td>
+<td style="text-align: left;"><em>boolean</em></td>
+<td style="text-align: left;">Update the app when a new image is available.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>supported-archs</code></td>
+<td style="text-align: left;"><em>list of strings</em></td>
+<td style="text-align: left;">Supported architectures: <code>arm</code>, <code>arm64</code>, <code>arm_v5</code>, and <code>x86</code>. The catalog uses this list to select apps for the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>compatible-boards</code></td>
+<td style="text-align: left;"><em>list of strings</em></td>
+<td style="text-align: left;">Supported board names, for example <code>RDS2216</code>. The <code>*</code> wildcard is accepted. The catalog uses this list to select apps for the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>services</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Container service definitions. At least one service is required.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>volumes</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Named volume declarations used by the services.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>secrets</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Secret names referenced with <code>[secret:name]</code> in <code>environment</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>configs</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Configuration file declarations mounted into the services.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Network declarations used by the services.</td>
+</tr>
+</tbody>
+</table>
+<p>Custom apps remain visible even when their <code>supported-archs</code> value does not match the device.</p>
+<h3 id="service-fields">Service fields</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>image</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">App image to use for the container. Required.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>container_name</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Name used for the container in <code>/container</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>command</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Startup command executed inside the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entrypoint</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Executable used as the container entry point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>environment</code></td>
+<td style="text-align: left;"><em>list or map</em></td>
+<td style="text-align: left;">Environment variables passed to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>volumes</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Mount points attached to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ports</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Port mappings from the router to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>expose</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Ports exposed to other containers without publishing them on the router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>restart</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Restart policy: <code>unless-stopped</code>, <code>always</code>, or <code>on-failure</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>depends_on</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Service names that must start before this service.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>healthcheck</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Probe that checks whether the service is running.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>shm_size</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Shared memory size, for example <code>512mb</code> or <code>1gb</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>stop_grace_period</code></td>
+<td style="text-align: left;"><em>string</em> or <em>int</em></td>
+<td style="text-align: left;">Timeout for graceful shutdown, for example <code>30s</code> or <code>0</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>devices</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Hardware devices passed through to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>user</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Linux user or UID the container runs as.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hostname</code></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;">Hostname set in the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>security_opt</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Container security options.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>build</code></td>
+<td style="text-align: left;"><em>map</em></td>
+<td style="text-align: left;">Build configuration for a locally built image.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>secrets</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Secret names available to this service as files at <code>/run/secrets/&lt;name&gt;</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>configs</code></td>
+<td style="text-align: left;"><em>list</em></td>
+<td style="text-align: left;">Configuration files mounted into this service.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="healthcheck">Healthcheck</h3>
+<p>A health check probes the service and considers it healthy when the command exits with code 0. Use <code>CMD</code> with separate arguments for an executable:</p>
+<pre><code class="language-yaml">healthcheck:
+  test: [&quot;CMD&quot;, &quot;wget&quot;, &quot;-qO-&quot;, &quot;http://localhost/&quot;]
+  interval: 30s
+  retries: 3
+  start_period: 30s
+  timeout: 10s
+</code></pre>
+<p>Use <code>CMD-SHELL</code> when the command contains shell syntax such as <code>||</code> or a pipeline:</p>
+<pre><code class="language-yaml">healthcheck:
+  test: [&quot;CMD-SHELL&quot;, &quot;wget -qO- http://localhost/ || exit 1&quot;]
+  interval: 30s
+  retries: 3
+  start_period: 30s
+  timeout: 10s
+</code></pre>
+<p>With <code>CMD</code>, each list element becomes one argument. A shell expression placed in a single <code>CMD</code> argument is passed as text and fails.</p>
+<h3 id="runtime-placeholders">Runtime placeholders</h3>
+<p>Environment values and <code>default-credentials</code> can contain placeholders that RouterOS replaces when the app runs.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Placeholder</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>[accessIP]</code></td>
+<td style="text-align: left;">IP address or hostname used to access the app from outside.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[accessPort]</code></td>
+<td style="text-align: left;">Router port mapped to the app web interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[accessProto]</code></td>
+<td style="text-align: left;">Protocol used to access the app: <code>http</code> or <code>https</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[containerIP]</code></td>
+<td style="text-align: left;">IP address assigned to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[containerInterface]</code></td>
+<td style="text-align: left;">Name of the VETH interface inside the container. The name is limited to 15 characters.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[routerIP]</code></td>
+<td style="text-align: left;">IP address of the router from <code>/app/settings router-ip</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[networkRouterIP]</code></td>
+<td style="text-align: left;">Router IP address on the app network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[env:variable]</code></td>
+<td style="text-align: left;">Value of an environment variable of the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[env:service:variable]</code></td>
+<td style="text-align: left;">Value of an environment variable of the named service.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[secret:name]</code></td>
+<td style="text-align: left;">Value of the secret declared in the app-level <code>secrets</code> section.</td>
+</tr>
+</tbody>
+</table>
+<p>Example environment values:</p>
+<pre><code class="language-yaml">environment:
+  - NEXTCLOUD_TRUSTED_DOMAINS=[accessIP]
+  - APP_URL=[accessProto]://[accessIP]:[accessPort]
+</code></pre>
+<h3 id="volumes">Volumes</h3>
+<p>Add persistent data to a service:</p>
+<pre><code class="language-yaml">services:
+  app:
+    image: docker.io/example/app:latest
+    volumes:
+      - data:/data
+      - appdata/conf:/etc/app
+</code></pre>
+<p><code>data</code> is a named volume in the app storage. A path such as <code>appdata/conf</code> is a subdirectory of the app storage and is mounted at <code>/etc/app</code>.</p>
+<h3 id="secrets">Secrets</h3>
+<p>Declare secrets in the app-level <code>secrets</code> section and reference them with <code>[secret:name]</code>. RouterOS generates the value when the app runs:</p>
+<pre><code class="language-yaml">secrets:
+  db_password:
+  admin_password:
+services:
+  db:
+    image: docker.io/postgres:17
+    environment:
+      POSTGRES_PASSWORD: &quot;[secret:db_password]&quot;
+  server:
+    image: docker.io/example/server:latest
+    environment:
+      ADMIN_PASSWORD: &quot;[secret:admin_password]&quot;
+</code></pre>
+<p>To mount a secret as a file, list it under the service. The file is available at <code>/run/secrets/&lt;name&gt;</code>:</p>
+<pre><code class="language-yaml">services:
+  server:
+    image: docker.io/example/server:latest
+    environment:
+      DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+</code></pre>
+<h3 id="configs">Configs</h3>
+<p>Configs provide configuration files to containers as text. Declare the content in the app-level <code>configs</code> section and mount it into a service with <code>source</code>, <code>target</code>, and optional <code>mode</code>:</p>
+<pre><code class="language-yaml">configs:
+  mosquitto_conf:
+    content: |
+      listener 1883
+      allow_anonymous true
+services:
+  mosquitto:
+    image: docker.io/eclipse-mosquitto:latest
+    configs:
+      - source: mosquitto_conf
+        target: /mosquitto/config/mosquitto.conf
+        mode: 0644
+</code></pre>
+<p><code>source</code> is the name of the app-level config declaration, <code>target</code> is the path inside the container, and <code>mode</code> is the file permission.</p>
+<h3 id="networks">Networks</h3>
+<p>By default, an app runs on an internal network behind NAT and services are reached through mapped ports. To place the app directly on a network, define the default network with an external network:</p>
+<pre><code class="language-yaml">networks:
+  default:
+    name: lan
+    external: true
+</code></pre>
+<p>The app then attaches its VETH interface to the LAN bridge from <code>/app/settings</code>.</p>
+<h3 id="custom-app-store">Custom app store</h3>
+<p>A custom app store is a YAML array in which every element is an app definition. The file must be reachable by the router:</p>
+<pre><code class="language-yaml">- name: code-server
+  descr: Code-server is VS Code running on a remote server, accessible through the browser.
+  page: https://coder.com
+  category: development
+  icon: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/code-server-logo.png
+  default-credentials: &lt;no_username&gt;:password
+  services:
+    code-server:
+      image: lscr.io/linuxserver/code-server:latest
+      container_name: code-server
+      user: &quot;0:0&quot;
+      environment:
+        PUID: 0
+        PGID: 0
+        PASSWORD: password
+        PWA_APPNAME: code-server
+      volumes:
+        - config:/config
+        - media:/data/media
+      ports:
+        - 8443:8443:web
+</code></pre>
+<p>Add more list items to publish more apps.</p>
+<h2 id="app-properties">App properties</h2>
+<p>The app menu has the following properties. <code>/app/add</code> creates new apps disabled.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Default</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>auto-update</strong></td>
+<td style="text-align: left;"><em>yes</em> &#124; <em>no</em></td>
+<td style="text-align: left;"><em>no</em></td>
+<td style="text-align: left;">Checks for a new image when the app starts after a reboot.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>check-certificate</strong></td>
+<td style="text-align: left;"><em>yes</em> &#124; <em>no</em></td>
+<td style="text-align: left;"><em>yes</em></td>
+<td style="text-align: left;">Verifies the registry certificate against the router certificate store.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>container-command-lines</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Container commands generated from the YAML.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>devices</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Additional hardware devices passed to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong></td>
+<td style="text-align: left;"><em>yes</em> &#124; <em>no</em></td>
+<td style="text-align: left;"><em>yes</em></td>
+<td style="text-align: left;">Whether the app is disabled. New apps are created disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>environment</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Environment variables in <code>service:key=value</code> form.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extra-mounts</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Additional mount points attached to the container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>firewall-redirects</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Port redirects in <code>router-port:container-port:protocol:name</code> form.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network</strong></td>
+<td style="text-align: left;"><em>default</em> &#124; <em>lan</em> &#124; <em>internal</em></td>
+<td style="text-align: left;"><em>default</em></td>
+<td style="text-align: left;">Network used by the app. <code>default</code> uses the app's default network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network-outgoing-access</strong></td>
+<td style="text-align: left;"><em>yes</em> &#124; <em>no</em></td>
+<td style="text-align: left;"><em>yes</em></td>
+<td style="text-align: left;">Allows outgoing connections from the app. When set to <code>no</code>, RouterOS adds a mangle drop rule.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network-pvid</strong></td>
+<td style="text-align: left;"><em>integer</em></td>
+<td style="text-align: left;"><em>1</em></td>
+<td style="text-align: left;">PVID of the app's bridge port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>required-hw-devices</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Hardware devices that must be present for the app to start.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>required-mounts</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Mount directories required by the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>use-https</strong></td>
+<td style="text-align: left;"><em>yes</em> &#124; <em>no</em></td>
+<td style="text-align: left;"><em>yes</em></td>
+<td style="text-align: left;">Uses HTTPS and the reverse proxy for the app URL.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>yaml</strong></td>
+<td style="text-align: left;"><em>string</em></td>
+<td style="text-align: left;"><em>(empty)</em></td>
+<td style="text-align: left;">Compose YAML that defines the app.</td>
+</tr>
+</tbody>
+</table>
+<p>Read-only values:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>app-size</strong></td>
+<td style="text-align: left;">Size of the app image in MiB.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>app-store-url</strong></td>
+<td style="text-align: left;">URL of the custom app store the app came from.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>data-size</strong></td>
+<td style="text-align: left;">Size of the app data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-credentials</strong></td>
+<td style="text-align: left;">Default login credentials from the YAML.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-network</strong></td>
+<td style="text-align: left;">Default network from the YAML.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;">App description from the YAML.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong></td>
+<td style="text-align: left;">VETH interface used by the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-address</strong></td>
+<td style="text-align: left;">IP address assigned to the VETH interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>memory-current</strong></td>
+<td style="text-align: left;">Current memory use of the app.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong></td>
+<td style="text-align: left;">App name.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>project-page</strong></td>
+<td style="text-align: left;">Project page URL from the YAML.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>status</strong></td>
+<td style="text-align: left;">Current startup or error state. Empty while the app is running.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ui-url</strong></td>
+<td style="text-align: left;">Generated URL for the app web interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>variables-to-use-in-environment</strong></td>
+<td style="text-align: left;">Placeholders and their current values.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>/app/settings</code> parameters are documented in the CLI reference.</p>
+<h2 id="technical-details">Technical details</h2>
+<p>An enabled app creates the following objects:</p>
+<ul>
+<li>A VETH interface named <code>veth-app-&lt;app&gt;</code>.</li>
+<li>A bridge port on the internal bridge or the LAN bridge.</li>
+<li>For an internal network, the <code>internal</code> bridge, the <code>172.18.0.1/24</code> address, and a source NAT masquerade rule.</li>
+<li>One destination NAT rule for each mapped port.</li>
+<li>A reverse proxy rule for the <code>web</code> port when <code>use-https=yes</code>.</li>
+<li>One container per service. The container of an app with one service is named <code>app-&lt;app&gt;</code>.</li>
+<li>A swap file, <code>&lt;disk&gt;/swap</code> (about 1 GiB), added in <code>/disk</code> as a file disk with <code>swap=yes</code> when the first app is enabled.</li>
+</ul>
+<p>Storage paths on the selected disk:</p>
+<ul>
+<li><code>&lt;disk&gt;/apps/layers</code> holds shared image layers.</li>
+<li><code>&lt;disk&gt;/apps/&lt;app&gt;/&lt;service&gt;_root</code> holds the container root directory.</li>
+<li><code>&lt;disk&gt;/apps/&lt;app&gt;/&lt;volume&gt;</code> holds named volumes.</li>
+<li><code>&lt;disk&gt;/apps/&lt;app&gt;/secret-&lt;name&gt;</code> holds secret files.</li>
+<li><code>&lt;disk&gt;/apps/&lt;app&gt;/config-&lt;name&gt;</code> holds configuration files.</li>
+</ul>
+<p>Set <code>router-ip</code> before enabling an app so that its generated URLs and environment values use the final address.</p>
+<h2 id="related-topics">Related topics</h2>
+<ul>
+<li><a href="../">Container</a> for manual container configuration.</li>
+<li><a href="../veth">VETH</a> for virtual Ethernet interfaces.</li>
+<li><a href="../../network-management/proxy/reverse-proxy#container-apps">Reverse proxy</a> for HTTPS app URLs.</li>
+<li><a href="../../authentication-authorization-accounting/certificates">Certificates</a> for certificate management.</li>
+<li><a href="available-apps">List of available Apps</a>.</li>
+</ul>
+<hr />
+<h1 id="list-of-available-apps">List of available Apps</h1>
+<blockquote>
+<p>Reference list of container apps that run on RouterOS, with a short description of each and the MikroTik hardware it suits.</p>
+</blockquote>
+<h1 id="list-of-available-apps_1">List of available Apps</h1>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>homeassistant-thread</td>
+<td>Home Assistant with Matter and Thread support for hAP be³ Media. Named <code>ha-otbr-matter</code> in earlier RouterOS versions. See <a href="../user-guides/claire-homeassistant">Pair Claire with Home Assistant</a>.</td>
+</tr>
+<tr>
+<td>adventurelog</td>
+<td>AdventureLog is a travel blog and photo journal web application</td>
+</tr>
+<tr>
+<td>babybuddy</td>
+<td>A buddy for babies! Helps caregivers track sleep, feedings, diaper changes, and tummy time to learn about and predict baby's needs without (as much) guess work</td>
+</tr>
+<tr>
+<td>backrest</td>
+<td>Web-based backup solution with support for local and cloud storage backends</td>
+</tr>
+<tr>
+<td>birdnet-go</td>
+<td>Realtime BirdNET soundscape analyzer</td>
+</tr>
+<tr>
+<td>caddy</td>
+<td>Caddy 2 is a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go.</td>
+</tr>
+<tr>
+<td>calibre-web</td>
+<td>A clean interface for browsing, reading and downloading eBooks using an existing Calibre database</td>
+</tr>
+<tr>
+<td>chr</td>
+<td>Cloud Hosted Router - RouterOS Virtual Machine</td>
+</tr>
+<tr>
+<td>cinny</td>
+<td>Matrix client focusing primarily on simple, elegant and secure interface</td>
+</tr>
+<tr>
+<td>cloudflared</td>
+<td>Client for Cloudflare Tunnel, a daemon that exposes private services through the Cloudflare edge.</td>
+</tr>
+<tr>
+<td>code-server</td>
+<td>Code-server is VS Code running on a remote server, accessible through the browser.</td>
+</tr>
+<tr>
+<td>conduit</td>
+<td>Conduit is a simple, fast and reliable chat server powered by Matrix</td>
+</tr>
+<tr>
+<td>continuwuity</td>
+<td>Continuwuity is a community-driven Matrix homeserver written in Rust</td>
+</tr>
+<tr>
+<td>convertx</td>
+<td>ConvertX is a self-hosted online file converter</td>
+</tr>
+<tr>
+<td>copyparty</td>
+<td>Turn almost any device into a file server with resumable uploads/downloads using any web browser</td>
+</tr>
+<tr>
+<td>cryptpad</td>
+<td>CryptPad is a collaborative office suite that is end-to-end encrypted and open-source.</td>
+</tr>
+<tr>
+<td>diagrams-net</td>
+<td>diagrams.net (formerly draw.io) is free self-hosted diagram software.</td>
+</tr>
+<tr>
+<td>docker-with-dockge</td>
+<td>Fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager.</td>
+</tr>
+<tr>
+<td>docker-with-komodo</td>
+<td>Komodo is a web app to provide structure for managing your servers, builds, deployments, and automated procedures.</td>
+</tr>
+<tr>
+<td>docker-with-portainer</td>
+<td>Portainer Community Edition (CE) is a lightweight platform that effortlessly delivers containerized applications.</td>
+</tr>
+<tr>
+<td>docmost</td>
+<td>Modern wiki and documentation platform built for teams</td>
+</tr>
+<tr>
+<td>elasticsearch</td>
+<td>Open source, distributed search and analytics engine built for speed, scale, and AI applications</td>
+</tr>
+<tr>
+<td>element</td>
+<td>Matrix client focused on usability, accessibility, and broad compatibility</td>
+</tr>
+<tr>
+<td>excalidraw</td>
+<td>Virtual whiteboard for sketching hand-drawn like diagrams</td>
+</tr>
+<tr>
+<td>filegator</td>
+<td>Free, open-source, self-hosted web application for managing files and folders.</td>
+</tr>
+<tr>
+<td>firefox</td>
+<td>Free and open-source web browser developed by the Mozilla Foundation</td>
+</tr>
+<tr>
+<td>forgejo</td>
+<td>Forgejo is a self-hosted lightweight software forge. Easy to install and low maintenance, it just does the job.</td>
+</tr>
+<tr>
+<td>fossil</td>
+<td>Simple, high-reliability, distributed SCM (Software Configuration Management) system</td>
+</tr>
+<tr>
+<td>frigate</td>
+<td>An open source NVR built around real-time AI object detection. All processing is performed locally on your own hardware, and your camera feeds never leave your home.</td>
+</tr>
+<tr>
+<td>gitea</td>
+<td>Self-hosted Git service with web interface</td>
+</tr>
+<tr>
+<td>gitlab</td>
+<td>Git source code repository host</td>
+</tr>
+<tr>
+<td>goaway</td>
+<td>Lightweight DNS server with web interface for ad blocking and DNS filtering</td>
+</tr>
+<tr>
+<td>grafana</td>
+<td>Open source analytics and interactive visualization web application</td>
+</tr>
+<tr>
+<td>hedgedoc</td>
+<td>Collaborative markdown editor with real-time collaboration</td>
+</tr>
+<tr>
+<td>hermes-agent</td>
+<td>Hermes Agent gateway and dashboard by Nous Research</td>
+</tr>
+<tr>
+<td>home-assistant</td>
+<td>Home automation software</td>
+</tr>
+<tr>
+<td>immich</td>
+<td>Immich is a high performance self-hosted photo and video backup solution</td>
+</tr>
+<tr>
+<td>influxdb</td>
+<td>InfluxDB is the time series data platform designed to handle high write and query workloads</td>
+</tr>
+<tr>
+<td>inventree</td>
+<td>Open-source inventory management system which provides intuitive parts management and stock control.</td>
+</tr>
+<tr>
+<td>jackett</td>
+<td>API Support for your favorite torrent trackers</td>
+</tr>
+<tr>
+<td>jellyfin</td>
+<td>Free and open-source media server</td>
+</tr>
+<tr>
+<td>jupyter-notebook</td>
+<td>Web-based interactive development environment for notebooks, code, and data</td>
+</tr>
+<tr>
+<td>kimai</td>
+<td>Kimai is a free &amp; open source timetracker designed for freelancers, agencies and companies</td>
+</tr>
+<tr>
+<td>librenms</td>
+<td>Autodiscovering PHP/MySQL-based network monitoring system</td>
+</tr>
+<tr>
+<td>librespeed</td>
+<td>Free and Open Source Speed Test. No Flash, No Java, No Websocket, No Bullshit.</td>
+</tr>
+<tr>
+<td>lidarr</td>
+<td>Lidarr is a music collection manager for Usenet and BitTorrent users.</td>
+</tr>
+<tr>
+<td>livebook</td>
+<td>Automate code &amp; data workflows with interactive Elixir notebooks</td>
+</tr>
+<tr>
+<td>lorawan-stack</td>
+<td>An open source LoRaWAN network stack suitable for large, global and geo-distributed public and private networks as well as smaller networks</td>
+</tr>
+<tr>
+<td>mediamanager</td>
+<td>MediaManager is modern software to manage your TV and movie library. It is designed to be a replacement for Sonarr, Radarr, Overseerr, Unpackerr and Jellyseerr. It supports TVDB and TMDB for metadata, supports OIDC and OAuth 2.0 for authentication and supports Prowlarr and Jackett.</td>
+</tr>
+<tr>
+<td>memos</td>
+<td>A modern, open-source, self-hosted knowledge management and note-taking platform designed for privacy-conscious users and organizations.</td>
+</tr>
+<tr>
+<td>metube</td>
+<td>Web GUI for youtube-dl (using the yt-dlp fork) with playlist support. Allows you to download videos from YouTube and dozens of other sites.</td>
+</tr>
+<tr>
+<td>mikrodash</td>
+<td>The Ultimate MikroTik RouterOS Dashboard.</td>
+</tr>
+<tr>
+<td>minio</td>
+<td>High-performance object storage server compatible with Amazon S3</td>
+</tr>
+<tr>
+<td>mosquitto</td>
+<td>Eclipse Mosquitto MQTT message broker</td>
+</tr>
+<tr>
+<td>myip</td>
+<td>IP information tool that provides detailed information about your IP address and network</td>
+</tr>
+<tr>
+<td>n8n</td>
+<td>Workflow automation tool for connecting apps and services</td>
+</tr>
+<tr>
+<td>netbox</td>
+<td>Solution for modeling and documenting modern networks</td>
+</tr>
+<tr>
+<td>nextcloud</td>
+<td>Self-hosted productivity platform which provides private and secure functions for file sharing, collaborative work, and more</td>
+</tr>
+<tr>
+<td>nextcloud-whiteboard</td>
+<td>The official whiteboard app for Nextcloud. Create and share whiteboards with real-time collaboration.</td>
+</tr>
+<tr>
+<td>nocodb</td>
+<td>No-code platform that turns any database into a collaborative workspace</td>
+</tr>
+<tr>
+<td>nodered</td>
+<td>Low-code programming for event-driven applications</td>
+</tr>
+<tr>
+<td>ntfy</td>
+<td>Ntfy lets you send push notifications to your phone or desktop via scripts from any computer, using simple HTTP PUT or POST requests</td>
+</tr>
+<tr>
+<td>nzbget</td>
+<td>Nzbget is a usenet downloader for downloading from information given in nzb files</td>
+</tr>
+<tr>
+<td>odoo</td>
+<td>Odoo is a suite of open source business apps that cover all your company needs: CRM, eCommerce, accounting, inventory, point of sale, project management, etc.</td>
+</tr>
+<tr>
+<td>onlyoffice-docs</td>
+<td>ONLYOFFICE Document Server is an online office suite comprising viewers and editors for texts, spreadsheets and presentations, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time.</td>
+</tr>
+<tr>
+<td>opencloud</td>
+<td>Open-source, GDPR-compliant file management and collaboration platform designed for secure data control and digital sovereignty</td>
+</tr>
+<tr>
+<td>opencloud-extended</td>
+<td>OpenCloud with Collabora Online, Radicale and Apache Tika added</td>
+</tr>
+<tr>
+<td>openwebrx</td>
+<td>a simple web-based software defined radio receiver</td>
+</tr>
+<tr>
+<td>openwebui-ollama</td>
+<td>User-friendly WebUI for LLMs (formerly Ollama WebUI) bundled with Ollama</td>
+</tr>
+<tr>
+<td>otbr</td>
+<td>OpenThread Border Router optimized for use with hAP be Media</td>
+</tr>
+<tr>
+<td>paperless-ngx</td>
+<td>Paperless-ngx is a community-supported open-source document management system that transforms your physical documents into a searchable online archive so you can keep, well, less paper.</td>
+</tr>
+<tr>
+<td>partdb</td>
+<td>Part-DB is a web-based tool for organizing parts and components used in electronic circuits</td>
+</tr>
+<tr>
+<td>pihole</td>
+<td>Network-wide Ad Blocking</td>
+</tr>
+<tr>
+<td>plex</td>
+<td>Plex organizes video, music and photos from personal media libraries and streams them to smart TVs, streaming boxes and mobile devices</td>
+</tr>
+<tr>
+<td>pmacct-netflow</td>
+<td>Pmacct based netflow collector with db and sample grafana dashboard visualization</td>
+</tr>
+<tr>
+<td>prowlarr</td>
+<td>Prowlarr is an indexer manager/proxy built on the popular arr .net/reactjs base stack to integrate with your various PVR apps. Prowlarr supports both Torrent Trackers and Usenet Indexers. It integrates seamlessly with Sonarr, Radarr, Lidarr, and Readarr offering complete management of your indexers with no per app Indexer setup required (we do it all).</td>
+</tr>
+<tr>
+<td>rabbitmq</td>
+<td>Open source multi-protocol messaging broker with AMQP and MQTT support</td>
+</tr>
+<tr>
+<td>radarr</td>
+<td>Radarr is a movie collection manager for Usenet and BitTorrent users</td>
+</tr>
+<tr>
+<td>redlib</td>
+<td>Private front-end for Reddit written in Rust</td>
+</tr>
+<tr>
+<td>restic-server</td>
+<td>REST server for Restic backup client with support for remote backups</td>
+</tr>
+<tr>
+<td>roundcube</td>
+<td>Web-based IMAP email client with modern interface</td>
+</tr>
+<tr>
+<td>rustfs</td>
+<td>High-performance object storage server compatible with Amazon S3</td>
+</tr>
+<tr>
+<td>searxng</td>
+<td>Privacy-respecting, hackable metasearch engine</td>
+</tr>
+<tr>
+<td>smokeping</td>
+<td>SmokePing is a deluxe latency measurement tool. It can measure, store and display latency, latency distribution and packet loss.</td>
+</tr>
+<tr>
+<td>snipeit</td>
+<td>Open source asset management</td>
+</tr>
+<tr>
+<td>solr</td>
+<td>Open-source enterprise-search platform</td>
+</tr>
+<tr>
+<td>sonarr</td>
+<td>Sonarr is a personal video recorder tailored for Usenet and BitTorrent users</td>
+</tr>
+<tr>
+<td>sonatype-nexus</td>
+<td>Single source of truth for all your internal and third-party binaries, components, packages, and AI models</td>
+</tr>
+<tr>
+<td>speedketchup</td>
+<td>Run periodic internet speed test, store, display results with builtin web server</td>
+</tr>
+<tr>
+<td>stalwart</td>
+<td>The open-source powerhouse combining modern email and collaboration features with unmatched security, speed, and scalability.</td>
+</tr>
+<tr>
+<td>syncthing</td>
+<td>Continuous file synchronization program. It synchronizes files between two or more computers</td>
+</tr>
+<tr>
+<td>technitium</td>
+<td>Technitium DNS Server is an open source authoritative as well as recursive DNS server that can be used for self hosting a DNS server for privacy &amp; security.</td>
+</tr>
+<tr>
+<td>transmission</td>
+<td>BitTorrent Client</td>
+</tr>
+<tr>
+<td>trip</td>
+<td>Minimalist POI map tracker and trip planner</td>
+</tr>
+<tr>
+<td>upsnap</td>
+<td>A simple wake on lan web app written with SvelteKit, Go and PocketBase</td>
+</tr>
+<tr>
+<td>uptime-kuma</td>
+<td>A self-hosted monitoring tool</td>
+</tr>
+<tr>
+<td>urbackup-client</td>
+<td>UrBackup client for backing up data to UrBackup server</td>
+</tr>
+<tr>
+<td>urbackup-server</td>
+<td>Client/Server network backup system with web interface for management</td>
+</tr>
+<tr>
+<td>vaultwarden</td>
+<td>An alternative server implementation of the Bitwarden Client API, written in Rust and compatible with official Bitwarden clients</td>
+</tr>
+<tr>
+<td>victoria-logs</td>
+<td>Fast, cost-effective, and easy-to-use log database by VictoriaMetrics. A simple, powerful solution</td>
+</tr>
+<tr>
+<td>victoria-metrics</td>
+<td>A fast, cost-effective, scalable TSDB in one easy-to-deploy binary.</td>
+</tr>
+<tr>
+<td>viseron</td>
+<td>Self-hosted, local only NVR and AI Computer Vision software. With features such as object detection, motion detection, face recognition and more, it gives you the power to keep an eye on your home, office or any other place you want to monitor.</td>
+</tr>
+<tr>
+<td>wallabag</td>
+<td>Self-hosted read-it-later application</td>
+</tr>
+<tr>
+<td>warracker</td>
+<td>Web application for tracking warranties and product information</td>
+</tr>
+<tr>
+<td>wbo</td>
+<td>WBO is an online collaborative whiteboard that is simple, easy to use and open-source</td>
+</tr>
+<tr>
+<td>webtop</td>
+<td>Alpine-based container containing XFCE desktop environment via any modern web browser.</td>
+</tr>
+<tr>
+<td>wordpress</td>
+<td>Content management system for websites and blogs</td>
+</tr>
+<tr>
+<td>zabbix</td>
+<td>Enterprise-Class Open Source Network Monitoring</td>
+</tr>
+<tr>
+<td>zulip</td>
+<td>Zulip is an organized team chat app for distributed teams of all sizes.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="veth">VETH</h1>
+<blockquote>
+<p>A veth connects a container to RouterOS: one end is a router interface, the other the container's network interface. Put a container behind NAT or on the LAN with DHCP, IPv4 and IPv6.</p>
+</blockquote>
+<h1 id="veth_1">VETH</h1>
+<p>A veth (virtual Ethernet) is a pair of connected Ethernet ends. One end is a RouterOS interface in <code>/interface/veth</code>; the other end is the network interface of a container. Inside the container, that interface has the veth's name and the <code>container-mac-address</code>. The address, gateway and DHCP settings of the veth are applied inside the container, not on the router.</p>
+<p>A veth is not running until a container that uses it starts. Until then, its MAC addresses show as <code>00:00:00:00:00:00</code> and an IP address that the router has on it is marked invalid.</p>
+<p>To create and run containers, see <a href="./">Container</a>. <a href="apps/">Apps</a> create their veths automatically.</p>
+<h2 id="put-a-container-behind-nat">Put a container behind NAT</h2>
+<p>The container gets its own subnet, and the router is its gateway and translates its traffic to the internet. Create the veth with the container's address and gateway, give the router the gateway address on the veth, and masquerade the subnet:</p>
+<pre><code class="language-ros">/interface/veth/add name=veth1 address=172.17.0.2/24 \
+    gateway=172.17.0.1
+/ip/address/add address=172.17.0.1/24 interface=veth1
+/ip/firewall/nat/add chain=srcnat action=masquerade \
+    src-address=172.17.0.0/24
+</code></pre>
+<p>Then use the veth for the container:</p>
+<pre><code class="language-ros">/container/add remote-image=alpine:latest interface=veth1 \
+    root-dir=usb1/alpine
+</code></pre>
+<p>The container gets 172.17.0.2/24 and a default route through 172.17.0.1, the router's address on the veth. The masquerade rule gives it access to the internet. To reach a service in the container from outside, add a <code>dst-nat</code> rule that forwards the port to 172.17.0.2 (see <a href="../firewall-and-quality-of-service/firewall/nat">NAT</a>).</p>
+<h2 id="put-a-container-on-the-lan">Put a container on the LAN</h2>
+<p>The container gets an address from the LAN's DHCP server, like any other device on the LAN. Create the veth with <code>dhcp=yes</code> and add it to the LAN bridge:</p>
+<pre><code class="language-ros">/interface/veth/add name=veth2 dhcp=yes
+/interface/bridge/port/add bridge=bridge interface=veth2
+</code></pre>
+<p>RouterOS runs the DHCP client for the container and applies the lease inside it: the container gets the leased address and the default route from DHCP. The <code>dhcp-address</code> column of <code>/interface/veth/print</code> shows the leased address.</p>
+<p>The DHCP server sees the veth's router-side MAC address (<code>mac-address</code>) and the host name <code>&lt;identity&gt;-&lt;veth name&gt;</code>, for example <code>MikroTik-veth2</code>. A static lease for the container must use <code>mac-address</code>, not <code>container-mac-address</code>.</p>
+<p>The container's DNS server comes from the container settings, not from DHCP; see <a href="./">Container</a>.</p>
+<p>With router advertisements on the bridge, the container also configures an IPv6 address from the advertised prefix (SLAAC) and an IPv6 default route.</p>
+<h2 id="static-ipv4-and-ipv6-addresses">Static IPv4 and IPv6 addresses</h2>
+<p><code>address</code> takes several addresses, separated by commas, IPv4 and IPv6. <code>gateway</code> and <code>gateway6</code> set the IPv4 and IPv6 default routes inside the container. Give the router the matching gateway addresses on the veth:</p>
+<pre><code class="language-ros">/interface/veth/add name=veth1 \
+    address=172.17.0.2/24,2001:db8:17::2/64 \
+    gateway=172.17.0.1 gateway6=2001:db8:17::1
+/ip/address/add address=172.17.0.1/24 interface=veth1
+/ipv6/address/add address=2001:db8:17::1/64 interface=veth1 \
+    advertise=no
+</code></pre>
+<p>Stop the container before you change the settings of its veth, and start it again afterwards.</p>
+<h2 id="check-the-veth">Check the veth</h2>
+<p>In <code>/interface/veth/print</code>, the flag <code>R</code> shows that a running container uses the veth. <code>MAC-ADDRESS</code> is the router's end and <code>CONTAINER-MAC-ADDRESS</code> the container's end; both are set when the container starts. For a veth with <code>dhcp=yes</code>, <code>DHCP-ADDRESS</code> shows the leased address.</p>
+<p>To see the addresses and routes from inside the container, open its shell with <code>/container/shell</code> and run <code>ip addr</code> and <code>ip route</code> (if the container image has the <code>ip</code> command).</p>
+<p>For all parameters, see the <a href="../cli-reference/interface/veth"><code>/interface/veth</code></a> CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

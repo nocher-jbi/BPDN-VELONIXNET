@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>60 GHz (W60G) · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="60-ghz-w60g">60 GHz (W60G)</h1>
+<h1 id="w60g">W60G</h1>
+<blockquote>
+<p>This page documents MikroTik RouterOS W60G wireless interface configuration, covering setup for 60GHz point-to-point/multipoint links, ARP/MAC settings, encryption, and station management with detailed stats monitoring.</p>
+</blockquote>
+<h1 id="w60g_1">W60G</h1>
+<p>This section covers 60 GHz wireless examples and guidance. Use it to configure W60G point-to-point and point-to-multipoint links, failover, and distance-related settings.</p>
+<h3 id="summary">Summary</h3>
+<p><strong>Packages:</strong> <code>system</code>,<code>wireless</code></p>
+<p>802.11ad implementation capable of providing Gigabit Ethernet speeds over a wireless network.</p>
+<p>Extend your Gigabit network over a transparent AES encrypted wireless 60GHz link without usual wired or wireless network problems.</p>
+<h3 id="general-interface-properties">General interface properties</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g</code></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Wireless Wire kit devices come in pre-configured, connected pairs. Manual configuration is optional</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled | enabled | proxy-arp | reply-only</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"><a href="../../getting-started/networking-fundamentals/index.md#arp-and-tying-it-all-together"><code>Read more &gt;&gt;</code></a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arp-timeout</strong> (<em>auto | integer</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">ARP timeout is the time how long the ARP record is kept in the ARP table after no packets are received from IP. Value <strong>auto</strong> equals the value of <strong>arp-timeout</strong> in <code>/ip/settings</code>, default is 30s</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether the interface is disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>58320 | 60480 | 62640 | 64800 | 66000 | auto</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Frequency used in communication (Only active on a bridge device)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>isolate-stations</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Don't allow communication between connected clients (from RouterOS 6.41)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>l2mtu</strong> (<em>integer [0..7882]</em>; Default: <strong>1600</strong>)</td>
+<td style="text-align: left;">Layer2 Maximum transmission unit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>; Default: )</td>
+<td style="text-align: left;">MAC address of the radio interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mdmg-fix</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Experimental feature working only on wAP60Gx3 devices, providing better point to multi point stability in some cases</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>ap-bridge | bridge | sniff | station-bridge</em>; Default: <strong>bridge</strong>)</td>
+<td style="text-align: left;">Operation mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer [32..8192]</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;">Layer3 Maximum transmission unit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: <strong>wlan60-1</strong>)</td>
+<td style="text-align: left;">Name of the interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>password</strong> (<em>string</em>; Default: <strong>randomly generated</strong>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Password used for AES encryption</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>put-stations-in-bridge</strong> (; Default: )</td>
+<td style="text-align: left;">Put newly created station device interfaces in this bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>region</strong> (<em>asia | australia | canada | china | eu | japan | no-region-set | usa</em>; Default: <strong>no-region-set</strong>)</td>
+<td style="text-align: left;">Parameter to limit frequency use</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>scan-list</strong> (<em>58320,60480,62640,64800,66000</em>; Default: <strong>58320,60480,62640,64800</strong>)</td>
+<td style="text-align: left;">Scan list to limit connectivity over frequencies in station mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string (0..32 chars)</em>; Default: <strong>value of  <a href="../../system-information-and-utilities/identity.md">System Identity</a></strong>)</td>
+<td style="text-align: left;">SSID (service set identifier) is a name that identifies the wireless network</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-sector</strong> (<em>integer [0..63] | auto</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Disables beamforming and locks to the selected radiation pattern</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g/print/stats</code></p>
+<p>Provides more detailed information about Beamforming occurrences and some debug information:</p>
+<pre><code class="language-ros">/interface w60g print stats name: wlan60-1 
+beamforming-event: 310 
+tx-io-msdu: 0 
+tx-sw-msdu: 154 663
+tx-fw-msdu: 102 
+tx-ppdu: 220 147 
+tx-ppdu-from-q: 40 327 
+tx-mpdu-new: 154 663 
+tx-mpdu-total: 184 759 
+tx-mpdu-retry: 30 096 
+rx-ppdu: 166 636 
+rx-mpdu-crc-err: 4 817 
+rx-mpdu-crc-ok: 285 649
+</code></pre>
+<p>Station interface properties:</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>An ap-bridge device requires License level 4  <a href="../../getting-started/routeros-licensing/x86/index.md#routeros-license-key-levels">(click for more information)</a>  to support more than one connected client</p>
+</div>
+<p>Connected clients are treated as individual interfaces, after a successful connection a new station interface is created.</p>
+<p>After the update default configuration still works - newly created station interface is moved to the default bridge.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g/station</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>parent</strong> (<em>string</em>; Default: <strong>wlan60-*</strong>)</td>
+<td style="text-align: left;">Parent interface name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>put-in-bridge</strong> (<em>none | parent | bridge-name</em>; Default: <strong>parent</strong>)</td>
+<td style="text-align: left;">Add station device interface to a specific bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>remote-address</strong> (<em>MAC</em>; Default: <strong>matches bridge interface MAC</strong>)</td>
+<td style="text-align: left;">MAC address of bridge interface that station is connecting to</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scan">Scan</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g/scan</code></p>
+<pre><code class="language-ros">/interface w60g scan wlan60-1
+</code></pre>
+<p>The Scan command searches for and displays available AP(s) in the frequency range supported by the W60G interface.</p>
+<p>Using the scan command the interface operation is disabled (wireless link is disconnected during the scan operation)</p>
+<p>Currently it is impossible to do background scans.</p>
+<h3 id="monitor">Monitor</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g/monitor</code></p>
+<pre><code class="language-ros">/interface w60g monitor wlan60-1 
+connected: yes frequency: 58320 
+remote-address: 04:D6:AA:AA:AA:AA 
+mcs: 8 
+phy-rate: 2.3Gbps 
+signal: 80 rssi: -68 
+tx-sector: 28 
+tx-sector-info: center 
+distance: 160.9m
+</code></pre>
+<p>Monitor shows the current state of an active connection. The Distance measurement tool provides very precise distance measurements. "tx-sector-info" (feature in the testing stage) provides information from the currently used beamforming pattern and shows the direction to the center - the theoretical highest power output point.</p>
+<h3 id="align">Align</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/w60g/align</code></p>
+<pre><code class="language-ros">/interface w60g align wlan60-1 
+connected: yes 
+frequency: 58320 
+remote-address: 04:D6:AA:AA:AA:AB 
+tx-mcs: 6 
+tx-phy-rate: 1540.0Mbps 
+signal: 70 
+rssi: -62 
+10s-average-rssi: -63.1 
+tx-sector: 62 
+tx-sector-info: left 19 degrees, up 26.6 degrees 
+rx-sector: 96 
+distance: 220.88m 
+tx-packet-error-rate: 5%
+</code></pre>
+<p>In align mode, frames between two devices are exchanged more rapidly and information about signal quality is displayed more often. Use "rssi", "10s-average-rssi" and "tx-sector-info" values for more precise link alignment. When devices enter align mode - the link is lost for a few seconds.</p>
+<h3 id="sniff">Sniff</h3>
+<p>Sniff mode allows capturing nearby 802.11ad frames. To use sniff mode, the same frequency needs to be used and interface operational mode needs to be set to sniff:</p>
+<pre><code class="language-ros">/interface w60g set wlan60-1 mode=sniff
+</code></pre>
+<p>Now this interface can be used in  <a href="../../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md">Tools/Packet Sniffer</a>  for packet capture. Sniffer mode can't be used together with regular interface working modes.</p>
+<h3 id="point-to-multi-point-setup-example">Point to Multi Point setup example</h3>
+<p>All MikroTik devices can be interconnected. There are four different versions of wAP60G devices currently available:</p>
+<ul>
+<li>Wireless Wire kit</li>
+<li>wAP 60G</li>
+<li>SXTsq60 Lite60</li>
+<li>wAP 60G AP</li>
+</ul>
+<p>And</p>
+<ul>
+<li>Wireless Wire Dish</li>
+</ul>
+<p>Hardware-wise wAP devices are identical, but there are some software limitations:</p>
+<p><strong>wAP 60G AP</strong> is designed for Access Point usage in PtMP (Point to Multi Point) setups, but can also be used as PtP (Point to Point) or as a Station device. It's already equipped with a level4 license to support more than one connected client. For more information, see <a href="../../getting-started/routeros-licensing/x86/index.md#routeros-license-key-levels">RouterOS License Key Levels</a>.</p>
+<p><strong>Wireless Wire kit</strong>, <strong>Wireless Wire Dish</strong>, <strong>SXTsq Lite60</strong> and <strong>wAP60G</strong> devices come with level3 license. Wireless wire dish should be only used as Client device due to its narrow radiation pattern.</p>
+<p>A license upgrade is needed to unlock more than one simultaneously connected client in Access Point mode, but devices can connect to Access Points as regular Station devices.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Before configuration, make sure devices are running the latest software versions:  <a href="../../getting-started/installation-and-upgrade/upgrade.md">How to upgrade</a></p>
+</div>
+<p>Minimal configuration for a transparent wireless link is matching SSID, correct mode (bridge || station-bridge) and Wireless and Ethernet interfaces put in the same bridge.</p>
+<p>In the current example we will look at a usage case where <strong>wAP60G AP</strong> is used as Access Point, <strong>wAP60G</strong> and <strong>Wireless Wire kit</strong> devices are used as Station devices, forming a 4 unit network.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>It's recommended to change default IP addresses to avoid connection issues to the devices</p>
+</div>
+<p><strong>wAP60G AP</strong> units come pre-configured with the WISP Bridge  <a href="../../getting-started/configuration-management/default-configurations.md">default configuration</a>.</p>
+<p>SSID and bridge between Wireless and Ethernet interfaces are already configured. It's recommended to set up a Wireless password and change the SSID. If the device has been reset, you can also set the correct mode and enable the interface.</p>
+<p>One-liner that does all previously mentioned steps:</p>
+<pre><code class="language-ros">/interface w60g set wlan60-1 password=&quot;put_your_safe_password_here&quot; ssid=&quot;put_your_new_ssid_here&quot; disabled=no mode=ap-bridge
+</code></pre>
+<p><strong>Wireless Wire and wAP60G</strong> units come pre-configured with PTP Bridge default configuration.</p>
+<p>Wireless Wire devices have already randomly generated matching SSID and Wireless password.</p>
+<p>Bridge device (Bridge or Access point device with one connected client support) needs a Wireless mode change to station-bridge.</p>
+<p>One-liner that can be used to set devices in client mode:</p>
+<pre><code class="language-ros">/interface w60g set wlan60-1 password=&quot;put_your_safe_password_here&quot; ssid=&quot;put_your_new_ssid_here&quot; disabled=no mode=station-bridge
+</code></pre>
+<p>If configuration is done from an empty configuration (reset without default configuration):</p>
+<p>A new bridge needs to be created containing Wireless and Ethernet interfaces and an IP address for easy access should be added.</p>
+<pre><code class="language-ros">{ /interface bridge 
+add name=bridge1 
+/interface bridge port 
+add bridge=bridge1 interface=ether1 
+add bridge=bridge1 interface=wlan60-1 
+/ip address add address=192.168.88.1/24 interface=bridge1 
+}
+</code></pre>
+<p>For the Access Point add this line to ensure all connected stations will be put in the same bridge.</p>
+<pre><code class="language-ros">/interface w60g set wlan60-1 put-stations-in-bridge=bridge1
+</code></pre>
+<p>After a successful connection for each Client device a new entry will appear on the Access Point device under:</p>
+<pre><code class="language-ros">/interface w60g station print
+</code></pre>
+<pre><code class="language-ros">Flags: X - disabled, R - running 
+
+0 name=&quot;wlan60-station-1&quot; parent=wlan60-1 remote-address=AA:AA:AA:AA:AA:AA mtu=1500 mac-address=AA:AA:AA:AA:AA:AB arp=enabled arp-timeout=auto put-in-bridge=parent 
+
+1 name=&quot;wlan60-station-2&quot; parent=wlan60-1 remote-address=AA:AA:AA:AA:AB:AA mtu=1500 mac-address=AA:AA:AA:AA:AA:AC arp=enabled arp-timeout=auto put-in-bridge=parent 
+
+2 name=&quot;wlan60-station-3&quot; parent=wlan60-1 remote-address=AA:AA:AA:AA:AC:AA mtu=1500 mac-address=AA:AA:AA:AA:AA:AD arp=enabled arp-timeout=auto put-in-bridge=parent 
+
+3 name=&quot;wlan60-station-4&quot; parent=wlan60-1 remote-address=AA:AA:AA:AA:AD:AA mtu=1500 mac-address=AA:AA:AA:AA:AA:AE arp=enabled arp-timeout=auto put-in-bridge=parent 
+</code></pre>
+<p>For each client separate settings can be applied (queues, VLANs, Firewall rules, etc.) providing more flexibility in configuration.</p>
+<p>To limit client-client communication in the same bridge, the isolate-stations option can be used on the Access Point device:</p>
+<pre><code class="language-ros">/interface w60g set wlan60-1 isolate-stations=yes
+</code></pre>
+<h3 id="point-to-point-gui-configuration-example">Point to Point GUI configuration example</h3>
+<p><a href="./ptp-gui-example.md">Point to Point GUI configuration example</a></p>
+<h3 id="troubleshooting-and-recommendations">Troubleshooting and Recommendations</h3>
+<p>MikroTik 60GHz solutions functionality includes support for ATPC (Adaptive Transmit Power Control)</p>
+<h5 id="physical-properties">Physical Properties</h5>
+<p>Atmospheric attenuation for the wireless frequencies used in the 802.11ad standard is very high. This should be taken into account before deploying links.</p>
+<p>The Wireless Wire kit has been tested in distances up to 200 meters.</p>
+<p>The Wireless Wire dish kit is tested at distances up to 2500 meters. For stability and full speed availability this kit is recommended for distances up to 1500 meters.</p>
+<p>wAP60G devices are equipped with phased array 60° beamforming antennas that can help signal find the way around objects at short distances but it's still vital to keep the line of sight clear at higher distances.</p>
+<p>The LHG60G device's single radiation pattern is less than 1 degree (both Horizontal and Vertical). All patterns combined provide close to 3-degree coverage in both Horizontal and Vertical planes. The best one for each situation is calculated by using a beamforming algorithm. Beam width and direction depend on the used predefined calibrated sector.</p>
+<h5 id="device-rf-characteristics">Device RF characteristics</h5>
+<p>60 GHz devices</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Device</strong></th>
+<th style="text-align: left;"><strong>Width of single antenna pattern and full span in degrees</strong></th>
+<th style="text-align: left;"><strong>EIRP</strong></th>
+<th style="text-align: left;"><strong>Tx-power</strong></th>
+<th style="text-align: left;"><strong>Center sectors*</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">wAP 60G</td>
+<td style="text-align: left;">15-20 degrees single pattern and full span 60 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">wAP 60G AP</td>
+<td style="text-align: left;">15-20 degrees single pattern and full span 60 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Wireless Wire</td>
+<td style="text-align: left;">15-20 degrees single pattern and full span 60 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">wAP 60Gx3 AP</td>
+<td style="text-align: left;">15-20 degrees single pattern and full span 180 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTsq Lite 60</td>
+<td style="text-align: left;">15-20 degrees single pattern and full span 60 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cube Lite 60</td>
+<td style="text-align: left;">4-8 degrees single pattern and full span 12 degrees over horizontal and 12 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;">&lt; 10 dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cube 60G ac</td>
+<td style="text-align: left;">4-8 degrees single pattern and full span 12 degrees over horizontal and 12 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;">&lt; 10 dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cube 60Pro ac</td>
+<td style="text-align: left;">4-8 degrees single pattern and full span 11 degrees over horizontal and 11 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;">&lt; 10 dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">CubeSA 60Pro ac</td>
+<td style="text-align: left;">15 degrees single pattern and full span 60 degrees over horizontal and 30 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 40 dBm</td>
+<td style="text-align: left;">&lt; 10 dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">LHG Lite 60</td>
+<td style="text-align: left;">&lt; 1 degree single pattern and full span 3 degrees over horizontal and 3 degrees over vertical plane</td>
+<td style="text-align: left;">&lt; 55 dBm</td>
+<td style="text-align: left;">&lt; 10 dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">LHG 60G</td>
+<td style="text-align: left;">{<code>&lt; 1</code>} degree single pattern and full span 3 degrees over horizontal and 3 degrees over vertical plane</td>
+<td style="text-align: left;">{<code>&lt; 55</code>} dBm</td>
+<td style="text-align: left;">{<code>&lt; 10</code>} dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Wireless Wire Dish</td>
+<td style="text-align: left;">{<code>&lt; 1</code>} degree single pattern and full span 3 degrees over horizontal and 3 degrees over vertical plane</td>
+<td style="text-align: left;">{<code>&lt; 55</code>} dBm</td>
+<td style="text-align: left;">{<code>&lt; 10</code>} dBm</td>
+<td style="text-align: left;">27,28,35,36</td>
+</tr>
+<tr>
+<td style="text-align: left;">Wireless Wire nRAY</td>
+<td style="text-align: left;">{<code>&lt; 1</code>} degree single pattern and full span 3 degrees over horizontal and 3 degrees over vertical plane</td>
+<td style="text-align: left;">{<code>&lt; 55</code>} dBm or {<code>&lt;40</code>} dBm with EU region</td>
+<td style="text-align: left;">{<code>&lt; 10</code>} dBm</td>
+<td style="text-align: left;">31</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*center sector is the calibrated center of the beamforming array</strong></p>
+<h5 id="regions">Regions</h5>
+<p>MikroTik 802.11ad devices support a frequency range: 57240 MHz - 67080 MHz, frequency and channel use can be limited if the "region" parameter is used.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Region</strong></th>
+<th style="text-align: left;"><strong>lower frequency</strong></th>
+<th style="text-align: left;"><strong>upper frequency</strong></th>
+<th style="text-align: left;"><strong>usable channels</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">USA</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">70.20 GHz</td>
+<td style="text-align: left;">1, 2, 3, 4, 5, 6</td>
+</tr>
+<tr>
+<td style="text-align: left;">Canada</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">63.72 GHz</td>
+<td style="text-align: left;">1, 2, 3</td>
+</tr>
+<tr>
+<td style="text-align: left;">Asia</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">63.72 GHz</td>
+<td style="text-align: left;">1, 2, 3</td>
+</tr>
+<tr>
+<td style="text-align: left;">EU</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">65.88 GHz</td>
+<td style="text-align: left;">1, 2, 3, 4</td>
+</tr>
+<tr>
+<td style="text-align: left;">Japan</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">65.88 GHz</td>
+<td style="text-align: left;">1, 2, 3, 4</td>
+</tr>
+<tr>
+<td style="text-align: left;">Australia</td>
+<td style="text-align: left;">57.24 GHz</td>
+<td style="text-align: left;">65.88 GHz</td>
+<td style="text-align: left;">1, 2, 3, 4</td>
+</tr>
+<tr>
+<td style="text-align: left;">China</td>
+<td style="text-align: left;">59.40 GHz</td>
+<td style="text-align: left;">63.72 GHz</td>
+<td style="text-align: left;">2, 3</td>
+</tr>
+</tbody>
+</table>
+<h5 id="connection-issues">Connection issues</h5>
+<p>In order to connect devices, they need to be in direct visibility, "scan-list" on the client device needs to include "frequency" used on the AP device. LHG60 devices require very precise alignment in order to get best performance at higher distances.</p>
+<h5 id="snmp-oids-for-monitoring">SNMP OIDs for monitoring</h5>
+<p>From RouterOS&gt;=6.42rc6, SNMP support for W60G interface monitoring is added.
+For main interfaces:</p>
+<pre><code>1.3.6.1.4.1.14988.1.1.1.8.1.2.1  integer  Mode
+1.3.6.1.4.1.14988.1.1.1.8.1.3.1  string   SSID
+1.3.6.1.4.1.14988.1.1.1.8.1.4.1  integer  Connected status
+1.3.6.1.4.1.14988.1.1.1.8.1.5.1  string   Remote MAC
+1.3.6.1.4.1.14988.1.1.1.8.1.6.1  integer  Frequency
+1.3.6.1.4.1.14988.1.1.1.8.1.7.1  integer  MCS
+1.3.6.1.4.1.14988.1.1.1.8.1.8.1  integer  Signal quality
+1.3.6.1.4.1.14988.1.1.1.8.1.9.1  integer  tx-sector
+1.3.6.1.4.1.14988.1.1.1.8.1.11.1 string   Sector info
+1.3.6.1.4.1.14988.1.1.1.8.1.12.1 integer  RSSI
+1.3.6.1.4.1.14988.1.1.1.8.1.13.1 gauge32  PHY rate
+</code></pre>
+<p>Station interfaces will be numbered under a different table:</p>
+<pre><code>1.3.6.1.4.1.14988.1.1.1.9.1.2.(interfaceID) = integer Connected status
+1.3.6.1.4.1.14988.1.1.1.9.1.3.(interfaceID) = Hex-STRING mac-address
+1.3.6.1.4.1.14988.1.1.1.9.1.4.(interfaceID) = INTEGER: MCS 
+1.3.6.1.4.1.14988.1.1.1.9.1.5.(interfaceID) = INTEGER: Signal Quality Index
+1.3.6.1.4.1.14988.1.1.1.9.1.6.(interfaceID) = INTEGER: tx-sector
+1.3.6.1.4.1.14988.1.1.1.9.1.8.(interfaceID) = Gauge32: data-rate [Mbps]
+1.3.6.1.4.1.14988.1.1.1.9.1.9.(interfaceID) = INTEGER: RSSI
+1.3.6.1.4.1.14988.1.1.1.9.1.10.(interfaceID) = INTEGER: distance [cm]
+</code></pre>
+<p>InterfaceID starts at 3 and increases by +1 for each connected station. More information about SNMP functionality and MIB files can be found in the <a href="../../diagnostics-monitoring-and-troubleshooting/snmp.md">SNMP manual</a></p>
+<h5 id="configuration-reset-for-wireless-wire-kits">Configuration Reset For Wireless Wire kits</h5>
+<p>The Reset button has the same functionality as on other devices, explained in detail  <a href="../../getting-started/configuration-management/routeros-configuration-reset.md">here</a></p>
+<p><strong>5 second button hold on startup (USR LED light starts flashing)</strong> - resets to password protected state.</p>
+<p><strong>10-second button hold on startup (USR LED turns solid after flashing)</strong> - completely removes configuration.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>After complete removal of configuration, only a <a href="../../management-tools/mac-server.md">mac-telnet</a>  connection may be established</p>
+</div>
+<hr />
+<h1 id="distance-guide">Distance guide</h1>
+<blockquote>
+<p>This page provides a distance guide for Point To Multi Point applications using MikroTik devices, specifying required license levels and listing compatible products such as Cube-60ad, LHG-60ad, and wAPG-60ad-A.</p>
+</blockquote>
+<h1 id="distance-guide_1">Distance guide</h1>
+<p>For Point To Multi Point as an <strong>AP</strong> device with license level 4 or higher is required.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Product code</th>
+<th style="text-align: left;">License level</th>
+<th style="text-align: left;">Link to product description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Cube-60ad</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/cube_lite60">Cube Lite60</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">CubeG-5ac60ad</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/cube_60g_ac">Cube 60G ac</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">CubeG-5ac60adpair</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wireless_wire_cube">Wireless Wire Cube</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">LHG-60ad</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/lhg_lite60">LHG Lite60</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">LHGG-60ad</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/lhg_60g">LHG 60G</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">LHGG-60adkit</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wireless_wire_dish">Wireless Wire Dish</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">nRAYG-60adpair</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wireless_wire_nray">Wireless Wire nRAY</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">wAPG-60ad</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wap_60g">wAP 60G</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">wAPG-60adkit</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wireless_wire">Wireless Wire</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">wAPG-60ad-A</td>
+<td style="text-align: left;"><strong>4</strong></td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wap_60g_ap">wAP 60G AP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">wAPG-60ad-SA</td>
+<td style="text-align: left;"><strong>4</strong></td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/wap_60gx3_ap">wAP 60Gx3 AP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">CubeG-5ac60ay</td>
+<td style="text-align: left;"><strong>4</strong></td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/cube_60pro_ac">Cube 60Pro ac</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">CubeG-5ac60ay-SA</td>
+<td style="text-align: left;"><strong>4</strong></td>
+<td style="text-align: left;"><a href="https://mikrotik.com/product/cubesa_60pro_ac">CubeSA 60Pro ac</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="fail-over-ptmp-cli-example">Fail-over PtMP CLI example</h1>
+<blockquote>
+<p>This page provides a step-by-step CLI guide for configuring automatic failover between 60Ghz and 5Ghz wireless links using MikroTik RouterOS, including bridge setup, interface bonding, and W60G device connection...</p>
+</blockquote>
+<h1 id="fail-over-ptmp-cli-example_1">Fail-over PtMP CLI example</h1>
+<h3 id="summary_1">Summary</h3>
+<p>This example shows how to configure an automatic fail-over (bonding) 5Ghz link in combination with 60Ghz devices in the CLI.<br />
+When a connection between 60Ghz wireless is lost, it will automatically use the bonded interface.<br />
+The example is done from an empty configuration state with the [<a href="https://mikrotik.com/download">WinBox</a>] utility</p>
+<h3 id="connect-to-the-device-step-by-step">Connect to the device step by step</h3>
+<ul>
+<li>After configuration reset - only mac-telnet is possible.
+   Connect to the device by connecting to its MAC address or use WinBox New terminal to find the device MAC address of the W60G device by issuing command:</li>
+</ul>
+<pre><code class="language-ros">/ip/neighbor/print
+</code></pre>
+<ul>
+<li>To connect to the W60G device, issue a command:</li>
+</ul>
+<pre><code class="language-ros">/tool/mac-telnet/mac-address
+</code></pre>
+<ul>
+<li>Enter the username and password. By default the username is <strong>admin</strong> and the password is either blank or printed on the device sticker.</li>
+</ul>
+<pre><code class="language-ros">[admin@KD_GW] &gt; /tool/mac-telnet C4:AD:34:84:EE:5D
+ Login: admin
+ Password:  
+ Trying C4:AD:34:84:EE:5D...
+ Connected to C4:AD:34:84:EE:5D 
+</code></pre>
+<h3 id="configure-bridge">Configure bridge</h3>
+<ul>
+<li>Add a new bridge and assign bridge members to it by issuing the following command:</li>
+</ul>
+<pre><code class="language-ros">/interface/bridge/add name=bridge 
+</code></pre>
+<p>To check if the bridge has been created, issue a command:</p>
+<pre><code class="language-ros">admin@MikroTik] &gt; /interface/bridge/print
+Flags: X - disabled, R - running
+ 0 R name=&quot;bridge&quot; mtu=auto actual-mtu=1500 l2mtu=65535 arp=enabled arp-timeout=auto mac-address=1A:7F:BB:41:B0:94 protocol-mode=rstp  fast-forward=yes igmp-snooping=no auto-mac=yes ageing-time=5m priority=0x8000 max-message-age=20s forward-delay=15s transmit-hold-count=6  vlan-filtering=no dhcp-snooping=no
+</code></pre>
+<h3 id="set-up-60ghz-wireless-connection">Set up 60Ghz wireless connection</h3>
+<p>All previously explained steps are identical to Bridge and Station devices. When configuring the wireless interface different modes need to be used.  </p>
+<h4 id="for-ap-bridge-device">For ap-bridge device</h4>
+<ul>
+<li>Choose SSID, Password, frequency and choose the bridge mode option that will act as <strong>ap-bridge</strong> for the setup, please see the example.</li>
+<li>Enable W60G interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=ap-bridge frequency=auto ssid=MySSID password=choosepassword isolate-stations=no
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=ap-bridge ssid=&quot;MySSID&quot;  frequency=auto default-scan-list=58320,60480,62640,64800 password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=none isolate-stations=no
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1 
+</code></pre>
+<h4 id="for-station-devices">For station devices</h4>
+<ul>
+<li>Choose the same SSID, Password, and frequency as the bridge device and choose the station-bridge mode option that will act as a <strong>station</strong> for the setup, please see the example.</li>
+<li>It is possible to connect up to 8 station devices to a single AP to act as a fail-over.</li>
+<li>Enable the W60G interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=station-bridge frequency=auto ssid=MySSID password=choosepassword isolate-stations=no
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=station-bridge ssid=&quot;MySSID&quot; frequency=auto default-scan-list=58320,60480,62640,64800password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=bridge isolate-stations=no
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1
+</code></pre>
+<h3 id="set-up-5ghz-wireless-connection">Set up 5Ghz wireless connection</h3>
+<h4 id="for-ap-bridge-device_1">For ap-bridge device</h4>
+<ul>
+<li>Choose SSID, Password, frequency and choose bridge mode option that will act as a <strong>bridge</strong> for the setup, please see the example.</li>
+<li>Enable 5GHz interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/wireless/security-profiles/set [ find default=yes ] supplicant-identity=MikroTik authentication-types=wpa2-psk mode=dynamic-keys wpa2-pre-shared-key=choosepassword
+[admin@MikroTik] &gt; /interface/wireless/set wlan1 frequency=auto scan-list=default installation=outdoor mode=ap-bridge ssid=MikroTik1 channel-width=20/40/80mhz-Ceee wireless-protocol=any security-profile=default band=5ghz-a/n/ac
+[admin@MikroTik] &gt; /interface/wireless/enable wlan1 
+</code></pre>
+<h4 id="for-station-devices_1">For station devices</h4>
+<ul>
+<li>Choose the same SSID, Password, frequency as the bridge device and choose the station-bridge mode option that will act as a <strong>station</strong> for the setup. Please see the example.</li>
+<li>It is possible to connect up to 8 station devices to a single AP to act as a fail-over.</li>
+<li>Enable the W60G interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/wireless/security-profiles/set [ find default=yes ] supplicant-identity=MikroTik authentication-types=wpa2-psk mode=dynamic-keys wpa2-pre-shared-key=choosepassword
+[admin@MikroTik] &gt; /interface/wireless/set wlan1 frequency=auto scan-list=default installation=outdoor mode=station-bridge ssid=MikroTik1 channel-width=20/40/80mhz-Ceee wireless-protocol=any security-profile=default band=5ghz-a/n/ac
+[admin@MikroTik] &gt; /interface/wireless/enable wlan1
+</code></pre>
+<h3 id="configure-bridge-for-access-point">Configure bridge for Access Point</h3>
+<ul>
+<li>Configure the bridge for the AP to ensure that 5ghz is working as fail-over. It is required to bridge <strong>wlan1</strong>, <strong>ether1</strong>, and all 60ghz <strong>station interfaces</strong>.
+   <em>In the example it shows only 2 station devices but it is possible to add up to 8 devices.</em>  </li>
+</ul>
+<p>For the ap-bridge device please set <strong>configuration</strong> as follows:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/
+add bridge=bridge hw=no interface=ether1
+add bridge=bridge interface=wlan1
+add bridge=bridge interface=wlan60-station-1
+add bridge=bridge interface=wlan60-station-2
+[admin@MikroTik] &gt; interface/bridge/port/pr
+# INTERFACE         BRIDGE  HW  PVID  PRIORITY  PATH-COST  INTERNAL-PATH-COST  HORIZON
+0 ether1            bridge      no     1  0x80             10                  10  none
+1 wlan1             bridge             1  0x80             10                  10  none
+2 wlan60-station-1  bridge             1  0x80             10                  10  none
+3 wlan60-station-2  bridge             1  0x80             10                  10  none 
+</code></pre>
+<h3 id="configure-bridge-and-bonding-for-station-devices">Configure bridge and bonding for station devices</h3>
+<ul>
+<li>Configure bonding and assign slave interfaces. In this setup it is selected as the built-in wlan1 interface, but it can be also an ether interface in other kinds of setups.</li>
+</ul>
+<p>For station-bridge devices, please set <strong>bonding</strong> as:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bonding/add mode=active-backup name=bond1 primary=wlan60-1 slaves=wlan60-1,wlan1
+</code></pre>
+<ul>
+<li>Add interface members (ether1 and bond1) to the newly created bridge.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/add interface=ether1 bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/add interface=bond1  bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload
+#     INTERFACE                              BRIDGE                              HW   PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+0     ether1                                 bridge                             yes     1     0x80         10                 10       none
+1     bond1                                  bridge                             yes     1     0x80         10                 10       none
+</code></pre>
+<h3 id="additional-configuration">Additional configuration</h3>
+<p>The link should be established after all previously explained steps are done. It's recommended to set up an administrator password on both devices.</p>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p>Ensure the connection is established to the correct device by checking the device settings like serial number and model name by issuing a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/routerboard/print
+</code></pre>
+<p>If the bridge wlan60-1 interface in bridge settings is inactive and configuration is done properly  to enable the interface on a device - issue a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1
+</code></pre>
+<hr />
+<h1 id="fail-over-ptp-cli-example">Fail-over PtP CLI example</h1>
+<blockquote>
+<p>This page provides a step-by-step CLI example for configuring automatic failover between 60Ghz and 5Ghz wireless links using bonding, including bridge setup and W60G interface configuration for both bridge and...</p>
+</blockquote>
+<h1 id="fail-over-ptp-cli-example_1">Fail-over PtP CLI example</h1>
+<h3 id="summary_2">Summary</h3>
+<p>This example shows how to configure an automatic fail-over (bonding) 5Ghz link in combination with 60Ghz devices in CLI.<br />
+When a connection between 60Ghz wireless is lost, it will automatically use the bonded interface.<br />
+The example is done from an empty configuration state with the [<a href="https://mikrotik.com/download">WinBox</a>] utility</p>
+<h3 id="connect-to-the-device-step-by-step_1">Connect to the device step by step</h3>
+<ul>
+<li>After configuration reset - only mac-telnet is possible.
+   Connect to the device by connecting to its MAC address or use WinBox New terminal to find the device MAC address of the W60G device by issuing command:</li>
+</ul>
+<pre><code class="language-ros">/ip/neighbor/print
+</code></pre>
+<ul>
+<li>To connect to the W60G device, issue a command.</li>
+</ul>
+<pre><code class="language-ros">/tool/mac-telnet &lt;MAC-ADDRESS&gt;
+</code></pre>
+<ul>
+<li>Enter username and password. By default, the username is <strong>admin</strong> and the password is either blank or printed on the device sticker:</li>
+</ul>
+<pre><code class="language-ros">[admin@KD_GW] &gt; /tool/mac-telnet C4:AD:34:84:EE:5D
+Login: admin
+Password:
+Trying C4:AD:34:84:EE:5D...
+Connected to C4:AD:34:84:EE:5D
+</code></pre>
+<h3 id="configure-bridge_1">Configure bridge</h3>
+<ul>
+<li>Add a new bridge and assign bridge members to it by issuing the following command:</li>
+</ul>
+<pre><code class="language-ros">/interface/bridge/add name=bridge
+</code></pre>
+<p>To check if the bridge has been created, issue a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/print
+Flags: X - disabled, R - running
+ 0 R name=&quot;bridge&quot; mtu=auto actual-mtu=1500 l2mtu=65535 arp=enabled arp-timeout=auto mac-address=1A:7F:BB:41:B0:94 protocol-mode=rstp  fast-forward=yes igmp-snooping=no auto-mac=yes ageing-time=5m priority=0x8000 max-message-age=20s forward-delay=15s transmit-hold-count=6  vlan-filtering=no dhcp-snooping=no
+</code></pre>
+<h3 id="set-up-60ghz-wireless-connection_1">Set up 60Ghz wireless connection</h3>
+<p>All previously explained steps are identical to Bridge and Station devices. When configuring the wireless interface different modes need to be used.  </p>
+<h4 id="for-bridge-device">For bridge device</h4>
+<ul>
+<li>Choose SSID, password, frequency and choose bridge mode option that will act as a <strong>bridge</strong> for the setup. Please see the example.</li>
+<li>Enable W60G interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=bridge frequency=auto ssid=MySSID password=choosepassword isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=bridge ssid=&quot;MySSID&quot;  frequency=auto default-scan-list=58320,60480,62640,64800 password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=bridge isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1
+</code></pre>
+<h4 id="for-station-device">For station device</h4>
+<ul>
+<li>Choose the same SSID, Password, and frequency as the bridge device and choose the station-bridge mode option that will act as a <strong>station</strong> for the setup, please see the example.</li>
+<li>Enable the W60G interface after the required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=station-bridge frequency=auto ssid=MySSID password=choosepassword
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=station-bridge ssid=&quot;MySSID&quot; frequency=auto default-scan-list=58320,60480,62640,64800password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=bridge isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1 
+</code></pre>
+<h3 id="set-up-5ghz-wireless-connection_1">Set up 5Ghz wireless connection</h3>
+<h4 id="for-bridge-device_1">For bridge device</h4>
+<ul>
+<li>Choose SSID, Password, frequency and choose a bridge mode option that will act as a <strong>bridge</strong> for the setup, please see the example.</li>
+<li>Enable the 5GHz interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/wireless/security-profiles/set [ find default=yes ] supplicant-identity=MikroTik authentication-types=wpa2-psk mode=dynamic-keys wpa2-pre-shared-key=choosepassword
+[admin@MikroTik] &gt; /interface/wireless/set wlan1 frequency=auto scan-list=default installation=outdoor mode=bridge ssid=MikroTik1 channel-width=20/40/80mhz-Ceee wireless-protocol=any security-profile=default band=5ghz-a/n/ac
+[admin@MikroTik] &gt; /interface/wireless/enable wlan1 
+</code></pre>
+<h4 id="for-station-device_1">For station device</h4>
+<ul>
+<li>Choose the same SSID, Password, and frequency as the bridge device and choose station-bridge mode option that will act as a <strong>station</strong> for the setup. Please see the example.</li>
+<li>Enable W60G interface after required parameters have been set.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/wireless/security-profiles/set [ find default=yes ] supplicant-identity=MikroTik authentication-types=wpa2-psk mode=dynamic-keys wpa2-pre-shared-key=choosepassword
+[admin@MikroTik] &gt; /interface/wireless/set wlan1 frequency=auto scan-list=default installation=outdoor mode=station-bridge ssid=MikroTik1 channel-width=20/40/80mhz-Ceee wireless-protocol=any security-profile=default band=5ghz-a/n/ac
+[admin@MikroTik] &gt; /interface/wireless/enable wlan1 
+</code></pre>
+<h3 id="configure-bridge-and-bonding">Configure bridge and bonding</h3>
+<ul>
+<li>Configure bonding and assign slave interfaces. In this setup it is selected as the built-in wlan1 interface, but it can also be an ether interface in other kinds of setups.</li>
+</ul>
+<p>For <em>bridge</em> device please set <strong>bonding</strong> as:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bonding/add comment=bondingbackup mode=active-backup name=bond1 primary=wlan60-station-1 slaves=wlan60-station-1,wlan1
+</code></pre>
+<p>&emsp;&emsp; For a <em>station-bridge</em> device please set <strong>bonding</strong> as:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bonding/add comment=defconf mode=active-backup name=bond1 primary=wlan60-1 slaves=wlan60-1,wlan1
+</code></pre>
+<ul>
+<li>Add interface members (ether1 and bond1) to the newly created bridge.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/add interface=ether1 bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/add interface=bond1  bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload
+#     INTERFACE                              BRIDGE                              HW   PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+0     ether1                                 bridge                             yes     1     0x80         10                 10       none
+1     bond1                                  bridge                             yes     1     0x80         10                 10       none |
+</code></pre>
+<h3 id="additional-configuration_1">Additional configuration</h3>
+<p>The link should be established after all previously explained steps are done. It's recommended to set up an administrator password on both devices.</p>
+<h3 id="troubleshooting_1">Troubleshooting</h3>
+<p>Ensure the connection is established to the correct device by checking the device settings like serial number and model name by issuing a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/routerboard/print
+</code></pre>
+<p>If the bridge wlan60-1 interface in the bridge settings is inactive and the configuration is done properly  to enable the interface on a device - issue a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1 
+</code></pre>
+<hr />
+<h1 id="fail-over-ptp-gui-example">Fail-over PtP GUI example</h1>
+<blockquote>
+<p>This guide demonstrates configuring automatic failover between a 60GHz wireless bridge and a bonded 5GHz interface using MikroTik RouterOS GUI, including bridge setup, wireless mode selection, and security profile...</p>
+</blockquote>
+<h1 id="fail-over-ptp-gui-example_1">Fail-over PtP GUI example</h1>
+<h3 id="summary_3">Summary</h3>
+<p>This example shows how to configure an automatic fail-over (bonding) 5Ghz link in combination with 60Ghz devices in the GUI.<br />
+When a connection between 60Ghz wireless is lost, it will automatically use the bonded interface.<br />
+The example is done from empty configuration state with [<a href="https://mikrotik.com/download">WinBox</a>] utility</p>
+<h3 id="connect-to-the-device">Connect to the device</h3>
+<p>After configuration reset - only mac-telnet is possible. In the main WinBox screen press on Neighbours, choose your device's MAC address and press Connect:</p>
+<ol>
+<li>Select the correct device <strong>MAC Address.</strong></li>
+<li>The default login is "<strong>admin</strong>" and no password is set.</li>
+<li>Press <strong>Connect.</strong></li>
+</ol>
+<h3 id="configure-bridge_2">Configure bridge</h3>
+<p>Add new bridge:</p>
+<ol>
+<li>Open the Bridge sub-menu;</li>
+<li>Press on "+" to add a new bridge;</li>
+<li>Apply your changes.</li>
+</ol>
+<p><em>Later in the instructions it requires assigning bridge members to it. This will allow passing traffic from Ethernet to W60G interface without routing.</em></p>
+<h3 id="set-up-60ghz-wireless-connection_2">Set up 60Ghz wireless connection</h3>
+<p>All previously explained steps are identical to <strong>bridge</strong> and <strong>station</strong> devices. Different modes need to be used when configuring wireless interfaces.</p>
+<p>Configure <strong>bridge</strong> device as follows:</p>
+<ol>
+<li>Open the Interface menu;</li>
+<li>Double click on the wlan60-1 interface;</li>
+<li>Click the Wireless sub-menu and set mode to <strong>bridge</strong> (or <strong>ap-bridge</strong> for PtmP);</li>
+<li>Set the SSID and password and region;</li>
+<li>Select the previously created bridge under "Put Stations In Bridge";</li>
+<li>Apply your changes;</li>
+<li>Press Enable to start transmitting.</li>
+</ol>
+<p>Configure <strong>station</strong> device as follows:</p>
+<ol>
+<li>Open Interface menu;</li>
+<li>Double click on wlan60-1 interface;</li>
+<li>Press on Wireless sub-menu and set mode to <strong>station bridge</strong>;</li>
+<li>Set SSID and password;</li>
+<li>Apply your changes;</li>
+<li>Press enable to start transmitting.</li>
+</ol>
+<h3 id="set-up-5ghz-wireless-connection_2">Set up 5Ghz wireless connection</h3>
+<h4 id="choose-security-profile-for-your-devices">Choose Security Profile for your devices</h4>
+<ol>
+<li>Choose the <strong>Wireless</strong> menu;</li>
+<li>Choose the <strong>Security Profiles</strong> sub-menu;</li>
+<li>Add a new profile with the "<strong>+</strong>" sign;</li>
+<li>Choose <strong>a name</strong>, <strong>mode</strong>, <strong>authentication type</strong> and a secure password;</li>
+<li><strong>Apply</strong> the configuration.</li>
+</ol>
+<hr />
+<h4 id="for-bridge-device_2">For bridge device</h4>
+<ol>
+<li>Open the <strong>Interfaces</strong> menu;</li>
+<li>Double click on the <strong>wlan1</strong> interface;</li>
+<li>Press on the <strong>Wireless</strong> sub-menu and set mode to <strong>bridge</strong> (or <strong>ap-bridge</strong> for PtmP);</li>
+<li>Set <strong>SSID</strong>, <strong>password</strong> and <strong>country</strong>;</li>
+<li>
+<p>Press on the <strong>Advanced Mode</strong>;</p>
+</li>
+<li>
+<p>Choose your <strong>Security Profile</strong>;</p>
+</li>
+<li><strong>Apply</strong> your changes;</li>
+<li>Press <strong>enable</strong> to start transmitting.</li>
+</ol>
+<h4 id="for-station-device_2">For station device</h4>
+<ol>
+<li>Open the <strong>Interfaces</strong> menu;</li>
+<li>Double click on the <strong>wlan1</strong> interface;</li>
+<li>Open the <strong>Wireless</strong> sub-menu and set mode to <strong>station-bridge</strong>;</li>
+<li>Set <strong>SSID</strong>, <strong>password</strong> and <strong>country</strong>;</li>
+<li>Open the <strong>advanced</strong> mode (similar to the bridge device*);</li>
+<li>Choose <strong>Security Profile</strong>;</li>
+<li><strong>Apply</strong> your changes;</li>
+<li>Press <strong>enable</strong> to start transmitting.</li>
+</ol>
+<p><em>If everything is done correctly - running (R) flags should appear as shown in the screenshot:</em>  </p>
+<h3 id="configure-bonding">Configure bonding</h3>
+<p><em>Configure bonding and assign slave interfaces in this setup it is selected as the built-in wlan1 interface, but it can also be an ether interface in other kinds of setups.</em></p>
+<h4 id="for-bridge-device_3">For bridge device</h4>
+<ol>
+<li>Press the <strong>Bonding</strong> sub-menu;</li>
+<li>Add a new member with "<strong>+</strong>";</li>
+<li>Add interface members (<strong>wlan1</strong> and <strong>wlan60-station-1</strong>) to the <strong>bonding</strong> interface as <strong>Slaves</strong>;</li>
+<li>Add interface member <strong>wlan60-station-1</strong> as the <strong>Primary</strong> interface;</li>
+<li>Choose Mode as <strong>active backup</strong>;</li>
+<li><strong>Apply</strong> the configuration.</li>
+</ol>
+<h4 id="for-station-device_3">For station device</h4>
+<ol>
+<li>Press on the <strong>Bonding</strong> sub-menu;</li>
+<li>Add a new member with "<strong>+</strong>";</li>
+<li>Add interface members (<strong>wlan1</strong> and <strong>wlan60-1</strong>) to the <strong>bonding</strong> interface as <strong>Slaves</strong>;</li>
+<li>Add the interface member <strong>wlan60-1</strong> as the <strong>Primary</strong> interface;</li>
+<li>Choose Mode as <strong>active backup</strong>;</li>
+<li><strong>Apply</strong> the configuration.</li>
+</ol>
+<h3 id="configure-bridge_3">Configure bridge</h3>
+<p><em>Configuring bridge settings including the bonding interface is mandatory for the active-backup to work on used devices (In this case bridge and station device settings are the same):</em></p>
+<ol>
+<li>Press on the <strong>Bridge</strong> sub-menu;</li>
+<li>Add a new member with "<strong>+</strong>";</li>
+<li>Add the interface member as <strong>ether1</strong> and the Bridge member as <strong>bridge1</strong>;</li>
+<li><strong>Apply</strong> the configuration;</li>
+</ol>
+<p>**</p>
+<ol>
+<li>Press on the <strong>Bridge</strong> sub-menu;</li>
+<li>Add a new member with "<strong>+</strong>";</li>
+<li>Add the interface member as <strong>bonding1</strong> and the Bridge member as <strong>bridge1</strong>;</li>
+<li><strong>Apply</strong> the configuration.</li>
+</ol>
+<p>**</p>
+<h3 id="additional-configuration_2">Additional configuration</h3>
+<p>Interfaces, when enabled from greyed out, will become active.</p>
+<p>Link should be established after all previously explained steps are done. It's recommended to set up an administrator password on both devices.</p>
+<hr />
+<h1 id="ptp-cli-example">PtP CLI example</h1>
+<blockquote>
+<p>This page provides a step-by-step CLI example for configuring a transparent wireless bridge between two MikroTik W60G devices, including connecting via MAC-Telnet, setting up a bridge with interface members, and...</p>
+</blockquote>
+<h1 id="ptp-cli-example_1">PtP CLI example</h1>
+<h3 id="summary_4">Summary</h3>
+<p>This example shows how to configure a transparent wireless bridge in CLI from one W60G device to another.</p>
+<p>The example is done from an empty configuration state with the [<a href="https://mikrotik.com/download">WinBox</a>] utility</p>
+<h3 id="connect-to-the-device-step-by-step_2">Connect to the device step by step</h3>
+<ul>
+<li>After configuration reset - only mac-telnet is possible.
+   Connect to the device by connecting to its MAC address or use WinBox New terminal to find device MAC address of the W60G device by issuing command:</li>
+</ul>
+<pre><code class="language-ros">/ip/neighbor/print
+</code></pre>
+<ul>
+<li>To connect to the W60G device issue a command:</li>
+</ul>
+<pre><code class="language-ros">/tool/mac-telnet/mac-address
+</code></pre>
+<ul>
+<li>Enter username and password. By default the username is <strong>admin</strong> and no password is set:</li>
+</ul>
+<pre><code class="language-ros">[admin@KD_GW] &gt; /tool/mac-telnet C4:AD:34:84:EE:5D
+Login: admin
+Password:
+Trying C4:AD:34:84:EE:5D...
+Connected to C4:AD:34:84:EE:5D
+</code></pre>
+<h3 id="configure-bridge_4">Configure bridge</h3>
+<ul>
+<li>Add a new bridge and assign bridge members to it by issuing the following command:</li>
+</ul>
+<pre><code class="language-ros">/interface/bridge/add name=bridge
+</code></pre>
+<p>&emsp;&emsp;   To check if the bridge has been created, issue a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/print
+Flags: X - disabled, R - running
+0 R name=&quot;bridge&quot; mtu=auto actual-mtu=1500 l2mtu=65535 arp=enabled arp-timeout=auto mac-address=1A:7F:BB:41:B0:94 protocol-mode=rstp  fast-forward=yes igmp-snooping=no auto-mac=yes ageing-time=5m priority=0x8000 max-message-age=20s forward-delay=15s transmit-hold-count=6  vlan-filtering=no dhcp-snooping=no
+</code></pre>
+<ul>
+<li>Add interface members (ether1 and wlan60-1) to the newly created bridge:</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/add interface=ether1 bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/add interface=wlan60-1 bridge=bridge
+[admin@MikroTik] &gt; /interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload
+#     INTERFACE                              BRIDGE                              HW   PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+0     ether1                                 bridge                             yes     1     0x80         10                 10       none
+1 I   wlan60-1                               bridge                                     1     0x80         10                 10       none
+</code></pre>
+<h3 id="set-up-wireless-connection">Set up wireless connection</h3>
+<p>All previously explained steps are identical to Bridge and Station devices. When configuring the wireless interface different modes need to be used.  </p>
+<h4 id="for-bridge-device_4">For bridge device</h4>
+<ul>
+<li>Choose SSID, Password, frequency and choose bridge mode option that will act as a <strong>bridge</strong> for the setup, please see the example;</li>
+<li>Enable W60G interface after required parameters have been set:</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=bridge frequency=auto ssid=MySSID password=choosepassword put-stations-in-bridge=bridge isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running 
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=bridge ssid=&quot;MySSID&quot;  frequency=auto default-scan-list=58320,60480,62640,64800 password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=bridge isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1
+</code></pre>
+<h4 id="for-station-device_4">For station device</h4>
+<ul>
+<li>Choose the same SSID, password, and frequency as the bridge device and choose the station-bridge mode option that will act as a <strong>station</strong> for the setup, please see the example;</li>
+<li>Enable the W60G interface after required parameters have been set:</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/set wlan60-1 mode=station-bridge frequency=auto ssid=MySSID password=choosepassword
+[admin@MikroTik] &gt; /interface/w60g/print
+Flags: X - disabled, R - running 
+0 X name=&quot;wlan60-1&quot; mtu=1500 l2mtu=1600 mac-address=C4:AD:34:84:EE:5E arp=enabled arp-timeout=auto region=no-region-set mode=station-bridge  ssid=&quot;MySSID&quot; frequency=auto default-scan-list=58320,60480,62640,64800 password=&quot;choosepassword&quot; tx-sector=auto put-stations-in-bridge=bridge isolate-stations=yes
+[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1
+</code></pre>
+<h3 id="additional-configuration_3">Additional configuration</h3>
+<p>The link should be established after all previously explained steps are done. It's recommended to set up administrator's password on both devices.</p>
+<h3 id="troubleshooting_2">Troubleshooting</h3>
+<p>Ensure the connection is established to the correct device by checking the device settings like serial number and model name by issuing a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/routerboard/print
+</code></pre>
+<p>If the bridge wlan60-1 interface in bridge settings is inactive and the configuration is done properly  to enable the interface on a device - issue a command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/w60g/enable wlan60-1 
+</code></pre>
+<hr />
+<h1 id="ptp-gui-example">PtP GUI example</h1>
+<blockquote>
+<p>This guide demonstrates configuring a transparent wireless bridge between two MikroTik W60G devices using WinBox, covering interface setup, bridge creation, wireless mode configuration for both bridge and station...</p>
+</blockquote>
+<h1 id="ptp-gui-example_1">PtP GUI example</h1>
+<h3 id="summary_5">Summary</h3>
+<p>This example shows how to configure a transparent wireless bridge in the GUI from one W60G device to another.</p>
+<p>Example is done from an empty configuration state with the [<a href="https://mikrotik.com/download">WinBox</a>] utility</p>
+<h3 id="connect-to-the-device_1">Connect to the device</h3>
+<p>After configuration reset - only mac-telnet is possible. In the main WinBox screen press on Neighbours, choose your device's MAC address and press Connect:</p>
+<h3 id="configure-bridge_5">Configure bridge</h3>
+<p>Add a new bridge and assign bridge members to it. This will allow passing traffic from Ethernet to W60G interface without routing:</p>
+<ol>
+<li>Open the Bridge sub-menu;</li>
+<li>Press on "+" to add a new bridge;</li>
+<li>Apply your changes.</li>
+</ol>
+<p>Add interface members (ether1 and wlan60-1) to newly created bridge:</p>
+<ol>
+<li>Press on the Ports sub-menu;</li>
+<li>Add a new member with "+";</li>
+<li>Select the correct interfaces;</li>
+<li>Apply the settings.</li>
+</ol>
+<h3 id="set-up-wireless-connection_1">Set up wireless connection</h3>
+<p>All previously explained steps are identical to <strong>bridge</strong> and <strong>station</strong> devices. Different modes need to be used when configuring wireless interfaces.</p>
+<p>Configure <strong>bridge</strong> device as follows:</p>
+<ol>
+<li>Open the Interface menu;</li>
+<li>Double click on the wlan60-1 interface;</li>
+<li>Press Wireless sub-menu and set mode to <strong>bridge</strong>;</li>
+<li>Set SSID and password and region;</li>
+<li>Select the previously created bridge under "Put Stations In Bridge";</li>
+<li>Apply your changes;</li>
+<li>Press enable to start transmitting.</li>
+</ol>
+<p>Configure <strong>station</strong> device as follows:</p>
+<ol>
+<li>Open the Interface menu;</li>
+<li>Double click on wlan60-1 interface;</li>
+<li>Press the Wireless sub-menu and set mode to <strong>station bridge</strong>;</li>
+<li>Set SSID and password;</li>
+<li>Apply your changes;</li>
+<li>Press enable to start transmitting.</li>
+</ol>
+<h3 id="additional-configuration_4">Additional configuration</h3>
+<p>Interfaces, when enabled from greyed out, will become active.</p>
+<p>The link should be established after all previously explained steps are done. It's recommended to set up an administrator password on both devices.</p>
+<p>To create a point to multi-point setup: On the bridge device ap-bridge must be set and station-bridge for stations.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

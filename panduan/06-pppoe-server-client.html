@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPPoE Server &amp; Client (untuk ISP) · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="pppoe-server-client-untuk-isp">PPPoE Server &amp; Client (untuk ISP)</h1>
+<p>Menyiapkan RouterOS sebagai access concentrator PPPoE untuk pelanggan, dan
+sebagai client ke upstream.</p>
+<h2 id="bagian-a-pppoe-server-sisi-isp">Bagian A — PPPoE Server (sisi ISP)</h2>
+<h3 id="1-pool-ip-untuk-pelanggan">1. Pool IP untuk pelanggan</h3>
+<pre><code>/ip/pool/add name=pppoe-pool ranges=10.10.0.2-10.10.255.254
+</code></pre>
+<h3 id="2-profile-ppp">2. Profile PPP</h3>
+<pre><code>/ppp/profile/add name=pelanggan local-address=10.10.0.1 remote-address=pppoe-pool \
+    dns-server=1.1.1.1,8.8.8.8
+</code></pre>
+<h3 id="3-pppoe-server-di-interface">3. PPPoE Server di interface</h3>
+<pre><code>/interface/pppoe-server/server/add service-name=internet interface=bridge1
+</code></pre>
+<p>Bisa juga satu server melayani banyak interface / satu interface banyak server.</p>
+<h3 id="4-akun-pelanggan-secrets">4. Akun pelanggan (secrets)</h3>
+<pre><code>/ppp/secret/add name=pelanggan1 password=Rahasia123 service=pppoe profile=pelanggan
+</code></pre>
+<h3 id="5-cek-sesi-aktif">5. Cek sesi aktif</h3>
+<pre><code>/ppp/active/print
+/interface/pppoe-server/server/print
+</code></pre>
+<h2 id="bagian-b-pppoe-client-ke-upstream">Bagian B — PPPoE Client (ke upstream)</h2>
+<pre><code>/interface/pppoe-client/add name=pppoe-out1 interface=ether1 \
+    user=userISP password=passISP add-default-route=yes use-peer-dns=yes disabled=no
+</code></pre>
+<p>Tambahkan ke interface-list WAN supaya kena NAT/firewall:</p>
+<pre><code>/interface/list/member/add list=WAN interface=pppoe-out1
+</code></pre>
+<p>Monitor: <code>/interface/pppoe-client/monitor pppoe-out1 once</code></p>
+<h2 id="catatan-praktis-isp">Catatan praktis ISP</h2>
+<ul>
+<li><strong>MTU 1492</strong>: PPPoE membawa header tambahan; pastikan clamping MSS kalau ada
+  masalah akses halaman tertentu:</li>
+</ul>
+<pre><code>/ip/firewall/mangle/add chain=forward protocol=tcp tcp-flags=syn \
+    action=change-mss new-mss=1400 tcp-mss=1400-2000 comment=&quot;MSS clamp PPPoE&quot;
+</code></pre>
+<ul>
+<li><strong>Queue per pelanggan</strong>: pakai profile <code>rate-limit</code> atau simple queue.</li>
+<li><strong>Isolasi</strong>: default, PPPoE server tidak meneruskan trafik antar-client.</li>
+<li><strong>RADIUS</strong>: bisa pakai untuk autentikasi terpusat (menu <code>/radius</code>).</li>
+</ul>
+<h2 id="troubleshooting-singkat">Troubleshooting singkat</h2>
+<ul>
+<li>Sesi tidak naik → cek <code>service-name</code>, <code>interface</code>, dan secret/password</li>
+<li>Pelanggan dapat IP tapi tidak internet → cek NAT, route, dan firewall forward</li>
+<li>Cek log: <code>/log/print</code> atau filter topik <code>pppoe</code></li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>14 Virtual Private Networks → PPPoE</em></li>
+<li>Manual: <em>15 AAA and User Management → PPP AAA</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

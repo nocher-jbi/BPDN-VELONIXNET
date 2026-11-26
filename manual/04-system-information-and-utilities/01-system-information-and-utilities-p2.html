@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Information and Utilities · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">System Information and Utilities</p>
+      <h1 id="system-information-and-utilities-part-22">System Information and Utilities (part 2/2)</h1>
+<h1 id="tftp">TFTP</h1>
+<blockquote>
+<p>The RouterOS TFTP server: serve boot, firmware and configuration files to devices, accept uploads, match requested file names with access rules and regular expressions, and troubleshoot block sizes, large files and...</p>
+</blockquote>
+<h1 id="tftp_1">TFTP</h1>
+<p>RouterOS includes a TFTP server. Trivial File Transfer Protocol (TFTP) is a simple file transfer protocol over UDP, without authentication, that network devices use at startup: IP phones and access points fetch their configuration or firmware with it, network-booting computers load a boot loader, and switches upload configuration backups. The server serves files from the router's storage and accepts uploads when a rule allows them.</p>
+<p>The server runs while <code>/ip/tftp</code> holds at least one enabled access rule. Each request is checked against the rules in order: the first rule that matches the client address and the requested file name decides, and a request that no rule matches is refused. To download a file from another TFTP server, use <a href="fetch"><code>/tool/fetch</code></a> with <code>mode=tftp</code>.</p>
+<p>Devices usually learn the TFTP server and the file name from DHCP. On a RouterOS DHCP server, set <code>next-server</code> (the TFTP server address) and <code>boot-file-name</code> in <a href="../cli-reference/ip/dhcp-server/network"><code>/ip/dhcp-server/network</code></a>; devices that expect DHCP options 66 or 150 get them from <a href="../network-management/dhcp/server">DHCP options</a>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>TFTP has no passwords: every client in a rule's <code>ip-addresses</code> can read, and with <code>read-only=no</code> write, every name the rule's <code>req-filename</code> matches. Limit <code>ip-addresses</code> to the devices that need the rule, and write <code>req-filename</code> so that it matches only the names you serve: in a rule that serves a folder or the requested name, a pattern such as <code>.*</code>, or an empty <code>req-filename</code>, also matches names that lead out of the served folder. The examples on this page use <code>[^/.][^/]*</code>, a name without a slash that does not start with a dot.</p>
+</div>
+<h2 id="serve-files-to-devices">Serve files to devices</h2>
+<p>Create a folder, here <code>tftp</code>, copy the files into it (see <a href="files">Files</a>), and serve it to the LAN. A folder as <code>real-filename</code> is put in front of the requested name, so a request for <code>phone.cfg</code> returns <code>tftp/phone.cfg</code>; the pattern accepts names with an optional leading slash, as some clients send it, and no subfolders:</p>
+<pre><code class="language-ros">/file/add name=tftp type=directory
+/ip/tftp/add ip-addresses=192.168.88.0/24 \
+    req-filename=&quot;/\?[^/.][^/]*&quot; real-filename=tftp
+</code></pre>
+<p>To configure a rule in WinBox, open <strong>IP &gt; TFTP</strong> and select <strong>New</strong>:</p>
+<ol>
+<li>Use the <strong>+</strong> control beside <strong>IP Addresses</strong> to enter the allowed client address or subnet, such as <code>192.168.88.0/24</code> in the example.</li>
+<li>Set <strong>Req. Filename</strong> to the requested-name pattern and <strong>Real Filename</strong> to the file or folder on the router. For the folder example, set <strong>Real Filename</strong> to <code>tftp</code> and use the pattern from the command.</li>
+<li>Leave <strong>Allow</strong> and <strong>Read Only</strong> selected to serve files without accepting uploads. Review the address restriction and pattern before selecting <strong>OK</strong>, which creates the enabled rule.</li>
+</ol>
+<p><em>[gambar: WinBox new TFTP rule with address, filename, and access settings]</em></p>
+<p>The screenshot shows the blank new-rule dialog. Fill in the restrictions before saving it; an unrestricted rule can expose router files. Use <strong>Files</strong> to upload the files you intend to serve.</p>
+<p>To give every client the same file whatever it asks for, set <code>req-filename=".*"</code> and a file as <code>real-filename</code>. Use this only for clients that fetch a single file; a boot loader that fetches more files after the first gets the same file again:</p>
+<pre><code class="language-ros">/ip/tftp/add ip-addresses=192.168.88.0/24 req-filename=&quot;.*&quot; \
+    real-filename=tftp/boot.img
+</code></pre>
+<p>To answer two names with one file:</p>
+<pre><code class="language-ros">/ip/tftp/add ip-addresses=192.168.88.0/24 \
+    req-filename=&quot;(aaa|bbb)\\.bin&quot; real-filename=tftp/ccc.bin
+</code></pre>
+<p>Files on another disk are served by their path, for example <code>real-filename=usb1/tftp/boot.img</code>.</p>
+<h2 id="accept-uploads">Accept uploads</h2>
+<p>Rules are read-only by default: an upload gets the error <code>illegal operation</code>. To let switches upload their configuration backups into a <code>backups</code> folder, allow writing, and overwriting for backups that repeat under the same name. The switches upload to <code>backups/&lt;name&gt;</code>, and their own settings decide when:</p>
+<pre><code class="language-ros">/file/add name=backups type=directory
+/ip/tftp/add ip-addresses=192.168.88.2-192.168.88.9 \
+    req-filename=&quot;backups/[^/.][^/]*&quot; read-only=no allow-overwrite=yes
+</code></pre>
+<ul>
+<li>Without <code>allow-overwrite=yes</code>, an upload to a name that already exists fails with <code>file exists</code>.</li>
+<li>The same rule lets its clients download the uploaded files, which usually contain passwords, so limit <code>ip-addresses</code> to the switches.</li>
+<li>Put the upload rule before any read-only rule that also matches <code>backups/</code> names, such as a rule with an empty <code>req-filename</code> or <code>.*</code>; otherwise the read-only rule answers first.</li>
+<li>Uploads fill the router's storage; remove old backups from time to time.</li>
+</ul>
+<h2 id="refuse-some-requests">Refuse some requests</h2>
+<p>A rule with <code>allow=no</code> refuses the requests it matches. Place it before the rule that would allow them, because the first matching rule decides. <code>req-filename</code> matches the name the client requests, not the path on the router. For example, to refuse one file of the folder that a broader rule would serve:</p>
+<pre><code class="language-ros">/ip/tftp/add ip-addresses=192.168.88.0/24 \
+    req-filename=&quot;/\?secret\\.cfg&quot; allow=no \
+    place-before=[find real-filename=tftp]
+</code></pre>
+<p>Keep files that no client should read outside the served folder.</p>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p>The server listens on UDP port 69 while at least one rule exists, and <code>hits</code> counts the requests each rule answered:</p>
+<pre><code class="language-ros">/ip/service/print where name=tftpd
+/ip/tftp/print
+</code></pre>
+<p>The router logs refused and failed transfers in the <code>tftp</code> topic, for example <code>ERROR code:0 string:permission denied!</code>. To see every request with its client, file name and result, and transfers that time out, log the <code>tftp,debug</code> topic as well:</p>
+<pre><code class="language-ros">/system/logging/add topics=tftp,debug
+/log/print where topics~&quot;tftp&quot;
+</code></pre>
+<p>The debug lines show, for example, <code>requested (binary) file: phone.cfg access: allowed</code> and <code>connection timeout</code>.</p>
+<p>The client receives the same TFTP error:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Error</th>
+<th style="text-align: left;">Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>permission denied!</code> (code 0)</td>
+<td style="text-align: left;">No rule matches the client address and file name, or the first matching rule has <code>allow=no</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>file not found</code> (code 1)</td>
+<td style="text-align: left;">A rule matches, but the file it points to does not exist. Check <code>real-filename</code> and the path of the file.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>illegal operation</code> (code 4)</td>
+<td style="text-align: left;">An upload to a read-only rule, or a transfer of more than 65535 blocks without <code>allow-rollover=yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>file exists</code> (code 6)</td>
+<td style="text-align: left;">An upload to an existing file without <code>allow-overwrite=yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">No answer</td>
+<td style="text-align: left;">The router has no enabled TFTP rule, or the firewall drops UDP port 69: the default firewall accepts it only from interfaces in the <code>LAN</code> interface list.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>If the router receives the requests but the client runs into a timeout during the transfer, check the block size: some embedded clients request a large block size and then fail to handle fragmented packets. Set the client's block size to the smallest MTU on the path minus 32 bytes (20 bytes for the IP header, 8 for UDP and 4 for TFTP), less if the network uses IP options: 1468 bytes for a 1500-byte MTU. On the router, set <code>max-block-size</code> to the next lower value it offers, for example <code>/ip/tftp/settings/set max-block-size=1454</code>, or <code>512</code>, which also fits IPv6 and tunnels. A smaller block size lowers the largest file a transfer can carry; see <a href="#large-files">Large files</a>.</p>
+</div>
+<h2 id="how-rules-match">How rules match</h2>
+<ul>
+<li><code>ip-addresses</code> lists the clients: IPv4 addresses, ranges (<code>192.168.88.2-192.168.88.9</code>) or prefixes, or IPv6 prefixes. Empty means any client.</li>
+<li><code>req-filename</code> is the requested file name as a regular expression, case-sensitive. Empty matches any name.</li>
+<li><code>real-filename</code> decides what is served. Empty serves the requested name itself, a file serves that file, and a folder is put in front of the requested name. The value is used as it is written: references such as <code>\1</code> to parts of <code>req-filename</code> are not supported.</li>
+</ul>
+<p>A <code>req-filename</code> must match the whole requested name: <code>phone\.cfg</code> matches only <code>phone.cfg</code>, and <code>.*\.cfg</code> matches every name that ends in <code>.cfg</code>. RouterOS adds the anchors around the whole value, so put alternatives in a group: <code>(aaa|bbb)\.bin</code> matches <code>aaa.bin</code> and <code>bbb.bin</code>, but <code>(aaa.bin)|(bbb.bin)</code> matches every name that starts with <code>aaa.bin</code> or ends with <code>bbb.bin</code>. A value that starts with <code>^</code> is used as it is written, so <code>^boot</code> matches every name that starts with <code>boot</code> unless you end it with <code>$</code>.</p>
+<p>The regular expression elements:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Element</th>
+<th style="text-align: left;">Meaning</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>.</code></td>
+<td style="text-align: left;">Any one character</td>
+<td style="text-align: left;"><code>boo.</code> matches <code>boot</code> and <code>boox</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*</code></td>
+<td style="text-align: left;">The previous element zero or more times</td>
+<td style="text-align: left;"><code>.*\.bin</code> matches every <code>.bin</code> name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>+</code></td>
+<td style="text-align: left;">The previous element one or more times</td>
+<td style="text-align: left;"><code>bo+t</code> matches <code>bot</code> and <code>boot</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>?</code></td>
+<td style="text-align: left;">The previous element once or not at all</td>
+<td style="text-align: left;"><code>x?boot</code> matches <code>boot</code> and <code>xboot</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[ ]</code></td>
+<td style="text-align: left;">One of the listed characters</td>
+<td style="text-align: left;"><code>boo[tx]</code> matches <code>boot</code> and <code>boox</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>( \| )</code></td>
+<td style="text-align: left;">A group and alternatives</td>
+<td style="text-align: left;"><code>(aaa\|bbb)\.bin</code> matches <code>aaa.bin</code> and <code>bbb.bin</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>\</code></td>
+<td style="text-align: left;">Takes the next character literally</td>
+<td style="text-align: left;"><code>\.</code> matches a dot</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>^</code>, <code>$</code></td>
+<td style="text-align: left;">The start and the end of the name</td>
+<td style="text-align: left;"><code>^boot</code> matches names that start with <code>boot</code></td>
+</tr>
+</tbody>
+</table>
+<p>In the terminal, a value in double quotes needs two backslashes for one (<code>"(aaa|bbb)\\.bin"</code>), <code>\$</code> for a dollar sign and <code>\?</code> for a question mark, because the console treats <code>\</code>, <code>$</code> and <code>?</code> itself (<code>?</code> shows help).</p>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="transfers">Transfers</h3>
+<ul>
+<li>By default, the client and the server exchange one data block at a time, and each block is acknowledged before the next one is sent.</li>
+<li>Clients can ask for a larger block size (<code>blksize</code>); the router agrees up to <code>max-block-size</code> in <code>/ip/tftp/settings</code>: <code>512</code>, <code>1454</code>, <code>4096</code> (the default) or <code>8192</code>. The router also answers the transfer size option (<code>tsize</code>). It does not negotiate a window size (<code>windowsize</code>).</li>
+<li>With <code>reading-window-size=pipelining</code> on a rule, the router sends several blocks of a download before it waits for acknowledgements, which speeds up downloads. The default is <code>none</code>.</li>
+<li>The server listens in the VRF set with <code>vrf</code> in <code>/ip/tftp/settings</code> (default <code>main</code>).</li>
+</ul>
+<h3 id="large-files">Large files</h3>
+<p>TFTP numbers the blocks of a transfer with 16 bits, so a transfer ends at 65535 blocks: about 32 MiB with 512-byte blocks, 90 MiB with 1454-byte blocks and 256 MiB with 4096-byte blocks. With <code>allow-rollover=yes</code>, the router continues after block 65535 with block 0 and completes larger files; the client must support such a rollover. Without it, the transfer fails at the limit with <code>illegal operation</code>. To allow it on the folder rule:</p>
+<pre><code class="language-ros">/ip/tftp/set [find real-filename=tftp] allow-rollover=yes
+</code></pre>
+<p>For all properties, see <a href="../cli-reference/ip/tftp/"><code>/ip/tftp</code></a> and <a href="../cli-reference/ip/tftp/settings"><code>/ip/tftp/settings</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="ups">UPS</h1>
+<blockquote>
+<p>UPS monitor feature for APC UPS units supports serial/USB connections, enabling graceful power outage handling with hibernate and safe reboot capabilities. It monitors battery status, runs tests, logs power changes,...</p>
+</blockquote>
+<h1 id="ups_1">UPS</h1>
+<h3 id="summary">Summary</h3>
+<p><strong>Sub-menu:</strong> <code>/system/ups</code>
+<strong>Standards:</strong>  <code>APC Smart Protocol</code></p>
+<p>The UPS monitor feature works with APC UPS units that support “smart” signalling over serial RS232 or a USB connection. The UPS monitor service is not included in the default set of packages, so it needs to be downloaded and installed manually with the ups.npk package. This feature enables the network administrator to monitor the UPS and set the router to ‘gracefully’ handle any power outage with no corruption or damage to the router. The basic purpose of this feature is to ensure that the router will come back online after an extended power failure. To do this, the router will monitor the UPS and set itself to hibernate mode when the utility power is down and the UPS battery has less than 10% of its battery power left. The router will then continue to monitor the UPS (while in hibernate mode) and then restart itself when the utility power returns. If the UPS battery is drained and the router loses all power, the router will power back to full operation when the ‘utility’ power returns.</p>
+<p>The UPS monitor feature on the MikroTik RouterOS supports:</p>
+<ul>
+<li>hibernate and safe reboot on power and battery failure</li>
+<li>UPS battery test and run time calibration test</li>
+<li>monitoring of all "smart" mode status information supported by UPS</li>
+<li>logging of power changes</li>
+</ul>
+<h3 id="connecting-the-ups-unit">Connecting the UPS unit</h3>
+<p>The serial APC UPS (BackUPS Pro or SmartUPS) requires a special serial cable (unless connected with USB). If no cable came with the UPS, a cable may be ordered from APC or one can be made "in-house". Use the following diagram:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Router Side (DB9f)</th>
+<th style="text-align: left;">Signal</th>
+<th style="text-align: left;">Direction</th>
+<th style="text-align: right;">UPS Side (DB9m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">Receive</td>
+<td style="text-align: left;">IN</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Send</td>
+<td style="text-align: left;">OUT</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">Ground</td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">CTS</td>
+<td style="text-align: left;">IN</td>
+<td style="text-align: right;">6</td>
+</tr>
+</tbody>
+</table>
+<p>If using a RouterBOARD device, make sure to set your "RouterBOOT setup key" to <em>Delete</em> instead of the default <em>Any key</em>. This is to avoid accidental opening of the setup menu if the UPS unit sends some data to the serial port during RouterBOARD startup. This can be done in the RouterBOOT options during boot time or via the RouterBoard Settings in Winbox:</p>
+<pre><code>Select key which will enter setup on boot:
+ * 1 - any key
+   2 - &lt;Delete&gt; key only
+your choice:
+
+</code></pre>
+<h3 id="general-properties">General Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>alarm-setting</strong> (<em>delayed | immediate | low-battery | none</em>; Default: <strong>immediate</strong>)</td>
+<td style="text-align: left;">UPS sound alarm setting:delayed - alarm is delayed to the on-battery eventimmediate - alarm immediately after the on-battery eventlow-battery - alarm only when the battery is lownone - do not alarm</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>check-capabilities</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether to check UPS capabilities before reading information. Disabling it can fix compatibility issues with some UPS models. (Applies to RouterOS version 6, implemented since v6.17)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>min-runtime</strong> (<em>time</em>; Default: <strong>never</strong>)</td>
+<td style="text-align: left;">Minimum run time remaining. After a 'utility' failure, the router will monitor the runtime-left value. When the value reaches the min-runtime value, the router will go to hibernate mode.  never - the router will go to hibernate mode when the "battery low" signal is sent indicating that the battery power is below 10%0s - the router will continue to work as long as the battery is supplying sufficient voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>offline-time</strong> (<em>time</em>; Default: <strong>0s</strong>)</td>
+<td style="text-align: left;">How long to work on batteries. The router waits that amount of time and then goes into hibernate mode until the UPS reports that the 'utility' power is back  0s - the router will go into hibernate mode according to the min-runtime setting. In this case, the router will wait until the UPS reports that the battery power is below 10%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Communication port of the router.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only-properties">Read-only properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>load</strong> (<em>percent</em>)</td>
+<td style="text-align: left;">The UPS's output load as a percentage of full rated load in Watts. The typical accuracy of this measurement is ±3% of the maximum of 105%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>manufacture-date</strong> (<em>string</em>)</td>
+<td style="text-align: left;">UPS's date of manufacture in the format "mm/dd/yy" (month, day, year).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>model</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A string of less than 32 ASCII characters consisting of the UPS model name (the words on the front of the UPS itself)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nominal-battery-voltage</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">UPS's nominal battery voltage rating (this is not the UPS's actual battery voltage)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>offline-after</strong> (<em>time</em>)</td>
+<td style="text-align: left;">When the router goes offline</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>serial</strong> (<em>string</em>)</td>
+<td style="text-align: left;">A string of at least 8 characters directly representing the UPS's serial number as set at the factory. Newer SmartUPS models have 12-character serial numbers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong> (<em>string</em>)</td>
+<td style="text-align: left;">UPS version consists of three fields: SKU number, firmware revision, country code. The country code may be one of the following:I - 220/230/240 VacD - 115/120 VacA - 100 VacM - 208 VacJ - 200 Vac</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Note:</strong> In order to enable UPS monitor, the serial port should be available.</p>
+</div>
+<h4 id="example">Example</h4>
+<p>To enable the UPS monitor for port serial1:</p>
+<pre><code>[admin@MikroTik] /system/ups&gt; add port=serial1 disabled=no
+[admin@MikroTik] /system/ups&gt; print
+Flags: X - disabled, I - invalid
+ 0    name=&quot;ups&quot; port=serial1 offline-time=5m min-runtime=5m
+      alarm-setting=immediate model=&quot;SMART-UPS 1000&quot; version=&quot;60.11.I&quot;
+      serial=&quot;QS0030311640&quot; manufacture-date=&quot;07/18/00&quot;
+      nominal-battery-voltage=24V
+[admin@MikroTik] /system/ups&gt;
+
+</code></pre>
+<h3 id="runtime-calibration">Runtime Calibration</h3>
+<p><strong>Command:</strong>  <code>/system/ups/rtc/&lt;id&gt;</code></p>
+<p>The rtc command causes the UPS to start a run time calibration until less than 25% of full battery capacity is reached. This command calibrates the returned run time value.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Note:</strong> The test begins only if the battery capacity is 100%.</p>
+</div>
+<h3 id="monitoring">Monitoring</h3>
+<p><strong>Command:</strong>  <code>/system/ups/monitor &lt;id&gt;</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>battery-charge</strong> ()</td>
+<td style="text-align: left;">the UPS's remaining battery capacity as a percent of the fully charged condition</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>battery-voltage</strong> ()</td>
+<td style="text-align: left;">the UPS's present battery voltage. The typical accuracy of this measurement is ±5% of the maximum value (depending on the UPS's nominal battery voltage)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> ()</td>
+<td style="text-align: left;">when operating on-line, the UPS's internal operating frequency is synchronized to the line within variations of 3 Hz of the nominal 50 or 60 Hz. The typical accuracy of this measurement is ±1% of the full scale value of 63 Hz</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>line-voltage</strong> ()</td>
+<td style="text-align: left;">the in-line utility power voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>load</strong> ()</td>
+<td style="text-align: left;">the UPS's output load as a percentage of full rated load in Watts. The typical accuracy of this measurement is ±3% of the maximum of 105%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>low-battery</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>on-battery</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Whether the UPS battery is supplying power</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>on-line</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">whether power is being provided by the external utility (power company)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>output-voltage</strong> ()</td>
+<td style="text-align: left;">the UPS's output voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>overloaded-output</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>replace-battery</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>runtime-calibration-running</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>runtime-left</strong> (<em>time</em>)</td>
+<td style="text-align: left;">the UPS's estimated remaining run time in minutes. You can query the UPS when it is operating in the on-line, bypass, or on-battery modes of operation. The UPS's remaining run time reply is based on available battery capacity and output load</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>smart-boost-mode</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>smart-ssdd-mode</strong> ()</td>
+<td style="text-align: left;">only shown when the UPS reports this status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>transfer-cause</strong> (<em>string</em>)</td>
+<td style="text-align: left;">the reason for the most recent transfer to on-battery operation (only shown when the unit is on-battery)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example_1">Example</h4>
+<p>When running on utility power:</p>
+<pre><code>[admin@MikroTik] /system/ups&gt; monitor 0
+          on-line: yes
+       on-battery: no
+      RTC-running: no
+     runtime-left: 20m
+   battery-charge: 100%
+  battery-voltage: 27V
+     line-voltage: 226V
+   output-voltage: 226V
+             load: 45%
+      temperature: 39C
+        frequency: 50Hz
+  replace-battery: no
+      smart-boost: no
+       smart-trim: no
+         overload: no
+      low-battery: no
+
+[admin@MikroTik] /system/ups&gt;
+
+</code></pre>
+<p>When running on battery:</p>
+<pre><code>[admin@MikroTik] /system/ups&gt; monitor 0
+          on-line: no
+       on-battery: yes
+   transfer-cause: &quot;Line voltage notch or spike&quot;
+      RTC-running: no
+     runtime-left: 19m
+    offline-after: 4m46s
+   battery-charge: 94%
+  battery-voltage: 24V
+     line-voltage: 0V
+   output-voltage: 228V
+             load: 42%
+      temperature: 39C
+        frequency: 50Hz
+  replace-battery: no
+      smart-boost: no
+       smart-trim: no
+         overload: no
+      low-battery: no
+
+      [admin@MikroTik] /system/ups&gt;
+
+</code></pre>
+<hr />
+<h1 id="wake-on-lan">Wake on LAN</h1>
+<blockquote>
+<p>Wake a computer on the LAN with a Wake on LAN magic packet from RouterOS: on demand, from outside the network through the router, on a schedule, or several computers with one command.</p>
+</blockquote>
+<h1 id="wake-on-lan_1">Wake on LAN</h1>
+<p>Wake on LAN (WoL) turns on a computer that is switched off or asleep by sending it a magic packet: data that holds six <code>FF</code> bytes followed by the computer's MAC address 16 times. The router is always on and connected to the LAN, so it can wake a computer when you are away, or at a set time.</p>
+<p>The computer must support Wake on LAN and have it enabled in its firmware (BIOS or UEFI) and in the settings of its network adapter. Most computers wake only through a wired Ethernet connection. SecureOn passwords are not supported.</p>
+<h2 id="wake-a-computer-on-the-lan">Wake a computer on the LAN</h2>
+<p>Give the MAC address of the computer and the interface it is connected to, for example the LAN bridge:</p>
+<pre><code class="language-ros">/tool/wol mac=FE:4B:71:05:EA:8B interface=bridge
+</code></pre>
+<p>The router broadcasts the magic packet on that interface. When the interface is a bridge, the packet reaches all its ports; for a computer in a VLAN, give the VLAN interface. The command prints nothing. To check that the computer woke up, <a href="../diagnostics-monitoring-and-troubleshooting/ping">ping</a> it after it has had time to start.</p>
+<p>Always give <code>interface</code>. Without it, the router sends the magic packet as an IP broadcast through its default route, which on most routers is the internet connection, not the LAN.</p>
+<p>Note the MAC address of the computer while it is on. The <a href="../network-management/dhcp/server#leases">DHCP server leases</a> show it with the host name, and the ARP table with the address:</p>
+<pre><code class="language-ros">/ip/arp/print where address=192.168.88.20
+</code></pre>
+<p>The ARP entry disappears some time after the computer is switched off, so keep the MAC address, for example in a static DHCP lease.</p>
+<h2 id="send-a-wake-packet-in-winbox">Send a wake packet in WinBox</h2>
+<p>Open <strong>Tools &gt; WoL</strong>:</p>
+<ol>
+<li>Enter the target device's <strong>MAC Address</strong>. The screenshot uses the address from the command example.</li>
+<li>In <strong>Interface</strong>, select the interface through which the computer is reachable, for example <code>bridge</code> in the default configuration. The screenshot shows <code>ether1</code>.</li>
+</ol>
+<p><em>[gambar: WinBox Wake on LAN dialog with target MAC Address and outgoing Interface]</em></p>
+<p>Select <strong>Wake on LAN</strong> to send the packet, or <strong>Cancel</strong> to close the dialog without sending it. The target device must have Wake on LAN enabled in its own hardware and operating system.</p>
+<h2 id="wake-a-computer-from-outside-the-network">Wake a computer from outside the network</h2>
+<p>Connect to the router over a VPN, such as <a href="../network-management/cloud/back-to-home">Back To Home</a> or <a href="../virtual-private-networks/wireguard">WireGuard</a>. Then open WinBox, WebFig or an SSH session to the router through the VPN and run the command there. The router sends the magic packet on the LAN, where the computer receives it.</p>
+<h2 id="wake-a-computer-at-a-set-time">Wake a computer at a set time</h2>
+<p>To turn on an office computer every morning at 07:45, add a <a href="scheduler">scheduler</a> entry. The scheduler uses the router's clock, so check its time and time zone in <a href="clock">Clock</a>:</p>
+<pre><code class="language-ros">/system/scheduler/add name=wake-office-pc interval=1d \
+    start-time=07:45:00 \
+    on-event=&quot;/tool/wol mac=FE:4B:71:05:EA:8B interface=bridge&quot;
+</code></pre>
+<h2 id="wake-several-computers">Wake several computers</h2>
+<p>To wake a group of computers with one command, list their MAC addresses:</p>
+<pre><code class="language-ros">:foreach m in={&quot;FE:4B:71:05:EA:8B&quot;;&quot;FE:4B:71:05:EA:8C&quot;} do={
+    /tool/wol mac=$m interface=bridge
+}
+</code></pre>
+<p>To wake the group on working days only, put the loop in a script and run it from the scheduler with <code>days</code>:</p>
+<pre><code class="language-ros">/system/script/add name=wake-office-pcs source={
+    :foreach m in={&quot;FE:4B:71:05:EA:8B&quot;;&quot;FE:4B:71:05:EA:8C&quot;} do={
+        /tool/wol mac=$m interface=bridge
+    }
+}
+/system/scheduler/add name=wake-office days=mon,tue,wed,thu,fri \
+    start-time=07:45:00 on-event=wake-office-pcs
+</code></pre>
+<h2 id="technical-details_1">Technical details</h2>
+<p>The magic packet holds 6 bytes of <code>FF</code> followed by the target MAC address repeated 16 times. RouterOS sends it in one of two forms:</p>
+<ul>
+<li>With <code>interface</code>: an Ethernet frame with EtherType <code>0x0842</code> (Wake on LAN), sent to the broadcast MAC address <code>FF:FF:FF:FF:FF:FF</code> from the MAC address of the interface. It needs no IP configuration and stays on that layer-2 segment.</li>
+<li>Without <code>interface</code>: a UDP packet to <code>255.255.255.255</code>, port 9, from the router's address, sent through the interface of the default route.</li>
+</ul>
+<p>For the parameters, see the <a href="../cli-reference/tool/wol"><code>/tool/wol</code> CLI reference</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

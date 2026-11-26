@@ -1,0 +1,1677 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing and Networking Protocols · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="routing-and-networking-protocols">Routing and Networking Protocols</h1>
+<h1 id="routing-and-networking-protocols_1">Routing and Networking Protocols</h1>
+<blockquote>
+<p>This section provides guides for RouterOS routing and networking protocols, covering routing decisions, policy routing, VRF, route filtering, and major protocols like BGP, OSPF, RIP, EVPN, MPLS, along with migration...</p>
+</blockquote>
+<h1 id="routing-and-networking-protocols_2">Routing and Networking Protocols</h1>
+<p>This section covers RouterOS routing and networking protocol guides, including routing decisions, policy routing, VRF, route filtering, BGP, OSPF, RIP, EVPN, MPLS, and migration from RouterOS v6 to v7. Use it to design and troubleshoot routed networks.</p>
+<hr />
+<h1 id="routing-decision">Routing Decision</h1>
+<blockquote>
+<p>Routing decision in MikroTik RouterOS involves selecting paths for packet transmission using FIB and RIB tables, managing connected networks, default routes, and hardware offloading for efficient packet forwarding.</p>
+</blockquote>
+<h1 id="routing-decision_1">Routing Decision</h1>
+<p>Routing is the process of selecting paths across networks to move packets from one host to another. The path selection, also called the routing decision, relies on a routing information table. That table contains route entries, each of which specifies a destination and the next hop used to reach it. A <em>hop</em> occurs when a packet passes from one network segment to another.</p>
+<p>Typically, routing information has two parts and RouterOS is no exception:</p>
+<ul>
+<li><strong>FIB</strong> – the Forwarding Information Base used to make packet‑forwarding decisions. It contains a subset of the routing information needed for forwarding.</li>
+<li><strong>RIB</strong> – the Routing Information Base, which contains all prefixes learned from routing sources such as connected networks, static routes, BGP, RIP, and OSPF.</li>
+</ul>
+<h2 id="routing-information-base">Routing Information Base</h2>
+<p>The RIB contains complete routing information, including static routes, connected networks, and routes learned from dynamic protocols and MPLS label‑binding protocols such as OSPF, BGP, and LDP.<br />
+The RIB does more than simply store routes: it filters routing information to calculate the best route for each destination prefix, builds and updates the FIB, and distributes routes between routing protocols.</p>
+<p>By default, all routes are organized in a single <strong>main</strong> routing table.</p>
+<h3 id="connected-networks">Connected Networks</h3>
+<p>A connected route represents a network that hosts can reach directly (a direct attachment to a Layer 2 broadcast domain). RouterOS automatically creates a connected route for each IP network with at least one enabled interface configured under <code>/ip/address</code> or <code>/ipv6/address</code>. The RIB tracks connected‑route status but does not modify these routes. For each connected route there is a corresponding IP address item such that:</p>
+<ul>
+<li><strong>address</strong> part of the <code>dst-address</code> of the connected route is equal to a network of IP address item.</li>
+<li><strong>netmask</strong> part of <code>dst-address</code> of the connected route is equal to the netmask part of the address of the IP address item.</li>
+<li><strong>gateway</strong> of the connected route is equal to the <a href="../../cli-reference/ip/address.md#actual-interface"><code>actual-interface</code></a> of the IP address item (same as an interface, except for bridge interface ports) and represents an interface where directly connected hosts from the particular Layer3 network can be reached.</li>
+</ul>
+<p>Example of connected networks:</p>
+<pre><code class="language-text">[admin@TempTest] /ip/route&gt; print where connect 
+Flags: D - DYNAMIC; A - ACTIVE; c - CONNECT
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+    DST-ADDRESS      GATEWAY  ROUTING-TABLE  DISTANCE
+DAc 10.155.125.0/24  ether1   main                  0
+DAc 192.168.1.0/24   vlan2    main                  0
+</code></pre>
+<h3 id="default-route">Default route</h3>
+<p>A default route is used when no other route in the table matches the destination. In RouterOS the default route has a <code>dst-address</code> of <strong>0.0.0.0/0</strong> for IPv4 or <strong>::/0</strong> for IPv6. If the routing table contains an active default route, lookups in that table always succeed.</p>
+<p>Typically home router routing table contains only connected networks and one default route to forward all outgoing traffic to the ISP's gateway:</p>
+<pre><code class="language-text">[admin@TempTest] /ip/route&gt; add gateway=10.155.125.1  
+[admin@TempTest] /ip/route&gt; print where dst-address=/0  
+Flags: A - ACTIVE; s - STATIC
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+#    DST-ADDRESS  GATEWAY       ROUTING-TABLE  DISTANCE
+4 As 0.0.0.0/0    10.155.125.1  main                  1
+</code></pre>
+<h3 id="hardware-offloaded-route">Hardware Offloaded Route</h3>
+<p>Devices with <a href="../../bridging-and-switching/l3-hardware-offloading.md">Layer 3 Hardware Offloading</a> (L3HW, also called IP switching or HW routing) can offload packet forwarding to the switch chip. When L3HW is enabled, eligible routes display the <strong>H</strong> flag:</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; /ip/route print where static
+Flags: A - ACTIVE; s - STATIC, y - COPY; H - HW-OFFLOADED
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+#     DST-ADDRESS       GATEWAY         D
+0 AsH 0.0.0.0/0         172.16.2.1      1
+1 AsH 10.0.0.0/8        10.155.121.254  1
+2 AsH 192.168.3.0/24    172.16.2.1      1
+</code></pre>
+<p>By default, all routes are candidates for hardware offload. You can fine‑tune offloading by enabling or disabling the <a href="../../cli-reference/ip/route/route.md#suppress-hw-offload"><code>suppress-hw-offload</code></a> option on individual IPv4 or IPv6 static routes.
+For example, if most traffic goes to a server network, enable offloading only for that destination:</p>
+<pre><code class="language-ros">/ip route set [find where static &amp;&amp; dst-address!=&quot;192.168.3.0/24&quot;] suppress-hw-offload=yes
+</code></pre>
+<p>Now only the route to <strong>192.168.3.0/24</strong> has an H-flag, indicating that it will be the only one eligible to be selected for HW offloading:</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; /ip/route print where static
+Flags: A - ACTIVE; s - STATIC, y - COPY; H - HW-OFFLOADED
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+#     DST-ADDRESS       GATEWAY         D
+0 As  0.0.0.0/0         172.16.2.1      1
+1 As  10.0.0.0/8        10.155.121.254  1
+2 AsH 192.168.3.0/24    172.16.2.1      1
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>H-flag does not indicate that the route is actually HW offloaded, it indicates only that the route can be selected to be HW offloaded.</p>
+</div>
+<h3 id="multipath-ecmp-routes">Multipath (ECMP) routes</h3>
+<p>Some setups, such as load balancing, require more than one path to a given destination.</p>
+<p>ECMP (Equal Cost Multi-Path) routes have multiple gateway (next‑hop) values. All reachable next hops are copied to the <a href="#forwarding-information-base"><strong>FIB</strong></a> for packet forwarding.</p>
+<p>You can create these routes manually or they can be learned dynamically by protocols such as OSPF, BGP, or RIP. Multiple equally preferred routes to the same destination receive the <strong>+</strong> flag and are grouped automatically by RouterOS (see example below).</p>
+<pre><code class="language-text">[admin@TempTest] /ip/route&gt; print 
+Flags: D - DYNAMIC; I - INACTIVE, A - ACTIVE; C - CONNECT, S - STATIC, m - MODEM; + - ECMP
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+#       DST-ADDRESS      GATEWAY       D
+0   AS+ 192.168.2.0/24   10.155.125.1  1
+1   AS+ 192.168.2.0/24   172.16.1.2    1
+</code></pre>
+<p>By default, ECMP uses the <strong>Layer3</strong> hash policy, which hashes source and destination IP addresses (IPv4) or source/destination IP, flow label, and IP protocol (IPv6).<br />
+You can change hashing policies in <code>/ip/settings</code> and <code>/ipv6/settings</code> to <strong>Layer4</strong> or <strong>inner Layer3</strong> hashing.<br />
+Supported hashing methods include:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">IPv4</th>
+<th style="text-align: left;">IPv6</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">L3</td>
+<td style="text-align: left;">srcIPv4, dstIPv4</td>
+<td style="text-align: left;">srcIPv6, dstIPv6, flow label, IP proto</td>
+</tr>
+<tr>
+<td style="text-align: left;">L4</td>
+<td style="text-align: left;">srcIPv4, dstIPv4, srcPort, dstPort, IP proto</td>
+<td style="text-align: left;">srcIPv6, dstIPv6, srcPort, dstPort, IP Proto</td>
+</tr>
+<tr>
+<td style="text-align: left;">L3-Inner</td>
+<td style="text-align: left;">srcIPv4, dstIPv4 (if inner IPv4)srcIPv6, dstIPv6, flow label, IP proto (if inner IPv6)Same as L3 if inner is not present.</td>
+<td style="text-align: left;">srcIPv4, dstIPv4 (if inner IPv4)srcIPv6, dstIPv6, flow label, IP proto (if inner IPv6)Same as L3 if inner is not present.</td>
+</tr>
+</tbody>
+</table>
+<p>When ECMP is offloaded by <a href="../../bridging-and-switching/l3-hardware-offloading.md">L3 hardware offloading</a>, the switch chip uses its own hash mask, which includes L4 ports for TCP/UDP; the configured hash policy is ignored for hardware-forwarded ECMP. <a href="../../firewall-and-quality-of-service/packet-flow-in-routeros.md#fast-path">FastPath</a> caches routes by destination address, so the <strong>Layer4</strong> and <strong>inner Layer3</strong> policies do not provide per-flow distribution for FastPath-cached traffic.</p>
+<h3 id="route-selection">Route Selection</h3>
+<p>Multiple routes with the same destination can be learned from different protocols or static configurations, but only one best route is used for forwarding. The RIB runs a route‑selection algorithm to choose the best route among the candidates for each destination.</p>
+<p>Only routes that meet these criteria participate in route selection:</p>
+<ul>
+<li>Route is not disabled.</li>
+<li>If the type of route is <em>unicast</em> it must have at least one reachable next-hop. ( if a gateway is from a connected network and there is a connected route active, the gateway is considered as reachable)</li>
+<li>Route should not be <em>synthetic</em>.</li>
+</ul>
+<p>The candidate route with the lowest distance becomes active. If multiple candidates share the same distance, the active route is chosen arbitrarily.</p>
+<p>For example,</p>
+<pre><code class="language-text">[admin@RB5009_108] /ip/route&gt; print where dst-address=203.0.113.1
+Flags: D - DYNAMIC; A - ACTIVE; s - STATIC, o - OSPF
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+#     DST-ADDRESS     GATEWAY                  ROUTING-TABLE  DISTANCE
+  D o 203.0.113.1/32  111.13.0.2%sfp-sfpplus1  main                110
+2  As 203.0.113.1/32  111.13.0.2               main                  1
+</code></pre>
+<p>In the example, a static route and an OSPF route point to the same destination. OSPF installs its route with the higher default distance (110) compared with the static route (1). The route with the lower distance is selected as the best route.</p>
+<h3 id="nexthop-lookup">Nexthop Lookup</h3>
+<p>Nexthop lookup is a part of the route selection process. Its main purpose is to find a directly reachable gateway address (next-hop). Only after a valid next-hop is selected router knows which interface to use for packet forwarding.</p>
+<p>Nexthop lookup becomes more complicated if routes have a gateway address that is several hops away from this router (e.g. iBGP, multihop eBGP). Such routes are installed in the FIB after the next-hop selection algorithm determines the address of the directly reachable/immediate gateway (shown by <code>immediate-gw</code> parameter).</p>
+<p>It is necessary to restrict the set of routes that can be used to look up immediate next-hops. Nexthop values of RIP or OSPF routes, for example, are supposed to be directly reachable and should be looked up only using connected routes. This is achieved using scope and target-scope properties.</p>
+<p>Routes with a <code>scope</code> greater than the maximum accepted value are not used for next-hop lookup. Each route specifies the maximum accepted scope value for its nexthop in the <code>target-scope</code> property. The default value of this property allows nexthop lookup only through connected routes, with the exception of iBGP routes that have a larger default value and can lookup nexthop also through IGP and static routes.
+<Columns>
+<Column></p>
+<center>
+| Scope | Route type      | Target scope |
+|:--|:--      |:--|
+| 0     |                 |              |
+| 10    | Connected       | 5            |
+| 20    | IGP (OSPF, RIP) | 10           |
+| 30    | Static          | 10           |
+| 40    | eBGP            | 10           |
+| 40    | iBGP            | 30           |
+</center>
+<p></Column>
+<Column>
+Matrix shows which route type (line) can resolve gateways of route types (columns) based on default scope and target-scope values.</p>
+<center>
+|             | IGP | Static | eBGP | iBGP |
+|:--|:--|:--|:--|:--|
+| **Connected** |  +  |   +    |  +   |  +   |
+| **IGP**       |     |        |      |  +   |
+| **Static**    |     |        |      |  +   |
+| **eBGP**      |     |        |      |      |
+| **iBGP**      |     |        |      |      |
+</center>
+<p></Column>
+</Columns></p>
+<p>It is possible to alter default behaviour by adjusting a <code>target-scope</code> values. For example, if there is a multihop eBGP setup it might be a good idea to resolve nexthops for these routes via IGP protocol routes or static routes. To do this, we can set up input routing filter to change the <code>target-scope</code> that is greater than the value of IGP or static <code>scope</code>. It is even possible to resolve eBGP routes over iBGP routes by adjusting <code>scope</code> and <code>target-scope</code> values.</p>
+<p>Flexibility of scope adjustmens even allows to create a crazy setup, like resolving OSPF via eBGP.</p>
+<p>Routes are processed in scope order, and updates to routes with a larger scope cannot affect the state of nexthop lookup for routes with a smaller scope.</p>
+<p>RIB keeps multiple nexthop objects per address, one for each combination of scope and gateway check.</p>
+<p>When you change a route's <code>target-scope</code> or gateway check, it <strong><em>does not affect other routes</em></strong>, because these properties attach to the nexthop object rather than the route.</p>
+<p>Scope values that are invalid are fixed automatically:</p>
+<ul>
+<li>if nexthop scope is set to 255 - RouterOS will internally fix this error by setting its scope to 254.</li>
+<li>if a route's scope is not greater than the maximum accepted scope for gateway lookup, RouterOS fixes the error by setting the nexthop scope to <code>target-scope + 1</code></li>
+</ul>
+<p>You can view the actual <code>scope</code> and <code>target-scope</code> values in the <code>/routing/nexthop</code> menu.</p>
+<p>You can extend gateway checking by setting the <code>check-gateway</code> parameter. The router verifies gateway reachability with ARP probes, ICMP messages, or active BFD sessions. By default it sends an ICMP echo request (<em>ping</em>) or ARP request (<em>arp</em>) every 10 seconds. If the gateway does not respond within 1 second, the request times out; after two timeouts the gateway is marked unreachable. Receiving a reply makes the gateway reachable again and resets the timeout counter. Adjust these intervals in the <code>/routing/settings</code> menu.</p>
+<pre><code>[admin@CCR2004_2XS_111] /routing/settings&gt; print 
+               single-process: no 
+  check-gateway-ping-interval: 10s
+   check-gateway-ping-timeout: 1s 
+     check-gateway-ping-count: 2  
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p><code>gateway</code> set as non point-to-point interface cannot be used to forward packets with destination multiple hops away.</p>
+</div>
+<p>You cannot use the <code>check-gateway</code> parameter on such gateways because no destination IP is known.</p>
+<h3 id="route-storage">Route Storage</h3>
+<p>Routing information is stored to minimize memory usage in common cases. These optimizations can have non‑obvious worst‑case scenarios and affect performance.</p>
+<p>All routes and gateways are kept in a single hierarchy by the prefix/address.</p>
+<pre><code>    Dst [4]/0 1/0+4                             18  &lt;-- number of prefixes
+         ^  ^ ^ ^ ^
+         |  | | | |
+         |  | | | \- bytes taken by Route distinguisher or Interface Id
+         |  | | \--- vrf/routing table
+         |  | \----- AFI
+         |  \------- netmask length of prefix
+         \---------- bytes taken by prefix value
+
+         [subject to change without notice]
+
+</code></pre>
+<p>Each 'Dst' entry corresponds to a unique 'dst-address' (for a route) or gateway address. Each 'Dst' entry requires one or more 'T2Node' objects.</p>
+<p>All routes with the same 'dst-address' are kept in Dst in a list sorted by route preference.  </p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>WORST CASE</strong>: having many routes with the same 'dst-address' is very slow, even if they are inactive. Updating a sorted list with tens of thousands of elements degrades performance.</p>
+</div>
+<p>Route order changes only when route attributes change. If the route becomes active/inactive, the order does not change.</p>
+<p>Each Route has three copies of route attributes:</p>
+<ul>
+<li><strong>private</strong> -- what is received from the peer, before passing in-filters.</li>
+<li><strong>updated</strong> -- what is the result of applying in-filters.</li>
+<li><strong>current</strong> -- what are the attributes currently used by the route.</li>
+</ul>
+<p>Periodically (when needed), <strong><em>update</em></strong> attributes are calculated from <strong><em>private</em></strong> attributes. This happens when route update is received, or when in-filter is updated.</p>
+<p>When the routing table is recalculated, <strong><em>current</em></strong> attributes are set to the value from <strong><em>updated</em></strong> attributes.</p>
+<pre><code class="language-mermaid">---
+config:
+  layout: elk
+---
+graph LR
+    subgraph **RIB**
+        direction LR
+        P[**Private**] --&gt; F{&quot;in-filter&quot;}
+        F --&gt; U[**Update**]
+        U --&gt; calc{ Calculation }
+        calc --&gt; C[**Current**]
+    end
+
+    A@{ shape: f-circ } --&gt;|prefix in| P
+    C --&gt;|BGP peer / protocol output| O@{ shape: f-circ }
+
+</code></pre>
+<p>This means, that usually if there is no in-filter that changes route attributes, <strong><em>private</em></strong>, <strong><em>updated,</em></strong> and <strong><em>current</em></strong> share the same value.</p>
+<p>Route attributes are kept in several groups:</p>
+<ul>
+<li>L1 Data - all flags, list of extra properties, as-path;</li>
+<li>L2 Data – nexthops, RIP or OSPF metrics, BGP metrics, route tags, originators, and similar attributes.</li>
+<li>L3 Data – distance, scope, kernel type, and MPLS information.</li>
+<li>extra properties - communities, originator, aggregator-id, cluster-list, unknown</li>
+</ul>
+<p>Having, for example, many different combinations of <code>distance</code> and <code>scope</code> route attributes will use more memory!</p>
+<p>Matching communities or as-path using regexp will cache the result, to speed up filtering. Each as-path or community value has a cache for all regexp, which is filled on-demand with match results.  </p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>WORST CASE</strong>: changing attributes in <code>in-filter</code> will make the route program use more memory! Because <strong><em>private</em></strong> and <strong><em>updated</em></strong> attributes will be different! Having a lot of different regexps will make matching slow and use a lot of memory! Because each value will have a cache with thousands of entries!</p>
+</div>
+<p>Detailed info about used memory by routing protocols can be seen in <code>/routing/stats/memory</code> menu</p>
+<h2 id="forwarding-information-base">Forwarding Information Base</h2>
+<p>FIB (Forwarding Information Base) contains a copy of the information that is necessary for the packet forwarding:</p>
+<ul>
+<li>vrf tables</li>
+<li>active routes</li>
+<li>policy routing rules</li>
+<li>other routing decision rules</li>
+</ul>
+<p>Each route has a <strong>dst-address</strong> property, that specifies all destination addresses this route can be used for. If several routes apply to a particular IP address, the most specific one (with the largest netmask) is used. In cases where the routing table contains several routes with the same <strong>dst-address</strong> and netmask, all equally best routes are combined into one <a href="#multipath-ecmp-routes">ECMP</a> route, installed into FIB and marked as ''active''</p>
+<p>Only one best route can be used for packet forwarding.<br />
+Finding the most specific route that matches a given address is called <strong>routing table lookup</strong>.</p>
+<p>When forwarding decision uses additional information, such as the source address of the packet, it is called <strong>policy routing</strong>. Policy routing is implemented as a list of policy routing rules, that select different routing tables based on the destination address, source address, source interface, and routing mark (which can be changed by firewall mangle rules) of the packet.</p>
+<h3 id="routing-table-lookup">Routing table lookup</h3>
+<p>FIB uses the following information from the packet to determine its destination:</p>
+<ul>
+<li>source address</li>
+<li>destination address</li>
+<li>source interface</li>
+<li>routing mark</li>
+</ul>
+<p>Possible routing decisions are:</p>
+<ul>
+<li>receive packet locally</li>
+<li>discard the packet (either silently or by sending an ICMP message to the sender of the packet)</li>
+<li>send the packet to a specific IP address on a specific interface</li>
+</ul>
+<p>Routing decision actions are determined by policy rules defined in <a href="../../cli-reference/routing/settings.md">/routing/settings</a> via the <code>policy-rules</code> parameter.<br />
+By default:</p>
+<pre><code class="language-ros">[admin@CCR2004_2S+_107] /routing/settings&gt; print 
+               single-process: no         
+  check-gateway-ping-interval: 10s        
+   check-gateway-ping-timeout: 1s         
+     check-gateway-ping-count: 2          
+                 policy-rules: mangle     
+                               vrf-lookup 
+                               vrf-unreach
+                               local      
+                               user       
+                               main  
+ ```
+
+* Look up the destination in the routing table marked by mangle rule.
+* If interface belongs to a VRF or packet was steered to a VRF, then try to lookup in the VRF table.
+* If VRF lookup fails reject the packet.
+* Check that the packet has to be locally delivered (the destination address is the address of the router).
+* process user defined [routing rules](../../cli-reference/routing/rule.md) (from &quot;user&quot; chain)
+* Look up the destination in the `main` routing table.
+
+Depending on the complexity of required tasks, you can change the order of default rules or fine tune the setup by adding your custom rules.
+
+For example, if destination 1.2.3.4 must be resolved only in the `other_table` and additionaly you intend to use mangle, then add your routing rule and move mangle action below your custom rule:
+
+```ros
+[admin@r1] /routing/settings&gt; set policy-rules=vrf-lookup,vrf-unreach,local,user,mangle,main
+[admin@r1] /routing/rule&gt; add dst-address=1.2.3.4 action=lookup-only-in-table table=other_table
+[admin@r1] /routing/rule&gt; print 
+Flags: X - disabled, I - inactive; * - default 
+ 0    dst-address=1.2.3.4 action=lookup-only-in-table table=other_table 
+ ```
+
+If a rule has action:
+
+* `drop` or `unreachable`, then it is returned as a result of the routing decision process.
+* `lookup` then the destination address of the packet is looked up in the routing table that is specified in the rule. If the lookup fails (no route matches the destination address of the packet), then FIB proceeds to the next rule.
+* `lookup-only-in-table` is similar to `lookup` except that lookup fails if none of the routes in the table matches the packet.
+
+Otherwise:
+
+* If the type of the route is blackhole, then return this action as the routing decision result.
+* If this is a connected route or route with an interface as the gateway value, then return this interface and the destination address of the packet as the routing decision result.
+* If this route has an IP address as the value of the gateway, then return this address and associated interface as the routing decision result.
+* If this route has multiple values of nexthop, then pick one of them in a round-robin fashion based on configured [hash policy](#multipath-ecmp-routes).
+
+Keep in mind that setting an interface as a gateway for static routes in general is not a good idea. Interface gateways are useful only in two scenarios:
+
+* on point-to-point type interfaces;
+* on interfaces where the destination address is directly connected.
+
+If the routing decision returns an interface and the destination address of the packet as the result on a broadcast network, the router will try to resolve the packet's destination address over the interface by sending ARP probes. If none of the hosts in the same broadcast domain has the IP address, forwarding will fail, so such gateways cannot be used to route packets whose destination is multiple hops away.
+
+---
+
+# Moving from ROSv6 to ROSv7
+
+&gt; This page documents the transition from RouterOS v6 to v7, highlighting key changes such as increased routing table limits, new /routing/table and /routing/rule menus, improved route processing speed, and differences...
+
+# Moving from ROSv6 to ROSv7
+
+By default, all routes are added to the &quot;main&quot; routing table as it was before. From a configuration point of view, the biggest differences are routing table limit increase, routing table monitoring differences, and how routes are added to specific routing tables (see next example).
+V7 introduces a new menu `/routing/route`, which shows all address family routes as well as all filtered routes with all possible route attributes. `/ip/route` and `/ipv6/route` menus are used to add static routes and for simplicity show only basic route attributes.
+
+For more in-depth information on routing see this article ([IP Routing](../../getting-started/networking-fundamentals/index.md).
+
+Another new change is that the most common route print requests are processed by the routing process which significantly improves the speed compared to v6.
+
+## Use of Routing Tables and Policy Routing
+
+The main difference from v6 is that the routing table must be added to the `/routing/table` menu before actually referencing it anywhere in the configuration.  And the **fib** parameter should be specified if the routing table is intended to push routes to the  FIB.
+The routing rule configuration is the same except for the menu location (instead of `/ip route rule`, now it is `/routing/rule`).
+
+Let's consider a basic example where we want to resolve 8.8.8.8 only in the routing table named myTable to the gateway 172.16.1.1:
+
+```ros
+/routing/table/add name=myTable fib
+/routing/rule/add dst-address=8.8.8.8 action=lookup-only-in-table table=myTable
+/ip/route/add dst-address=8.8.8.8 gateway=172.16.1.1@main routing-table=myTable
+</code></pre>
+<p>Instead of routing rules, you could use mangle to mark packets with routing-mark, the same way as it was in ROSv6.</p>
+<p>When you are using mangle to set routing-marks, be careful not to mark "local" traffic. If your rule is also marking local traffic, then the router's ip addresses will not be reachable because, by default, mangle is the first in the list and overrides local lookup:</p>
+<pre><code class="language-routeros">[admin@CCR2004_2XS_111] /routing/rule&gt; print
+Flags: X - disabled, I - inactive; * - default
+ 0  * action=mangle
+
+ 1  * action=lookup vrf
+
+ 2  * action=unreachable vrf
+
+ 3  * action=lookup table=local
+
+ 4  * action=lookup table=main
+</code></pre>
+<p>For example, a basic multiwan setup:</p>
+<pre><code class="language-ros">/routing/table/add name=myTable fib
+/ip/address
+add address=192.168.1.1/24 interface=LAN
+add address=1.1.1.2/24 interface=WAN1
+add address=2.2.2.2/24 interface=WAN2
+/ip/route
+add gateway=1.1.1.1@main routing-table=myTable
+add gateway=2.2.2.1
+/ip/firewall/mangle/add in-interface=LAN action=mark-routing new-routing-mark=myTable
+</code></pre>
+<p>A packet coming from LAN interface with destination address 192.168.1.1 will be marked by a mangle rule and processed by the "myTable" routing table. In that table the only route to reach 192.168.1.1 is via the default route, which means that the packet will be forwarded to the 1.1.1.1 gateway.</p>
+<p>There are two options to fix the problem:</p>
+<ul>
+<li>Exclude local from being marked by adding to mangle rule:<strong><code>!dst-address-type=local</code></strong>.</li>
+<li>In <code>/routing/rule</code> menu move first rule (action=mangle) below (action=lookup table=local).</li>
+</ul>
+<p>Which approach to use depends on the complexity of the setup.</p>
+<h2 id="nexthop-lookup_1">Nexthop lookup</h2>
+<p>Consider an example from v6:</p>
+<pre><code class="language-ros">/ip/route/add dst-address=10.0.1.0/24 gateway=10.0.0.1
+    scope=50 target-scope=30 comment=A
+/ip/route/add dst-address=10.0.2.0/24 gateway=10.0.0.1
+    scope=30 target-scope=20 comment=B
+/ip/route/add dst-address=10.0.0.0/24 scope=20 gateway=WHATEVER
+    comment=C
+</code></pre>
+<p>Gateway 10.0.0.1 is recursively resolved through C using the smallest referring scope (scope 20 from route B), and both routes are active. Now we change both A and B at the same time:</p>
+<pre><code class="language-ros">/ip/route/set A target-scope=10
+</code></pre>
+<p>Suddenly, applying an update to route A makes the gateway of route B inactive. This is because in v6 there is only one gateway object per address.</p>
+<p>v7 keeps multiple gateway objects per address, one for each combination of scope and gateway check.</p>
+<p>When <code>target-scope</code> or gateway check of a route is changed, ROS v7 <strong><em>will not affect other routes</em></strong>, as it does in v6. In v7 target-scope and gateway check are properties that are internally attached to the gateway, not to the route.</p>
+<h2 id="ospf-configuration">OSPF Configuration</h2>
+<p>OSPFv3 and OSPFv2 are now merged into one single menu <code>/routing/ospf</code>. At the time of writing this article, there are no default instances and areas.
+To start both OSPFv2 and OSPF v3 instances, first, you need to create an instance for each and then add an area to each instance.</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.2.3.4
+add name=v3inst version=3 router-id=1.2.3.4
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=backbone_v3 area-id=0.0.0.0 instance=v3inst
+</code></pre>
+<p>At this point, you are ready to start OSPF on the network interface. In the case of IPv6, you add either an interface on which you want to run OSPF (the same as ROSv6) or the IPv6 network. In the second case, OSPF will automatically detect the interface. Here are some interface configuration examples:</p>
+<pre><code class="language-ros">/routing/ospf/interface-template
+add network=192.168.0.0/24 area=backbone_v2
+add network=2001:db8::/64 area=backbone_v3
+add network=ether1 area=backbone_v3
+</code></pre>
+<p>ROSv7 uses templates to match the interface against the template and apply configuration from the matched template.  OSPF menus <code>interface</code> and <code>neighbor</code> contain read-only entries purely for status monitoring.</p>
+<p>RouteOS allows controlling redistribution of routes directly by routing filters, without the need of <code>redistribute</code> parameter. This gives greater flexibility on what routes from which protocols you want to redistribute.
+For example, let's say you want to redistribute only static IPv4 routes from the 192.168.0.0/16 network range.</p>
+<p><strong>Option 1:</strong></p>
+<pre><code class="language-ros">/routing/ospf/instance
+set v2inst out-filter-chain=ospf_out redistribute=static
+</code></pre>
+<pre><code class="language-ros">/routing/filter/rule/add chain=ospf_out rule=&quot;if (dst in 192.168.0.0/16) {accept}&quot;
+</code></pre>
+<p><strong>Option 2:</strong></p>
+<pre><code class="language-ros">/routing/filter/rule/add chain=ospf_out rule=&quot;if (protocol static &amp;&amp; dst in 192.168.0.0/16) {accept}&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The default action of the routing filter chain is "reject"</p>
+</div>
+<h2 id="bgp-configuration">BGP Configuration</h2>
+<p>There is a complete redesign of the BGP configuration compared to ROSv6. The first and biggest difference is that there are no more <code>instance</code> and <strong><code>peer</code></strong> configuration menus. Instead, we have <strong><code>connection</code></strong>, <strong><code>template</code></strong> and <strong><code>session</code></strong> menus.
+The reason for such a structure is to strictly split parameters that are responsible for connection and parameters that are BGP protocol specific.</p>
+<p>Let's start with the Template. It contains all BGP protocol-related configuration options. It can be used as a template for dynamic peers and to apply a similar config to a group of peers. Note that this is not the same as peer groups on Cisco devices, where the group is more than just a common configuration.</p>
+<p>By default, there is a default template that requires you to set your own AS.</p>
+<pre><code class="language-ros">/routing/bgp/template/set default as=65533
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Starting from v7.1beta4, template parameters are exposed in the "connection" configuration. This means that the template is not mandatory anymore, allowing for an easier basic BGP connection setup, similar to what it was in ROSv6.</p>
+</div>
+<p>Most of the parameters are similar to ROSv6 except that some are grouped in the output and input sections making the config more readable and easier to understand whether the option is applied on input or output. If you are familiar with CapsMan, then the syntax is the same, for example, to specify the output selection chain you set <code>output.filter-chain=myBgpChain</code>.</p>
+<p>You can even inherit template parameters from another template, for example:</p>
+<pre><code class="language-ros">/routing/bgp/template
+add name=myAsTemplate as=65500 output.filter-chain=myAsFilter
+set default template=myAsTemplate
+</code></pre>
+<p>Another important aspect of the new routing configuration is the global Router ID, which sets router-id and groups peers in one instance. RouterOS adds a default ID which picks instance-id from any interface's highest IP. The default BGP template by default is set to use the "default" ID.
+If for any reason you need to tweak or add new instances, it can be done in the <code>/routing/id</code> menu.</p>
+<p>Very interesting parameters are <strong><code>input.``affinity</code></strong> <code>and</code> <strong><code>output.affinity</code></strong>; they allow control over which process input and output of the active session will be processed:</p>
+<ul>
+<li><strong>alone</strong> - input and output of each session are processed in its own process, most likely the best option when there are a lot of cores and a lot of peers.</li>
+<li><strong>afi, instance, vrf, remote-as</strong> - Try to run input/output of a new session in a process with similar parameters.</li>
+<li><strong>main</strong> - Run input/output in the main process (could potentially increase performance on single-core even possibly on multicore devices with a small amount of cores).</li>
+<li><strong>input</strong> - Run output in the same process as input (can be set only for output affinity).</li>
+</ul>
+<p>Now that we have parameters set for the template we can add BGP connections. A minimal set of parameters is <code>remote.address</code>, <code>template, connect</code>, <code>listen</code> and <code>local.role</code></p>
+<p>Connect and listen parameters specify whether peers will try to connect and listen to a remote address or just connect or just listen. It is possible that in setups where a peer uses the multi-hop connection, <code>local.address</code> must be configured too (as it was with <code>update-source</code> in ROSv6).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>It is not mandatory to specify a remote AS number. ROS v7 can determine the remote ASN from an open message. You should specify the remote AS only when you want to accept a connection from that specific AS.</p>
+</div>
+<p>Peer role is now a mandatory parameter. For basic setups, you can just use ibgp, ebgp (more information on available roles can be found in the corresponding <a href="https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-open-policy/?include_text=1">RFC draft</a>). Keep in mind that at the moment capabilities, communities, and filtering described in the draft are not implemented.</p>
+<p>Very basic iBGP setup to listen on the whole local network for connections:</p>
+<pre><code class="language-ros">/routing/bgp/connection
+add remote.address=10.155.101.0/24 listen=yes template=default local.role=ibgp
+</code></pre>
+<p>Now you can monitor the status of all connected and disconnected peers from <code>/routing/bgp/session</code> menu.</p>
+<p>Other great debugging information on all routing processes can be monitored from the <code>/routing/stats</code> menu</p>
+<pre><code class="language-text">[admin@v7_ccr_bgp] /routing/stats/process&gt; print interval=1
+Columns: TASKS, PRIVATE-MEM-BLOCKS, SHARED-MEM-BLOCKS, PSS, RSS, VMS, RETIRED, ID, PID, RPID, PROCESS-TIME, KERNEL-TIME, CUR-B&gt;
+# TASKS PRIVATE-M SHARED-ME PSS RSS VMS RET ID PID R PROCESS-TI KERN&gt;
+0 routing tables 12.2MiB 20.0MiB 18.7MiB 42.2MiB 83.4MiB 8 main 319 0 19s750ms 8s50&gt;
+rib &gt;
+connected networks &gt;
+1 fib 512.0KiB 0 7.4MiB 30.9MiB 83.4MiB fib 384 1 5s160ms 22s5&gt;
+2 ospf 1024.0KiB 1024.0KiB 5.9MiB 25.9MiB 83.4MiB 382 ospf 388 1 1m42s170ms 1m31&gt;
+connected networks &gt;
+3 fantasy 512.0KiB 0 2061.0KiB 5.9MiB 83.4MiB fantasy 389 1 1s410ms 870m&gt;
+4 configuration and reporting 40.0MiB 512.0KiB 45.0MiB 64.8MiB 83.4MiB static 390 1 12s550ms 1s17&gt;
+5 rip 768.0KiB 0 5.3MiB 24.7MiB 83.4MiB rip 387 1 1s380ms 1s20&gt;
+connected networks &gt;
+6 /routing/policy/configuration 512.0KiB 256.0KiB 2189.0KiB 6.0MiB 83.4MiB policy 385 1 1s540ms 1s20&gt;
+7 BGP service 768.0KiB 0 2445.0KiB 6.2MiB 83.4MiB bgp 386 1 6s170ms 9s38&gt;
+8 BGP Input 10.155.101.217 8.8MiB 6.0MiB 15.6MiB 38.5MiB 83.4MiB 20 21338 1 25s170ms 3s23&gt;
+BGP Output 10.155.101.217 &gt;
+9 Global memory 256.0KiB global 0 0 &gt;
+-- [Q quit|D dump|C-z pause|right]
+</code></pre>
+<p>Route filtering differs a bit from ROSv6. In the BGP template, you can now specify output.filter-chain, output.filter-select, input.filter as well as several input.accept-* options.</p>
+<p>Now input.accept-* allows filtering incoming messages directly before they are even parsed and stored in memory, that way significantly reducing memory usage. The regular input filter chain can only reject prefixes, which means that it will still eat memory and will be visible in the <code>/routing/route</code> table as "not active, filtered".</p>
+<p>A very basic example of a BGP input filter to accept prefixes from 192.168.0.0/16 subnet without modifying any attributes. For other prefixes subtract 1 from the received local pref value and set IGP metric to value from OSPF ext. Additionally, we will accept only specific prefixes from the address list to reduce memory usage.</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=bgp_list address=192.168.1.0/24
+add list=bgp_list address=192.168.0.0/24
+add list=bgp_list address=172.16.0.0/24
+
+/routing/bgp/template
+set default input.filter=bgp_in .accept-nlri=bgp_list
+
+</code></pre>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=bgp_in rule=&quot;if (dst in 192.168.0.0/16) {accept}&quot;
+add chain=bgp_in rule=&quot;set bgp-local-pref -1; set bgp-igp-metric ospf-ext-metric; accept&quot;
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>If the routing filter chain is not specified, BGP will try to advertise every active route it can find in the routing table</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The default action of the routing filter chain is <code>reject</code>.</p>
+</div>
+<h3 id="monitoring-advertisements">Monitoring Advertisements</h3>
+<p>RouterOS v7 by default disables monitoring of the BGP output. This allows significantly reducing resource usage on setups with large routing tables.</p>
+<p>To be able to see output advertisements several steps should be taken:</p>
+<ul>
+<li>Enable "output.keep-sent-attributes" in the BGP connection configuration.</li>
+<li>Run "dump-saved-advertisements" from the BGP session menu.</li>
+<li>View saved output from the <code>/routing/stats/pcap</code> menu.</li>
+</ul>
+<pre><code class="language-ros">[admin@arm-bgp] /routing/bgp/connection&gt;  set 0 output.keep-sent-attributes=yes
+[admin@arm-bgp] /routing/bgp/session&gt; print
+Flags: E - established
+ 0 E remote.address=10.155.101.183 .as=444 .id=192.168.44.2 .refused-cap-opt=no .capabilities=mp,rr,gr,as4
+     .afi=ip,ipv6 .messages=4 .bytes=219 .eor=&quot;&quot;
+     local.address=10.155.101.186 .as=456 .id=10.155.255.186 .capabilities=mp,rr,gr,as4 .afi=ip,ipv6
+     .messages=1 .bytes=19 .eor=&quot;&quot;
+     output.procid=66 .filter-chain=bgp_out .network=bgp-nets .keep-sent-attributes=yes
+     input.procid=66 ebgp
+     hold-time=3m keepalive-time=1m uptime=4s30ms
+
+[admin@arm-bgp] /routing/bgp/session&gt; dump-saved-advertisements 0 save-to=test_out.pcap
+
+</code></pre>
+<h3 id="networks">Networks</h3>
+<p>Lastly, you might notice that the <strong><code>network</code></strong> menu is missing and are probably wondering how to advertise your own networks. Now networks are added to the firewall address-list and referenced in the BGP configuration.
+The following is the ROSv6 network configuration:</p>
+<pre><code class="language-ros">/routing bgp network add network=192.168.0.0/24 synchronize=yes
+/ip route add dst-address=192.168.0.0/24 type=blackhole
+</code></pre>
+<p>would translate to v7 as:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=bgp-networks address=192.168.0.0/24
+
+/ip/route
+add dst-address=192.168.0.0/24 blackhole
+
+/routing/bgp/connection
+set peer_name output.network=bgp-networks
+</code></pre>
+<p>It is also possible to automatically create a blackhole route for each BGP network:</p>
+<pre><code class="language-ros">/routing/bgp/connection
+set peer_name output.network-blackhole=yes
+</code></pre>
+<p>There is more configuration to be done when adding just one network, but it offers simplicity when you have to deal with a large number of networks. v7 even allows specifying for each BGP connection its own set of networks.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>In v7 it is not possible to turn off synchronization with IGP routes (the network will be advertised only if the corresponding IGP route is present in the routing table).</p>
+</div>
+<h2 id="routing-filters">Routing Filters</h2>
+<p>Starting from ROSv7.1beta4, the routing filter configuration is changed to a script-like configuration. The rule now can have "if .. then" syntax to set parameters or apply actions based on conditions from the "if" statement.</p>
+<p>Multiple rules without action are stacked in a single rule and executed in order like a firewall, the reason is that the "set" parameter order is important and writing one "set" per line allows for an easier understanding from top to bottom on what actions were applied.</p>
+<p>For example, matching a static default route and applying action accept can be written in one config rule:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=ospf_in rule=&quot;if (dst==0.0.0.0/0 &amp;&amp; protocol static) { accept }&quot;
+</code></pre>
+<p>For example, the ROSv6 rule <code>/routing/filter/add chain=ospf_in prefix=172.16.0.0/16 prefix-length=24 protocol=static action=accept</code> converted to ROSv7 would be:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=ospf_in rule=&quot;if (dst in 172.16.0.0/16 &amp;&amp; dst-len==24 &amp;&amp; protocol static) { accept }&quot;
+</code></pre>
+<p>Another example is to match prefixes from the 172.16.0.0/16 range with prefix length equal to 24 and set BGP med and prepend values</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=BGP_OUT rule=&quot;if (dst-len==24 &amp;&amp; dst in 172.16.0.0/16) { \n
+    set bgp-med 20; set bgp-path-prepend 2; accept }&quot;
+</code></pre>
+<p>It is also possible to match a prefix length range like this</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=BGP_OUT rule=&quot;if (dst-len&gt;13 &amp;&amp; dst-len&lt;31 &amp;&amp; dst in 172.16.0.0/16) { accept }&quot;
+</code></pre>
+<p>Filter rules now can be used to match or set communities,  large communities, and extended communities from the community list:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=bgp_in rule=&quot;set bgp-large-communities 200001:200001:10 &quot;
+</code></pre>
+<p>If there are a lot of community sets that need to be applied in multiple rules, then it is possible to define community sets and use them to match or set:</p>
+<pre><code class="language-ros">/routing/filter/large-community-set
+add set=myLargeComSet communities=200001:200001:10
+
+/routing/filter/rule
+add chain=bgp_in rule=&quot;append bgp-large-communities myLargeComSet &quot;
+</code></pre>
+<p>Since route-target is encoded in the extended community attribute to change or match RT you need to operate on the extended community attribute, for example:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=bgp_in rule=&quot;set bgp-ext-communities rt:327824:20 &quot;
+</code></pre>
+<h2 id="rpki">RPKI</h2>
+<p>RouterOS implements an RTR client. You connect to the server which will send route validity information. This information then can be used to validate routes in route filters against a group with "rpki-validate" and further in filters "match-rpki" can be used to match the exact state.</p>
+<p>For more info refer to the <a href="./unicast/rpki.md">RPKI</a> documentation.</p>
+<h2 id="rip-configuration">RIP Configuration</h2>
+<p>To start RIP, the instance should be configured. There you should select which routes will be redistributed by RIP and if it will redistribute the default route.</p>
+<pre><code class="language-ros">/routing/rip/instance
+add name=instance1 originate-default=never redistribute=connected,static
+</code></pre>
+<p>Then the interface-template should be configured. There is no need to define networks in ROS version 7 as it was in version 6.</p>
+<pre><code class="language-ros">/routing/rip/interface-template
+add interfaces=ether1 instance=instance1
+</code></pre>
+<p>Now the basic configuration is completed on one router. The RIP neighbor router should be configured in a similar way.</p>
+<p>In ROS v7 the neighbors will appear only when there are routes to be sent and/or to be received.</p>
+<p>Prefix lists from ROSv6 are deprecated, now all the filtering must be done by the routing filters.</p>
+<hr />
+<h1 id="routing-protocol-multi-core-support">Routing Protocol Multi-core Support</h1>
+<blockquote>
+<p>RouterOS v7 enables multi-core routing by distributing tasks like FIB updates, BGP processing, and protocol handling across separate processes. Each sub-task uses private or shared memory, with BGP input/output...</p>
+</blockquote>
+<h1 id="routing-protocol-multi-core-support_1">Routing Protocol Multi-core Support</h1>
+<p>RouterOS v7 can split tasks between multiple processes.</p>
+<p>One "<strong>main</strong>" task starts and stops sub‑tasks and processes data between them. Each sub‑task can allocate "private" memory (accessible only to that task) and "shared" memory (accessible by all route tasks).</p>
+<p>The following tasks run in separate processes when multiprocess routing is enabled:</p>
+<ul>
+<li>FIB update.</li>
+<li>Routing Policy configuration.</li>
+<li>Configuration and reporting - handling of the static route configuration, "route print" command, SNMP monitoring, etc.</li>
+<li>BFD protocol handling</li>
+<li>OSPF protocol handling.</li>
+<li>RIP protocol handling.</li>
+<li>ISIS protocol handling.</li>
+<li>EVPN handling.</li>
+<li>PIM-SM.</li>
+<li>LDP protocol handling.</li>
+<li>Fantasy - handles generation of dummy routing entries for testing purposes.</li>
+<li>BGP connection and configuration handling.</li>
+<li>BGP receive (one task per peer or grouped by specific parameters).</li>
+<li>BGP send (one task per peer or grouped by specific parameters).</li>
+</ul>
+<h2 id="bgp-sub-tasks">BGP Sub-Tasks</h2>
+<p>BGP receive and send can be split into sub‑tasks by specific parameters. For example, you can run input per peer or group all peer inputs and run them in the main process. You control this split with the <a href="../../cli-reference/routing/bgp/connection.md#input.affinity"><code>input.affinity</code></a> and <a href="../../cli-reference/routing/bgp/connection.md#output.affinity"><code>output.affinity</code></a> parameters in <a href="../../cli-reference/routing/bgp/template.md"><code>/routing/bgp/template</code></a>. On devices with few cores, adjusting affinity values can boost performance because sharing data between tasks is slightly slower than processing the same data within a single task. For example, on single-core or dual-core devices, running input and output in the main or instance process improves performance.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>BGP can spawn up to 100 unique processes.</p>
+</div>
+<p>You can monitor all currently used tasks and their allocated private/shared memory with the <a href="../../cli-reference/routing/stats/process/process.md"><code>/routing/stats/process/print</code></a> command.</p>
+<p>Sample Output:</p>
+<pre><code class="language-text">[admin@BGP_MUM] /routing/stats/process&gt; print interval=1
+Columns: TASKS, PRIVATE-MEM-BLOCKS, SHARED-MEM-BLOCKS, PSS, RSS, VMS, RETIRED, ID, PID, RPID, PROCESS-TIME, KERNEL-TIME, CUR-BUSY, MAX-BUSY, CUR-CALC, MAX-CALC
+   #  TASKS                         PRIVATE-M  SHARED-M  PSS        RSS      VMS      R  ID       PID  R  PROCESS-  KERNEL-TI  CUR-  MAX-BUSY  CUR-  MAX-CALC
+   0  routing tables                11.8MiB    20.0MiB   19.8MiB    42.2MiB  51.4MiB  7  main     195  0  15s470ms  2s50ms     20ms  1s460ms   20ms  35s120ms
+      rib                                                                                                                                                    
+      connected networks                                                                                                                                     
+   1  fib                           2816.0KiB  0         8.1MiB     27.4MiB  51.4MiB     fib      255  1  5s730ms   7m4s790ms        23s350ms        23s350ms
+   2  ospf                          512.0KiB   0         3151.0KiB  14.6MiB  51.4MiB     ospf     260  1  20ms      100ms            20ms            20ms    
+      connected networks                                                                                                                                     
+   3  fantasy                       256.0KiB   0         1898.0KiB  5.8MiB   51.4MiB     fantasy  261  1  40ms      60ms             20ms            20ms    
+   4  configuration and reporting   4096.0KiB  512.0KiB  9.2MiB     28.4MiB  51.4MiB     static   262  1  3s210ms   40ms             220ms           220ms   
+   5  rip                           512.0KiB   0         3151.0KiB  14.6MiB  51.4MiB     rip      259  1  50ms      90ms             20ms            20ms    
+      connected networks                                                                                                                                     
+   6  routing policy configuration  768.0KiB   768.0KiB  2250.0KiB  6.2MiB   51.4MiB     policy   256  1  70ms      50ms             20ms            20ms    
+   7  BGP service                   768.0KiB   0         3359.0KiB  14.9MiB  51.4MiB     bgp      257  1  4s260ms   8s50ms           30ms            30ms    
+      connected networks                                                                                                                                     
+   8  BFD service                   512.0KiB   0         3151.0KiB  14.6MiB  51.4MiB     12       258  1  80ms      40ms             20ms            20ms    
+      connected networks                                                                                                                                     
+   9  BGP Input 10.155.101.232      8.2MiB     6.8MiB    17.0MiB    39.1MiB  51.4MiB     20       270  1  24s880ms  3s60ms           18s550ms        18s550ms
+      BGP Output 10.155.101.232                                                                                                                              
+  10  Global memory                            256.0KiB                                  global     0  0    
+</code></pre>
+<h2 id="routing-table-update-mechanism">Routing Table Update Mechanism</h2>
+<p>The following illustration explains, in a more user‑friendly way, how the routing table update mechanism works.</p>
+<p>Routing protocols continuously loop through the following procedures:</p>
+<ul>
+<li>The "<strong>main</strong>" process waits for updates from other sub‑tasks (1).</li>
+<li>"<strong>main</strong>" starts calculating new routes (2–4) if:</li>
+<li>an update from a sub‑task is received;</li>
+<li>the protocol has not published all routes;</li>
+<li>the configuration or link state has changed.</li>
+<li>During new route calculation (5), the following events occur:</li>
+<li>all received updates are applied to the route;</li>
+<li>gateway reachability is determined;</li>
+<li>recursive routes are resolved;</li>
+<li>The "<strong>publish</strong>" event runs, publishing "<strong>current</strong>" routes. During this phase, "<strong>current</strong>" routes do not change, but protocols can still receive and send updates (6).</li>
+<li>Perform cleanup and free unused memory (7). At this step, anything no longer used in the new "<strong>current</strong>" table is removed (routes, attributes, etc.).</li>
+</ul>
+<p>Consider "<strong>updated</strong>" and "<strong>current</strong>" as two copies of the routing table. The "<strong>current</strong>" table (2) is used at the moment, while "<strong>updated</strong>" (1) is the table of candidate routes to be published in the next publish event (3 and 4). This method prevents protocols from filling memory with buffered updates while the "<strong>main</strong>" process performs "<strong>publish</strong>". Instead, protocols send the newest updates directly to the main process, which then copies the new updates into the "<strong>updated</strong>" table. OSPF is slightly more complicated: it internally has a similar process to select current OSPF routes, which are then sent to the "<strong>main</strong>" for further processing.</p>
+<hr />
+<h1 id="policy-routing">Policy Routing</h1>
+<blockquote>
+<p>Policy routing in RouterOS allows steering traffic based on criteria to specific gateways, using custom routing tables and rules. It supports dynamic routing decisions with firewall mangle marking or basic routing...</p>
+</blockquote>
+<h1 id="policy-routing_1">Policy Routing</h1>
+<p>Policy routing steers traffic that matches criteria to a specific gateway. Use it to force selected customers or protocols, such as HTTP traffic, to always use a particular gateway. It can also route local and overseas traffic through different gateways.</p>
+<p>RouterOS provides these components for policy routing:</p>
+<ul>
+<li>Routing tables.</li>
+<li>Routing rules.</li>
+<li>Firewall mangle marking.</li>
+</ul>
+<h2 id="routing-tables">Routing Tables</h2>
+<p>A router can have multiple routing tables, each with its own routes for the same destination and different gateways.</p>
+<p>See and configure tables from the <code>/routing/table</code> menu.</p>
+<p>By default, RouterOS has only the <strong>main</strong> routing table:</p>
+<pre><code class="language-text">[admin@rack1_b33_CCR1036] /routing/table&gt; print
+Flags: D - dynamic; X - disabled, I - invalid; U - used
+0 D name=&quot;main&quot; fib
+
+</code></pre>
+<p>Define a custom routing table in this menu before using it elsewhere in the configuration.</p>
+<p>Consider a basic example with two gateways, 172.16.1.1 and 172.16.2.1, and a route for 8.8.8.8 in the routing table named <strong>myTable</strong> that uses gateway 172.16.2.1:</p>
+<pre><code class="language-ros">/routing/table/add name=myTable fib
+/ip/route/add dst-address=8.8.8.8 gateway=172.16.1.1
+/ip/route/add dst-address=8.8.8.8 gateway=172.16.2.1@main routing-table=myTable
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>For a user-created table to be able to resolve the destination, the main routing table should be able to resolve the destination too.</p>
+</div>
+<p>In this example, the <strong>main</strong> routing table should also include a route to 8.8.8.8 or at least a default route. Because DHCP dynamically adds the default route for safety, add 8.8.8.8 explicitly to the main table.</p>
+<pre><code class="language-text">[admin@rack1_b33_CCR1036] /ip/route&gt; print detail Flags: D - dynamic; X - disabled, I - inactive, A - active;
+c - connect, s - static, r - rip, b - bgp, o - ospf, d - dhcp, v - vpn, m - modem, y - cop
+y;
+H - hw-offloaded; + - ecmp
+   DAd   dst-address=0.0.0.0/0 routing-table=main pref-src=&quot;&quot; gateway=172.16.1.1
+         immediate-gw=172.16.1.1%ether8 distance=1 scope=30 target-scope=10
+         vrf-interface=ether8 suppress-hw-offload=no
+
+ 0  As   dst-address=8.8.8.8/32 routing-table=main pref-src=&quot;&quot; gateway=172.16.1.1
+         immediate-gw=172.16.1.1%ether8 distance=1 scope=30 target-scope=10 suppress-hw-offload=no
+
+    DAc   dst-address=172.16.1.0/24 routing-table=main gateway=ether8 immediate-gw=ether8
+         distance=0 scope=10 suppress-hw-offload=no local-address=172.16.1.2%ether8
+
+    DAc   dst-address=172.16.2.0/24 routing-table=main gateway=ether7 immediate-gw=ether7
+         distance=0 scope=10 suppress-hw-offload=no local-address=172.16.2.2%ether7
+
+ 1  As   dst-address=8.8.8.8/32 routing-table=myTable pref-src=&quot;&quot; gateway=172.16.2.1
+         immediate-gw=172.16.2.1%ether7 distance=1 scope=30 target-scope=10 suppress-hw-offload=no
+
+</code></pre>
+<p>The configuration above is not enough. You need a way to force traffic to use the new table. RouterOS provides two options:</p>
+<ul>
+<li>firewall mangle - gives more control over the criteria used to steer traffic, such as per connection or per packet balancing. For examples, see <a href="../../firewall-and-quality-of-service/firewall/mangle.md">Firewall Marking</a>.</li>
+<li>routing rules - a basic set of parameters for quickly steering traffic. This example uses routing rules.</li>
+</ul>
+<p>Do not use both methods at the same time unless necessary. If mangle and routing rules are used together, mangle by default has higher priority. If mangle-marked traffic can be resolved in the table, routing rules never see that traffic. The order of execution can be <a href="./routing-decision.md#routing-table-lookup">changed</a>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Routing table count is limited to 4096 unique tables.</p>
+</div>
+<h2 id="routing-rules">Routing Rules</h2>
+<p>Routing rules steer traffic based on basic parameters such as source address, destination address, in-interface, and others.</p>
+<p>In this example, select traffic destined for 8.8.8.8 and prevent fallback to the <strong>main</strong> table:</p>
+<pre><code class="language-ros">/routing/rule/add dst-address=8.8.8.8 action=lookup-only-in-table table=myTable
+</code></pre>
+<p>If a customer is connected to ether4 and only that customer should route 8.8.8.8 to a specific gateway, use this rule:</p>
+<pre><code class="language-ros">/routing/rule/add dst-address=8.8.8.8 action=lookup-only-in-table table=myTable interface=ether4
+</code></pre>
+<p>If the gateway used in the table goes down, the lookup fails and the destination becomes unreachable. In active-backup setups, allow traffic to fall back to the <strong>main</strong> table by changing the action from <code>lookup-only-in-table</code> to <code>lookup</code>.</p>
+<p>Routing rules can also act as a basic firewall. For example, to block a customer on ether4 from accessing 192.168.1.0/24:</p>
+<pre><code class="language-ros">/routing/rule/add dst-address=192.168.1.0/24 interface=ether4 action=drop
+</code></pre>
+<h2 id="example-send-one-device-through-a-second-wan">Example: Send one device through a second WAN</h2>
+<p>The router has two internet connections: WAN1 on ether1, with the default route from its DHCP client, and WAN2 on ether2, with the gateway 10.20.0.1. All devices on the LAN, 192.168.88.0/24, use WAN1, except 192.168.88.50, which must use WAN2. Give the device a fixed address, so the rule keeps matching it (see <a href="../../network-management/dhcp/server#give-a-device-a-fixed-address">Give a device a fixed address</a>).</p>
+<ol>
+<li>Create a routing table with a default route through WAN2. With <code>check-gateway=ping</code>, the route becomes inactive when the gateway stops answering:</li>
+</ol>
+<p><code>ros
+   /routing/table/add name=to-wan2 fib
+   /ip/route/add dst-address=0.0.0.0/0 gateway=10.20.0.1 routing-table=to-wan2 check-gateway=ping</code></p>
+<ol start="2">
+<li>Send the traffic of the device to the table:</li>
+</ol>
+<p><code>ros
+   /routing/rule/add src-address=192.168.88.50/32 action=lookup table=to-wan2</code></p>
+<p>With <code>action=lookup</code>, the device falls back to WAN1 while the route through WAN2 is inactive. To keep it off WAN1, use <code>lookup-only-in-table</code>.</p>
+<ol start="3">
+<li>Masquerade the traffic that leaves through WAN2, as for WAN1:</li>
+</ol>
+<p><code>ros
+   /ip/firewall/nat/add chain=srcnat out-interface=ether2 action=masquerade</code></p>
+<p>The rule sends all traffic of the device to the table, including traffic to other networks on the router, such as a guest LAN or the network of the WAN1 modem. To reach such a network directly, add a rule for it before the first rule:</p>
+<pre><code class="language-ros">/routing/rule/add dst-address=192.168.1.0/24 action=lookup-only-in-table table=main place-before=0
+</code></pre>
+<p>Connections the device opened before you added the rule can keep using WAN1 until they end. To check the path, run a traceroute on the device: the hop after the router is the WAN2 gateway.</p>
+<hr />
+<h1 id="vrf">VRF</h1>
+<blockquote>
+<p>RouterOS enables creating multiple Virtual Routing and Forwarding (VRF) instances for BGP-based MPLS VPNs, allowing separate routing tables and IP prefix isolation. VRF configurations are managed via the /ip/vrf...</p>
+</blockquote>
+<h1 id="vrf_1">VRF</h1>
+<h2 id="description">Description</h2>
+<p>RouterOS allows creating multiple Virtual Routing and Forwarding (<strong>VRF</strong>) instances on a single router. This is valuable for BGP-based MPLS VPNs. Unlike BGP VPLS, which is OSI Layer 2 technology, BGP VRF VPNs work in Layer 3 and exchange IP prefixes between routers. VRFs solve the problem of overlapping IP prefixes and provide the required privacy with separate routing for different VPNs.</p>
+<p>You can set up VRF-Lite configurations or use multi-protocol BGP with the VPNv4 address family to distribute routes from VRF routing tables to other routers or to different routing tables on the same router.</p>
+<h2 id="configuration">Configuration</h2>
+<p>A VRF table is created in the <a href="../../cli-reference/ip/vrf.md"><strong><code>/ip/vrf</code></strong></a> menu. After the VRF configuration is created, a routing table mapping is added (a dynamic table with the same name is created). Each active VRF will always have a mapped routing table.</p>
+<pre><code class="language-ros">[admin@arm-bgp] /ip/vrf&gt; print
+Flags: X - disabled; * - builtin
+ 0  * name=&quot;main&quot; interfaces=all
+
+[admin@arm-bgp] /routing/table&gt; print
+Flags: D - dynamic; X - disabled, I - invalid; U - used
+ 0 D   name=&quot;main&quot; fib
+
+</code></pre>
+<p>The order of the added VRFs is significant. To properly match which interface belongs to the VRF, place VRFs in the correct order (matching is done starting from the top entry, similar to firewall rules).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Since each VRF has a mapped routing table, the max count of unique VRFs is limited to 1024.</p>
+</div>
+<p>Consider the following example:</p>
+<pre><code class="language-ros">[admin@arm-bgp] /ip/vrf&gt; print
+Flags: X - disabled; * - builtin
+ 0  * name=&quot;main&quot; interfaces=all
+ 1    name=&quot;myVrf&quot; interfaces=lo_vrf
+</code></pre>
+<p>Since the first entry matches all interfaces, the second VRF has no interfaces added. To fix the problem, the order of the entries must be changed.</p>
+<pre><code class="language-ros">[admin@arm-bgp] /ip/vrf&gt; move 1 0
+[admin@arm-bgp] /ip/vrf&gt; print
+Flags: X - disabled; * - builtin
+ 0    name=&quot;myVrf&quot; interfaces=lo_vrf
+ 1  * name=&quot;main&quot; interfaces=all
+</code></pre>
+<p>Connected routes from the interfaces assigned to the VRF are installed in the corresponding routing table automatically.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>When the interface is assigned to the VRF, connected routes are added to the VRF routing table. However, RouterOS services do not automatically know which VRF to use just by specifying the IP address in the configuration. Each service needs VRF support and explicit configuration. For information on whether a service has VRF support and VRF configuration options, refer to the appropriate service documentation.</p>
+</div>
+<p>For example, configure the SSH service to listen for connections on the interfaces belonging to the VRF:</p>
+<pre><code class="language-ros">[admin@arm-bgp] /ip/service&gt; set ssh vrf=myVrf
+[admin@arm-bgp] /ip/service&gt; print
+Flags: X, I - INVALID
+Columns: NAME, PORT, CERTIFICATE, VRF
+#   NAME     PORT  CERTIFICATE  VRF
+0   telnet     23               main
+1   ftp        21
+2   www        80               main
+3   ssh        22               myVrf
+4 X www-ssl   443  none         main
+5   api      8728               main
+6   winbox   8291               main
+7   api-ssl  8729  none         main
+</code></pre>
+<p>Add routes to the VRF by specifying the routing-table parameter when adding the route in the <a href="../../cli-reference/ip/route/route.md"><strong><code>/ip/route</code></strong></a> menu, and indicate in which routing table to resolve the gateway by appending @name after the gateway IP:</p>
+<pre><code class="language-ros">/ip/route/add dst-address=192.168.1.0/24 gateway=172.16.1.1@myVrf routing-table=myVrf
+</code></pre>
+<p>Traffic leaking between VRFs is possible when the gateway is explicitly set to be resolved in another VRF, for example:</p>
+<pre><code class="language-ros"># add route in the myVrf, but resolve the gateway in the main table
+/ip/route/add dst-address=192.168.1.0/24 gateway=172.16.1.1@main routing-table=myVrf
+
+# add route in the main table, but resolve the gateway in the myVrf
+/ip/route/add dst-address=192.168.1.0/24 gateway=172.16.1.1@myVrf
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>If the gateway configuration does not have an explicitly configured table to be resolved in, the gateway is resolved in the "main" table.</p>
+</div>
+<h2 id="supported-services">Supported services</h2>
+<p>Different services can be placed in a specific VRF where the service listens for incoming or creates outgoing connections. By default, all services use the <code>main</code> table, but you can change this with a separate <code>vrf</code> parameter or by specifying the VRF name separated by "@" at the end of the IP address.</p>
+<p>Below is the list of supported services.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Support</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="./unicast/bgp/understanding-bgp.md">BGP</a></strong></td>
+<td>+</td>
+<td><code>/routing/bgp/template add name=bgp-template1 vrf=vrf1``/routing/bgp/vpls add name=bgp-vpls1 site-id=10 vrf=vrf1``/routing/bgp/vpn add label-allocation-policy=per-vrf vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../system-information-and-utilities/e-mail.md">E-mail</a></strong></td>
+<td>+</td>
+<td><code>/tool/e-mail set address=192.168.88.1 vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../system-information-and-utilities/services.md">IP Services</a></strong></td>
+<td>+</td>
+<td>VRF is supported for <code>telnet</code>, <code>www</code>, <code>ssh</code>, <code>www-ssl</code>, <code>api</code>, <code>winbox</code>, <code>api-ssl</code> services. The <code>ftp</code> service does not support changing the VRF.<code>/ip/service/set telnet vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/l2tp/index.md">L2TP Client</a></strong></td>
+<td>+</td>
+<td><code>/interface/l2tp-client add connect-to=192.168.88.1@vrf1 name=l2tp-out1 user=l2tp-client</code></td>
+</tr>
+<tr>
+<td><strong><a href="./mpls/index.md">MPLS</a></strong></td>
+<td>+</td>
+<td><code>/mpls/ldp/add vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../diagnostics-monitoring-and-troubleshooting/netwatch.md">Netwatch</a></strong></td>
+<td>+</td>
+<td><code>/tool/netwatch/add host=192.168.88.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../system-information-and-utilities/ntp.md">NTP</a></strong></td>
+<td>+</td>
+<td><code>/system/ntp/client/set vrf=vrf1``/system/ntp/server/set vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="./unicast/ospf/index.md">OSPF</a></strong></td>
+<td>+</td>
+<td><code>/routing/ospf/instance add disabled=no name=ospf-instance-1 vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../diagnostics-monitoring-and-troubleshooting/ping.md">ping</a></strong></td>
+<td>+</td>
+<td><code>/ping 192.168.88.1 vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../authentication-authorization-accounting/radius.md">RADIUS</a></strong></td>
+<td>+</td>
+<td><code>/radius/add address=192.168.88.1@vrf1``/radius/incoming/set vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="./unicast/rip.md">RIP</a></strong></td>
+<td>+</td>
+<td><code>/routing/rip/instance/add name=rip-instance-1 vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="./unicast/rpki.md">RPKI</a></strong></td>
+<td>+</td>
+<td><code>/routing/rpki/add vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../diagnostics-monitoring-and-troubleshooting/snmp.md">SNMP</a></strong></td>
+<td>+</td>
+<td><code>/snmp/set vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/eoip.md">EoIP</a></strong></td>
+<td>+</td>
+<td><code>/interface/eoip add remote-address=192.168.1.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/ipip.md">IPIP</a></strong></td>
+<td>+</td>
+<td><code>/interface/ipip/add remote-address=192.168.1.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/gre.md">GRE</a></strong></td>
+<td>+</td>
+<td><code>/interface/gre/add remote-address=192.168.1.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/sstp.md">SSTP-client</a></strong></td>
+<td>+</td>
+<td><code>/interface/sstp-client/add connect-to=192.168.1.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/openvpn.md">OVPN server and client</a></strong></td>
+<td>+</td>
+<td><code>/interface/ovpn-client/add connect-to=192.168.1.1@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../virtual-private-networks/l2tp/index.md">L2TP-ether</a></strong></td>
+<td>+</td>
+<td><code>/interface/l2tp-ether/add connect-to=192.168.2.2@vrf</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../bridging-and-switching/vxlan.md">VXLAN</a></strong></td>
+<td>+</td>
+<td><code>/interface/vxlan/add vni=10 vtep-vrf=vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../system-information-and-utilities/fetch.md">Fetch</a></strong></td>
+<td>+</td>
+<td><code>/tool/fetch address=10.155.28.236@vrf1 mode=ftp src-path=my_file.pcap user=admin password=""</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../network-management/dns">DNS</a></strong></td>
+<td>+  Starting from RouterOS v7.21</td>
+<td>Specifies in which VRF the router will listen for DNS queries.<code>/ip/dns/set vrf=vrf1</code>Specifies which VRF is used to contact upstream servers.<code>/ip/dns/set servers=8.8.8.8@vrf1</code></td>
+</tr>
+<tr>
+<td><strong><a href="../../network-management/dhcp/relay">DHCP-Relay</a></strong></td>
+<td>+  Starting from RouterOS v7.15</td>
+<td><code>/ip/dhcp-relay/set dhcp-server-vrf=vrf1</code><em>If the DHCP client is in the same VRF, a special parameter in the "ip dhcp-relay" configuration is not needed.</em></td>
+</tr>
+<tr>
+<td><strong><a href="../../diagnostics-monitoring-and-troubleshooting/log/index.md">Remote logging</a></strong></td>
+<td>+  Starting from RouterOS v7.19</td>
+<td><code>/system/logging/action add name=remote1 remote=192.168.1.1 target=remote vrf=vrf1</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="vrf-interfaces-in-firewall">VRF interfaces in firewall</h2>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Before RouterOS v7.14, firewall filter rules with the property in/out-interface would apply to interfaces within a VRF instance. Starting from RouterOS v7.14, these rules no longer target individual interfaces within a VRF, but rather the VRF interface as a whole.</p>
+</div>
+<p>Starting from RouterOS v7.14, when interfaces are added to a VRF, a virtual VRF interface is created automatically. To match traffic that belongs to a VRF interface, use the VRF virtual interface in firewall filters, for example:</p>
+<pre><code class="language-ros">/ip/vrf/add interfaces=ether5 name=vrf5
+/ip/firewall/filter/add chain=input in-interface=vrf5 action=accept
+</code></pre>
+<p>If several interfaces belong to one VRF but you need to match only one of these interfaces, use connection marks. For example:</p>
+<pre><code class="language-ros">/ip/vrf/add interfaces=ether15,ether16 name=vrf1516
+/ip/firewall/mangle
+add action=mark-connection chain=prerouting connection-state=new in-interface=ether15 new-connection-mark=input_allow passthrough=yes
+/ip/firewall/filter
+add action=accept chain=input connection-mark=input_allow
+</code></pre>
+<h2 id="examples">Examples</h2>
+<h3 id="simple-vrf-lite-setup">Simple VRF-Lite Setup</h3>
+<p>Consider a setup where two customer VRFs require access to the internet:</p>
+<pre><code class="language-ros">/ip/address
+add address=172.16.1.2/24 interface=public
+add address=192.168.1.1/24 interface=ether1
+add address=192.168.2.1/24 interface=ether2
+
+/ip/route
+add gateway=172.16.1.1
+
+# add VRF configuration
+/ip/vrf
+add name=cust_a interface=ether1 place-before 0
+add name=cust_b interface=ether2 place-before 0
+
+# add vrf routes
+/ip/route
+add gateway=172.16.1.1@main routing-table=cust_a
+add gateway=172.16.1.1@main routing-table=cust_b
+
+# masquerade local source
+/ip/firewall/nat/add chain=srcnat out-interface=public action=masquerade
+</code></pre>
+<p>It can be necessary to ensure that packets arriving on the "public" interface reach the correct VRF.
+This can be solved by marking new connections originating from the VRF customers and steering the traffic by routing marks of incoming packets on the "public" interface.</p>
+<pre><code class="language-ros"># mark new customer connections
+/ip/firewall/mangle
+add action=mark-connection chain=prerouting connection-state=new new-connection-mark=\
+    cust_a_conn src-address=192.168.1.0/24 passthrough=no
+add action=mark-connection chain=prerouting connection-state=new new-connection-mark=\
+    cust_b_conn src-address=192.168.2.0/24 passthrough=no
+
+# mark routing
+/ip/firewall/mangle
+add action=mark-routing chain=prerouting connection-mark=cust_a_conn \
+    in-interface=public new-routing-mark=cust_a
+add action=mark-routing chain=prerouting connection-mark=cust_b_conn \
+    in-interface=public new-routing-mark=cust_b
+</code></pre>
+<h3 id="static-inter-vrf-routes">Static Inter-VRF Routes</h3>
+<p>In general, you should exchange all routes between VRFs by using <a href="./unicast/bgp/understanding-bgp.md">BGP</a> local import and export functionality. If that is not sufficient, use static routes to achieve this so-called route leaking.</p>
+<p>You can install a route with a gateway in a different routing table than the route itself in two ways.</p>
+<p>The first way is to explicitly specify the routing table in the gateway field when adding a route. This is only possible when leaking a route and gateway from the "main" routing table to a different routing table (VRF). Example:</p>
+<pre><code class="language-ros"># add route to 5.5.5.0/24 in 'vrf1' routing table with gateway in the main routing table
+add dst-address=5.5.5.0/24 gateway=10.3.0.1@main routing-table=vrf1
+</code></pre>
+<p>The second way is to explicitly specify the interface in the gateway field. The interface specified can belong to a VRF instance. Example:</p>
+<pre><code class="language-ros"># add route to 5.5.5.0/24 in the main routing table with gateway at 'ether2' VRF interface
+add dst-address=5.5.5.0/24 gateway=10.3.0.1%ether2 routing-table=main
+# add route to 5.5.5.0/24 in the main routing table with 'ptp-link-1' VRF interface as gateway
+add dst-address=5.5.5.0/24 gateway=ptp-link-1 routing-table=main
+</code></pre>
+<p>As observed, two variations are possible — specifying the gateway as <em>ip_address%interface</em> or simply specifying an <em>interface</em>. Use the first for broadcast interfaces in most cases. Use the second for point-to-point interfaces, and also for broadcast interfaces if the route is a connected route in some VRF. For example, if you have an address <code>1.2.3.4/24</code> on interface <em>ether2</em> that is put in a VRF, a connected route to <code>1.2.3.0/24</code> exists in that VRF's routing table. It is acceptable to add a static route <code>1.2.3.0/24</code> in a different routing table with an interface-only gateway, even though <em>ether2</em> is a broadcast interface:</p>
+<pre><code class="language-ros">add dst-address=1.2.3.0/24 gateway=ether2 routing-table=main
+
+</code></pre>
+<h3 id="static-vrf-lite-connected-route-leaking">Static VRF-Lite Connected Route Leaking</h3>
+<p>Sometimes it is necessary to access directly connected resources from another VRF. In this example, two connected networks each reside in their own VRF, and you want to allow client1 to access client2.</p>
+<pre><code class="language-mermaid">graph LR
+    client1[&quot;client1
+ip (*.2)&quot;] --&gt;|10.11.0.0/24| vrf1[&quot;vrf1
+ip (*.1)&quot;]
+    vrf2[&quot;vrf2
+ip (*.1)&quot;] --&gt;|10.12.0.0/24| client2[&quot;client2
+ip (*.2)&quot;]
+    subgraph Router[&quot;Router&quot;]
+        direction LR
+        vrf1 ~~~ vrf2
+    end
+</code></pre>
+<pre><code class="language-ros">/ip/address
+add address=10.11.0.1/24 interface=sfp-sfpplus1
+add address=10.12.0.1/24 interface=sfp-sfpplus2
+
+# add VRF configuration
+/ip/vrf
+add name=vrfTest1 interface=sfp-sfpplus1 place-before 0
+add name=vrfTest2 interface=sfp-sfpplus2 place-before 0
+
+</code></pre>
+<p>A connected network is reachable on a specific VRF by setting the gateway to "interface@vrf".</p>
+<pre><code class="language-ros"># add vrf routes
+/ip/route
+add dst-address=10.11.0.0/24 gateway=&quot;sfp-sfpplus1@vrfTest1&quot; routing-table=vrfTest2
+add dst-address=10.12.0.0/24 gateway=&quot;sfp-sfpplus2@vrfTest2&quot; routing-table=vrfTest1
+
+</code></pre>
+<p><strong>Verify routes and reachability</strong></p>
+<pre><code class="language-text">[admin@CCR2004_2XS] /ip/route&gt; print detail
+Flags: D - dynamic; X - disabled, I - inactive, A - active;
+c - connect, s - static, r - rip, b - bgp, o - ospf, i - is-is, d - dhcp, v - vpn, m - modem, y - bgp-mpls-vpn; H - hw-offloaded; + - ecmp
+
+    DAc   dst-address=10.11.0.0/24 routing-table=vrfTest1 gateway=sfp-sfpplus1@vrfTest1 immediate-gw=sfp-sfpplus1 distance=0 scope=10 suppress-hw-offload=no
+          local-address=10.11.0.1%sfp-sfpplus1@vrfTest1
+
+ 1  As   dst-address=10.12.0.0/24 routing-table=vrfTest1 pref-src=&quot;&quot; gateway=vrfTest2 immediate-gw=vrfTest2 distance=1 scope=30 target-scope=10
+          suppress-hw-offload=no
+
+ 2  As   dst-address=10.11.0.0/24 routing-table=vrfTest2 pref-src=&quot;&quot; gateway=vrfTest1 immediate-gw=vrfTest1 distance=1 scope=30 target-scope=10
+          suppress-hw-offload=no
+
+    DAc   dst-address=10.12.0.0/24 routing-table=vrfTest2 gateway=sfp-sfpplus2@vrfTest2 immediate-gw=sfp-sfpplus2 distance=0 scope=10 suppress-hw-offload=no
+          local-address=10.12.0.1%sfp-sfpplus2@vrfTest2
+
+</code></pre>
+<pre><code class="language-text">[admin@cl2] &gt; /ping 10.11.0.2 src-address=10.12.0.2
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 10.11.0.2                                 56  64 67us
+    1 10.11.0.2                                 56  64 61us
+    sent=2 received=2 packet-loss=0% min-rtt=61us avg-rtt=64u
+
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Trying to leak overlapping networks does not work.</p>
+</div>
+<p><strong>Accessing the router's local address in another VRF</strong></p>
+<pre><code class="language-text">[admin@cl2] &gt; /ping 10.11.0.1 src-address=10.12.0.2
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 10.11.0.1                                                   timeout
+    1 10.11.0.1                                                   timeout
+    sent=2 received=0 packet-loss=100%
+
+</code></pre>
+<p>The approach with "interface@vrf" gateways works only when the router is forwarding packets. To access local VRF addresses, you need to route to the VRF interface.</p>
+<pre><code class="language-ros"># add vrf routes
+/ip/route
+add dst-address=10.11.0.0/24 gateway=vrfTest1@vrfTest1 routing-table=vrfTest2
+add dst-address=10.12.0.0/24 gateway=vrfTest2@vrfTest2 routing-table=vrfTest1
+
+</code></pre>
+<pre><code class="language-text">[admin@cl2] &gt; /ping 10.11.0.1 src-address=10.12.0.2
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 10.11.0.1                                 56  64 67us
+    1 10.11.0.1                                 56  64 61us
+    sent=2 received=2 packet-loss=0% min-rtt=61us avg-rtt=64u
+
+</code></pre>
+<h3 id="dynamic-vrf-lite-route-leaking">Dynamic VRF-Lite Route Leaking</h3>
+<p>With large enough setups, static route leaking is not sufficient. Consider the same setup as in the static route leaking example plus IPv6 addresses, just for demonstration.</p>
+<pre><code class="language-ros">/ip/address
+add address=10.11.0.1/24 interface=sfp-sfpplus1
+add address=10.12.0.1/24 interface=sfp-sfpplus2
+
+# add VRF configuration
+/ip/vrf
+add name=vrfTest1 interface=sfp-sfpplus1 place-before 0
+add name=vrfTest2 interface=sfp-sfpplus2 place-before 0
+
+/ipv6/address
+add address=2001:1::1 advertise=no interface=sfp-sfpplus1
+add address=2001:2::1 advertise=no interface=sfp-sfpplus2
+
+</code></pre>
+<p>You can use <a href="../../cli-reference/routing/bgp/vpn.md">BGP VPN</a> to leak local routes without actually establishing a BGP session.</p>
+<pre><code class="language-ros">/routing/bgp/vpn
+add export.redistribute=connected .route-targets=1:1 import.route-targets=1:2 label-allocation-policy=per-vrf name=bgp-mpls-vpn-1 \
+    route-distinguisher=1.2.3.4:1 vrf=vrfTest1
+add export.redistribute=connected .route-targets=1:2 import.route-targets=1:1 label-allocation-policy=per-vrf name=bgp-mpls-vpn-2 \
+    route-distinguisher=1.2.3.4:1 vrf=vrfTest2
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Be careful with import/export route targets. If not set up properly, local VRF routes from the same VRF will be imported.</p>
+</div>
+<p>The connected routes between VRFs are now exchanged.</p>
+<pre><code class="language-text">[admin@CCR2004_2XS] &gt; /routing/route/print where dst-address in 111.0.0.0/8 &amp;&amp; afi=ip4
+...
+ Ac   afi=ip4 contribution=active dst-address=111.11.0.0/24 routing-table=vrfTest1 gateway=sfp-sfpplus1@vrfTest1 immediate-gw=sfp-sfpplus1 distance=0 scope=10
+       belongs-to=&quot;connected&quot; local-address=111.11.0.1%sfp-sfpplus1@vrfTest1
+       debug.fwp-ptr=0x202421E0
+ Ay   afi=ip4 contribution=best-candidate dst-address=111.12.0.0/24 routing-table=vrfTest1 label=17 gateway=vrfTest2@vrfTest2 immediate-gw=sfp-sfpplus2
+       distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-bgp-mpls-vpn-2-connected-export-import&quot;
+       bgp.ext-communities=rt:1:2 .atomic-aggregate=no .origin=incomplete
+       debug.fwp-ptr=0x202425A0
+ Ay   afi=ip4 contribution=best-candidate dst-address=111.11.0.0/24 routing-table=vrfTest2 label=16 gateway=vrfTest1@vrfTest1 immediate-gw=sfp-sfpplus1
+       distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-2-bgp-mpls-vpn-1-connected-export-import&quot;
+       bgp.ext-communities=rt:1:1 .atomic-aggregate=no .origin=incomplete
+       debug.fwp-ptr=0x202424E0
+ Ac   afi=ip4 contribution=active dst-address=111.12.0.0/24 routing-table=vrfTest2 gateway=sfp-sfpplus2@vrfTest2 immediate-gw=sfp-sfpplus2 distance=0 scope=10
+       belongs-to=&quot;connected&quot; local-address=111.12.0.1%sfp-sfpplus2@vrfTest2
+       debug.fwp-ptr=0x20242240
+
+</code></pre>
+<p>And IPv6 too:</p>
+<pre><code class="language-text">[admin@CCR2004_2XS] /routing/route&gt; print detail where dst-address in 2001::/8 &amp;&amp; afi=ip6
+...
+ Ac   afi=ip6 contribution=active dst-address=2001:1::/64 routing-table=vrfTest1 gateway=sfp-sfpplus1@vrfTest1 immediate-gw=sfp-sfpplus1 distance=0 scope=10
+       belongs-to=&quot;connected&quot; local-address=2001:1::1%sfp-sfpplus1@vrfTest1
+       debug.fwp-ptr=0x20242300
+ Ay   afi=ip6 contribution=active dst-address=2001:2::/64 routing-table=vrfTest1 label=17 gateway=vrfTest2@vrfTest2 immediate-gw=sfp-sfpplus2 distance=200
+       scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-bgp-mpls-vpn-2-connected-export-import&quot;
+       bgp.ext-communities=rt:1:2 .atomic-aggregate=no .origin=incomplete
+       debug.fwp-ptr=0x202425A0
+ Ay   afi=ip6 contribution=active dst-address=2001:1::/64 routing-table=vrfTest2 label=16 gateway=vrfTest1@vrfTest1 immediate-gw=sfp-sfpplus1 distance=200
+       scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-2-bgp-mpls-vpn-1-connected-export-import&quot;
+       bgp.ext-communities=rt:1:1 .atomic-aggregate=no .origin=incomplete
+       debug.fwp-ptr=0x202424E0
+ Ac   afi=ip6 contribution=active dst-address=2001:2::/64 routing-table=vrfTest2 gateway=sfp-sfpplus2@vrfTest2 immediate-gw=sfp-sfpplus2 distance=0 scope=10
+       belongs-to=&quot;connected&quot; local-address=2001:2::1%sfp-sfpplus2@vrfTest2
+       debug.fwp-ptr=0x20242360
+
+</code></pre>
+<h3 id="dynamic-vrf-lite-route-leaking-old-workaround">Dynamic VRF-Lite Route Leaking (Old Workaround)</h3>
+<p>Before RouterOS v7.14, no mechanism existed to leak routes from one VRF instance to another on the same router.</p>
+<p>As a workaround, it was possible to create a tunnel between two locally configured loopback addresses and assign each tunnel endpoint to its own VRF. Dynamic routing protocols or static routes could then leak routes between both VRFs.</p>
+<p>The downside of this approach is that a tunnel must be created between each pair of VRFs where routes should be leaked (creating a full mesh), which significantly complicates the configuration even with just a few VRFs, let alone more complex setups.</p>
+<p>For example, leaking routes between 5 VRFs requires n × (n − 1) / 2 connections, which results in a setup with 20 tunnel endpoints and 20 <a href="./unicast/ospf/index.md">OSPF</a> instances on one router.</p>
+<p>Example configuration with two VRFs:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=dummy_custC
+add name=dummy_custB
+add name=lo1
+add name=lo2
+
+/ip/address
+add address=111.255.255.1 interface=lo1 network=111.255.255.1
+add address=111.255.255.2 interface=lo2 network=111.255.255.2
+add address=172.16.1.0/24 interface=dummy_custC network=172.16.1.0
+add address=172.16.2.0/24 interface=dummy_custB network=172.16.2.0
+
+/interface/ipip
+add local-address=111.255.255.1 name=ipip-tunnel1 remote-address=111.255.255.2
+add local-address=111.255.255.2 name=ipip-tunnel2 remote-address=111.255.255.1
+
+/ip/address
+add address=192.168.1.1/24 interface=ipip-tunnel1 network=192.168.1.0
+add address=192.168.1.2/24 interface=ipip-tunnel2 network=192.168.1.0
+
+/ip/vrf
+add interfaces=ipip-tunnel1,dummy_custC name=custC
+add interfaces=ipip-tunnel2,dummy_custB name=custB
+
+/routing/ospf/instance
+add disabled=no name=i2_custB redistribute=connected,static,copy router-id=192.168.1.1 routing-table=custB vrf=custB
+add disabled=no name=i2_custC redistribute=connected router-id=192.168.1.2 routing-table=custC vrf=custC
+/routing/ospf/area
+add disabled=no instance=i2_custB name=custB_bb
+add disabled=no instance=i2_custC name=custC_bb
+/routing/ospf/interface-template
+add area=custB_bb disabled=no networks=192.168.1.0/24
+add area=custC_bb disabled=no networks=192.168.1.0/24
+
+</code></pre>
+<p><strong>Results</strong></p>
+<pre><code class="language-ros">[admin@rack1_b36_CCR1009] /routing/ospf/neighbor&gt; print
+Flags: V - virtual; D - dynamic
+ 0  D instance=i2_custB area=custB_bb address=192.168.1.1 priority=128 router-id=192.168.1.2 dr=192.168.1.1 bdr=192.168.1.2
+      state=&quot;Full&quot; state-changes=6 adjacency=41m28s timeout=33s
+
+ 1  D instance=i2_custC area=custC_bb address=192.168.1.2 priority=128 router-id=192.168.1.1 dr=192.168.1.1 bdr=192.168.1.2
+      state=&quot;Full&quot; state-changes=6 adjacency=41m28s timeout=33s
+
+[admin@rack1_b36_CCR1009] /ip/route&gt; print where routing-table=custB
+Flags: D - DYNAMIC; A - ACTIVE; c, s, o, y - COPY
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+     DST-ADDRESS       GATEWAY                         DISTANCE
+  DAo 172.16.1.0/24     192.168.1.1%ipip-tunnel2@custB       110
+  DAc 172.16.2.0/24     dummy_custB@custB                      0
+  DAc 192.168.1.0/24    ipip-tunnel2@custB                     0
+
+[admin@rack1_b36_CCR1009] &gt; /ip/route/print where routing-table=custC
+Flags: D - DYNAMIC; A - ACTIVE; c, o, y - COPY
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS       GATEWAY                         DISTANCE
+  DAc 172.16.1.0/24     dummy_custC@custC                      0
+  DAo 172.16.2.0/24     192.168.1.2%ipip-tunnel1@custC       110
+  DAc 192.168.1.0/24    ipip-tunnel1@custC                     0
+
+</code></pre>
+<h3 id="the-simplest-mpls-vpn-setup">The Simplest MPLS VPN Setup</h3>
+<p>In this example, a rudimentary <a href="./mpls/index.md">MPLS</a> backbone (consisting of two Provider Edge (PE) routers PE1 and PE2) is created and configured to forward traffic between Customer Edge (CE) routers CE1 and CE2 belonging to the <em>cust-one</em> VPN.</p>
+<p><strong>CE1 Router</strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.1.1.1/24 interface=ether1
+# use static routing
+/ip/route/add dst-address=10.3.3.0/24 gateway=10.1.1.2
+</code></pre>
+<p><strong>CE2 Router</strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.3.3.4/24 interface=ether1
+/ip/route/add dst-address=10.1.1.0/24 gateway=10.3.3.3
+</code></pre>
+<p><strong>PE1 Router</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=lobridge
+/ip/address/add address=10.1.1.2/24 interface=ether1
+/ip/address/add address=10.2.2.2/24 interface=ether2
+/ip/address/add address=10.5.5.2/32 interface=lobridge
+/ip/vrf/add name=cust-one interfaces=ether1
+/mpls/ldp/add enabled=yes transport-address=10.5.5.2 lsr-id=10.5.5.2
+/mpls/ldp/interface/add interface=ether2
+/routing/bgp/template/set default as=65000
+
+/routing/bgp/vpn
+add vrf=cust-one \
+  route-distinguisher=1.1.1.1:111 \
+  import.route-targets=1.1.1.1:111 \
+  import.router-id=cust-one \
+  export.redistribute=connected \
+  export.route-targets=1.1.1.1:111 \
+  label-allocation-policy=per-vrf
+/routing/bgp/connection
+add template=default remote.address=10.5.5.3 address-families=vpnv4 local.address=10.5.5.2
+
+# add route to the remote BGP peer's loopback address
+/ip/route/add dst-address=10.5.5.3/32 gateway=10.2.2.3
+</code></pre>
+<p><strong>PE2 Router (Cisco)</strong></p>
+<pre><code>ip vrf cust-one
+rd 1.1.1.1:111
+route-target export 1.1.1.1:111
+route-target import 1.1.1.1:111
+exit
+
+interface Loopback0
+ip address 10.5.5.3 255.255.255.255
+
+mpls ldp router-id Loopback0 force
+mpls label protocol ldp
+
+interface FastEthernet0/0
+ip address 10.2.2.3 255.255.255.0
+mpls ip
+
+interface FastEthernet1/0
+ip vrf forwarding cust-one
+ip address 10.3.3.3 255.255.255.0
+
+router bgp 65000
+neighbor 10.5.5.2 remote-as 65000
+neighbor 10.5.5.2 update-source Loopback0
+address-family vpnv4
+neighbor 10.5.5.2 activate
+neighbor 10.5.5.2 send-community both
+exit-address-family
+address-family ipv4 vrf cust-one
+redistribute connected
+exit-address-family
+
+ip route 10.5.5.2 255.255.255.255 10.2.2.2
+
+</code></pre>
+<p><strong>Results</strong></p>
+<p>Check that VPNv4 route redistribution is working:</p>
+<pre><code class="language-ros">[admin@PE1] /routing/route&gt; print detail where afi=&quot;vpn4&quot;
+Flags: X - disabled, F - filtered, U - unreachable, A - active;
+c - connect, s - static, r - rip, b - bgp, o - ospf, d - dhcp, v - vpn, m - modem, a - ldp-address, l - l
+dp-mapping, g - slaac, y - bgp-mpls-vpn;
+H - hw-offloaded; + - ecmp, B - blackhole
+ Ab   afi=vpn4 contribution=active dst-address=111.16.0.0/24&amp;1.1.1.1:111 routing-table=main label=16
+       gateway=111.111.111.4 immediate-gw=111.13.0.2%ether9 distance=200 scope=40 target-scope=30
+       belongs-to=&quot;bgp-VPN4-111.111.111.4&quot;
+       bgp.peer-cache-id=*2C00011 .as-path=&quot;65511&quot; .ext-communities=rt:1.1.1.1:111 .local-pref=100
+       .atomic-aggregate=yes .origin=igp
+       debug.fwp-ptr=0x202427E0
+
+[admin@PE1] /routing/bgp/advertisements&gt; print
+ 0 peer=to-pe2-1 dst=10.1.1.0/24 local-pref=100 origin=2 ext-communities=rt:1.1.1.1:111 atomic-aggregate=yes
+
+</code></pre>
+<p>Check that 10.3.3.0 is installed in IP routes, in the cust-one route table:</p>
+<pre><code class="language-ros">[admin@PE1] &gt; /ip/route/print where routing-table=&quot;cust-one&quot;
+Flags: D - DYNAMIC; A - ACTIVE; c, b, y - BGP-MPLS-VPN
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+# DST-ADDRESS     GATEWAY         DISTANCE
+0 ADC 10.1.1.0/24 ether1@cust-one        0
+1 ADb 10.3.3.0/24 10.5.5.3              20
+</code></pre>
+<p>A closer look at the IP routes in the cust-one VRF shows that the 10.1.1.0/24 IP prefix is a connected route on an interface configured to belong to the cust-one VRF. The 10.3.3.0/24 IP prefix was advertised with BGP as a VPNv4 route from PE2 and is imported into this VRF routing table, because the configured <code>import.route-targets</code> matched the BGP extended communities attribute it was advertised with.</p>
+<pre><code class="language-ros">[admin@PE1] /routing/route&gt; print detail where routing-table=&quot;cust-one&quot;
+Flags: X - disabled, F - filtered, U - unreachable, A - active;
+c - connect, s - static, r - rip, b - bgp, o - ospf, d - dhcp, v - vpn, m - modem, a - ldp-address, l - l
+dp-mapping, g - slaac, y - bgp-mpls-vpn;
+H - hw-offloaded; + - ecmp, B - blackhole
+  Ay   afi=ip4 contribution=active dst-address=10.1.1.0/24 routing-table=cust-one
+        gateway=ether1@cust-one immediate-gw=ether1 distance=0 scope=10 belongs-to=&quot;connected&quot;
+        local-address=10.1.1.2%ether1@cust-one
+        debug.fwp-ptr=0x202420C0
+
+ Ay   afi=ip4 contribution=active dst-address=10.3.3.0/24 routing-table=cust-one label=16
+        gateway=10.5.5.3 immediate-gw=10.2.2.3%ether2 distance=20 scope=40 target-scope=30
+        belongs-to=&quot;bgp-mpls-vpn-1-bgp-VPN4-10.5.5.3-import&quot;
+        bgp.peer-cache-id=*2C00011 .ext-communities=rt:1.1.1.1:111 .local-pref=100
+        .atomic-aggregate=yes .origin=igp
+        debug.fwp-ptr=0x20242840
+
+[admin@PE1] /routing/route&gt; print detail where afi=&quot;vpn4&quot;
+Flags: X - disabled, F - filtered, U - unreachable, A - active;
+c - connect, s - static, r - rip, b - bgp, o - ospf, d - dhcp, v - vpn, m - modem, a - ldp-address, l - l
+dp-mapping, g - slaac, y - bgp-mpls-vpn;
+H - hw-offloaded; + - ecmp, B - blackhole
+ Ay   afi=vpn4 contribution=active dst-address=10.1.1.0/24&amp;1.1.1.1:111 routing-table=main label=19
+        gateway=ether1@cust-one immediate-gw=ether1 distance=200 scope=40 target-scope=10
+        belongs-to=&quot;bgp-mpls-vpn-1-connected-export&quot;
+        bgp.ext-communities=rt:1.1.1.1:111 .atomic-aggregate=no .origin=incomplete
+        debug.fwp-ptr=0x202426C0
+
+ Ab   afi=vpn4 contribution=active dst-address=10.3.3.0/24&amp;1.1.1.1:111 routing-table=main label=16
+        gateway=10.5.5.3 immediate-gw=10.2.2.3%ether2 distance=200 scope=40 target-scope=30
+        belongs-to=&quot;bgp-VPN4-10.5.5.3&quot;
+        bgp.peer-cache-id=*2C00011 .ext-communities=rt:1.1.1.1:111 .local-pref=100
+        .atomic-aggregate=yes .origin=igp
+        debug.fwp-ptr=0x202427E0
+
+</code></pre>
+<p>The same for Cisco:</p>
+<pre><code>PE2#show ip bgp vpnv4 all
+BGP table version is 5, local router ID is 10.5.5.3
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure, S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete
+Network Next Hop Metric LocPrf Weight Path
+Route Distinguisher: 1.1.1.1:111 (default for vrf cust-one)
+*&gt;i10.1.1.0/24 10.5.5.2 100 0 ?
+*&gt; 10.3.3.0/24 0.0.0.0 0 32768 ?
+
+PE2#show ip route vrf cust-one
+Routing Table: cust-one
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+E1 - OSPF external type 1, E2 - OSPF external type 2
+i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+ia - IS-IS inter area, * - candidate default, U - per-user static route
+o - ODR, P - periodic downloaded static route
+
+Gateway of last resort is not set
+10.0.0.0/24 is subnetted, 1 subnets
+B 10.1.1.0 [200/0] via 10.5.5.2, 00:05:33
+10.0.0.0/24 is subnetted, 1 subnets
+C 10.3.3.0 is directly connected, FastEthernet1/0
+</code></pre>
+<p>You should now be able to ping from CE1 to CE2 and vice versa.</p>
+<pre><code class="language-ros">[admin@CE1] &gt; /ping 10.3.3.4
+10.3.3.4 64 byte ping: ttl=62 time=18 ms
+10.3.3.4 64 byte ping: ttl=62 time=13 ms
+10.3.3.4 64 byte ping: ttl=62 time=13 ms
+10.3.3.4 64 byte ping: ttl=62 time=14 ms
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip min/avg/max = 13/14.5/18 ms
+</code></pre>
+<h3 id="a-more-complicated-setup-changes-only">A More Complicated Setup (Changes Only)</h3>
+<p>As opposed to the simplest setup, this example has two customers: cust-one and cust-two.</p>
+<p>Two VPNs are configured for them — cust-one and cust-two — and all routes are exchanged between them (this is also called "route leaking").</p>
+<p>This is not the most typical setup, because routes are usually not exchanged between different customers. By default, access from one VRF site to a different VRF site in another VPN is prevented (this is the "Private" aspect of VPNs). Separate routing provides privacy and is also required to solve the problem of overlapping IP network prefixes. Route exchange is in direct conflict with these two requirements but can sometimes be needed (for example, as a temporary solution when two customers are migrating to a single network infrastructure).</p>
+<p><strong>CE1 Router, <em>cust-one</em></strong></p>
+<pre><code class="language-ros">/ip/route/add dst-address=10.4.4.0/24 gateway=10.1.1.2
+</code></pre>
+<p><strong>CE2 Router, <em>cust-one</em></strong></p>
+<pre><code class="language-ros">/ip/route/add dst-address=10.4.4.0/24 gateway=10.3.3.3
+
+</code></pre>
+<p><strong>CE1 Router, <em>cust-two</em></strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.4.4.5 interface=ether1
+/ip/route/add dst-address=10.1.1.0/24 gateway=10.3.3.3
+/ip/route/add dst-address=10.3.3.0/24 gateway=10.3.3.3
+</code></pre>
+<p><strong>PE1 Router</strong></p>
+<pre><code class="language-ros"># replace the old BGP VPN with this:
+/routing/bgp/vpn
+add vrf=cust-one \
+  export.redistribute=connected \
+  route-distinguisher=1.1.1.1:111 \
+  import.route-targets=1.1.1.1:111,2.2.2.2:222  \
+  export.route-targets=1.1.1.1:111
+
+</code></pre>
+<p><strong>PE2 Router (Cisco)</strong></p>
+<pre><code>ip vrf cust-one
+rd 1.1.1.1:111
+route-target export 1.1.1.1:111
+route-target import 1.1.1.1:111
+route-target import 2.2.2.2:222
+exit
+
+ip vrf cust-two
+rd 2.2.2.2:222
+route-target export 2.2.2.2:222
+route-target import 1.1.1.1:111
+route-target import 2.2.2.2:222
+exit
+
+interface FastEthernet2/0
+ip vrf forwarding cust-two
+ip address 10.4.4.3 255.255.255.0
+
+router bgp 65000
+address-family ipv4 vrf cust-two
+redistribute connected
+exit-address-family
+</code></pre>
+<h3 id="variation-replace-the-cisco-with-another-mikrotik">Variation: Replace the Cisco With Another MikroTik</h3>
+<p><strong>PE2 MikroTik configuration</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=lobridge
+/ip/address
+add address=10.2.2.3/24 interface=ether1
+add address=10.3.3.3/24 interface=ether2
+add address=10.4.4.3/24 interface=ether3
+add address=10.5.5.3/32 interface=lobridge
+/ip/vrf
+add name=cust-one interfaces=ether2
+add name=cust-two interfaces=ether3
+/mpls/ldp/add enabled=yes transport-address=10.5.5.3
+/mpls/ldp/interface/add interface=ether1
+
+/routing/bgp/template/set default as=65000
+/routing/bgp/vpn
+add vrf=cust-one \
+  export.redistribute=connected \
+  route-distinguisher=1.1.1.1:111 \
+  import.route-targets=1.1.1.1:111,2.2.2.2:222 \
+  export.route-targets=1.1.1.1:111 \
+add vrf=cust-two \
+  export.redistribute=connected \
+  route-distinguisher=2.2.2.2:222 \
+  import.route-targets=1.1.1.1:111,2.2.2.2:222 \
+  export.route-targets=2.2.2.2:222 \
+
+/routing/bgp/connection
+add template=default remote.address=10.5.5.2 address-families=vpnv4 local.address=10.5.5.3
+
+# add route to the remote BGP peer's loopback address
+/ip/route/add dst-address=10.5.5.2/32 gateway=10.2.2.2
+
+</code></pre>
+<p><strong>Results</strong></p>
+<p>The output of <code>/ip/route/print</code> is interesting enough to deserve detailed observation.</p>
+<pre><code class="language-ros">[admin@PE2] /ip/route&gt; print
+Flags: X - disabled, A - active, D - dynamic,
+C - connect, S - static, r - rip, b - bgp, o - ospf, m - mme,
+B - blackhole, U - unreachable, P - prohibit
+# DST-ADDRESS PREF-SRC GATEWAY DISTANCE
+0 ADb 10.1.1.0/24 10.5.5.2 recurs... 20
+1 ADC 10.3.3.0/24 10.3.3.3 ether2 0
+2 ADb 10.4.4.0/24 20
+3 ADb 10.1.1.0/24 10.5.5.2 recurs... 20
+4 ADb 10.3.3.0/24 20
+5 ADC 10.4.4.0/24 10.4.4.3 ether3 0
+6 ADC 10.2.2.0/24 10.2.2.3 ether1 0
+7 A S 10.5.5.2/32 10.2.2.2 reacha... 1
+8 ADC 10.5.5.3/32 10.5.5.3 lobridge 0
+</code></pre>
+<p>The route 10.1.1.0/24 was received from a remote BGP peer and is installed in both VRF routing tables.</p>
+<p>The routes 10.3.3.0/24 and 10.4.4.0/24 are also installed in both VRF routing tables. Each is a connected route in one table and a BGP route in another table. This has nothing to do with their being advertised with BGP. They are simply "advertised" to the local VPNv4 route table and locally reimported after that. Import and export <strong>route-targets</strong> determine in which tables they will end up.</p>
+<p>This is evident from their attributes — they do not have the usual BGP properties (route 10.4.4.0/24).</p>
+<pre><code class="language-ros">[admin@PE2] /routing/route&gt; print detail where routing-table=cust-one
+...
+
+</code></pre>
+<h3 id="unique-rd-per-site-vs-unique-rd-per-customer">Unique RD Per-Site vs Unique RD Per-Customer</h3>
+<p>Consider a BGP VPN setup where two CUST_A sites announce the same network (111.12.0.0/24).</p>
+<pre><code class="language-mermaid">graph LR
+    CUST_A1[&quot;client1&quot;] ---|10.12.0.0/24| cust_a1_vrf[&quot;cust_avrf&quot;] ---|BGP VPN| cust_a2_vrf[&quot;cust_avrf&quot;] ---|10.12.0.0/24| CUST_A2[&quot;client2&quot;]
+    subgraph PE1[&quot;PE1&quot;]
+        direction LR
+        cust_a1_vrf
+    end
+    subgraph PE2[&quot;PE2&quot;]
+        direction LR
+        cust_a2_vrf
+    end
+    PE1 --- PE2
+
+</code></pre>
+<p>There are two ways to handle setups like this:</p>
+<ul>
+<li>Per-customer (CUST_A VPN on Router 1 has the same <a href="./route-distinguisher-and-route-target.md">route distinguisher</a> (let's assume RD=1:1) as CUST_A VPN on Router 2).</li>
+<li>Per-site (each CUST_A site has a unique Route Distinguisher).</li>
+</ul>
+<p>In the first case, CUST_A sites on Router1 have exported the VPNv4 route and advertise it to the remote PE.</p>
+<pre><code class="language-routeros"> Ay   afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1:1 routing-table=main label=16 gateway=vrf-dummy@vrfTest
+       immediate-gw=vrf-dummy distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-connected-export&quot;
+       bgp.ext-communities=rt:1:1 .origin=incomplete
+       debug.fwp-ptr=0x20302600
+</code></pre>
+<p>CUST_A site on Router2 also exports a VPNv4 route and has received a VPNv4 route from another site as well:</p>
+<pre><code class="language-routeros"> Ab + afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1:1 routing-table=main label=16 gateway=111.11.0.2
+       immediate-gw=111.11.0.2%sfp-sfpplus1 distance=200 scope=40 target-scope=30 belongs-to=&quot;bgp-VPNv4-111.11.0.2&quot;
+       bgp.session=to-tested-1 .ext-communities=rt:1:1 .local-pref=100 .origin=igp
+       debug.fwp-ptr=0x203421E0
+
+ Ay + afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1:1 routing-table=main label=32 gateway=vrf-dummy@vrfTest
+       immediate-gw=vrf-dummy distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-connected-export&quot;
+       bgp.ext-communities=rt:1:1 .origin=incomplete
+       debug.fwp-ptr=0x20342540
+</code></pre>
+<p>RouterOS advertises only one best route. In case of ECMP, by default it picks the first one from the list, which happens to be a BGP VPNv4 route received from the remote site, and the remote site will not get the second route. This leads to a situation where one site has two redundant routes in the VRF but the other site does not. On the site where the VRF does not have the installed VPN route and the local route becomes inactive, BGP needs to send a withdraw, recalculate the main table, receive an update from the remote site, and import the new best route into CUST_A VRF, leading to slower convergence.</p>
+<p>This behavior can be changed with <a href="./route-selection-and-filtering.md">route selection filters</a>, but it is outside the scope of this example.</p>
+<p>A similar situation occurs if the route exported to VPNv4 is also a BGP route received from the customer CE-PE session, except that instead of ECMP, the BGP best-path selection process is applied to VPNv4 routes and only one best route is selected.</p>
+<p>If a unique route distinguisher is assigned per site (for example, 1.1.1.1:1 on the first site and 1.1.1.2:1 on the second site), VPNv4 routes are no longer subject to selection because they are now considered unique destinations, and both are imported into the VRF.</p>
+<p><strong>CUST_A on Router1</strong></p>
+<pre><code class="language-routeros">[admin@CCR2004_2XS_111] /routing/route&gt; print detail
+...
+ Ay   afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1.1.1.1:1 routing-table=main label=17 gateway=vrf-dummy@vrfTest
+       immediate-gw=vrf-dummy distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-connected-export&quot;
+       bgp.ext-communities=rt:1:1 .origin=incomplete
+       debug.fwp-ptr=0x20302240
+
+ Ab   afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1.1.1.2:1 routing-table=main label=33 gateway=111.11.0.1
+       immediate-gw=111.11.0.1%sfp-sfpplus1 distance=200 scope=40 target-scope=30 belongs-to=&quot;bgp-VPNv4-111.11.0.1&quot;
+       bgp.session=to-tester-1 .ext-communities=rt:1:1 .local-pref=100 .origin=igp
+       debug.fwp-ptr=0x20302480
+
+[admin@CCR2004_2XS_111] /ip/route&gt; print
+...
+  DAc  111.12.0.0/24       vrf-dummy@vrfTest  vrfTest               0
+  D y  111.12.0.0/24       111.11.0.1         vrfTest             200
+</code></pre>
+<p><strong>CUST_A on Router2</strong></p>
+<pre><code class="language-routeros">[admin@CCR2004_2XS_111] /routing/route&gt; print detail
+...
+ Ab   afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1.1.1.1:1 routing-table=main label=17 gateway=111.11.0.2
+       immediate-gw=111.11.0.2%sfp-sfpplus1 distance=200 scope=40 target-scope=30 belongs-to=&quot;bgp-VPNv4-111.11.0.2&quot;
+       bgp.session=to-tested-1 .ext-communities=rt:1:1 .local-pref=100 .origin=igp
+       debug.fwp-ptr=0x203421E0
+
+ Ay   afi=vpnv4 contribution=active dst-address=111.12.0.0/24&amp;1.1.1.2:1 routing-table=main label=33 gateway=vrf-dummy@vrfTest
+       immediate-gw=vrf-dummy distance=200 scope=40 target-scope=10 belongs-to=&quot;bgp-mpls-vpn-1-connected-export&quot;
+       bgp.ext-communities=rt:1:1 .origin=incomplete
+       debug.fwp-ptr=0x20342240
+
+[admin@CCR2004_2XS_111] /ip/route&gt; print
+...
+ DAc 111.12.0.0/24       vrf-dummy@vrfTest  vrfTest               0
+ D y 111.12.0.0/24       111.11.0.2         vrfTest             200
+</code></pre>
+<p>In this case, compared to the previous setup, when a local route from any of the sites becomes inactive, the switch to an alternative route happens immediately.</p>
+<h2 id="references">References</h2>
+<p><a href="http://www.ietf.org/rfc/rfc4364.txt">RFC 4364: BGP/MPLS IP Virtual Private Networks (VPNs)</a></p>
+<p>MPLS Fundamentals, chapter 7, <em>Luc De Ghein</em>, Cisco Press 2006</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

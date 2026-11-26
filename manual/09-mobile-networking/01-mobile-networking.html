@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Networking · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Mobile Networking</p>
+      <h1 id="mobile-networking">Mobile Networking</h1>
+<h1 id="mobile-networking_1">Mobile Networking</h1>
+<blockquote>
+<p>Mobile networking documentation provides configuration guides for LTE, 5G, GPS, SMS, PPP, Dual SIM, and MikroTik connectivity features to set up cellular services on RouterOS.</p>
+</blockquote>
+<h1 id="mobile-networking_2">Mobile Networking</h1>
+<p>Mobile networking documentation covers LTE, 5G, GPS, SMS, PPP, Dual SIM, and MikroTik Connectivity features. Use this section to configure cellular connectivity and mobile-device services.</p>
+<hr />
+<h1 id="lte5g">LTE/5G</h1>
+<blockquote>
+<p>This page documents LTE and 5G configuration in MikroTik RouterOS, covering interface setup, APN profiles, LTE settings, and operational modes including MBIM support in RouterOS v7. It includes CLI commands for...</p>
+</blockquote>
+<h1 id="lte5g_1">LTE/5G</h1>
+<pre><code class="language-ros">Package: system
+Optional lte-mipsbe.npk package is only required for SXT 3-7 built-in modem.
+</code></pre>
+<p>Support for Direct-IP mode type cards only. MBIM support is available in RouterOS v7 releases and the MBIM driver is loaded automatically. If the modem is not recognized in RouterOS v6. Please test it in v7 releases before asking for support in RouterOS v6.</p>
+<p>To enable access via a PPP interface instead of an LTE Interface, change the operational mode to "serial" with <code>/interface/lte/settings/set mode=serial</code> CLI command and issue a reboot. Note that using PPP emulation mode you may not get the same throughput speeds as using the LTE interface emulation type.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>For RouterOS v7 the <code>ignore-direct-modem</code> parameter was renamed to <code>mode</code> and moved to <code>/interface/lte/settings</code> menu.</p>
+</div>
+<h3 id="lte-client">LTE Client</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/lte</code></p>
+<h4 id="properties">Properties</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>allow-roaming</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Enable data roaming for connecting to other countries' data-providers. Not all LTE modems support this feature. Some modems, that do not fully support this feature, will connect to the network but will not establish an IP data connection with allow-roaming set to no.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>apn-profile</strong> (<em>string</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Which APN profile to use for this interface (old deprecated value "apn-profiles" still accepted for single APN configuration, for multi-apn see the <a href="#multi-apn">Multi APN</a> section)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>integer list</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">LTE Frequency band used in communication <code>LTE Bands and bandwidths</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nr-band</strong> (<em>integer list</em>; Default: "")</td>
+<td style="text-align: left;">5G NR Frequency band used in communication <code>5G NR Bands and bandwidths</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Descriptive name of an item</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the interface is disabled or not. By default it is enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>modem-init</strong> (<em>string</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Modem init string (AT command that will be executed at modem startup)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer | auto</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;">Maximum Transmission Unit. Max packet size that the LTE interface will be able to send without packet fragmentation. auto - use network advertised MTU for modems that support it (MBIM modems). Other modems will fall back to the default value (1500).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Descriptive name of the interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network-mode</strong> (<em>3g | gsm | lte | 5g</em>)</td>
+<td style="text-align: left;">Select/force RAT mode for LTE interface to operate with. For 5G NSA to work both lte and 5g network modes need to be selected! Selecting 5g alone will only allow to connect to 5G SA.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>operator</strong> (<em>integer</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Used to lock the device to a specific operator. The full PLMN number is used for the lock consisting of MCC+MNC. <a href="https://en.wikipedia.org/wiki/Public_land_mobile_network">PLMN codes</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>pin</strong> (<em>integer</em>; Default: <strong>""</strong>) <em><a href="../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">SIM Card's PIN code.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sms-protocol</strong> (<em>at | auto | mbim</em>)</td>
+<td style="text-align: left;">SMS functionality.  <strong>mbim</strong>: uses MBIM driver.  <strong>at</strong>: uses AT-Commands.  <strong>auto</strong>: selects the appropriate option depending on the modem.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="apn-profiles">APN profiles</h4>
+<p>All network-related settings are under profiles</p>
+<p><strong>Sub-menu:</strong> <code>/interface/lte/apn</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>add-default-route</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Whether to add a default route to forward all traffic over the LTE interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>apn</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Service Provider's Access Point Name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>authentication</strong> (<em>pap | chap | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Allowed protocol to use for authentication</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-route-distance</strong> (<em>integer</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">Sets distance value applied to auto-created default route, if add-default-route is also selected. The LTE route by default has distance 2 to prefer wired routes over LTE</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-type</strong> (<em>auto | ipv4 | ipv4-ipv6 | ipv6</em>; Default:auto )</td>
+<td style="text-align: left;">Requested PDN type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ipv6-interface</strong> (; Default: )</td>
+<td style="text-align: left;">Interface on which to advertise IPv6 prefix</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">APN profile name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>number</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">APN profile number</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passthrough-interface</strong> (; Default: )</td>
+<td style="text-align: left;">Interface to passthrough IP configuration (activates passthrough)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passthrough-mac</strong> (<em>MAC</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">If set to auto, then it will learn the MAC from the first packet</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>passthrough-subnet-selection</strong> (<em>auto / p2p</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">"auto" selects the smallest possible subnet to be used for the passthrough interface. "p2p" sets the passthrough interface subnet as /32 and picks the gateway address from the 10.177.0.0/16 range. The gateway address stays the same until the apn configuration is changed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>password</strong> (<em>string</em>; Default: ) <em><a href="../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Password used if any of the authentication protocols are active</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>use-network-apn</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Parameter is available starting from RouterOS v7 and used only for MBIM modems. If set to yes, uses the network provided APN.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>use-peer-dns</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">If set to yes, uses the DNS received from the LTE interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>user</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Username used if any of the authentication protocols are active</td>
+</tr>
+</tbody>
+</table>
+<h4 id="lte-settings">LTE settings</h4>
+<p>LTE and router-specific LTE settings. The menu is available starting from RouterOS v7.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/lte/settings</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>auto | mbim | serial</em> / <em>user</em>; <em>Default: <strong>auto</strong></em>)</td>
+<td style="text-align: left;">Operation mode setting. auto - automatically selects the operation mode.serial - provides only serial portsmbim - switches modem into MBIM mode if possibleuser - OS will not attempt to automatically switch the modem mode. (Available from RouterOS 7.16)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>firmware-path</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Firmware path in host OS. <a href="lte-5g.md#modem-fotadfota-downloads">Modem gobi firmware</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>external-antenna</strong> (<em>auto | both | div | main | none</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">This setting is only available for "Chateau" routers, except for Chateau 5G versions. auto - measures the signal levels on both internal and external antennas and selects the antennas with the best signal (RSRP).both - both antennas are set to externaldiv - diversity antenna set to externalmain - main antenna set to externalnone - no external antenna selected (using internal antennas)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>external-antenna-selected</strong> ()</td>
+<td style="text-align: left;">This setting is only available for "Chateau" routers, except for Chateau 5G versions. Shows the currently selected antenna if "<strong>external-antenna</strong>" is set to "auto"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sim-slot</strong> ()</td>
+<td style="text-align: left;">This setting is available for routers that have switchable SIM slots (LtAP, SXT). Selection options differ between products.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>esim-channel</strong> (<em>auto | at;</em> Default: <em>auto</em>)</td>
+<td style="text-align: left;">Control channel to use for esim management</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>link-recovery-timer</strong> (<em>integer</em> Default: <em>120</em> Range: <em>120..4294967295</em>)</td>
+<td style="text-align: left;">Time in seconds after which the lte interface will be reconfigured if it does not get to (R)running state</td>
+</tr>
+</tbody>
+</table>
+<h4 id="lte-esim">LTE eSIM</h4>
+<pre><code class="language-ros">RouterOS version: 7.18+
+</code></pre>
+<p><a href="https://www.youtube.com/watch?v=v0WtU1xBB-Q">MikroTips: How to activate your eSIM for the first time!</a></p>
+<p>This menu contains commands related to eSIM (<a href="http://en.wikipedia.org/wiki/ESIM">embedded Subscriber Identification Module</a>) provisioning and management using RouterOS built-in LPA (eSIM <a href="http://en.wikipedia.org/wiki/Remote_SIM_provisioning">Local Profile Assistant</a>).</p>
+<p>A single eSIM chip can store multiple eSIM profiles, the maximum profile count depends on the eSIM chip used.</p>
+<p>RouterOS LPA supports:</p>
+<ul>
+<li>AT modems whose firmware supports SIM low access commands (AT+CCHO; AT+CCHC; AT+CGLA).</li>
+<li>MBIM modems which support SIM low level access service in its firmware (UUID_SERVICE_MS_UICC).</li>
+</ul>
+<p>Other requirements:</p>
+<ul>
+<li>eSIM in SIM card form factor (physical eSIM) inserted in the RouterBoard SIM slot.</li>
+<li>eSIM/eUICC is present on the modem (soldered chip) and the modem is set to use this slot.</li>
+<li>Connectivity to eSIM SIM profile provider SM-DP+ provisioning server during provisioning and deletion of SIM profiles on the eSIM chip (for connectivity, you can use another eSIM profile or another WAN interface).</li>
+<li>eSIM can be provisioned only if the active slot is eSIM.</li>
+<li>Some devices have multiple SIM slots, and to use an eSIM, you need to switch the slot using the command "/interface/lte/settings/set sim-slot=esim".</li>
+</ul>
+<p>The command <code>/interface/lte/esim/esim-id [find /interface/lte]</code> can be used to check whether the modem supports SIM low access commands and eSIM presence.</p>
+<p>If a 3rd party modem with embedded eSIM chip is used, please consult the modem manual regarding AT commands needed to select the eSIM slot (AT!UIMS; AT+QUIMSLOT etc).</p>
+<p><strong>Commands</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>deactivate</strong></td>
+<td style="text-align: left;">Deactivate (disable) eSIM profile. <code>/interface/lte/esim/deactivate number=0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>activate</strong></td>
+<td style="text-align: left;">Activate (enable) eSIM profile. <code>/interface/lte/esim/activate number=0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>delete</strong></td>
+<td style="text-align: left;">Permanently delete eSIM profile from the eSIM card. <code>/interface/lte/esim/delete number=0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>print</strong></td>
+<td style="text-align: left;">List the eSIM profiles installed on the eSIM <code>/interface/lte/esim/print</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>provision</strong></td>
+<td style="text-align: left;">Provision new eSIM profile. The command takes four parameters: interface - the interface for which the eSIM profile will be enabled.matching-id - an activation code token. Example:  matching-id=ABCD10EFGHI5KL6Msm-dp-plus - SM-DP+ server hostnameconfirmation-code - confirmation code (a one-time password that is required in some cases)activate - Activate the newly created profile after it is provisioned (yes|no; default: yes) [Available starting from 7.20beta6 version. Before 7.20beta6, profiles do not get activated by default after provisioning.]force-confirmation - if set to yes, the command does not wait for user confirmation and automatically accepts the profile provision (yes|no; default: no) Example eSIM LPA string decoded from QR: <strong>LPA:1$server.example.io$ABCD10EFGHI5KL6M</strong> <code>/interface/lte/esim/provision interface=lte1 sm-dp-plus=server.example.io matching-id=ABCD10EFGHI5KL6M</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>esim-id</strong></td>
+<td style="text-align: left;">Query the eSIM ID. The command takes one parameter: interface - select the interface for which to query the eSIM ID.<code>/interface/lte/esim/esim-id interface=lte1   eid: 8903302342630000000004181FFFFFFF</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>set-nickname</strong></td>
+<td style="text-align: left;">Set a nickname for an eSIM profile. <code>/interface/lte/esim/set-nickname number=0 nickname=nickname1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>refresh-profile-list</strong></td>
+<td style="text-align: left;">Re-query the eSIM profile list. The command takes one parameter: interface - Select an interface for which the eSIM profiles will be re-queried.</td>
+</tr>
+</tbody>
+</table>
+<h5 id="devices-with-built-in-esim-chip-mikrotik-connectivity">Devices with built in eSIM chip (MikroTik Connectivity)</h5>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>These devices have pre-loaded MikroTik Connectivity eSIM profiles.
+https://mikrotik.com/connectivity</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Device Model</th>
+<th style="text-align: left;">Modem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">S53UG+5HaxD2HaxD-TC&amp;RG650E-EU</td>
+<td style="text-align: left;">RG650E-EU</td>
+</tr>
+<tr>
+<td style="text-align: left;">ATLGM&amp;RG520F-EU</td>
+<td style="text-align: left;">RG520F-EU</td>
+</tr>
+<tr>
+<td style="text-align: left;">LAMPGM&amp;RG520F-EU</td>
+<td style="text-align: left;">RG520F-EU</td>
+</tr>
+<tr>
+<td style="text-align: left;">EC25-EU&amp;KNe</td>
+<td style="text-align: left;">EC25-EU</td>
+</tr>
+<tr>
+<td style="text-align: left;">EG25-G&amp;KNe</td>
+<td style="text-align: left;">EG25-G</td>
+</tr>
+<tr>
+<td style="text-align: left;">EC25-EU&amp;SXTsq</td>
+<td style="text-align: left;">EC25-EU</td>
+</tr>
+<tr>
+<td style="text-align: left;">EG25-G&amp;SXTsq</td>
+<td style="text-align: left;">EG25-G</td>
+</tr>
+</tbody>
+</table>
+<h5 id="modem-esim-management-support-table">Modem eSIM management support table</h5>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>* These modems do not have eSIM built in. They require an external eSIM chip. For example, a physical eSIM card (eSIM in a standard SIM form factor).</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Modem</th>
+<th style="text-align: left;">Support</th>
+<th style="text-align: left;">Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EC200A-EU</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EG06-A</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EG18-EA</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EG12-EA</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EG120K-EA</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">RG520F-EU</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EP06-A</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">RG502Q-EA</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">FG621-EA</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">Can't manage empty eSIM (no profiles)</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-LTE6</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">Starting from firmware revision R11e-LTE6_V039</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-LTE-US</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-4G</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-LTE</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h4 id="scanner">Scanner</h4>
+<p>It is possible to scan LTE interfaces with <code>/interface/lte/scan</code> command. Example:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/scan duration=60 number=0
+Columns: OPERATOR, MCC-MNC, RSSI, RSRP, RSRQ
+OPERATOR  MCC-MNC  RSSI    RSRP    RSRQ
+LMT         24701  -36dBm  -63dBm  -7dB
+</code></pre>
+<p>Available properties:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>duration</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Duration of scan in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>freeze-frame-interval</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Time between data printout</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>number</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Interface number or name</td>
+</tr>
+</tbody>
+</table>
+<h4 id="monitoring-lte-details">Monitoring LTE details</h4>
+<p>You can monitor the LTE interface parameters with the CLI command: <code>/interface/lte/monitor</code>. It returns both cell‑level data (e.g., operator, cell ID, signal info) and modem metadata (firmware, model, SIM identifiers).</p>
+<pre><code>[admin@MikroTik] &gt; /interface/lte/monitor lte1
+            status: connected
+             model: EG18-EA
+          revision: EG18EAPAR01A12M4G
+  current-operator: LMT
+    current-cellid: 3103242
+            enb-id: 12122
+         sector-id: 10
+        phy-cellid: 480
+        data-class: LTE
+    session-uptime: 15m54s
+              imei: 86981604098XXXX
+              imsi: 24701060267XXXX
+              iccid: 8937101122102057XXXX
+      primary-band: B3@20Mhz earfcn: 1300 phy-cellid: 480
+     dl-modulation: qpsk
+               cqi: 7
+                ri: 2
+               mcs: 1
+              rssi: -68dBm
+              rsrp: -97dBm
+              rsrq: -9dB
+              sinr: 6dB
+</code></pre>
+<h4 id="lte-interface-capabilities">LTE interface capabilities</h4>
+<p>You can check the lte interface capabilities with the <code>/interface/lte/show-capabilities</code> CLI command.</p>
+<h5 id="example-output">Example output</h5>
+<pre><code>[admin@MikroTik] &gt; interface/lte/show-capabilities lte1
+  modem-bus-location: 2-1
+           cell-scan: yes
+        network-scan: yes
+     roaming-barring: yes
+  apn-address-family: IPv4,IPv6
+       max-apn-count: 8
+           rat-modes: 3g,lte,5g
+      band-selection: yes
+           lte-bands: 1,3,5,7,8,20,28,32,38,40,41,42,43
+            nr-bands: 1,3,5,7,8,20,28,38,40,41,75,76,77,78
+         passthrough: yes
+     firmware-update: yes
+   lte-attach-config: yes
+             at-chat: yes
+    framed-route-apn: any
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>modem-bus-location</strong></td>
+<td>Physical USB bus to which the LTE modem is connected</td>
+</tr>
+<tr>
+<td><strong>cell-scan</strong></td>
+<td><code>interface/lte/cell-monitor</code> command support</td>
+</tr>
+<tr>
+<td><strong>network-scan</strong></td>
+<td><code>interface/lte/scan</code> command support</td>
+</tr>
+<tr>
+<td><strong>roaming-barring</strong></td>
+<td>Roaming barring support</td>
+</tr>
+<tr>
+<td><strong>apn-address-family</strong></td>
+<td>IP families supported (IPv4, IPv6)</td>
+</tr>
+<tr>
+<td><strong>max-apn-count</strong></td>
+<td>Maximum number of APN profiles that can be active simultaneously</td>
+</tr>
+<tr>
+<td><strong>rat-modes</strong></td>
+<td>Supported Radio Access Technologies (GSM, 3G, LTE, 5G)</td>
+</tr>
+<tr>
+<td><strong>band-selection</strong></td>
+<td>LTE/5G band set command support</td>
+</tr>
+<tr>
+<td><strong>lte-bands</strong></td>
+<td>List of LTE bands the modem supports</td>
+</tr>
+<tr>
+<td><strong>nr-bands</strong></td>
+<td>List of 5G bands the modem supports</td>
+</tr>
+<tr>
+<td><strong>passthrough</strong></td>
+<td>LTE passthrough support</td>
+</tr>
+<tr>
+<td><strong>firmware-update</strong></td>
+<td><code>interface/lte/firmware-upgrade</code> support</td>
+</tr>
+<tr>
+<td><strong>lte-attach-config</strong></td>
+<td>LTE attach apn configuration support (Sets the same APN as configured)</td>
+</tr>
+<tr>
+<td><strong>at-chat</strong></td>
+<td><code>interface/lte/at-chat</code> support</td>
+</tr>
+<tr>
+<td><strong>framed-route-apn</strong></td>
+<td>Which APN supports framed routing (Routing behind) in multi apn setup</td>
+</tr>
+</tbody>
+</table>
+<h4 id="modem-firmware-upgrade-command">Modem firmware-upgrade command</h4>
+<p>The command allows to check and upgrade modem firmware if an update is available for supported MikroTik modems.</p>
+<p>For firmware update availability check and installation, an active internet connection is required, depending on the modem internet connection can be provided using any  RouterOS  interface or modem interface (FOTA), please see table below regarding each modem's supported connection methods.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Arguments / Properties</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>upgrade</strong> (<em>yes | no; Default: <strong>no</strong></em>)</td>
+<td style="text-align: left;">Set command execution mode: no - displays current modem firmware version and shows latest available firmware versionyes - performs firmware installation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>update-channel</strong> (<em>stable | testing</em>; Default: <strong>stable</strong>)</td>
+<td style="text-align: left;">Sets which firmware update channel is used: stable - firmware version for general usetesting - early access/testing channel where modem firmware is published before releasing it in the stable channel Feature available from v7.17beta2.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>firmware-file</strong> (<em>string</em>; Default:"" )</td>
+<td style="text-align: left;">Allows the user to override firmware update source and perform an upgrade from a custom location (file, url) in environments where upgrade using an internet connection to MikroTik upgrade servers is not a viable option, eg private networks etc.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Before attempting an LTE modem firmware upgrade - upgrade RouterOS version to the latest release <a href="../getting-started/installation-and-upgrade/upgrade.md">How To Upgrade RouterOS</a></p>
+</div>
+<h5 id="modems-with-firmware-update-support-and-connectivity-required">Modems with firmware update support and connectivity required</h5>
+<p>Use command <strong><em><code>/interface/lte/monitor [find]</code> once</em></strong> to get the returned property "model" for installed modem model identification.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Modem</th>
+<th style="text-align: left;">Required connectivity to MikroTik upgrade servers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>EC200A-EU</strong>  R11eL-EC200A-EU</td>
+<td style="text-align: left;">Using the modem LTE interface Using any RouterOS interface (7.18beta1+)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EG06-A</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EP06-A</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EG12-EA</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EG18-EA</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FG621-EA</strong>  R11eL-FG621-EA</td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R11-LTE</strong></td>
+<td style="text-align: left;">Using the modem LTE interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R11e-4G</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R11e-LTE6</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RG502Q-EA</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RG520F-EU</strong></td>
+<td style="text-align: left;">Using any RouterOS interface</td>
+</tr>
+</tbody>
+</table>
+<h5 id="modem-firmware-upgrade-command-examples">Modem firmware-upgrade command examples</h5>
+<p>Check for new firmware update availability</p>
+<pre><code class="language-ros">[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1
+  installed: EG12EAPAR01A13M4G_02.001.02.001
+     latest: EG12EAPAR01A15M4G_01.201.01.201
+</code></pre>
+<p>Check for new firmware update availability in the early access/testing channel</p>
+<pre><code class="language-ros">[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1 update-channel=testing
+  installed: EG12EAPAR01A15M4G_01.201.01.201
+     latest: EG12EAPAR01A15M4G_01.203.01.203
+</code></pre>
+<p>Install the latest firmware</p>
+<pre><code class="language-ros">[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1 upgrade=yes
+</code></pre>
+<p>Install the latest firmware from the early access/testing channel</p>
+<pre><code class="language-ros">[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1 upgrade=yes update-channel=testing
+</code></pre>
+<p>Perform a firmware upgrade from a custom location (file or HTTP URL).
+The interface must be in R (running) or X (disabled) state before executing the <code>firmware-upgrade</code> command.</p>
+<pre><code class="language-ros">[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1 firmware-file=R11e-LTE6_V039_image upgrade=yes
+
+[admin@D53G] &gt; /interface/lte/firmware-upgrade lte1 firmware-file=http://firmwareserver.com/R11e-LTE6_V039_image upgrade=yes
+</code></pre>
+<h5 id="modem-fotadfota-downloads">Modem FOTA/DFOTA Downloads</h5>
+<p>Here are all the latest FW versions for our modems:
+https://box.mikrotik.com/d/bfa49081454e4da1972d/</p>
+<p>You can use these FOTA files for offline updates or in setups where MikroTik upgrade server is not accessible for standard modem FW upgrade.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Before attempting an LTE modem firmware upgrade, upgrade RouterOS to the latest release. <a href="../getting-started/installation-and-upgrade/upgrade">How to upgrade RouterOS</a></p>
+<p>LTE modems are designed to reject incompatible FOTA/DFOTA firmware packages whenever possible. However, manual firmware upgrades always carry a risk. Installing an incorrect firmware image may result in modem malfunction, loss of functionality, or permanent damage that could require modem replacement.</p>
+<p>Do not interrupt the upgrade process. Power loss, device reboot, modem reset, or any other interruption while the firmware is being written may leave the modem in an unrecoverable state.</p>
+<p>It is the user's responsibility to verify that the firmware file is intended for the exact modem model and hardware revision being upgraded and to ensure a stable power supply throughout the upgrade process. MikroTik does not take responsibility for any damage, loss of functionality, or other issues resulting from flashing an incorrect firmware file or from interruption of the firmware upgrade process.</p>
+</div>
+<h6 id="fota-modems">FOTA modems</h6>
+<p>FOTA (Firmware Over‑The‑Air). These modems have no source-version subfolder. You can install the latest modem FW from any current FW version.</p>
+<table>
+<thead>
+<tr>
+<th>Modem model</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R11e-LTE</td>
+<td>The modem downloads the firmware itself over its LTE connection (FOTA). Offline upgrade is not possible, you can host the FW on some http server the modem can reach and upgrade the FW like that if the MikroTik upgrade server is not reachable in your setup</td>
+</tr>
+<tr>
+<td>R11e-LTE6</td>
+<td>-</td>
+</tr>
+<tr>
+<td>R11l-LTE7</td>
+<td>-</td>
+</tr>
+<tr>
+<td>R11e-4G</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EC25-EU</td>
+<td>Modem firmware installed as an NPK package</td>
+</tr>
+<tr>
+<td>EG25-G</td>
+<td>Modem firmware installed as an NPK package</td>
+</tr>
+<tr>
+<td>SXT-LTE</td>
+<td>Only single product - RBSXTLTE3-7. Modem firmware installed as an NPK package</td>
+</tr>
+</tbody>
+</table>
+<h6 id="dfota-modems">DFOTA modems</h6>
+<p>DFOTA (Delta Firmware Over‑The‑Air). These modems have per-version subfolders <code>modem/&lt;model&gt;/&lt;currentVersion&gt;/&lt;targetVersion&gt;_image</code> the targetVersion is the latest available upgrade from your current FW version. If your current FW version is old, it might need multiple step upgrade.</p>
+<table>
+<thead>
+<tr>
+<th>Modem model</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EC200A-EU</td>
+<td>Supports Offline DFOTA upgrade with the latest RouterOS v7 versions. In older versions the modem downloads the firmware itself over its LTE connection</td>
+</tr>
+<tr>
+<td>EP06-A</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EG06-A</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EG12-EA</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EG18-EA</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EG120K-EA</td>
+<td>-</td>
+</tr>
+<tr>
+<td>RG502Q-EA</td>
+<td>-</td>
+</tr>
+<tr>
+<td>RG520F-EU</td>
+<td>-</td>
+</tr>
+<tr>
+<td>RG520F-EUX</td>
+<td>Special modem FW version for ATL 5G R16 (ATLGM&amp;RG520F-EU)</td>
+</tr>
+<tr>
+<td>RG650E-EU</td>
+<td>This modem uses an A/B System Update mechanism instead of DFOTA. As the complete firmware image is written to the inactive system partition, the firmware package is significantly larger than a typical DFOTA package</td>
+</tr>
+<tr>
+<td>FG621-EA</td>
+<td>-</td>
+</tr>
+<tr>
+<td>BG77</td>
+<td>PPP serial modem. <code>/interface/ppp-client/firmware-upgrade ppp-out1 upgrade=yes firmware-file=</code></td>
+</tr>
+<tr>
+<td>BG770A</td>
+<td>PPP serial modem. <code>/interface/ppp-client/firmware-upgrade ppp-out1 upgrade=yes firmware-file=</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="user-at-chat-command">User at-chat command</h4>
+<p>It is possible to send a user-defined "at-chat" command to the LTE interface with the <code>/interface/lte/at-chat</code> command.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/at-chat lte1 input=&quot;AT&quot;
+  output: OK
+</code></pre>
+<p>It is also possible to use the "wait" parameter <em>wait=yes</em>  with the command to make "at-chat" wait for 5 seconds and return all the output instead of returning only the first received data. This is useful for some commands that return multiline output or a large block of data.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/at-chat lte1 input=&quot;at+qcfg=?&quot;
+  output:
+
+[admin@MikroTik] &gt; /interface/lte/at-chat lte1 input=&quot;at+qcfg=?&quot; wait=yes
+  output: +QCFG: &quot;rrc&quot;,(0-5)
+          +QCFG: &quot;hsdpacat&quot;,(6,8,10-24)
+          +QCFG: &quot;hsupacat&quot;,(5,6)
+          +QCFG: &quot;pdp/duplicatechk&quot;,(0,1)
+          +QCFG: &quot;risignaltype&quot;,(&quot;respective&quot;,&quot;physical&quot;)
+          +QCFG: &quot;lte/bandprior&quot;,(1-43),(1-43),(1-43)
+          +QCFG: &quot;volte_disable&quot;,(0,1)
+          +QCFG: &quot;diversity/config&quot;,(4,6),(1-4),(0)
+          +QCFG: &quot;div_test_mode&quot;,(0,1)
+          +QCFG: &quot;usbspeed&quot;,(&quot;20&quot;,&quot;30&quot;)
+          +QCFG: &quot;data_interface&quot;,(0,1),(0,1)
+          +QCFG: &quot;pcie/mode&quot;,(0,1)
+          +QCFG: &quot;pcie_mbim&quot;,(0,1)
+          +QCFG: &quot;sms_control&quot;,(0,1),(0,1)
+          +QCFG: &quot;call_control&quot;,(0,1),(0,1)
+          +QCFG: &quot;usb/maxpower&quot;,(0-900)
+          +QCFG: &quot;efratctl&quot;,(0,1)
+          +QCFG: &quot;netmaskset&quot;,(0,1)[,&lt;netmask&gt;]
+          +QCFG: &quot;mmwave&quot;,ant_chip,ant_type
+          +QCFG: &quot;gatewayset&quot;,(0,1)[,&lt;gateway&gt;]
+          +QCFG: &quot;clat&quot;,(0,1),(0,1),&lt;prefix&gt;,(0,32,40,48,56,64,96),&lt;fqdn&gt;,(0,1),(0,1,2,4,8),(0,1),(0,1),(0,1,2),(0,1,2)
+          +QCFG: &quot;usage/apmem&quot;
+          +QCFG: &quot;enable_gea1&quot;[,(0,1)]
+          +QCFG: &quot;dhcppktfltr&quot;,(0,1)
+          OK
+</code></pre>
+<p>You can also use the "at-chat" function in scripts and assign command output to a variable.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; :global &quot;lte_command&quot; [/interface/lte/at-chat lte1 input=&quot;AT+CEREG?&quot; as-value ]
+[admin@MikroTik] &gt; :put $&quot;lte_command&quot;
+output=+CEREG: 0,1
+OK
+</code></pre>
+<h3 id="quick-setup-example">Quick setup example</h3>
+<p>Start with network settings - Add new connection parameters under the LTE apn profile (provided by the network provider):</p>
+<pre><code class="language-ros">/interface/lte/apn/add name=profile1 apn=phoneprovider.net authentication=chap password=web user=web
+</code></pre>
+<p>Select the newly created profile for an LTE connection:</p>
+<pre><code class="language-ros">/interface/lte/set [find] apn-profile=profile1
+</code></pre>
+<p>The LTE interface should appear with the running (R) flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/print
+Flags: X - disabled, R - running
+0 R name=&quot;lte1&quot; mtu=1500 mac-address=AA:AA:AA:AA:AA:AA
+</code></pre>
+<p>If required, add NAT Masquerade for LTE Interface to get internet to the local network:</p>
+<pre><code class="language-ros">/ip/firewall/nat/add action=masquerade chain=srcnat out-interface=lte1
+</code></pre>
+<p>After the interface is added, you can use the "info" command to see what parameters the client acquired (parameters returned depend on the LTE hardware device):</p>
+<pre><code>[admin@MikroTik] &gt; /interface/lte/monitor lte1
+            status: connected
+             model: EG18-EA
+          revision: EG18EAPAR01A12M4G
+  current-operator: LMT
+    current-cellid: 3103242
+            enb-id: 12122
+         sector-id: 10
+        phy-cellid: 480
+        data-class: LTE
+    session-uptime: 15m54s
+              imei: 86981604098XXXX
+              imsi: 24701060267XXXX
+              iccid: 8937101122102057XXXX
+      primary-band: B3@20Mhz earfcn: 1300 phy-cellid: 480
+     dl-modulation: qpsk
+               cqi: 7
+                ri: 2
+               mcs: 1
+              rssi: -68dBm
+              rsrp: -97dBm
+              rsrq: -9dB
+              sinr: 6dB
+</code></pre>
+<h3 id="multi-apn">Multi APN</h3>
+<p>Some LTE modems support multiple simultaneous APN connections. Each connection receives its own IP configuration, and in RouterOS every extra connection is exposed as a separate <strong>APN slave LTE interface</strong> bound to the physical modem interface (<code>master</code>).</p>
+<h4 id="capability-check">Capability check</h4>
+<p>Before configuring multiple APNs, verify that the modem supports them:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/show-capabilities lte1
+            ...
+       max-apn-count: 8
+    framed-route-apn: any
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Capability</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>max-apn-count</strong></td>
+<td style="text-align: left;">Maximum number of APN connections that can be active simultaneously. Multi APN is only available when this value is greater than <code>1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framed-route-apn</strong></td>
+<td style="text-align: left;">Which APN supports framed routing (routing behind) in a multi APN setup</td>
+</tr>
+</tbody>
+</table>
+<h4 id="configuration">Configuration</h4>
+<p>For every additional APN, create a new LTE slave interface and attach it to the physical LTE interface(master):</p>
+<pre><code class="language-ros">/interface/lte/add apn-profile=default master=lte1
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>name</strong></td>
+<td style="text-align: left;">Descriptive name of the new slave interface (optional parameter, by default will create a new name using the set apn-profile)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>apn-profile</strong></td>
+<td style="text-align: left;">APN profile to be used for the additional connection</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master</strong></td>
+<td style="text-align: left;">The physical LTE interface that the modem is attached to (for example <code>lte1</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The slave interface behaves like a regular LTE interface: it receives its own IP configuration and can be used in routes, firewall and NAT rules independently of the master interface.</p>
+<h4 id="example-three-simultaneous-apns">Example: three simultaneous APNs</h4>
+<p>Given that the router currently has default configuration, with only the default APN profile present and one lte interface:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; interface/lte/apn/print
+Flags: * - DEFAULT
+Columns: NAME, APN, IP-TYPE, ADD-DEFAULT-ROUTE, DEFAULT-ROUTE-DISTANCE
+#   NAME     APN       IP-TYPE  ADD-DEFAULT-ROUTE  DEFAULT-ROUTE-DISTANCE
+0 * default  internet  auto     yes                                     2
+
+[admin@MikroTik] &gt; interface/lte/print
+Flags: R - RUNNING
+Columns: NAME, MTU, NETWORK-MODE, APN-PROFILE
+#   NAME   MTU  NETWORK-MODE  APN-PROFILE
+0 R lte1  1500  3g            default
+                lte
+                5g
+</code></pre>
+<p>First add the new APN profiles:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/apn add apn=internet2
+[admin@MikroTik] &gt; /interface/lte/apn add apn=internet3
+</code></pre>
+<p>Then add the new slave APN interfaces using the previously added APN profiles:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/add apn-profile=internet2 master=lte1
+[admin@MikroTik] &gt; /interface/lte/add apn-profile=internet3 master=lte1
+</code></pre>
+<pre><code class="language-ros">[admin@D53G] &gt; interface/lte/print
+Flags: R - RUNNING
+Columns: NAME, MASTER, MTU, NETWORK-MODE, APN-PROFILE
+#   NAME              MASTER   MTU  NETWORK-MODE  APN-PROFILE
+0 R lte1                      1500  3g            default
+                                    lte
+                                    5g
+1 R lte1.1.internet2  lte1    1500                internet2
+2 R lte1.2.internet3  lte1    1500                internet3
+</code></pre>
+<h4 id="removing-slave-apn-interfaces">Removing slave APN interfaces</h4>
+<p>The same as you can add new slave APN interface you can remove them with the <code>remove</code> command. In case of using 3 or more APN interfaces you can only remove starting from the last added interface, so in this case it is <code>lte1.2.internet3</code> or <code>numbers=2</code>. Trying to remove the not last interface will give an error. In 2 APN setup there is only one slave interface so there is no issues with this, but do keep this in mind for 3 and more APN setups.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; interface/lte/remove lte1.1.internet2
+failure: only the last slave apn interface can be removed
+
+[admin@MikroTik] &gt; /interface/lte/remove lte1.2.internet3
+
+[admin@MikroTik] &gt; interface/lte/print
+Flags: R - RUNNING
+Columns: NAME, MASTER, MTU, NETWORK-MODE, APN-PROFILE
+#   NAME              MASTER   MTU  NETWORK-MODE  APN-PROFILE
+0 R lte1                      1500  3g            default
+                                    lte
+                                    5g
+1 R lte1.1.internet2  lte1    1500                internet2
+</code></pre>
+<h4 id="changes-from-the-previous-method">Changes from the previous method</h4>
+<p>Before 7.26beta1 version multiple APNs were configured by attaching several APN profiles to a single LTE interface with <code>apn-profiles</code> parameter which created dynamic slave interfaces:</p>
+<pre><code class="language-ros">/interface/lte/apn/add name=apn1 apn=provider1
+/interface/lte/apn/add name=apn2 apn=provider2
+/interface/lte/set lte1 apn-profiles=apn1,apn2
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p><strong>Deprecation:</strong> the <code>apn-profiles</code> parameter is deprecated starting with RouterOS 7.26. It still accepts a single APN value, but it will be removed in a future release - use <code>apn-profile</code> in new configurations.</p>
+<p><strong>Configuration conversion:</strong> On upgrade from old multi-APN configuration will automatically be converted to the new add/remove method and on downgrade will be converted back to the dynamic.</p>
+</div>
+<h3 id="passthrough-example">Passthrough Example</h3>
+<p>Some LTE interfaces support the LTE Passthrough feature where the IP configuration is applied directly to the client device. In this case, modem firmware is responsible for the IP configuration, and the router is used only to configure modem settings - APN, Network Technologies, and IP-Type. In this configuration, the router will not get IP configuration from the modem. The LTE Passthrough modem can pass both IPv4 and IPv6 addresses if that is supported by the modem. Some modems support multiple APNs where you can pass the traffic from each APN to a specific router interface.</p>
+<p>Passthrough will only work for one host. The router will automatically detect the MAC address of the first received packet and use it for the Passthrough. If there are multiple hosts on the network it is possible to lock the Passthrough to a specific MAC. On the host on the network where the Passthrough is providing the IP a DHCP-Client should be enabled on that interface too. Note that it will not be possible to connect to the LTE router via a public lte IP address or from the host which is used by the passthrough. It is suggested to create an additional connection from the LTE router to the host for configuration purposes. For example, a vlan interface between the LTE router and host.</p>
+<p>To enable Passthrough a new entry is required or the default entry should be changed in the <code>/interface/lte/apn</code> menu</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Passthrough is not supported by all chipsets.
+To check if your modem supports passthrough:</p>
+<pre><code class="language-ros">/interface/lte/show-capabilities [find]
+</code></pre>
+</div>
+<h4 id="examples">Examples</h4>
+<p>To configure Passthrough on ether1:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/apn/add apn=apn1 passthrough-interface=ether1
+[admin@MikroTik] &gt; /interface/lte/set lte1 apn-profile=apn1
+</code></pre>
+<p>To configure the Passthrough on ether1 host 00:0C:42:03:06:AB:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/apn/add apn=apn1 passthrough-interface=ether1 passthrough-mac=00:0C:42:03:06:AB
+[admin@MikroTik] &gt; /interface/lte/set lte1 apn-profile=apn1
+</code></pre>
+<p>To configure multiple APNs on ether1 and ether2:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/apn/add apn=apn1 passthrough-interface=ether1
+[admin@MikroTik] &gt; /interface/lte/apn/add apn=apn2 passthrough-interface=ether2
+[admin@MikroTik] &gt; /interface/lte/set lte1 apn-profile=apn1,apn2
+</code></pre>
+<p>To configure multiple APNs with the same APN for different interfaces:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/apn/add name=interface1 apn=apn1
+[admin@MikroTik] &gt; /interface/lte/apn/add name=interface2 apn=apn1 passthrough-interface=ether1
+[admin@MikroTik] &gt; /interface/lte/set lte1 apn-profile=interface1
+[admin@MikroTik] &gt; /interface/lte/set lte2 apn-profile=interface2
+</code></pre>
+<p>Additionally, you can override the default dynamic dhcp server parameters/options by creating a DHCP server manually on the same passthrough-interface. For example, the default lease-time is 1 minute:</p>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /ip/dhcp-server/print detail
+Flags: D - dynamic; X - disabled, I - invalid
+ 0 D  name=&quot;apn2&quot; interface=ether2 lease-time=1m address-pool=static-only use-radius=no lease-script=&quot;&quot; address-lists=&quot;&quot;
+</code></pre>
+<p>Now if you want to change the lease-time to, for example, 30 minutes, then you can create a new dhcp-server on the passthrough-interface, in this case, ether2:</p>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /ip/dhcp-server/add interface=ether2 name=dhcp1 lease-time=30m
+[admin@MikroTik] &gt; /ip/dhcp-server/print detail
+Flags: D - dynamic; X - disabled, I - invalid
+ 0    name=&quot;dhcp1&quot; interface=ether2 lease-time=30m address-pool=static-only use-radius=no lease-script=&quot;&quot; address-lists=&quot;&quot;
+</code></pre>
+<h3 id="dual-sim">Dual SIM</h3>
+<h4 id="boards-with-switchable-sim-slots">Boards with switchable SIM slots</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">RouterBoard</th>
+<th style="text-align: left;">Modem slot</th>
+<th style="text-align: left;">SIM slot 1</th>
+<th style="text-align: left;">SIM slot 2</th>
+<th style="text-align: left;">Switchable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">LtAP</td>
+<td style="text-align: left;">lower</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">Y</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">upper</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">N</td>
+</tr>
+<tr>
+<td style="text-align: left;">LtAP mini</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">up</td>
+<td style="text-align: left;">down</td>
+<td style="text-align: left;">Y</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT R</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">a</td>
+<td style="text-align: left;">b</td>
+<td style="text-align: left;">Y</td>
+</tr>
+<tr>
+<td style="text-align: left;">ATL 5G</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">sim</td>
+<td style="text-align: left;">esim</td>
+<td style="text-align: left;">Y</td>
+</tr>
+</tbody>
+</table>
+<p>SIM slots switching commands</p>
+<ul>
+<li>RouterOS v7</li>
+</ul>
+<pre><code class="language-ros">/interface/lte/settings/set sim-slot=down
+</code></pre>
+<ul>
+<li>RouterOS v6 after 6.45.1</li>
+</ul>
+<pre><code class="language-ros">/system/routerboard/modem/set sim-slot=down
+</code></pre>
+<ul>
+<li>RouterOS v6 pre 6.45.1:</li>
+</ul>
+<pre><code class="language-ros">/system/routerboard/sim/set sim-slot=down
+</code></pre>
+<p>For more reference please see the board block diagram,  Quick Guide, and User manual.</p>
+<h4 id="usage-example">Usage Example</h4>
+<p>Follow this link - <a href="./dual-sim-application.md">Dual SIM Application</a>, to see examples of how to change the SIM slot based on the roaming status and in case the interface status is down, with the help of RouterOS scripts and scheduler.</p>
+<h3 id="tips-and-tricks">Tips and Tricks</h3>
+<p>This paragraph contains information for additional features and usage cases.</p>
+<h4 id="find-device-location-using-cell-information">Find device location using Cell information</h4>
+<p>On devices using the R11e-LTE International version card (wAP LTE kit), some extra information is provided under info command.</p>
+<pre><code>   current-operator: 24701
+                lac: 40
+     current-cellid: 2514442
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>current-operator</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Contains MCC and MNC. For example: current-operator: 24701 breaks to: MCC=247 MNC=01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lac</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Location area code (LAC)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>current-cellid</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Station identification number</td>
+</tr>
+</tbody>
+</table>
+<p>Values can be used to find location in databases: <a href="http://www.cellmapper.net">Cell Mapper</a></p>
+<h4 id="using-cell-lock">Using Cell lock</h4>
+<p>It is possible to lock R11e-LTE, R11e-LTE6 and R11e-4G modems and equipped devices to the exact LTE tower. The LTE info command provides currently used cellular tower information:</p>
+<pre><code>         phy-cellid: 384
+             earfcn: 1300 (band 3, bandwidth 20Mhz)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>phy-cellid</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Physical Cell Identification (PCI) of currently used cell tower.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>earfcn</strong> (<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Absolute Radio Frequency Channel Number</td>
+</tr>
+</tbody>
+</table>
+<p>The exact tower location as well as available bands and other information can be acquired from the mobile carrier or by using online services:</p>
+<p><a href="https://www.cellmapper.net/map">CellMapper</a></p>
+<p>By using those acquired variables it's possible to send the AT command to the modem for locking to the tower in the current format:</p>
+<p><strong>for R11e-LTE and R11e-LTE6</strong></p>
+<pre><code>AT*Cell=&lt;mode&gt;,&lt;NetworkMode&gt;,&lt;band&gt;,&lt;EARFCN&gt;,&lt;PCI&gt;
+
+where
+
+&lt;mode&gt; :
+0 – Cell/Frequency disabled
+1 – Frequency lock enabled
+2 – Cell lock enabled
+
+&lt;NetworkMode&gt;
+0 – GSM
+1 – UMTS_TD
+2 – UMTS_WB
+3 – LTE
+
+&lt;band&gt;
+Not in use, leave this blank
+
+&lt;EARFCN&gt;
+earfcn from lte info
+
+&lt;PCI&gt;
+phy-cellid from lte info
+</code></pre>
+<p>To lock the modem at the previously used tower, at-chat can be used:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT*Cell=2,3,,1300,384&quot;
+</code></pre>
+<p>For R11e-LTE all set locks are lost after reboot or modem reset. Cell data can also be gathered from "cell-monitor".</p>
+<p>For R11e-LTE6 cell lock works only for the primary band. This can be useful if you have multiple channels on the same band and you want to lock it to a specific earfcn. Note that cell lock is not band-specific and for ca-band it can also use other frequency bands, unless you use band lock.</p>
+<p>Use cell lock to set the primary band to the 1300 earfcn and use the second channel for the ca-band:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT*Cell=2,3,,1300,138&quot;
+</code></pre>
+<p>Now it uses the earfcn: 1300 for the primary channel:</p>
+<pre><code>         primary-band: B3@20Mhz earfcn: 1300 phy-cellid: 138
+              ca-band: B3@5Mhz earfcn: 1417 phy-cellid: 138
+</code></pre>
+<p>You can also set it the other way around:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT*Cell=2,3,,1417,138&quot;
+</code></pre>
+<p>Now it uses the earfcn: 1417 for the primary channel:</p>
+<pre><code>         primary-band: B3@5Mhz earfcn: 1417 phy-cellid: 138
+              ca-band: B3@20Mhz earfcn: 1300 phy-cellid: 138
+</code></pre>
+<p>For the R11e-LTE6 modem, cell lock information will not be lost after reboot or modem reset. To remove the cell lock, use the at-chat command:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT*Cell=0&quot;
+</code></pre>
+<p><strong>for R11e-4G</strong></p>
+<pre><code>AT%CLCMD=&lt;mode&gt;,&lt;mode2&gt;,&lt;EARFCN&gt;,&lt;PCI&gt;,&lt;PLMN&gt;
+AT%CLCMD=1,1,3250,244,\&quot;24705\&quot;
+
+where
+
+&lt;mode&gt; :
+0 – Cell/Frequency disabled
+1 – Cell lock enabled
+
+&lt;mode2&gt; :
+0 - Save lock for first scan
+1 - Always use lock
+(after each reset modem will clear out previous settings no matter what is used here)
+
+&lt;EARFCN&gt;
+earfcn from lte info
+
+&lt;PCI&gt;
+phy-cellid from lte info
+
+&lt;PLMN&gt;
+Mobile operator code
+</code></pre>
+<p>All PLMN codes available <a href="https://en.wikipedia.org/wiki/Mobile_country_code">here</a>. This variable can be also left blank</p>
+<p>To lock the modem to the cell - the modem needs to be in a non-operating state, the easiest way for the <strong>R11e-4G</strong> modem is to add a CellLock line to the "modem-init" string:</p>
+<pre><code class="language-ros">/interface/lte/set lte1 modem-init=&quot;AT%CLCMD=1,1,3250,244,\&quot;24705\&quot;&quot;
+</code></pre>
+<p>Multiple cells can also be added by providing a list instead of one tower's information in the following format:</p>
+<pre><code>AT%CLCMD=&lt;mode&gt;,&lt;mode2&gt;,&lt;EARFCN_1&gt;,&lt;PCI_1&gt;,&lt;PLMN_1&gt;,&lt;EARFCN_2&gt;,&lt;PCI_2&gt;,&lt;PLMN_2&gt;
+</code></pre>
+<p>For example to lock to two different PCIs within the same band and operator:</p>
+<pre><code class="language-ros">/interface/lte/set lte1 modem-init=&quot;AT%CLCMD=1,1,6300,384,\&quot;24701\&quot;,6300,385,\&quot;24701\&quot;&quot;
+</code></pre>
+<p><strong>for Chateau LTE12, Chateau LTE18, Chateau 5G, Chateau 5G R16, LHG LTE18, ATL LTE18, ATL 5G R16, Chateau 5G R17 ax</strong></p>
+<pre><code>AT+QNWLOCK=&quot;common/4g&quot;,&lt;num of cells&gt;,[[&lt;freq&gt;,&lt;pci&gt;],...]
+AT+QNWLOCK=\&quot;common/4g\&quot;,1,6300,384
+
+where
+
+&lt;num of cells&gt;
+number of cells to cell lock
+
+&lt;freq&gt;
+earfcn from lte info
+
+&lt;pci&gt;
+phy-cellid from lte info
+
+</code></pre>
+<p>Single-cell lock example:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/4g\&quot;,1,3050,448&quot;
+</code></pre>
+<p>Query current configuration:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/4g\&quot;&quot;
+</code></pre>
+<p>Multiple cells can also be added to the cell lock. For example to lock to two different cells:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/4g\&quot;,2,3050,448,1574,474&quot;
+</code></pre>
+<p>To remove the cell lock, use this at-chat command:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;at+qnwlock=\&quot;common/4g\&quot;,0&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<ol>
+<li>Cell lock information will not be saved after a reboot or modem reset. 2. AT+QNWLOCK command can lock the cell and frequency. Therefore, the module can be given priority to register to the locked cell, however, according to the 3gpp protocol, the module will be redirected or handed over to a cell with better signal instructions, even if it is not within the lock of the command. This phenomenon is normal.</li>
+</ol>
+</div>
+<p><strong>For the 5G-capable devices, it is also possible to lock the 5G SA cell</strong></p>
+<pre><code>AT+QNWLOCK=&quot;common/5g&quot;,&lt;pci&gt;,&lt;freq&gt;,&lt;scs&gt;,&lt;band&gt;
+AT+QNWLOCK=\&quot;common/5g\&quot;,901,504990,30,41
+
+where
+&lt;pci&gt; String type. Cell physical ID. 0 indicates disabling locking module to the specified cell.
+&lt;freq&gt; Integer type. Cell frequency (earfcn).
+&lt;scs&gt; Integer type. NR sub carrier space. Unit: kHz. For FR1(Sub-6 GHz) FDD band, please set &lt;scs&gt; to 15; for FR1 TDD band, please set &lt;scs&gt; to 30. Otherwise, an error code may be returned.
+15
+30
+&lt;band&gt; Integer type. NR5G frequency band.
+</code></pre>
+<p>Cell lock example to TDD n78 band with earfcn=628032 and phy-cellid=138:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/5g\&quot;,138,628032,30,78&quot;
+</code></pre>
+<p>Query the current configuration:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/5g\&quot;&quot;
+  output: +QNWLOCK: &quot;common/5g&quot;,138,628032,30,78
+          OK
+</code></pre>
+<p>To remove the cell lock use this at-chat command:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+QNWLOCK=\&quot;common/5g\&quot;,0&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<ol>
+<li>
+<p>Cell lock information will not be saved after a reboot or modem reset.</p>
+</li>
+<li>
+<p>The AT+QNWLOCK command can lock the cell and frequency. Therefore, the module can be given priority to register to the locked cell, however, according to the 3gpp protocol, the module will be redirected or handed over to a cell with better signal instructions, even if it is not within the lock of the command. This phenomenon is normal.</p>
+</li>
+<li>
+<p>When locking a cell, please make sure that the module supports the frequency band corresponding to the locked cell, otherwise an error code will be returned.</p>
+</li>
+<li>
+<p>AT+QNWLOCK="common/5g" does not support locking 5G cells of NSA. (You can still lock to the lte anchor cell using the AT+QNWLOCK="common/4g" command.)</p>
+</li>
+<li>
+<p>This Write Command can only be executed when the module is in full functionality (lte interface is not disabled).</p>
+</li>
+<li>
+<p>This command is not recommended for commercial use.</p>
+</li>
+</ol>
+</div>
+<p><strong>for FG621-EA</strong></p>
+<pre><code>AT+GTCELLLOCK=&lt;mode&gt;[,&lt;rat&gt;,&lt;type&gt;,&lt;earfcn&gt;[,&lt;PCI&gt;]]
+
+where
+
+&lt; mode &gt;: integer type; 0 Disable this function 1 Enable this function 2 Add new cell to be locked
+
+&lt;rat&gt;: integer type; 0 LTE 1 WCDMA
+
+&lt;type&gt;: integer type; 0 Lock PCI 1 Lock frequency
+
+&lt;earfcn&gt;: integer type; the range is 0-65535.
+
+&lt;PCI&gt;: integer type; If second parameter value is 0, the range is 0-503 for LTE If second parameter value is 1, the range is 0-512 for WCDMA
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+GTCELLLOCK=1,0,0,6175,176&quot;
+</code></pre>
+<h4 id="cell-monitor">Cell Monitor</h4>
+<p>Cell monitor allows scanning available nearby mobile network cells:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/lte/cell-monitor lte1
+PHY-CELLID BAND         PSC EARFCN                 RSRP          RSRQ          RSSI         SINR
+        49 B20              6300                -110dBm       -19.5dB
+       272 B20              6300                -116dBm       -19.5dB
+       374 B20              6300                -108dBm         -16dB
+       384 B1               150                 -105dBm       -13.5dB
+       384 B3               1300                -106dBm         -12dB
+       384 B7               2850                -107dBm       -11.5dB
+       432 B7               2850                -119dBm       -19.5dB
+</code></pre>
+<p>Gathered data can be used for more precise location detection or for Cell lock.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Not all modems support this feature</p>
+</div>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<h4 id="enable-lte-logging">Enable LTE logging</h4>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/logging/add topics=lte
+</code></pre>
+<h4 id="check-for-errors-in-log">Check for errors in log</h4>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print
+
+11:08:59 lte,async lte1: sent AT+CPIN?
+11:08:59 lte,async lte1: rcvd +CME ERROR: 10
+</code></pre>
+<p>search for the CME error description online,</p>
+<p>In this case: CME error 10 - SIM not inserted</p>
+<h4 id="locking-band-on-huawei-and-other-modems">Locking band on Huawei and other modems</h4>
+<p>To lock the band for Huawei modems, the <code>/interface/lte/set lte1 band=""</code> option can't be used.</p>
+<p>It is possible to use AT commands to lock to the desired band manually.</p>
+<p>To check all supported bands run the at-chat command:</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface/lte/at-chat lte1 input=&quot;AT^SYSCFGEX=\?&quot;
+
+output: ^SYSCFGEX: (&quot;00&quot;,&quot;03&quot;,&quot;02&quot;,&quot;01&quot;,&quot;99&quot;),((2000004e80380,&quot;GSM850/GSM900/GSM1800/GSM1900/WCDMA BCI/WCDMA BCII/WCDMA BCV/WCDMA BCVIII&quot;),
+(3fffffff,&quot;All Bands&quot;)),(0-2),(0-4),((800d7,&quot;LTE BC1/LTE BC2/LTE
+BC3/LTE BC5/LTE BC7/LTE BC8/LTE BC20&quot;),(7fffffffffffffff,&quot;All Bands&quot;))
+OK
+
+</code></pre>
+<p>Example to lock to LTE band 7:</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface/lte/set lte1 modem-init=&quot;AT^SYSCFGEX=\&quot;03\&quot;,3FFFFFFF,2,4,40,,&quot;
+</code></pre>
+<p>Change the last part <strong>40</strong> to the desired band specified hexadecimal value where:</p>
+<pre><code>4 LTE BC3
+40 LTE BC7
+80000 LTE BC20
+7FFFFFFFFFFFFFFF  All bands
+etc
+</code></pre>
+<p>All band HEX values and AT commands can be found in <a href="https://download-c.huawei.com/download/downloadCenter?downloadId=29741&amp;version=72288&amp;siteCode=">Huawei AT Command Interface Specification guide</a></p>
+<p>Check if the band is locked:</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface/lte/at-chat lte1 input=&quot;AT^SYSCFGEX\?&quot;
+
+output: ^SYSCFGEX: &quot;03&quot;,3FFFFFFF,0,2,40
+OK
+</code></pre>
+<p>For more information check modem manufacturers' AT command reference manuals.</p>
+<h4 id="mpcie-modems-with-rb9xx-series-devices">mPCIe modems with RB9xx series devices</h4>
+<p>In case your modem is not being recognized after a soft reboot, then you might need to add a delay before the USB port is initialized. This can be done using the following command:</p>
+<pre><code class="language-ros">/system/routerboard/settings/set init-delay=5s
+</code></pre>
+<h4 id="boards-with-usb-a-port-and-mpcie">Boards with USB-A port and mPCIe</h4>
+<p>Some devices such as specific RB9xx and the RBLtAP-2HnD share the same USB lines between a single mPCIe slot and a USB-A port. If auto switch is not taking place and a modem is not getting detected, you might need to switch manually to either use the USB-A or the mini-PCIe:</p>
+<pre><code class="language-ros">/system/routerboard/usb/set type=mini-PCIe
+</code></pre>
+<h4 id="avoiding-tethering-speed-throttling">Avoiding tethering speed throttling</h4>
+<p>Some operators allow unlimited data only for the device the SIM card is used on, all other data coming from mobile hotspots or tethering is highly limited by volume or by throughput speed. Some sources have found out that this limitation is done by monitoring TTL (Time To Live) values from packets to determine if limitations need to be applied (TTL is decreased by 1 for each "hop" made). RouterOS allows changing the TTL parameter for packets going from the router to allow hiding subnetworks. Keep in mind that this may conflict with the fair use policy.</p>
+<pre><code class="language-ros">IPv4 mangle rule:
+/ip/firewall/mangle
+add action=change-ttl chain=postrouting new-ttl=set:65 out-interface=lte1 passthrough=yes
+IPv6 mangle rule:
+/ipv6/firewall/mangle
+add action=change-hop-limit chain=postrouting new-hop-limit=set:65 passthrough=yes
+</code></pre>
+<h4 id="unlocking-sim-card-after-multiple-wrong-pin-code-attempts">Unlocking SIM card after multiple wrong PIN code attempts</h4>
+<p>After locking the SIM card, unlocking can be done through "at-chat"</p>
+<p>Check current PIN code status:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;at+cpin\?&quot;
+</code></pre>
+<p>If the card is locked - unlock it by providing:</p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+CPIN=\&quot;PUK_code\&quot;,\&quot;NEW_PIN\&quot;&quot;
+</code></pre>
+<p>Replace PUK_code and NEW_PIN with matching values.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The command for sim slot selection changes in v6.45.1 and again in v7. Some device models like SXT have SIM slots named "a" and "b" instead of "up" and "down"</p>
+</div>
+<h4 id="site-local-dns-address-ipv6">Site-local DNS address (IPv6)</h4>
+<p>When IPv6 is provided through the modem control channel, RouterOS used to automatically add the site-local IPv6 address <code>fec0:0:0:ffff::1/64</code> to the LAN interface <code>ipv6-interface</code>. This address was meant to act as a DNS server for very old Windows clients. This is probably not necessary anymore.</p>
+<p>Since this address is no longer added automatically, add it manually if you still have such clients:</p>
+<pre><code class="language-ros">/ipv6/address/add address=fec0:0:0:ffff::1/64 interface=bridge advertise=no
+</code></pre>
+<p>Replace <code>bridge</code> with the <code>ipv6-interface</code> name.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ip · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="ip-part-14">ip (part 1/4)</h1>
+<h1 id="address">address</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/address.</p>
+</blockquote>
+<hr />
+<h2 id="ipaddress">ip/address</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+<li><strong>S</strong> <code>slave</code> — Whether address belongs to an interface which is a slave port to some other master interface.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>composite { address: ipAddr
+, netmask: [ num [ .. 32]]
+ }</code></li>
+<li><strong>network</strong> <code>ipAddr</code> — Network address, that is calculated from address parameter using address itself and the netmask.</li>
+<li><strong>netmask</strong> <code>ipAddr</code></li>
+<li><strong>broadcast</strong> <code>ipAddr</code></li>
+<li><strong>interface</strong> <code>iface_enum</code> — Specifies the interface on which the IPv4 address is configured. You can select it from the pool of interfaces available on the router.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>actual-interface</strong> <code>iface_enum</code> — Actual interface on which address is set up. For example, if address was configured on ethernet interface and ethernet interface was added to bridge, then actual interface is bridge not ethernet.</li>
+<li><strong>vrf</strong> <code>enum</code> — Indicates which VRF this IP address is associated with.</li>
+</ul>
+<hr />
+<h1 id="arp">arp</h1>
+<blockquote>
+<p>Even though IP packets are addressed using IP addresses, hardware addresses must be used to transport data from one host to another. Address Resolution Protocol is used to map OSI level 3 IP addresses to OSI level 2...</p>
+</blockquote>
+<hr />
+<h2 id="iparp">ip/arp</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Even though IP packets are addressed using IP addresses, hardware addresses must be used to transport data from one host to another. Address Resolution Protocol is used to map OSI level 3 IP addresses to OSI level 2 MAC addresses. A router has a table of currently used ARP entries. Normally the table is built dynamically, but to increase network security, it can be partially or completely built statically by adding static entries. To know more on how ARP works, read <a href="../../getting-started/networking-fundamentals/index.md#arp-and-tying-it-all-together">networking fundamentals</a>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The default maximum number of ARP entries depends on the installed amount of RAM. It can be adjusted with the command "<code>/ip/settings/set max-neighbor-entries=</code>x", see more details on <a href="./settings.md">IPv4 Settings</a>.</p>
+</div>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Whether the ARP entry is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — Whether the entry is not valid.</li>
+<li><strong>H</strong> <code>dhcp</code> — Whether the ARP entry is added by DHCP server.</li>
+<li><strong>D</strong> <code>dynamic</code> — Whether the entry is dynamically created.</li>
+<li><strong>P</strong> <code>published</code> — published</li>
+<li><strong>C</strong> <code>complete</code> — Complete flag is included in ARP entries when the ARP <code>status</code> is permanent, reachable, stale, probe, or delay.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>ipAddr</code> — IP address to be mapped.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address to be mapped to.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface name the IP address is assigned to.</li>
+<li><strong>published</strong> <code>bool</code> — Static proxy-arp entry for individual IP addresses. When an ARP query is received for the specific IP address, the device will respond with its own MAC address. No need to set proxy-arp on the interface itself for all the MAC addresses to be proxied. The interface will respond to an ARP request only when the device has an active route towards the destination.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Shows the ARP entry state. - <code>delay</code> - neighbor entry validation is currently delayed. - <code>failed</code> - ARP resolution has failed. - <code>incomplete</code> - system does not have the MAC address information for the IP address. - <code>permanent</code> - ARP entry is considered permanent and will not be removed. - <code>probe</code> - neighbor is being probed. - <code>reachable</code> - ARP resolution is successful, the MAC address is known. - <code>stale</code> - entry is still valid but aged.</li>
+<li><strong>vrf</strong> <code>enum</code> — Indicates which VRF this ARP entry is associated with.</li>
+</ul>
+<hr />
+<h1 id="cloud">cloud</h1>
+<blockquote>
+<p>Settings of the MikroTik cloud services: the DDNS name, the time update at startup and Back To Home. The router sends its requests to cloud2.mikrotik.com on UDP port 15252. For an overview and examples, see Cloud and...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloud">ip/cloud</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings of the MikroTik cloud services: the DDNS name, the time update at startup and Back To Home. The router sends its requests to <code>cloud2.mikrotik.com</code> on UDP port 15252. For an overview and examples, see <a href="../../../network-management/cloud/">Cloud</a> and <a href="../../../network-management/cloud/back-to-home">Back To Home</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ddns-enabled</strong> <code>enum (auto | yes)</code> — Whether the router registers a DNS name (<code>dns-name</code>) with the cloud server and keeps it pointing to the router's public address. - <code>auto</code> (default) - DDNS is on only while Back To Home is enabled (<code>back-to-home-vpn=enabled</code>). When DDNS turns off, the router asks the cloud server to delete the name, and the name stops resolving within a few minutes. - <code>yes</code> - DDNS is always on. Behind NAT, the router sends an update every minute.</li>
+<li><strong>ddns-update-interval</strong> <code>alt { ddns-update-interval: enum (none) { none:0 }
+, ddns-update-interval: time [1m .. ]
+ }</code> — Interval at which the router sends DDNS updates to the cloud server, in addition to the updates it decides to send by itself. With <code>none</code>, the router only sends its own updates; behind NAT, that is one every minute. Minimum: 1 minute. Default: none.</li>
+<li><strong>update-time</strong> <code>bool</code> — Whether the router sets its clock from the cloud server when it starts. It does so only while the NTP client (<code>/system/ntp/client</code>) is disabled, also with <code>ddns-enabled=auto</code>, and logs <code>cloud change time &lt;old&gt; =&gt; &lt;new&gt;</code>. DDNS updates and <code>force-update</code> do not set the clock. The time zone is set separately by <code>time-zone-autodetect</code> in <code>/system/clock</code>. Default: yes.</li>
+<li><strong>back-to-home-vpn</strong> <code>enum (revoked-and-disabled | enabled)</code> — Whether Back To Home runs. - <code>revoked-and-disabled</code> (default) - Back To Home is off. Setting it removes the <code>back-to-home-vpn</code> interface with its peers, addresses and dynamic firewall rules, and all users in <a href="back-to-home-user/"><code>back-to-home-user</code></a>, and asks the cloud server to delete <code>vpn-dns-name</code>. Enabling Back To Home again creates new keys and a new port, so every client needs a new configuration. - <code>enabled</code> - Create the WireGuard interface <code>back-to-home-vpn</code> with the addresses 192.168.216.1/24 and fc00:0:0:216::1/64, add dynamic firewall and NAT rules, register <code>vpn-dns-name</code>, and connect to a relay when the router cannot be reached directly. With <code>ddns-enabled=auto</code>, DDNS turns on too.</li>
+<li><strong>vpn-prefer-relay-code</strong> <code>string</code> — Code of the relay region to use, from <code>vpn-relay-regions</code>, for example <code>EUR1</code>. When it is empty, the router uses the relay with the lowest round-trip time (<code>vpn-relay-rtts</code>). Default: empty.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>public-address</strong> <code>ipAddr</code> — Public IPv4 address of the router as the cloud server sees it, that is, the source address of the router's requests. Behind NAT, this is the address of the NAT device. Shown after the first reply from the cloud server, also when only the time update runs.</li>
+<li><strong>public-address-ipv6</strong> <code>ip6Addr</code> — Public IPv6 address of the router as the cloud server sees it. Shown when the router reaches the cloud server over IPv6.</li>
+<li><strong>dns-name</strong> <code>string</code> — DNS name of the router: its serial number in lower case followed by <code>.sn.mynetname.net</code>. Shown after the name is registered. It resolves to <code>public-address</code>, or to the router's local address with <code>use-local-address=yes</code> in <a href="advanced"><code>advanced</code></a>, with a time to live of 60 seconds.</li>
+<li><strong>status</strong> <code>string</code> — State of the last request to the cloud server, for example: - <code>updating...</code> - The router sent a request and is waiting for the reply. Without a reply, it keeps retrying with growing intervals. - <code>updated</code> - The cloud server confirmed the last request. - <code>failed to connect</code> - The cloud server did not answer.</li>
+<li><strong>vpn-dns-name</strong> <code>string</code> — DNS name of the Back To Home endpoint: the serial number in lower case followed by <code>.vpn.mynetname.net</code>. It resolves to the router's public address, or to the relay the router uses when it cannot be reached directly. Client configurations use it as the endpoint.</li>
+<li><strong>vpn-port</strong> <code>num</code> — UDP port of the <code>back-to-home-vpn</code> WireGuard interface. The router picks it when Back To Home is enabled.</li>
+<li><strong>vpn-status</strong> <code>string</code> — State of Back To Home, for example <code>running</code>.</li>
+<li><strong>vpn-relay-rtts</strong> <code>multi { code: string
+ }</code> — Round-trip time to each relay region over IPv4 and IPv6, for example <code>EUR1(ip4: 0.976ms, ip6: timeout)</code>.</li>
+<li><strong>vpn-relay-ipv4-status</strong> <code>string</code> — How clients reach the router over IPv4: <code>reachable directly (region: EUR1 ip: &lt;relay address&gt; rtt: 0.761ms)</code> when they can connect to the router's public address, or <code>reachable via relay (region: EUR1 ...)</code> when they connect through the relay.</li>
+<li><strong>vpn-relay-ipv6-status</strong> <code>string</code> — How clients reach the router over IPv6, in the same format as <code>vpn-relay-ipv4-status</code>, for example <code>connecting (...)</code> while the router has no IPv6 internet access.</li>
+<li><strong>vpn-relay-regions</strong> <code>multi { code: string
+ }</code> — Relay regions the router can use, for example <code>EUR1</code> and <code>USA1</code>. Use a code from this list in <code>vpn-prefer-relay-code</code>.</li>
+<li><strong>vpn-relay-addresses</strong> <code>multi { address: ipAddr
+ }</code> — IPv4 addresses of the relay servers, one per region.</li>
+<li><strong>vpn-relay-addresses-ipv6</strong> <code>multi { address: ip6Addr
+ }</code> — IPv6 addresses of the relay servers, one per region.</li>
+<li><strong>vpn-private-key</strong> <code>string</code> — Private key of the <code>back-to-home-vpn</code> WireGuard interface.</li>
+<li><strong>vpn-public-key</strong> <code>string</code> — Public key of the <code>back-to-home-vpn</code> WireGuard interface. Client configurations use it as the key of the router's peer.</li>
+<li><strong>vpn-peer-private-key</strong> <code>string</code> — Private key of the built-in client configuration in <code>vpn-wireguard-client-config</code>.</li>
+<li><strong>vpn-peer-public-key</strong> <code>string</code> — Public key of the built-in client configuration. The router has a dynamic peer with this key on <code>back-to-home-vpn</code>.</li>
+<li><strong>vpn-interface</strong> <code>iface_enum</code> — WireGuard interface of Back To Home, <code>back-to-home-vpn</code>.</li>
+<li><strong>vpn-wireguard-client-config</strong> <code>string</code> — WireGuard configuration of the built-in client, with the addresses 192.168.216.2 and fc00:0:0:216::2 and the DNS server the router uses. Import it in a WireGuard app on one device. For more devices, add users in <a href="back-to-home-user/"><code>back-to-home-user</code></a>.</li>
+<li><strong>vpn-wireguard-client-config-qrcode</strong> <code>pic</code> — <code>vpn-wireguard-client-config</code> as a QR code, for a WireGuard app on a phone.</li>
+<li><strong>warning</strong> <code>string</code> — Warning about the router's setup, for example <code>Router is behind a NAT. Remote connection might not work.</code> Shown only when there is a warning.</li>
+</ul>
+<hr />
+<h1 id="advanced">advanced</h1>
+<blockquote>
+<p>Advanced DDNS settings. For an overview, see DDNS.</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudadvanced">ip/cloud/advanced</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Advanced DDNS settings. For an overview, see <a href="../../../network-management/cloud/#ddns">DDNS</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>use-local-address</strong> <code>bool</code> — Whether the DNS name points to the router's local address instead of its public address. With <code>yes</code>, <code>dns-name</code> resolves to the address the router sends its requests from, for example a private address behind NAT, and <code>public-address</code> still shows the public address. Default: no.</li>
+</ul>
+<hr />
+<h1 id="back-to-home-file">back-to-home-file</h1>
+<blockquote>
+<p>Directories and files shared with File Share. Each share gets a secret link under .routingthecloud.net, and the service runs while at least one share exists. For examples, see File Share. The service state is in...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudback-to-home-file">ip/cloud/back-to-home-file</h2>
+<p><strong>Syscap:</strong> cloud-vpn
+<strong>Type:</strong> Directory</p>
+<p>Directories and files shared with File Share. Each share gets a secret link under <code>&lt;serial&gt;.routingthecloud.net</code>, and the service runs while at least one share exists. For examples, see <a href="../../../../network-management/cloud/file-share">File Share</a>. The service state is in <a href="settings/"><code>settings</code></a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The share is disabled, and its link returns HTTP 404.</li>
+<li><strong>I</strong> <code>invalid</code> — The share cannot be served yet, for example while the router requests the certificate. A comment line shows the reason, such as <code>getting cert status: requesting SSL certificate</code>.</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>path</strong> <code>file</code> — Directory or file to share, as <code>/file/print</code> shows it, for example <code>usb1/photos</code>. The router shows it with a leading <code>/</code>.</li>
+<li><strong>allow-uploads</strong> <code>bool</code> — Whether visitors of a directory share can upload files and create folders in it. Without it, the router refuses uploads with HTTP 403. Default: no.</li>
+<li><strong>expires</strong> <code>alt { expires: enum (never) { never:0xFFFFFFFF }
+, interval: time
+, date-time: date
+ }</code> — When the share stops working: <code>never</code>, a date and time such as <code>"2026-10-01 00:00:00"</code>, or a time interval such as <code>1h</code>. The router converts an interval to a date. <code>never</code> keeps the share until you remove it.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>key</strong> <code>string</code> — Random key of the share, the last part of <code>url</code>.</li>
+<li><strong>url</strong> <code>string</code> — Link to the share page, <code>https://&lt;serial&gt;.routingthecloud.net/s/&lt;key&gt;</code>. A directory share lists its files; anyone who has the link can open it.</li>
+<li><strong>direct-url</strong> <code>string</code> — <code>url</code> with <code>?dl</code>. It downloads the shared file, or the whole directory as <code>download.zip</code>.</li>
+<li><strong>downloads</strong> <code>num</code> — Number of direct downloads of the share. Opening the share page does not count.</li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>State of the File Share service: its DNS name, certificate and connection to the relay servers. The service starts with the first share in /ip/cloud/back-to-home-file and stops when the last one is removed. For an...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudback-to-home-filesettings">ip/cloud/back-to-home-file/settings</h2>
+<p><strong>Syscap:</strong> cloud-vpn
+<strong>Type:</strong> Settings Directory</p>
+<p>State of the File Share service: its DNS name, certificate and connection to the relay servers. The service starts with the first share in <a href="../"><code>/ip/cloud/back-to-home-file</code></a> and stops when the last one is removed. For an explanation, see <a href="../../../../../network-management/cloud/file-share#how-file-share-works">How File Share works</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>prefer-relay-code</strong> <code>string</code> — Code of the relay region to prefer, from <code>relay-regions</code>, for example <code>EUR1</code>. When it is empty, the router picks a relay by its round-trip time (<code>relay-rtts</code>). Default: empty.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — <code>yes</code> while at least one share exists and the service runs. It changes to <code>no</code> when you remove the last share.</li>
+<li><strong>dns-name</strong> <code>string</code> — Name the shares are served under: <code>&lt;serial&gt;.routingthecloud.net</code>, with the serial number in lower case. When the router uses the relay, the name resolves to the relay.</li>
+<li><strong>status</strong> <code>string</code> — State of the service, for example: - <code>getting cert status: requesting SSL certificate</code>, <code>requesting validation</code>, <code>requesting authorization</code>, <code>requesting order finalization</code> - The router is getting the Let's Encrypt certificate. - <code>running</code> - The service runs.</li>
+<li><strong>relay-rtts</strong> <code>multi { code: string
+ }</code> — Round-trip time to each relay region over IPv4 and IPv6, for example <code>EUR1 (ip4: 1.103ms, ip6: timeout)</code>.</li>
+<li><strong>relay-ipv4-status</strong> <code>string</code> — Connection to the relay over IPv4, for example <code>connected (region: EUR1 ip: &lt;relay address&gt; rtt: 1.103ms reachable: unknown )</code>.</li>
+<li><strong>relay-ipv6-status</strong> <code>string</code> — Connection to the relay over IPv6, for example <code>testing rtt</code> while the router measures the round-trip time.</li>
+<li><strong>relay-regions</strong> <code>multi { code: string
+ }</code> — Relay regions the router can use, for example <code>EUR1</code> and <code>USA1</code>. Use a code from this list in <code>prefer-relay-code</code>.</li>
+<li><strong>relay-addresses</strong> <code>multi { address: ipAddr
+ }</code> — IPv4 addresses of the relay servers, one per region.</li>
+<li><strong>relay-addresses-ipv6</strong> <code>multi { address: ip6Addr
+ }</code> — IPv6 addresses of the relay servers, one per region.</li>
+<li><strong>certificate</strong> <code>enum (none)</code> — Certificate the shares use, <code>fileshare-&lt;serial&gt;.routingthecloud.net</code> in <code>/certificate</code>. <code>none</code> after <code>remove-certificate</code>.</li>
+</ul>
+<hr />
+<h1 id="remove-certificate">remove-certificate</h1>
+<blockquote>
+<p>Deletes the File Share certificate from /certificate. It works only when no share exists; otherwise, it fails with cannot remove certificate while file shares active. The next share requests a new certificate. See...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudback-to-home-filesettingsremove-certificate">ip/cloud/back-to-home-file/settings/remove-certificate</h2>
+<p><strong>Syscap:</strong> cloud-vpn
+<strong>Type:</strong> Command</p>
+<p>Deletes the File Share certificate from <code>/certificate</code>. It works only when no share exists; otherwise, it fails with <code>cannot remove certificate while file shares active</code>. The next share requests a new certificate. See <a href="../../../../../network-management/cloud/file-share#stop-file-share">Stop File Share</a>.</p>
+<hr />
+<h1 id="back-to-home-user">back-to-home-user</h1>
+<blockquote>
+<p>Back To Home users. Each user is a WireGuard client of the back-to-home-vpn interface with its own keys and addresses, and the router adds a dynamic peer for it. The Back To Home app creates a user for each tunnel it...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudback-to-home-user">ip/cloud/back-to-home-user</h2>
+<p><strong>Syscap:</strong> cloud-vpn
+<strong>Type:</strong> Directory</p>
+<p>Back To Home users. Each user is a WireGuard client of the <code>back-to-home-vpn</code> interface with its own keys and addresses, and the router adds a dynamic peer for it. The Back To Home app creates a user for each tunnel it sets up: <code>name</code> is the model identifier of the phone, for example <code>iPhone18,1</code>, and the comment is the tunnel name shown in the app. Several users can have the same name. <a href="show-client-config"><code>show-client-config</code></a> prints the client configuration of a user. Users can only be added while Back To Home runs (<code>vpn-status: running</code>); otherwise, <code>add</code> fails with <code>back-to-home vpn not enabled</code>. Revoking Back To Home (<code>back-to-home-vpn=revoked-and-disabled</code> in <a href="../"><code>/ip/cloud</code></a>) deletes all users. For an overview, see <a href="../../../../network-management/cloud/back-to-home">Back To Home</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The user is disabled.</li>
+<li><strong>A</strong> <code>active</code> — The user is active.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the user. Names do not have to be unique; the Back To Home app uses the phone's model identifier. The client configuration carries the user's comment, or the name when there is no comment, in the <code># Name</code> comment line, which the Back To Home app uses as the tunnel name.</li>
+<li><strong>expires</strong> <code>alt { expires: enum (never) { never:0xFFFFFFFF }
+, interval: time
+, date-time: date
+ }</code> — When the user stops working: <code>never</code> (default), a date and time such as <code>"2026-10-01 00:00:00"</code>, or a time interval such as <code>1d</code>. The router converts an interval to a date. The value cannot be changed after the user is created: <code>set</code> accepts it but keeps the old date. To change it, create the user again.</li>
+<li><strong>client-dns</strong> <code>address (flags=46/)</code> — DNS server written into the user's client configuration (<code>DNS =</code>). Without it, the configuration has no DNS line and the client keeps its own DNS servers.</li>
+<li><strong>client-allowed-address</strong> <code>multi { client-allowed-address: address (flags=46/)
+ }</code> — Addresses the client sends through the tunnel, written into the client configuration as <code>AllowedIPs</code> of the router's peer, for example <code>192.168.88.0/24</code> for access to the local network only. Default: empty (<code>0.0.0.0/0, ::/0</code>, all traffic).</li>
+<li><strong>allow-lan</strong> <code>bool</code> — Whether the user can reach the local network. With <code>no</code>, the router puts the user's address in the dynamic address list <code>back-to-home-lan-restricted-peers</code>, and a dynamic forward rule drops its traffic to the <code>LAN</code> interface list, so the user can only use the internet through the router. Default: no.</li>
+<li><strong>private-key</strong> <code>string</code> — Private key of the user's client configuration. The router generates it when it is not set.</li>
+<li><strong>public-key</strong> <code>string</code> — Public key of the user. The router derives it from the generated key when it is not set.</li>
+<li><strong>file-access</strong> <code>enum (disabled | read-only | full)</code> — Access of the user to files in <code>file-access-path</code> through the File Share service. Adding a user with file access makes the router request the File Share certificate. - <code>disabled</code> (default) - No file access. - <code>read-only</code> - Read files. - <code>full</code> - Read and change files.</li>
+<li><strong>file-access-path</strong> <code>string</code> — Directory the user can access with <code>file-access</code>, as <code>/file/print</code> shows it. Required when <code>file-access</code> is not <code>disabled</code>; otherwise, adding the user fails with <code>invalid files path</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>client-address</strong> <code>multi { address: address (flags=46/)
+ }</code> — IPv4 and IPv6 addresses of the user in the tunnel, the next free addresses from 192.168.216.0/24 and fc00:0:0:216::/64. The router assigns them; they cannot be set.</li>
+<li><strong>file-access-token</strong> <code>string</code> — Token the router generates for the user's file access. The client configuration includes it in a <code># FilesToken</code> line when <code>file-access</code> is not <code>disabled</code>.</li>
+</ul>
+<hr />
+<h1 id="show-client-config">show-client-config</h1>
+<blockquote>
+<p>Prints the WireGuard configuration of a user and the same configuration as a QR code. Import it in a WireGuard app. Give the user by its number or with [find name=]; a name alone is a syntax error. The configuration...</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudback-to-home-usershow-client-config">ip/cloud/back-to-home-user/show-client-config</h2>
+<p><strong>Syscap:</strong> cloud-vpn
+<strong>Type:</strong> Command</p>
+<p>Prints the WireGuard configuration of a user and the same configuration as a QR code. Import it in a WireGuard app. Give the user by its number or with <code>[find name=&lt;name&gt;]</code>; a name alone is a syntax error. The configuration has a second peer with a placeholder key and <code>AllowedIPs = 0.0.0.0/32</code>, which carries no traffic; a client connects through the first peer, also when the router uses a relay.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>conf</strong> <code>string</code> — WireGuard configuration of the user.</li>
+<li><strong>qr</strong> <code>pic</code> — The configuration as a QR code.</li>
+</ul>
+<hr />
+<h1 id="force-update">force-update</h1>
+<blockquote>
+<p>Sends a DDNS update to the cloud server right away, for example after the internet connection changed. It does nothing while DDNS is off (ddns-enabled=auto without Back To Home), and it does not set the clock.</p>
+</blockquote>
+<hr />
+<h2 id="ipcloudforce-update">ip/cloud/force-update</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sends a DDNS update to the cloud server right away, for example after the internet connection changed. It does nothing while DDNS is off (<code>ddns-enabled=auto</code> without Back To Home), and it does not set the clock.</p>
+<hr />
+<h1 id="dhcp-client">dhcp-client</h1>
+<blockquote>
+<p>The DHCP client gets an IPv4 address and network settings for an interface from a DHCP server. For an overview and configuration examples, see DHCP Client. For how DHCP works, see DHCP.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-client">ip/dhcp-client</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCP client gets an IPv4 address and network settings for an interface from a DHCP server. For an overview and configuration examples, see <a href="../../../network-management/dhcp/client">DHCP Client</a>. For how DHCP works, see <a href="../../../network-management/dhcp/">DHCP</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The DHCP client is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The DHCP client configuration is invalid.</li>
+<li><strong>D</strong> <code>dynamic</code> — The DHCP client was created dynamically.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the DHCP client. If not set, RouterOS generates a name, for example <code>client1</code>.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the DHCP client runs on. The received IP address is added to this interface as a dynamic address.</li>
+<li><strong>add-default-route</strong> <code>enum (no | yes | special-classless)</code> — Which routes received from the DHCP server to add to the routing table. - <code>yes</code> (default) - Add the classless static routes (option 121) when the server sends them, otherwise a default route through the received gateway (option 3). When option 121 is present, the gateway from option 3 is ignored. - <code>special-classless</code> - Add both the classless static routes and a default route through the received gateway. - <code>no</code> - Do not add routes.</li>
+<li><strong>default-route-distance</strong> <code>num</code> — Distance of the routes the client adds. Default: 1.</li>
+<li><strong>default-route-tables</strong> <code>object { table: alt { table-distance: composite { table: alt { table-default: enum (default) { default:0xffffffff }
+, table: enum
+ }
+, distance: num [1 .. 255]
+ }
+, table: alt { table-default: enum (default) { default:0xffffffff }
+, table: enum
+ }
+ }
+ }</code> — Routing tables to add the routes to, as <code>table</code> or <code>table:distance</code> entries. A distance given here overrides <code>default-route-distance</code> for that table. <code>default</code> is the main routing table, or the VRF routing table when the client interface belongs to a VRF. Default: default.</li>
+<li><strong>check-gateway</strong> <code>enum (none | arp | ping | bfd)</code> — Gateway check set on the routes the client adds (<code>none</code>, <code>arp</code>, <code>ping</code> or <code>bfd</code>), so a route is only used while its gateway responds. See <a href="../../../user-guides/routing-and-networking-protocols/routing-decision">gateway reachability</a>. Default: none.</li>
+<li><strong>use-peer-dns</strong> <code>bool</code> — Whether to use the DNS servers received from the DHCP server. They are added to the dynamic servers of the DNS resolver (<code>/ip/dns</code>). Default: yes.</li>
+<li><strong>use-peer-ntp</strong> <code>bool</code> — Whether to use the NTP servers received from the DHCP server. They are added as dynamic entries to the NTP client servers (<code>/system/ntp/client/servers</code>). Default: yes.</li>
+<li><strong>allow-reconfigure</strong> <code>bool</code> — Whether to accept Reconfigure (FORCERENEW) messages from the DHCP server. When enabled, the client asks for a reconfigure key when it binds, and the server sends the key in its reply. The key authenticates the server's Reconfigure messages (RFC 6704, HMAC-MD5). On a Reconfigure message, the client renews its lease immediately. The server can only send Reconfigure messages to clients that bound with this setting enabled. Default: no.</li>
+<li><strong>vlan-priority</strong> <code>num</code> — Priority Code Point (PCP, 0-7) set in the VLAN header of the packets the client sends. Applies only when the client runs on a VLAN interface.</li>
+<li><strong>dscp</strong> <code>num</code> — DSCP value (0-63) set in the IP header of the packets the client sends. When not set, packets are sent with DSCP 0.</li>
+<li><strong>use-broadcast</strong> <code>enum (always | never | both)</code> — Whether the client sets the broadcast flag in DHCPDISCOVER and DHCPREQUEST messages, which asks the server to broadcast its replies. Renewal requests are sent as unicast and never set the flag. - <code>both</code> (default) - Set the flag during the first 15 seconds of getting an address, then continue without it. - <code>always</code> - Always set the flag. - <code>never</code> - Never set the flag.</li>
+<li><strong>dhcp-options</strong> <code>multi { array-id, option: enum
+ }</code> — Options the client sends to the DHCP server, selected by name from <code>/ip/dhcp-client/option</code>. The predefined <code>clientid</code> and <code>clientid_duid</code> options both use code 61: <code>clientid</code> identifies the client by the MAC address of its interface, <code>clientid_duid</code> by the router's DUID (RFC 4361), the same DUID the DHCPv6 client uses. Default: hostname,clientid.</li>
+<li><strong>script</strong> <code>alt { script: string
+ }</code> — Script to run when the client gets a lease and when it loses or releases it. The script receives these variables: - <code>bound</code> - <code>1</code> when a lease was obtained, <code>0</code> when it was lost or released. - <code>server-address</code> - IP address of the DHCP server. - <code>lease-address</code> - IP address from the lease. - <code>interface</code> - Name of the client interface. - <code>gateway-address</code> - Gateway received from the server. - <code>vendor-specific</code> - Value of the vendor-specific information option (option 43) received from the server. - <code>lease-options</code> - Array of the options received from the server, indexed by option code. Values of binary options are hex strings.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>custom-source-mac-address</strong> <code>macAddr</code> — Custom source MAC address used by the DHCP client.</li>
+<li><strong>custom-hostname-suffix</strong> <code>string</code> — Suffix appended to the hostname sent to the DHCP server.</li>
+<li><strong>status</strong> <code>enum (stopped | searching... | requesting... | bound | renewing... | rebinding... | error) { stopped:0, searching...:1, requesting...:2, bound:3, renewing...:4, rebinding...:5, error:6 }</code> — Current state of the client: - <code>searching...</code> - Sending DHCPDISCOVER messages and waiting for an offer. - <code>requesting...</code> - Requesting an offered address. - <code>bound</code> - The client has a lease. - <code>renewing...</code> - Renewing the lease with the server that issued it, from half of the lease time. - <code>rebinding...</code> - The server did not answer the renewal. Requesting the lease from any server, from 87.5% of the lease time. - <code>stopped</code> - The client is disabled. - <code>error</code> - The client cannot run.</li>
+<li><strong>address</strong> <code>composite { address: ipAddr
+, netmask: num [ .. 32]
+ }</code> — IP address and prefix length received from the DHCP server.</li>
+<li><strong>netmask</strong> <code>ipAddr</code> — Subnet mask received from the DHCP server.</li>
+<li><strong>gateway</strong> <code>ipAddr</code> — Gateway received from the DHCP server (option 3).</li>
+<li><strong>dhcp-server</strong> <code>ipAddr</code> — IP address of the DHCP server that issued the lease.</li>
+<li><strong>primary-dns</strong> <code>ipAddr</code> — First DNS server received from the DHCP server.</li>
+<li><strong>secondary-dns</strong> <code>ipAddr</code> — Second DNS server received from the DHCP server.</li>
+<li><strong>primary-ntp</strong> <code>ipAddr</code> — First NTP server received from the DHCP server.</li>
+<li><strong>secondary-ntp</strong> <code>ipAddr</code> — Second NTP server received from the DHCP server.</li>
+<li><strong>cmr-address</strong> <code>ipAddr</code></li>
+<li><strong>caps-managers</strong> <code>multi { ip: ipAddr
+ }</code> — CAPsMAN addresses received from the DHCP server (option 138).</li>
+<li><strong>reconfigure-key</strong> <code>string</code> — Key received from the DHCP server to authenticate its Reconfigure messages (RFC 6704, HMAC-MD5). Set only when <code>allow-reconfigure</code> is enabled.</li>
+<li><strong>reconfigure-last-counter</strong> <code>string</code> — Replay-detection counter of the last Reconfigure message accepted from the DHCP server. It starts at 0 when the client binds and increases with every Reconfigure message.</li>
+<li><strong>expires-after</strong> <code>time</code> — Time until the lease expires.</li>
+</ul>
+<hr />
+<h1 id="option">option</h1>
+<blockquote>
+<p>Options the DHCP client can send to the DHCP server. A client sends the options listed in its dhcp-options property. For details, see DHCP Client.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-clientoption">ip/dhcp-client/option</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Options the DHCP client can send to the DHCP server. A client sends the options listed in its <code>dhcp-options</code> property. For details, see <a href="../../../network-management/dhcp/client">DHCP Client</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Predefined option.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option, used in the <code>dhcp-options</code> property of the client.</li>
+<li><strong>code</strong> <code>alt { number: num [1 .. 254]
+, option: enum (hostname | vendor-specific | vendor-class-id | client-id) { hostname:12, vendor-specific:43, vendor-class-id:60, client-id:61 }
+ }</code> — DHCP option code (1-254), or one of the names <code>hostname</code> (12), <code>vendor-specific</code> (43), <code>vendor-class-id</code> (60) or <code>client-id</code> (61).</li>
+<li><strong>value</strong> <code>string</code> — Value of the option, in the same syntax as DHCP server option values. The value can contain these variables: - <code>$(HOSTNAME)</code> - The router's identity. - <code>$(CLIENT_MAC)</code> - MAC address of the client interface. - <code>$(CLIENT_DUID)</code> - The router's DUID, the same DUID the DHCPv6 client uses.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>raw-value</strong> <code>string</code> — The option value as it is sent, in hex.</li>
+</ul>
+<hr />
+<h1 id="release">release</h1>
+<blockquote>
+<p>Releases the current lease. The client sends a DHCPRELEASE message to the DHCP server, gives up the address and starts requesting a new lease.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-clientrelease">ip/dhcp-client/release</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Releases the current lease. The client sends a DHCPRELEASE message to the DHCP server, gives up the address and starts requesting a new lease.</p>
+<hr />
+<h1 id="renew">renew</h1>
+<blockquote>
+<p>Renews the current lease immediately, without waiting for half of the lease time. If the server does not answer, the client continues with rebinding and keeps its address until the lease expires.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-clientrenew">ip/dhcp-client/renew</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Renews the current lease immediately, without waiting for half of the lease time. If the server does not answer, the client continues with rebinding and keeps its address until the lease expires.</p>
+<hr />
+<h1 id="dhcp-relay">dhcp-relay</h1>
+<blockquote>
+<p>The DHCP relay forwards DHCP requests from clients on its interface to DHCP servers in other networks, and delivers the replies back to the clients. New relays are created disabled; enable them after adding. For an...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-relay">ip/dhcp-relay</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCP relay forwards DHCP requests from clients on its interface to DHCP servers in other networks, and delivers the replies back to the clients. New relays are created disabled; enable them after adding. For an overview and examples, see <a href="../../../network-management/dhcp/relay">DHCP Relay</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The relay is disabled. New relays are created disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The relay configuration is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the relay.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface on which the relay listens for DHCP requests from clients.</li>
+<li><strong>dhcp-server-vrf</strong> <code>enum</code> — VRF in which the DHCP servers are reached. When it differs from the VRF of <code>interface</code>, the replies of the server, which are sent to <code>local-address</code>, must be brought into this VRF, for example with a dst-nat rule. Default: main.</li>
+<li><strong>dhcp-server</strong> <code>multi { address: ipAddr
+ }</code> — DHCP servers to forward requests to. The relay forwards every request to all of them.</li>
+<li><strong>delay-threshold</strong> <code>alt { const: enum (none) { none:0 }
+, time: time
+ }</code> — Minimum value of the seconds-elapsed field (<code>secs</code>) a request must have to be forwarded, so the relay forwards only clients that have been trying for that long. With <code>none</code>, all requests are forwarded. Default: none.</li>
+<li><strong>local-address</strong> <code>ipAddr</code> — Address the relay writes into the gateway address field (<code>giaddr</code>) of forwarded requests. The DHCP server sends its replies to this address and selects the server by its <code>relay</code> property. With <code>0.0.0.0</code>, an address of <code>interface</code> is used. Default: 0.0.0.0.</li>
+<li><strong>add-relay-info</strong> <code>bool</code> — Whether to add relay agent information (option 82) to forwarded requests. The circuit ID is the MAC address of <code>interface</code>, and the remote ID is the MAC address of the client, or <code>relay-info-remote-id</code> when it is set. Default: no.</li>
+<li><strong>relay-info-remote-id</strong> <code>string</code> — Text to send as the remote ID in option 82 instead of the MAC address of the client. Used only with <code>add-relay-info=yes</code>.</li>
+<li><strong>local-address-as-src-ip</strong> <code>bool</code> — Whether to send forwarded requests from <code>local-address</code> instead of from the address of the interface towards the server. Default: no.</li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>Shows the counters of a DHCP relay.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-relaymonitor">ip/dhcp-relay/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the counters of a DHCP relay.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>requests</strong> <code>num</code> — Number of client requests the relay forwarded to the servers.</li>
+<li><strong>responses</strong> <code>num</code> — Number of server replies the relay delivered to clients.</li>
+</ul>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>Resets the request and response counters of all DHCP relays.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-relayreset-counters">ip/dhcp-relay/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the request and response counters of all DHCP relays.</p>
+<hr />
+<h1 id="dhcp-server">dhcp-server</h1>
+<blockquote>
+<p>The DHCP server assigns IPv4 addresses and network settings to clients. It leases addresses from an IP pool, sends the settings of the matching entry in /ip/dhcp-server/network, and can also hand out static leases...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-server">ip/dhcp-server</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCP server assigns IPv4 addresses and network settings to clients. It leases addresses from an IP pool, sends the settings of the matching entry in <code>/ip/dhcp-server/network</code>, and can also hand out static leases (<code>/ip/dhcp-server/lease</code>). For an overview and configuration examples, see <a href="../../../network-management/dhcp/server">DHCP Server</a>. For how DHCP works, see <a href="../../../network-management/dhcp/">DHCP</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The DHCP server was created dynamically.</li>
+<li><strong>X</strong> <code>disabled</code> — The DHCP server is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The DHCP server configuration is invalid, for example because its interface has no IP address.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the DHCP server.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the DHCP server listens on. The interface must have an IP address, otherwise the server is invalid. Only one server for directly connected clients can run on an interface; more servers on the same interface must each have a different <code>relay</code> address.</li>
+<li><strong>relay</strong> <code>ipAddr</code> — Which requests the server answers, by the gateway address (<code>giaddr</code>) of the request: - <code>0.0.0.0</code> (default) - Only requests from directly connected clients, no relayed requests. - <code>255.255.255.255</code> - Requests from any DHCP relay, except those answered by another server that has this relay's address set. - An IP address - Only requests relayed by the DHCP relay with this address, which is the relay's <code>local-address</code>.</li>
+<li><strong>lease-time</strong> <code>time</code> — How long a lease lasts. Clients renew the lease after half of this time and start rebinding after 87.5% of it. Static leases without their own <code>lease-time</code> also use this value. Default: 30m.</li>
+<li><strong>address-pool</strong> <code>enum (static-only)</code> — IP pool to give out dynamic addresses from. With <code>static-only</code>, the server only answers clients that have a static lease. Default: static-only.</li>
+<li><strong>dynamic-lease-identifiers</strong> <code>ubit (client-mac, client-id, opt-82)</code> — Identifiers the server uses to recognize a client for dynamic leases: <code>client-mac</code> (the hardware address), <code>client-id</code> (option 61) and <code>opt-82</code> (relay agent information). A client that changes a selected identifier gets a new lease. Default: client-mac,client-id.</li>
+<li><strong>bootp-support</strong> <code>enum (none | static | dynamic)</code> — How the server answers BOOTP clients: - <code>none</code> - Do not answer BOOTP requests. - <code>static</code> (default) - Offer only static leases to BOOTP clients. - <code>dynamic</code> - Offer static and dynamic leases to BOOTP clients.</li>
+<li><strong>bootp-lease-time</strong> <code>alt { enum: enum (lease-time | forever) { lease-time:0, forever:0xffffffff }
+, time: time
+ }</code> — Lease time for BOOTP clients: <code>forever</code> (default) for leases that never expire, <code>lease-time</code> to use the <code>lease-time</code> of the server, or a time value.</li>
+<li><strong>delay-threshold</strong> <code>alt { enum: enum (none) { none:0 }
+, time: time
+ }</code> — Minimum value of the seconds-elapsed field (<code>secs</code>) a request must have to be answered. The client sets this field to the time since it started getting or renewing an address, so a threshold makes the server answer only clients that have been trying for that long, for example to let another server answer first. With <code>none</code>, all requests are answered. Default: none.</li>
+<li><strong>server-address</strong> <code>ipAddr</code> — Address the server uses as its identity: replies are sent from this address and carry it as the server identifier (option 54). When not set, the address of the server interface is used. Set it when the interface has several addresses.</li>
+<li><strong>add-arp</strong> <code>bool</code> — Whether to add a permanent ARP entry for the address of each bound lease, shown with the <code>H</code> flag in <code>/ip/arp</code>. Use it when the interface does not resolve ARP itself, for example with ARP mode <code>reply-only</code>. Default: no.</li>
+<li><strong>add-dns-entries</strong> <code>bool</code> — Whether to add a dynamic DNS entry (<code>/ip/dns/static</code>, type A) for the address of each bound lease. The entry name is the host name the client sends (option 12) followed by <code>add-dns-entries-suffix</code>, and its TTL is the lease time. The router's DNS resolver answers these names. Default: no.</li>
+<li><strong>add-dns-entries-suffix</strong> <code>string</code> — Domain appended to the client host name in the DNS entries created by <code>add-dns-entries</code>, for example <code>laptop.lan</code>. Used only with <code>add-dns-entries=yes</code>. When the network has no <code>domain</code>, the server also sends this suffix as the domain name (option 15). It cannot be empty. Default: lan.</li>
+<li><strong>authoritative</strong> <code>enum (no | after-10sec-delay | after-2sec-delay | yes)</code> — How the server answers requests for addresses it cannot give, so that such clients start over sooner: - <code>yes</code> (default) - Answer with DHCPNAK. - <code>no</code> - Ignore broadcast requests for such addresses, for example from a rebinding client, so another server can answer them. - <code>after-2sec-delay</code>, <code>after-10sec-delay</code> - For broadcast requests, behave as <code>no</code> while the <code>secs</code> field of the request is below 2 or 10 seconds, and as <code>yes</code> after that. To ignore all requests below a threshold, use <code>delay-threshold</code>. Unicast renewal requests are always answered: with DHCPNAK when the requested address cannot be given, or with a new lease when that address is free in the pool.</li>
+<li><strong>always-broadcast</strong> <code>bool</code> — Whether to broadcast replies even when the client has not set the broadcast flag. With <code>no</code>, replies follow the client's broadcast flag. Default: no.</li>
+<li><strong>use-radius</strong> <code>enum (no | yes | accounting)</code> — Whether to use a RADIUS server (a <code>/radius</code> entry with <code>service=dhcp</code>) for leases: - <code>no</code> (default) - Do not use RADIUS. - <code>yes</code> - Authorize leases and send accounting through RADIUS. While the server waits for the RADIUS reply, the lease has the <code>authorizing</code> status and the client gets no address. - <code>accounting</code> - Use RADIUS for accounting only.</li>
+<li><strong>client-mac-limit</strong> <code>enum (unlimited) { unlimited:0xffffffff }</code> — Maximum number of leases that clients with the same MAC address can get. Default: unlimited.</li>
+<li><strong>conflict-detection</strong> <code>bool</code> — Whether to check an address with ARP and ICMP before offering it. When another host answers, the server logs a warning, keeps the address as a lease with the <code>conflict</code> status for the lease time, and offers another free address. Addresses of static leases are not checked. Default: yes.</li>
+<li><strong>use-framed-as-classless</strong> <code>bool</code> — Whether to send the Framed-Route attributes received from RADIUS to the client as classless static routes (option 121). When both Framed-Route and Classless-Static-Route are received, Classless-Static-Route is used. Default: yes.</li>
+<li><strong>use-reconfigure</strong> <code>bool</code> — Whether the server supports Reconfigure (FORCERENEW) messages. When enabled, the server gives a reconfigure key to clients that ask for one, for example a RouterOS DHCP client with <code>allow-reconfigure=yes</code>, and the <code>send-reconfigure</code> command of the lease makes such a client renew its lease. Reconfigure messages are sent only by that command, not when server or network settings change. Without this setting, clients get no key and <code>send-reconfigure</code> is refused. Default: no.</li>
+<li><strong>lease-script</strong> <code>alt { script: string
+ }</code> — Script to run when a lease is bound, and when it is released or expires. The script receives these variables: - <code>leaseBound</code> - <code>1</code> when the lease was bound, <code>0</code> when it was released or expired. - <code>leaseServerName</code> - Name of the DHCP server. - <code>leaseActMAC</code> - MAC address of the client. - <code>leaseActIP</code> - IP address of the lease. - <code>lease-hostname</code> - Host name sent by the client. - <code>lease-options</code> - Array of the options sent to the client, indexed by option code. - <code>lease-agent-circuit-id</code>, <code>lease-agent-remote-id</code> - Circuit ID and remote ID from the relay agent information option (option 82), when the request came through a relay that adds it.</li>
+<li><strong>insert-queue-before</strong> <code>enum (first | bottom) { first:0, bottom:0xffffffff }</code> — Where to place the dynamic simple queues created for leases with a <code>rate-limit</code>: <code>first</code> (default) at the top of <code>/queue/simple</code>, <code>bottom</code> at the end, or before the named queue.</li>
+<li><strong>parent-queue</strong> <code>enum (none) { none:0 }</code> — Parent of the dynamic simple queues created for leases with a <code>rate-limit</code>. Default: none.</li>
+<li><strong>dhcp-option-set</strong> <code>enum (none)</code> — Option set (<code>/ip/dhcp-server/option/sets</code>) to send to the clients of this server. Options of a lease take precedence over those of the server, and options of the server over those of the network. Default: none.</li>
+<li><strong>address-lists</strong> <code>multi { array-id, address-list: string
+ }</code> — Firewall address lists to which the address of each bound lease is added as a dynamic entry. The entry is removed when the lease ends. The <code>address-lists</code> of a static lease override these lists for that lease.</li>
+<li><strong>allow-dual-stack-queue</strong> <code>bool</code> — Whether a lease and a DHCPv6 binding of the same client share one dynamic simple queue, which then contains both the IPv4 and the IPv6 address. The client is recognized by its MAC address and DUID. The DHCPv6 server must have this setting enabled as well. Default: yes.</li>
+<li><strong>support-broadband-tr101</strong> <code>bool</code> — Pass additional Option 82 Suboptions to RADIUS server as described in RFC 4679 and The Broadband Forum TR-101</li>
+<li><strong>ipv6-only-preferred</strong> <code>bool</code> — Whether to send the IPv6-Only Preferred option (option 108, RFC 8925) to clients that request it. A client that requests the option then gets no IPv4 address: the offer contains the option and no address, so a supporting client uses IPv6 only. The option carries a wait time of 0 seconds, which RFC 8925 clients raise to the minimum of 300 seconds before they try IPv4 again. Default: no.</li>
+</ul>
+<hr />
+<h1 id="alert">alert</h1>
+<blockquote>
+<p>Detects unknown (rogue) DHCP servers on an interface. The alert sends its own DHCPDISCOVER about once a minute, and checks the source of every DHCP reply it sees against valid-server. An unknown server is logged with...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serveralert">ip/dhcp-server/alert</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Detects unknown (rogue) DHCP servers on an interface. The alert sends its own DHCPDISCOVER about once a minute, and checks the source of every DHCP reply it sees against <code>valid-server</code>. An unknown server is logged with the <code>dhcp,critical</code> topics, listed in <code>unknown-server</code>, and triggers <code>on-alert</code>. Because the alert sends DHCP requests itself, do not use it on an interface where the router runs a DHCP client. For details, see <a href="../../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The alert is disabled. New alerts are created disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The alert configuration is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to watch for DHCP servers.</li>
+<li><strong>valid-server</strong> <code>multi { mac-address: macAddr
+ }</code> — MAC addresses of the DHCP servers that are allowed on the interface. Replies from other servers raise an alert.</li>
+<li><strong>on-alert</strong> <code>alt { script: string
+ }</code> — Script to run when an unknown DHCP server is detected.</li>
+<li><strong>alert-timeout</strong> <code>alt { symbolic-names: enum (none) { none:0 }
+, time-interval: time
+ }</code> — Time after which a detected server is forgotten. If the server is still present afterwards, a new alert is raised. With <code>none</code>, detected servers are never forgotten. Default: 1h.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>unknown-server</strong> <code>multi { mac-address: macAddr
+ }</code> — MAC addresses of the unknown DHCP servers that were detected.</li>
+</ul>
+<hr />
+<h1 id="reset-alert">reset-alert</h1>
+<blockquote>
+<p>Clears the unknown servers detected by an alert, so they are reported again when they reply.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serveralertreset-alert">ip/dhcp-server/alert/reset-alert</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Clears the unknown servers detected by an alert, so they are reported again when they reply.</p>
+<hr />
+<h1 id="config">config</h1>
+<blockquote>
+<p>Settings shared by all DHCP servers: how often leases are saved, and RADIUS accounting. For details, see DHCP Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serverconfig">ip/dhcp-server/config</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings shared by all DHCP servers: how often leases are saved, and RADIUS accounting. For details, see <a href="../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>store-leases-disk</strong> <code>alt { symbolic-names: enum (immediately | never) { immediately:0, never:0xffffffff }
+, time-interval: time
+ }</code> — How often leases are saved to disk: a time interval, <code>immediately</code>, or <code>never</code>. Saving less often reduces writes to the flash storage. Default: 5m.</li>
+<li><strong>accounting</strong> <code>bool</code> — Whether to send RADIUS accounting for the leases of servers that use RADIUS (<code>use-radius</code>). Default: yes.</li>
+<li><strong>interim-update</strong> <code>time</code> — Interval of RADIUS interim accounting updates. Default: 0s.</li>
+<li><strong>radius-password</strong> <code>alt { user: enum (empty | same-as-user)
+, password: string
+ }</code> — Password sent in RADIUS Access-Request messages: <code>empty</code>, <code>same-as-user</code> (the user name, which is the MAC address of the client), or a fixed password. Default: empty.</li>
+</ul>
+<hr />
+<h1 id="lease">lease</h1>
+<blockquote>
+<p>Leases of the DHCP servers. Dynamic leases are created when clients get an address from a pool; static leases give a specific client a fixed address, a pool, or its own settings. For details, see DHCP Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serverlease">ip/dhcp-server/lease</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Leases of the DHCP servers. Dynamic leases are created when clients get an address from a pool; static leases give a specific client a fixed address, a pool, or its own settings. For details, see <a href="../../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The lease is disabled.</li>
+<li><strong>R</strong> <code>radius</code> — The lease was assigned by a RADIUS server.</li>
+<li><strong>D</strong> <code>dynamic</code> — The lease is dynamic: it was created when a client got an address from the pool. Use <code>make-static</code> to turn it into a static lease.</li>
+<li><strong>B</strong> <code>blocked</code> — The client is blocked (<code>block-access=yes</code>) and gets no reply from the server.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { ip-address: ipAddr
+, pool: enum
+ }</code> — IP address of a static lease, or the name of an IP pool to give the client an address from. With <code>0.0.0.0</code>, the address pool of the server is used.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address of the client the static lease is for.</li>
+<li><strong>use-src-mac</strong> <code>bool</code> — Whether to identify the client by the source MAC address of its packets instead of the client hardware address field (<code>chaddr</code>) of the DHCP message.</li>
+<li><strong>client-id</strong> <code>string</code> — Client identifier (option 61) of the client the static lease is for, in the format shown in <code>active-client-id</code>, for example <code>1:4e:97:a1:4c:d1:38</code>.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Bandwidth limit for the client, as <code>rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate] [rx-burst-threshold[/tx-burst-threshold] [rx-burst-time[/tx-burst-time]]]]</code>. Rates are in bits per second, with an optional <code>k</code> or <code>M</code> suffix, and missing tx values are taken from the rx values. Only static leases can have a rate limit. The server creates a dynamic simple queue named <code>dhcp-ds&lt;hostname/MAC&gt;</code> for the address of the lease, with this limit as <code>limit-at</code> and <code>max-limit</code>.</li>
+<li><strong>routes</strong> <code>object { route: composite { dst-address: address (flags=4/)
+, gateway: [ composite { gateway: address (flags=46ivL)
+, distance: [ num [1 .. 255]]
+ }]
+ }
+ }</code> — Routes the server adds while the lease is bound, as <code>dst-address/mask gateway distance</code> entries separated by commas, for example <code>10.77.0.0/24 172.31.255.105 5</code>.</li>
+<li><strong>insert-queue-before</strong> <code>enum (bottom | first) { bottom:0xffffffff, first:0 }</code> — Where to place the dynamic simple queue created for this lease: <code>first</code> (default) at the top of <code>/queue/simple</code>, <code>bottom</code> at the end, or before the named queue.</li>
+<li><strong>parent-queue</strong> <code>enum (none) { none:0 }</code> — Parent of the dynamic simple queue created for this lease. Default: none.</li>
+<li><strong>queue-type</strong> <code>enum</code> — Queue type of the dynamic simple queue created for this lease.</li>
+<li><strong>address-lists</strong> <code>multi { array-id, address-list: string
+ }</code> — Firewall address lists to which the address of the lease is added while the lease is bound. When set, these lists override the <code>address-lists</code> of the DHCP server for this lease: only the lists of the lease are used.</li>
+<li><strong>server</strong> <code>enum (all) { all:0 }</code> — DHCP server the lease belongs to. With <code>all</code>, the static lease is valid on every server.</li>
+<li><strong>block-access</strong> <code>bool</code> — Whether to block the client: the server does not answer it, and the lease gets the <code>B</code> flag. Default: no.</li>
+<li><strong>allow-dual-stack-queue</strong> <code>bool</code> — Whether this lease and a DHCPv6 binding of the same client share one dynamic simple queue, which then contains both the IPv4 and the IPv6 address. Default: yes.</li>
+<li><strong>lease-time</strong> <code>time</code> — Lease time for this client. When not set, or set to <code>0s</code>, the <code>lease-time</code> of the server is used.</li>
+<li><strong>always-broadcast</strong> <code>bool</code> — Whether to broadcast replies to this client even when it has not set the broadcast flag. Default: no.</li>
+<li><strong>dhcp-option</strong> <code>multi { array-id, option: enum
+ }</code> — Options (<code>/ip/dhcp-server/option</code>) to send to this client. They take precedence over the options of the server and of the network.</li>
+<li><strong>dhcp-option-set</strong> <code>enum (none)</code> — Option set (<code>/ip/dhcp-server/option/sets</code>) to send to this client. It takes precedence over the options of the server and of the network.</li>
+<li><strong>agent-circuit-id</strong> <code>string</code> — When set, the lease matches requests whose relay agent information (option 82) contains this circuit ID, even if the MAC address or client ID differ.</li>
+<li><strong>agent-remote-id</strong> <code>string</code> — When set, the lease matches requests whose relay agent information (option 82) contains this remote ID, even if the MAC address or client ID differ.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>enum (waiting | testing | declined | offered | bound | authorizing | conflict) { waiting:0, testing:1, declined:2, offered:3, bound:4, authorizing:5 }</code> — State of the lease: - <code>waiting</code> - A static lease that is not in use. - <code>testing</code> - The server is checking the address for conflicts (<code>conflict-detection</code>). - <code>offered</code> - The server offered the address and waits for the client's request. - <code>bound</code> - The client uses the address. - <code>authorizing</code> - The server waits for the reply from the RADIUS server. - <code>conflict</code> - Another host already uses the address. The lease keeps the address out of use for the lease time; <code>check-status</code> frees it when the other host no longer answers. - <code>declined</code> - The client declined the address with a DHCPDECLINE message.</li>
+<li><strong>expires-after</strong> <code>time</code> — Time until the lease expires.</li>
+<li><strong>last-seen</strong> <code>alt { symbolic-names: enum (never | sometime) { never:0xffffffff, sometime:0xfffffffe }
+, time: time
+ }</code> — Time since the server last received a request from the client, or <code>never</code>.</li>
+<li><strong>age</strong> <code>time</code> — Time since the lease was created.</li>
+<li><strong>active-address</strong> <code>ipAddr</code> — IP address the client uses.</li>
+<li><strong>active-mac-address</strong> <code>macAddr</code> — MAC address of the client that uses the lease.</li>
+<li><strong>active-client-id</strong> <code>string</code> — Client identifier (option 61) of the client that uses the lease.</li>
+<li><strong>active-server</strong> <code>enum</code> — DHCP server that serves the client.</li>
+<li><strong>active-agent-circuit-id</strong> <code>string</code> — Circuit ID from the relay agent information (option 82) of the client's request, in hex.</li>
+<li><strong>active-agent-remote-id</strong> <code>string</code> — Remote ID from the relay agent information (option 82) of the client's request, in hex.</li>
+<li><strong>active-agent-circuit-id-ascii</strong> <code>string</code> — Circuit ID from the relay agent information (option 82) of the client's request, as text.</li>
+<li><strong>active-agent-remote-id-ascii</strong> <code>string</code> — Remote ID from the relay agent information (option 82) of the client's request, as text.</li>
+<li><strong>host-name</strong> <code>string</code> — Host name the client sent (option 12).</li>
+<li><strong>class-id</strong> <code>string</code> — DHCP option 60 from last received DHCP request</li>
+<li><strong>src-mac-address</strong> <code>macAddr</code> — Source MAC address of the client's last request.</li>
+<li><strong>reconfigure-key</strong> <code>string</code> — Key the server gave the client, in its reply when the client bound, for authenticating Reconfigure messages (RFC 6704, HMAC-MD5). Requires <code>use-reconfigure</code> on the server.</li>
+<li><strong>reconfigure-last-sent</strong> <code>string</code> — Replay-detection counter of the last Reconfigure message sent to the client. It increases with every Reconfigure message.</li>
+<li><strong>reconfigure-status</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="check-status">check-status</h1>
+<blockquote>
+<p>Checks a lease that is in the conflict or declined status again, and frees the address when no other host answers for it any more.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serverleasecheck-status">ip/dhcp-server/lease/check-status</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Checks a lease that is in the <code>conflict</code> or <code>declined</code> status again, and frees the address when no other host answers for it any more.</p>
+<hr />
+<h1 id="make-static">make-static</h1>
+<blockquote>
+<p>Converts a dynamic lease into a static lease, so the client keeps its address.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serverleasemake-static">ip/dhcp-server/lease/make-static</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Converts a dynamic lease into a static lease, so the client keeps its address.</p>
+<hr />
+<h1 id="send-reconfigure">send-reconfigure</h1>
+<blockquote>
+<p>Sends a Reconfigure (FORCERENEW) message to the client of the lease, which makes the client renew its lease immediately. It works only for clients that got a reconfigure key, which requires use-reconfigure=yes on the...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serverleasesend-reconfigure">ip/dhcp-server/lease/send-reconfigure</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sends a Reconfigure (FORCERENEW) message to the client of the lease, which makes the client renew its lease immediately. It works only for clients that got a reconfigure key, which requires <code>use-reconfigure=yes</code> on the server and a client that asks for the key, for example a RouterOS DHCP client with <code>allow-reconfigure=yes</code>.</p>
+<hr />
+<h1 id="matcher">matcher</h1>
+<blockquote>
+<p>Assigns addresses from a specific IP pool to clients whose request contains a matching DHCP option, for example a vendor class identifier or host name. Clients with a static lease keep their static lease even when a...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-servermatcher">ip/dhcp-server/matcher</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Assigns addresses from a specific IP pool to clients whose request contains a matching DHCP option, for example a vendor class identifier or host name. Clients with a static lease keep their static lease even when a matcher matches them. For examples, see <a href="../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The matcher is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the matcher.</li>
+<li><strong>server</strong> <code>enum (all)</code> — DHCP server the matcher applies to, or <code>all</code> for every server.</li>
+<li><strong>address-pool</strong> <code>enum (static-only)</code> — IP pool to give matching clients an address from.</li>
+<li><strong>option-set</strong> <code>enum (none)</code> — Option set (<code>/ip/dhcp-server/option/sets</code>) to send to matching clients.</li>
+<li><strong>code</strong> <code>alt { number: num [1 .. 254]
+, option: enum (vendor-specific) { vendor-specific:43 }
+ }</code> — Code of the DHCP option to match (1-254).</li>
+<li><strong>value</strong> <code>string</code> — Value to look for in the option, as text or as hex with the <code>0x</code> prefix.</li>
+<li><strong>matching-type</strong> <code>enum (exact | substring)</code> — How <code>value</code> is compared with the option: - <code>exact</code> - The option must be equal to <code>value</code>. - <code>substring</code> - <code>value</code> can appear anywhere in the option. When two substring matchers match the same option, it is random which one applies.</li>
+</ul>
+<hr />
+<h1 id="network">network</h1>
+<blockquote>
+<p>Settings sent to DHCP clients. The server sends a client the settings of the network entry that contains the client's address. For details, see DHCP Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-servernetwork">ip/dhcp-server/network</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Settings sent to DHCP clients. The server sends a client the settings of the network entry that contains the client's address. For details, see <a href="../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The network was created dynamically.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>composite { address: ipAddr
+, netmask: num [ .. 32]
+ }</code> — Network this entry applies to, for example <code>192.168.88.0/24</code>.</li>
+<li><strong>gateway</strong> <code>multi { address: ipAddr
+ }</code> — Default gateway sent to clients (option 3). More than one gateway can be listed.</li>
+<li><strong>netmask</strong> <code>num</code> — Subnet mask sent to clients, as a prefix length, when it should differ from the mask of <code>address</code>. With <code>0</code>, the mask of <code>address</code> is used.</li>
+<li><strong>dns-server</strong> <code>alt { server: multi { address: ipAddr
+ }
+ }</code> — DNS servers sent to clients (option 6). When not set, the server sends the DNS servers the router itself uses (<code>/ip/dns</code>).</li>
+<li><strong>dns-none</strong> <code>bool</code> — Whether to send no DNS servers at all, not even those of the router. Default: no.</li>
+<li><strong>wins-server</strong> <code>multi { address: ipAddr
+ }</code> — WINS servers sent to clients (option 44).</li>
+<li><strong>ntp-server</strong> <code>alt { server: multi { address: ipAddr
+ }
+ }</code> — NTP servers sent to clients (option 42). When not set, the server sends the NTP servers the router itself uses.</li>
+<li><strong>ntp-none</strong> <code>bool</code> — Whether to send no NTP servers at all, not even those of the router. Default: no.</li>
+<li><strong>caps-manager</strong> <code>multi { address: ipAddr
+ }</code> — CAPsMAN addresses sent to clients (option 138).</li>
+<li><strong>domain</strong> <code>string</code> — Domain name sent to clients (option 15).</li>
+<li><strong>next-server</strong> <code>ipAddr</code> — Address of the server for the next step of network boot, sent in the <code>siaddr</code> field, for example a TFTP server. When not set, the address of the DHCP server is sent.</li>
+<li><strong>boot-file-name</strong> <code>string</code> — Name of the boot file for network boot, sent in the <code>file</code> field.</li>
+<li><strong>dhcp-option</strong> <code>multi { array-id, option: enum
+ }</code> — Options (<code>/ip/dhcp-server/option</code>) sent to clients in this network. Options of the server and of the lease take precedence.</li>
+<li><strong>dhcp-option-set</strong> <code>enum (none)</code> — Option set (<code>/ip/dhcp-server/option/sets</code>) sent to clients in this network. Options of the server and of the lease take precedence.</li>
+<li><strong>cmr-none</strong> <code>bool</code> — no servers will be sent to client</li>
+<li><strong>cmr-server</strong> <code>ipAddr</code> — If unset, IP address of dhcp server will be included if CMR is enabled; if set, the custom IP address will always be included even if CMR is disabled</li>
+</ul>
+<hr />
+<h1 id="option_1">option</h1>
+<blockquote>
+<p>Additional options the DHCP server can send. Assign them with dhcp-option to a network, a server or a lease, or group them in option sets. When the same option is set on several levels, the lease takes precedence...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serveroption">ip/dhcp-server/option</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Additional options the DHCP server can send. Assign them with <code>dhcp-option</code> to a network, a server or a lease, or group them in option sets. When the same option is set on several levels, the lease takes precedence over the server, and the server over the network. For examples, see <a href="../../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option, used where options are assigned.</li>
+<li><strong>code</strong> <code>alt { number: num [1 .. 254]
+, option: enum (vendor-specific) { vendor-specific:43 }
+ }</code> — DHCP option code (1-254).</li>
+<li><strong>value</strong> <code>string</code> — Value of the option. The value is converted according to how it is written: - <code>'test'</code> - Text in quotes is sent as text (<code>74657374</code>). - <code>'10.10.10.10'</code> - An IP address in quotes is sent as four bytes (<code>0a0a0a0a</code>). - <code>s'10.10.10.10'</code> - With the <code>s</code> prefix, the value is always sent as text (<code>31302e31302e31302e3130</code>). - <code>'10'</code> - A number in quotes is sent as one byte (<code>0a</code>). - <code>0x0a0a</code> - A hex value is sent as it is. Parts can be combined, for example <code>0x01'vards'$(HOSTNAME)</code>. These variables can be used: - <code>$(HOSTNAME)</code> - The router's identity. - <code>$(NETWORK_GATEWAY)</code> - The first gateway of the matching network (<code>/ip/dhcp-server/network</code>), filled in when the option is sent. - <code>$(RADIUS_MT_STR1)</code>, <code>$(RADIUS_MT_STR2)</code> - MikroTik RADIUS attributes 24 and 25. - <code>$(REMOTE_ID)</code> - Remote ID of the relay agent information (option 82).</li>
+<li><strong>force</strong> <code>bool</code> — Whether to send the option even when the client did not ask for it in its parameter request list (option 55). Without it, the option is sent only to clients that ask for it. Default: no.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>raw-value</strong> <code>string</code> — The option value as it is sent, in hex. Variables that depend on the client or network are filled in only when the option is sent.</li>
+</ul>
+<hr />
+<h1 id="sets">sets</h1>
+<blockquote>
+<p>Groups of DHCP server options that can be assigned together with dhcp-option-set to a network, a server, a lease or a matcher. For details, see DHCP Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serveroptionsets">ip/dhcp-server/option/sets</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Groups of DHCP server options that can be assigned together with <code>dhcp-option-set</code> to a network, a server, a lease or a matcher. For details, see <a href="../../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option set.</li>
+<li><strong>options</strong> <code>multi { array-id, option: enum
+ }</code> — Options (<code>/ip/dhcp-server/option</code>) in the set.</li>
+</ul>
+<hr />
+<h1 id="setup">setup</h1>
+<blockquote>
+<p>Interactive setup that creates an IP pool, a DHCP network and a DHCP server in one step. It asks for each value in turn, and suggests the network, gateway and address range from the address of the interface and the...</p>
+</blockquote>
+<hr />
+<h2 id="ipdhcp-serversetup">ip/dhcp-server/setup</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Interactive setup that creates an IP pool, a DHCP network and a DHCP server in one step. It asks for each value in turn, and suggests the network, gateway and address range from the address of the interface and the lease time from the server default. For an example, see <a href="../../../network-management/dhcp/server">DHCP Server</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to run the DHCP server on.</li>
+<li><strong>network</strong> <code>composite { address: ipAddr
+, netmask: num [ .. 32]
+ }</code> — Network to give out addresses in, for example <code>192.168.88.0/24</code>. Suggested from the address of the interface.</li>
+<li><strong>gateway</strong> <code>ipAddr</code> — Default gateway sent to clients. Suggested from the address of the interface.</li>
+<li><strong>relay</strong> <code>ipAddr</code> — Address of the DHCP relay, when the clients are not directly connected.</li>
+<li><strong>ippool</strong> <code>multi { range: composite { min: ipAddr
+, max: ipAddr
+ }
+ }</code> — Address range to give out, for example <code>192.168.88.2-192.168.88.254</code>. The setup creates an IP pool with this range.</li>
+<li><strong>send-dns</strong> <code>bool</code> — Whether the DHCP server sends DNS servers to clients. The setup requires <code>yes</code> or <code>no</code>.</li>
+<li><strong>dns-servers</strong> <code>multi { address: ipAddr
+ }</code> — DNS servers sent to clients. Leave empty to send the DNS servers from the router's DNS settings (<code>/ip/dns</code>).</li>
+<li><strong>lease-time</strong> <code>time</code> — Lease time of the new server. Suggested: 1800s.</li>
+</ul>
+<hr />
+<h1 id="dns">dns</h1>
+<blockquote>
+<p>Settings of the DNS resolver and cache. The router uses them for its own lookups and, with allow-remote-requests=yes, answers DNS queries from clients. A change in this menu takes effect at once; a query that arrives...</p>
+</blockquote>
+<hr />
+<h2 id="ipdns">ip/dns</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings of the DNS resolver and cache. The router uses them for its own lookups and, with <code>allow-remote-requests=yes</code>, answers DNS queries from clients. A change in this menu takes effect at once; a query that arrives at that moment can stay unanswered, and the client sends it again. The cache is kept. For an overview and examples, see <a href="../../../network-management/dns">DNS</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>servers</strong> <code>multi { servers: address (flags=46v)
+ }</code> — Upstream DNS servers, IPv4 or IPv6 addresses, optionally with <code>@&lt;vrf&gt;</code> to reach a server in another VRF. The router tries these servers before <code>dynamic-servers</code>, in the listed order. It waits <code>query-server-timeout</code> for an answer and then tries the next server. When a server answers, the router keeps using it for later queries.</li>
+<li><strong>use-doh-server</strong> <code>string</code> — URL of a DNS over HTTPS (DoH) server, for example <code>https://cloudflare-dns.com/dns-query</code>. When it is set, the router sends every query over one reused HTTPS connection (TCP port 443) to this server, and <code>servers</code> and <code>dynamic-servers</code> are used only to look up the host name of the DoH server (A and AAAA over UDP port 53); a static entry for the host name also works. The router does not fall back to plain DNS: when the DoH server does not answer, clients get SERVFAIL after <code>query-total-timeout</code>, and the log shows <code>dns,error DoH server connection error: ...</code>, for example <code>Connection refused</code> or <code>timeout connecting</code>. Static <code>FWD</code> entries keep using their own servers over plain DNS. Only one DoH server can be set. ARM64 and x86 devices, including CHR, use HTTP/2; other architectures use HTTP/1.1, so DoH services that require HTTP/2, such as Quad9, work only on ARM64 and x86. Default: empty.</li>
+<li><strong>verify-doh-cert</strong> <code>bool</code> — Whether the router verifies the certificate of the DoH server against <code>/certificate</code> and the built-in trust store. Default: no.</li>
+<li><strong>doh-max-server-connections</strong> <code>num</code> — Maximum number of HTTPS connections to the DoH server. Default: 5.</li>
+<li><strong>doh-max-concurrent-queries</strong> <code>num</code> — Maximum number of DoH queries in progress at the same time. Default: 50.</li>
+<li><strong>doh-timeout</strong> <code>time</code> — How long the router waits for an answer from the DoH server. Default: 5s.</li>
+<li><strong>allow-remote-requests</strong> <code>bool</code> — Whether the router answers DNS queries from other devices, on UDP and TCP port 53 of its addresses. With <code>no</code>, only the router itself uses the resolver. The default firewall drops connections from the WAN side; allow port 53 only from your own networks, so the router does not answer queries from the internet. Default: no.</li>
+<li><strong>max-udp-packet-size</strong> <code>num</code> — Maximum size of a DNS message over UDP, in bytes. Default: 4096.</li>
+<li><strong>query-server-timeout</strong> <code>time</code> — How long the router waits for an answer from one upstream server before it tries the next one. Default: 2s.</li>
+<li><strong>query-total-timeout</strong> <code>time</code> — How long the router tries to resolve a query in total. When no server answers in this time, the client gets a SERVFAIL answer. Set it in relation to <code>query-server-timeout</code> and the number of servers. Default: 10s.</li>
+<li><strong>max-concurrent-queries</strong> <code>num</code> — Largest number of queries that can wait for an upstream answer at the same time. While the limit is reached, the router drops new queries, also those it could answer from the cache, until a waiting query finishes. Default: 100.</li>
+<li><strong>max-concurrent-tcp-sessions</strong> <code>num</code> — Maximum number of TCP connections from clients at the same time. Default: 20.</li>
+<li><strong>cache-size</strong> <code>num</code> — Size of the DNS cache, in KiB. Adlist entries are kept in the cache too. Default: 2048.</li>
+<li><strong>cache-max-ttl</strong> <code>time</code> — Longest time the router keeps an upstream answer in the cache. A longer TTL from the upstream server is shortened to this value, and clients get the remaining time. Static entries keep their own <code>ttl</code>. Default: 1w.</li>
+<li><strong>address-list-extra-time</strong> <code>time</code> — Time added to the TTL of an answer before the router removes a dynamic address-list entry that a static entry with <code>address-list</code> created. Default: 0s.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF in which the resolver answers clients when <code>allow-remote-requests=yes</code>. Clients in other VRFs get no answer; the router's own lookups keep working. Upstream servers without a VRF suffix are reached through the main routing table; to reach a server in another VRF, write it as <code>address@vrf</code> in <code>servers</code>, for example <code>servers=10.0.0.1@vrf1,1.1.1.1</code>. Default: main.</li>
+<li><strong>mdns-repeat-ifaces</strong> <code>multi { iface_enum
+ }</code> — Interfaces between which the router repeats multicast DNS (mDNS). The router receives IPv4 mDNS packets (UDP port 5353 to 224.0.0.251) on each listed interface and sends them again from its own address on the other listed interfaces, so devices in different networks can discover each other. IPv6 mDNS (ff02::fb) is not repeated. The router handles the packets itself, so they pass the input chain of the firewall: input rules must not drop UDP port 5353 on these interfaces (the default firewall accepts it on <code>LAN</code> interfaces). Use interfaces that carry multicast, such as Ethernet, VLAN, bridge or EoIP interfaces; layer 3 tunnels such as WireGuard carry no multicast. Default: empty (no repeating).</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>dynamic-servers</strong> <code>multi { dynamic-servers: address (flags=46v)
+ }</code> — DNS servers learned from other services, for example from the DHCP client with <code>use-peer-dns=yes</code>. The router tries them after <code>servers</code>.</li>
+<li><strong>cache-used</strong> <code>num</code> — Part of <code>cache-size</code> in use, in KiB.</li>
+</ul>
+<hr />
+<h1 id="adlist">adlist</h1>
+<blockquote>
+<p>Ad-blocking lists. The router answers A and AAAA queries for the names in these lists with 0.0.0.0 and :: (TTL 2 s) instead of asking upstream; other query types, such as MX or HTTPS, go upstream. Only the exact name...</p>
+</blockquote>
+<hr />
+<h2 id="ipdnsadlist">ip/dns/adlist</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Ad-blocking lists. The router answers A and AAAA queries for the names in these lists with <code>0.0.0.0</code> and <code>::</code> (TTL 2 s) instead of asking upstream; other query types, such as MX or HTTPS, go upstream. Only the exact name is blocked, not its subdomains. The names are kept in the DNS cache memory and count against <code>cache-size</code> in <a href="../"><code>/ip/dns</code></a>: each name takes about 75 bytes, so 76 500 names use about 5.6 MiB. When the cache is too small, the import stops with the log messages <code>adlist read: max cache size reached</code> and <code>could not add name, stopping import</code>, and <code>name-count</code> shows how many names were imported; raising <code>cache-size</code> afterwards does not complete the list, so remove the adlist and add it again. Disabling an adlist does not free the cache memory its names use: they still count against <code>cache-size</code> until the list is removed. The router re-checks the lists every 4 hours. Up to 64 adlists can be added. A static <code>FWD</code> entry exempts a name from all adlists; a static A entry alone does not. For examples, see <a href="../../../../network-management/dns">DNS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The adlist is disabled and blocks nothing.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>file</code> — File on the router with the names to block, as <code>/file/print</code> shows it. One name per line, in lower case, in one of these formats: - <code>0.0.0.0 name</code>, <code>127.0.0.1 name</code> or <code>::1 name</code> - Hosts file format. - <code>name</code> - Just the name. Lines starting with <code>#</code> and comments after a name are ignored. Wildcards such as <code>*.example.com</code> and several names on one line are not supported.</li>
+<li><strong>url</strong> <code>string</code> — URL of a list in the same format as <code>file</code>, for example a public hosts file. The router downloads it and keeps a copy on its storage (not shown in <code>/file</code>).</li>
+<li><strong>ssl-verify</strong> <code>bool</code> — Whether the router verifies the certificate of the <code>url</code> server against the built-in trust store and the certificates in <code>/certificate</code>. When the check fails, the router does not import the list and logs <code>http client error: SSL: ...</code> in the <code>dns</code> topic. For a server with a self-signed certificate, import its CA certificate or set <code>ssl-verify=no</code>. Default: yes.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>match-count</strong> <code>num</code> — Number of queries answered from this list.</li>
+<li><strong>name-count</strong> <code>num</code> — Number of names imported from this list.</li>
+</ul>
+<hr />
+<h1 id="pause">pause</h1>
+<blockquote>
+<p>Stops blocking by all adlists for the given time, for example /ip/dns/adlist/pause duration=10m. Blocking resumes by itself when the time runs out.</p>
+</blockquote>
+<hr />
+<h2 id="ipdnsadlistpause">ip/dns/adlist/pause</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Stops blocking by all adlists for the given time, for example <code>/ip/dns/adlist/pause duration=10m</code>. Blocking resumes by itself when the time runs out.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code> — How long to stop blocking. <code>duration=0</code> ends an active pause.</li>
+</ul>
+<hr />
+<h1 id="reload">reload</h1>
+<blockquote>
+<p>Checks all adlists for updates now, instead of at the next 4-hour check, and applies only the changes. It does not complete a list whose import stopped because the cache was too small.</p>
+</blockquote>
+<hr />
+<h2 id="ipdnsadlistreload">ip/dns/adlist/reload</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Checks all adlists for updates now, instead of at the next 4-hour check, and applies only the changes. It does not complete a list whose import stopped because the cache was too small.</p>
+<hr />
+<h1 id="cache">cache</h1>
+<blockquote>
+<p>Answers the router can give from its cache: upstream answers and the static entries. For a complete list, including the PTR records made for static entries, see all. For an overview, see DNS.</p>
+</blockquote>
+<hr />
+<h2 id="ipdnscache">ip/dns/cache</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Answers the router can give from its cache: upstream answers and the static entries. For a complete list, including the PTR records made for static entries, see <a href="all"><code>all</code></a>. For an overview, see <a href="../../../../network-management/dns">DNS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>S</strong> <code>static</code> — The record comes from a static entry in <a href="../static"><code>/ip/dns/static</code></a>. Static records show a TTL of 0s here.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (A | NS | CNAME | MX | TXT | AAAA | SRV) { A:1, NS:2, CNAME:5, MX:15, TXT:16, AAAA:28, SRV:33 }</code> — Record type.</li>
+<li><strong>data</strong> <code>alt { address: ipAddr
+, name: string
+, info: composite { rmail: string
+, email: string
+ }
+, mx: composite { preference: num
+, exchange: string
+ }
+, srv: composite { port: num
+, target: string
+ }
+, soa-mname: string
+, address6: ip6Addr
+ }</code> — Data of the record, for example the address of an <code>A</code> record.</li>
+<li><strong>name</strong> <code>string</code> — Domain name of the record.</li>
+<li><strong>ttl</strong> <code>time</code> — Remaining time before the record expires from the cache. It counts down, and it is never longer than <code>cache-max-ttl</code> in <a href="../"><code>/ip/dns</code></a>.</li>
+</ul>
+<hr />
+<h1 id="all">all</h1>
+<blockquote>
+<p>All records in the DNS cache, including the PTR records the router creates for static entries and records the resolver keeps internally. For an overview, see DNS.</p>
+</blockquote>
+<hr />
+<h2 id="ipdnscacheall">ip/dns/cache/all</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>All records in the DNS cache, including the PTR records the router creates for static entries and records the resolver keeps internally. For an overview, see <a href="../../../../network-management/dns">DNS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>S</strong> <code>static</code> — The record comes from a static entry in <a href="../static"><code>/ip/dns/static</code></a>, for example the PTR record made for a static <code>A</code> or <code>AAAA</code> entry.</li>
+<li><strong>N</strong> <code>negative</code> — A cached negative answer: the name or the record type does not exist.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Domain name of the record.</li>
+<li><strong>type</strong> <code>enum (A | NS | MD | MF | CNAME | SOA | MB | MG | MR | NULL | WKS | PTR | HINFO | MINFO | MX | TXT | AAAA | SRV) { A:1, NS:2, MD:3, MF:4, CNAME:5, SOA:6, MB:7, MG:8, MR:9, NULL:10, WKS:11, PTR:12, HINFO:13, MINFO:14, MX:15, TXT:16, AAAA:28, SRV:33 }</code> — Record type.</li>
+<li><strong>data</strong> <code>alt { address: ipAddr
+, name: string
+, info: composite { rmail: string
+, email: string
+ }
+, mx: composite { preference: num
+, exchange: string
+ }
+, srv: composite { port: num
+, target: string
+ }
+, soa-mname: string
+, address6: ip6Addr
+ }</code> — Data of the record, for example the address of an <code>A</code> record or the target name of a <code>PTR</code> record.</li>
+<li><strong>ttl</strong> <code>time</code> — Remaining time before the record expires from the cache.</li>
+<li><strong>responsible</strong> <code>string</code> — Email address of the zone administrator, from an <code>SOA</code> record.</li>
+<li><strong>serial</strong> <code>num</code> — Serial number of the zone, from an <code>SOA</code> record.</li>
+<li><strong>refresh</strong> <code>num</code> — Refresh interval of the zone, in seconds, from an <code>SOA</code> record.</li>
+<li><strong>retry</strong> <code>num</code> — Retry interval of the zone, in seconds, from an <code>SOA</code> record.</li>
+<li><strong>expire</strong> <code>num</code> — Expire time of the zone, in seconds, from an <code>SOA</code> record.</li>
+<li><strong>minimum</strong> <code>num</code> — Minimum TTL of the zone, in seconds, from an <code>SOA</code> record.</li>
+</ul>
+<hr />
+<h1 id="flush">flush</h1>
+<blockquote>
+<p>Empties the DNS cache. Static entries from /ip/dns/static stay available. For an overview, see DNS.</p>
+</blockquote>
+<hr />
+<h2 id="ipdnscacheflush">ip/dns/cache/flush</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Empties the DNS cache. Static entries from <a href="../static"><code>/ip/dns/static</code></a> stay available. For an overview, see <a href="../../../../network-management/dns">DNS</a>.</p>
+<hr />
+<h1 id="forwarders">forwarders</h1>
+<blockquote>
+<p>Named groups of upstream servers for static FWD entries: set forward-to of an entry in /ip/dns/static to the forwarder name. Every query takes the next server in turn across dns-servers and doh-servers (round robin)....</p>
+</blockquote>
+<hr />
+<h2 id="ipdnsforwarders">ip/dns/forwarders</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Named groups of upstream servers for static <code>FWD</code> entries: set <code>forward-to</code> of an entry in <a href="static"><code>/ip/dns/static</code></a> to the forwarder name. Every query takes the next server in turn across <code>dns-servers</code> and <code>doh-servers</code> (round robin). A server that does not answer is not skipped: the queries it gets fail with SERVFAIL after <code>query-total-timeout</code>, so list only servers that work. For examples, see <a href="../../../network-management/dns">DNS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The forwarder is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the forwarder, used as <code>forward-to</code> in static <code>FWD</code> entries.</li>
+<li><strong>dns-servers</strong> <code>multi { address (flags=46D)
+ }</code> — DNS servers of the forwarder, as IP addresses or DNS names, for example <code>dns-servers=1.1.1.1,8.8.8.8</code>.</li>
+<li><strong>doh-servers</strong> <code>multi { string
+ }</code> — DoH server URLs of the forwarder, for example <code>doh-servers=https://dns.google/dns-query</code>. The router looks up their host names through <code>servers</code> in <code>/ip/dns</code>.</li>
+<li><strong>verify-doh-cert</strong> <code>bool</code> — Whether the router verifies the certificates of the DoH servers against <code>/certificate</code> and the built-in trust store. A server with an untrusted certificate fails with <code>SSL: ssl: no trusted CA certificate found (6)</code> in the log. This default differs from <code>verify-doh-cert</code> in <code>/ip/dns</code>. Default: yes.</li>
+</ul>
+<hr />
+<h1 id="static">static</h1>
+<blockquote>
+<p>Static DNS entries. The router answers queries for these names itself, without asking an upstream server, and applies them also to the targets of CNAME answers from upstream. For a name with a static entry, queries...</p>
+</blockquote>
+<hr />
+<h2 id="ipdnsstatic">ip/dns/static</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Static DNS entries. The router answers queries for these names itself, without asking an upstream server, and applies them also to the targets of CNAME answers from upstream. For a name with a static entry, queries for other record types go to the upstream server, and the router passes the answer on; when the upstream server has no such record, the router answers NOERROR with no records. Create only one entry that matches a given name and record type: when several entries match, the list order does not decide which one answers. For examples, see <a href="../../../network-management/dns">DNS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The entry was added by another service, not by a user.</li>
+<li><strong>X</strong> <code>disabled</code> — The entry is disabled and the router ignores it. New entries are enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Domain name of the entry. The router converts query names to lower case before matching, so the match is case-insensitive.</li>
+<li><strong>regexp</strong> <code>string</code> — Regular expression the query name is matched against, instead of <code>name</code>. The router matches it against the name in lower case, so write the expression in lower case: an expression with capital letters never matches. The router creates no PTR record for regular expression entries. Do not let a regular expression overlap with other entries for the same names: the list order does not decide which of several matching entries answers. On the command line, write a backslash as <code>\\</code> and a <code>$</code> as <code>\$</code>; for example, <code>regexp="^host[0-9]+\\.example\\.com\$"</code> is stored as <code>^host[0-9]+\.example\.com$</code>. Check the stored value with <code>print</code>.</li>
+<li><strong>type</strong> <code>enum (NXDOMAIN | A | NS | CNAME | MX | TXT | AAAA | SRV | FWD) { NXDOMAIN:65281, A:1, NS:2, CNAME:5, MX:15, TXT:16, AAAA:28, SRV:33, FWD:65280 }</code> — Type of the entry. - <code>A</code> (default) - IPv4 address in <code>address</code>. - <code>AAAA</code> - IPv6 address in <code>address</code>. - <code>CNAME</code> - Alias of the name in <code>cname</code>. The router answers with the CNAME record and the records of the target, from static entries or from upstream. - <code>FWD</code> - Forward queries for the name to the server in <code>forward-to</code> instead of the upstream servers. - <code>MX</code> - Mail server in <code>mx-exchange</code> with <code>mx-preference</code>. - <code>NS</code> - Name server in <code>ns</code>. - <code>NXDOMAIN</code> - Answer NXDOMAIN (the name does not exist) for every record type. - <code>SRV</code> - Service location in <code>srv-target</code>, <code>srv-port</code>, <code>srv-priority</code> and <code>srv-weight</code>. - <code>TXT</code> - Text in <code>text</code>.</li>
+<li><strong>forward-to</strong> <code>alt { forwarder: enum
+, ip: ipAddr
+, ipv6: ip6Addr
+, host: string
+ }</code> — Where the router forwards queries of a <code>FWD</code> entry: an IPv4 or IPv6 address or a DNS name of a server, or the name of a forwarder in <a href="forwarders"><code>/ip/dns/forwarders</code></a>. Without <code>forward-to</code>, the query goes to the normal servers (<code>servers</code>, <code>dynamic-servers</code> or the DoH server), and the name is exempt from adlists. When the server does not answer within <code>query-total-timeout</code>, the client gets a SERVFAIL answer.</li>
+<li><strong>address</strong> <code>alt { ip: ipAddr
+, ipv6: ip6Addr
+ }</code> — IPv4 address of an <code>A</code> entry or IPv6 address of an <code>AAAA</code> entry. For entries with <code>name</code>, the router also answers reverse (PTR) queries for the address.</li>
+<li><strong>mx-preference</strong> <code>num</code> — Preference of the mail server of an <code>MX</code> entry; lower values are preferred.</li>
+<li><strong>mx-exchange</strong> <code>string</code> — Host name of the mail server of an <code>MX</code> entry.</li>
+<li><strong>cname</strong> <code>string</code> — Target name of a <code>CNAME</code> entry.</li>
+<li><strong>text</strong> <code>string</code> — Text of a <code>TXT</code> entry.</li>
+<li><strong>ns</strong> <code>string</code> — Host name of the name server of an <code>NS</code> entry.</li>
+<li><strong>srv-priority</strong> <code>num</code> — Priority of an <code>SRV</code> entry; lower values are preferred.</li>
+<li><strong>srv-weight</strong> <code>num</code> — Weight of an <code>SRV</code> entry among entries with the same priority.</li>
+<li><strong>srv-port</strong> <code>num</code> — TCP or UDP port of the service of an <code>SRV</code> entry.</li>
+<li><strong>srv-target</strong> <code>string</code> — Host name that provides the service of an <code>SRV</code> entry.</li>
+<li><strong>ttl</strong> <code>time</code> — Time to live in the answers for this entry. <code>cache-max-ttl</code> in <a href="./"><code>/ip/dns</code></a> does not shorten it. Default: 1d.</li>
+<li><strong>match-subdomain</strong> <code>bool</code> — Whether the entry also matches every name below <code>name</code>, at any depth. With <code>yes</code>, an entry for <code>example.com</code> also answers <code>www.example.com</code> and <code>a.b.example.com</code>. Default: no.</li>
+<li><strong>address-list</strong> <code>string</code> — Firewall address list the router adds the answered addresses to, as dynamic entries with the comment <code>created for &lt;name&gt;.</code>. For a <code>FWD</code> entry, these are the addresses in the upstream answer. The router removes an entry when the TTL of the answer and <code>address-list-extra-time</code> in <a href="./"><code>/ip/dns</code></a> have passed.</li>
+</ul>
+<hr />
+<h1 id="address-list">address-list</h1>
+<blockquote>
+<p>A firewall address list is a named set of IPv4 addresses, prefixes and ranges that filter, NAT, mangle and raw rules match with src-address-list and dst-address-list. Entries are added here, by the...</p>
+</blockquote>
+<hr />
+<h2 id="ipfirewalladdress-list">ip/firewall/address-list</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>A firewall address list is a named set of IPv4 addresses, prefixes and ranges that filter, NAT, mangle and raw rules match with <code>src-address-list</code> and <code>dst-address-list</code>. Entries are added here, by the <code>add-src-to-address-list</code> and <code>add-dst-to-address-list</code> rule actions, and from DNS names in the list. These actions pass the packet on to the next rule. IPv6 addresses go into <a href="../../ipv6/firewall/address-list"><code>/ipv6/firewall/address-list</code></a>. See <a href="../../../firewall-and-quality-of-service/firewall/address-lists">Address lists</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Disabled: the entry stays in the list but does not match.</li>
+<li><strong>D</strong> <code>dynamic</code> — Dynamic: the entry has a timeout or was added with <code>dynamic=yes</code>, by a firewall rule with a time or <code>none-dynamic</code>, from a resolved DNS name or by another feature (DNS, DHCP server). Dynamic entries are not saved in the configuration or in exports, and a reboot clears them.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>list</strong> <code>enum</code> — Name of the address list. A new name creates the list. Rules match the list with <code>src-address-list</code> and <code>dst-address-list</code>.</li>
+<li><strong>address</strong> <code>alt { address: ipRange
+, dns-name: string
+ }</code> — An IP address, a prefix, a range or a DNS name. A prefix with host bits is stored as its network (<code>203.0.113.77/24</code> becomes <code>203.0.113.0/24</code>). A range that is exactly one prefix is stored as that prefix (<code>198.51.100.0-198.51.100.255</code> becomes <code>198.51.100.0/24</code>); other ranges stay ranges. Text that is not a valid address is stored as a DNS name without an error, so a short range such as <code>203.0.113.1-254</code> matches nothing; write ranges in full. For a DNS name, the router adds one dynamic entry for each A record in the answer, with the name as the comment, and resolves the name again when the record expires. An address that is already in the list is refused with <code>already have such entry</code>; overlapping entries are accepted.</li>
+<li><strong>timeout</strong> <code>time</code> — Time after which the router removes the entry. An entry with a timeout is dynamic (<code>D</code>): it is not saved in the configuration or in exports, and a reboot clears it. The maximum is <code>35w3d13h13m56s</code>. Without a timeout, the entry stays until you remove it.</li>
+<li><strong>dynamic</strong> <code>bool</code> — With <code>yes</code>, the entry is dynamic (<code>D</code>) and has no timeout: it is not saved in the configuration and a reboot clears it. Default: no.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>creation-time</strong> <code>date</code> — When the entry was created. A static entry keeps this time after a reboot; an imported entry gets the time of the import.</li>
+</ul>
+<hr />
+<h1 id="calea">calea</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/firewall/calea.</p>
+</blockquote>
+<hr />
+<h2 id="ipfirewallcalea">ip/firewall/calea</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>filter</strong> <code>alt { all: enum (all) { all:0 }
+, static: enum (static | dynamic)
+, chain: enum (prerouting | input | forward | output | postrouting) { prerouting:1, input:2, forward:3, output:4, postrouting:5 }
+ }</code> — Filter configuration for calea rules.</li>
+<li><strong>chain</strong> <code>enum (prerouting | input | forward | output | postrouting) { prerouting:1, input:2, forward:3, output:4, postrouting:5 }</code> — Specifies to which chain the rule will be added. If the input does not match the name of an already defined chain, a new chain will be created.</li>
+<li><strong>action</strong> <code>enum (sniff | sniff-pc) { sniff:7, sniff-pc:8 }</code> — Action to take if a packet is matched by the rule: - <code>sniff</code> - sniff the packet. - <code>sniff-pc</code> - sniff the packet and send it to the specified Packet Capturer target.</li>
+<li><strong>sniff-target</strong> <code>ipAddr</code> — IP address to send the sniffed packet to.</li>
+<li><strong>sniff-target-port</strong> <code>num</code> — Port to send the sniffed packet to.</li>
+<li><strong>sniff-id</strong> <code>num</code> — ID of the sniffing session.</li>
+<li><strong>tls-host</strong> <code>super { !
+, tls-host: string
+ }</code> — Matches HTTPS traffic based on TLS SNI hostname. Accepts GLOB syntax for wildcard matching. The matcher will not be able to match the hostname if the TLS handshake frame is fragmented into multiple TCP segments.</li>
+<li><strong>connection-limit</strong> <code>super { !
+, limit: num
+, [netmask] ,num
+ }</code> — Matches connections per address or address block after a given value is reached. You should use this together with <code>connection-state=new</code> and/or with <code>tcp-flags=syn</code> because the matcher is very resource-intensive.</li>
+<li><strong>layer7-protocol</strong> <code>super { !
+, protocol: enum
+ }</code> — Layer7 filter name defined in the layer7 protocol menu.</li>
+<li><strong>realm</strong> <code>super { !
+, realm: num
+ }</code> — Matches the routing realm. IPv4 only.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum ()
+ }</code> — Matches the particular IP protocol specified by protocol name or number.</li>
+<li><strong>src-address</strong> <code>super { !
+, range: ipRange
+ }</code> — Matches packets whose source is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>dst-address</strong> <code>super { !
+, range: ipRange
+ }</code> — Matches packets whose destination is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>fragment</strong> <code>super { fragment: bool
+ }</code> — Matches fragmented packets. The first (starting) fragment does not count. If connection tracking is enabled there will be no fragments as the system automatically assembles every packet. IPv4 only.</li>
+<li><strong>psd</strong> <code>super { weight-threshold: num
+, [delay-threshold] ,time
+, [low-port-weight] ,num
+, [high-port-weight] ,num
+ }</code> — Attempts to detect TCP and UDP scans. Parameters are in the following format: <code>WeightThreshold, DelayThreshold, LowPortWeight, HighPortWeight</code>. - <code>WeightThreshold</code> - total weight of the latest TCP/UDP packets with different destination ports coming from the same host to be treated as port scan sequence. - <code>DelayThreshold</code> - delay for the packets with different destination ports coming from the same host to be treated as possible port scan subsequence. - <code>LowPortWeight</code> - the weight of the packets with privileged destination port (&lt;1024). - <code>HighPortWeight</code> - the weight of the packets with a non-privileged destination port. IPv4 only.</li>
+<li><strong>ipv4-options</strong> <code>super { options: enum (strict-source-routing | loose-source-routing | no-source-routing | record-route | no-record-route | timestamp | no-timestamp | router-alert | no-router-alert | any | none) { strict-source-routing:0x1, loose-source-routing:0x2, no-source-routing:0x4, record-route:0x8, no-record-route:0x10, timestamp:0x20, no-timestamp:0x40, router-alert:0x80, no-router-alert:0x100, any:0x200, none:0x400 }
+ }</code> — Matches IPv4 header options. - <code>any</code> - matches packets with at least one of the IPv4 options. - <code>loose-source-routing</code> - matches packets with a loose source routing option. - <code>no-record-route</code> - matches packets with no record route option. - <code>no-router-alert</code> - matches packets with no router alert option. - <code>no-source-routing</code> - matches packets with no source routing option. - <code>no-timestamp</code> - matches packets with no timestamp option. - <code>record-route</code> - matches packets with record route option. - <code>router-alert</code> - matches packets with router alert option. - <code>strict-source-routing</code> - matches packets with a strict source routing option. - <code>timestamp</code> - matches packets with a timestamp. IPv4 only.</li>
+<li><strong>src-address-type</strong> <code>super { !
+, type: ubit (unicast, local, broadcast, multicast, blackhole)
+ }</code> — Matches the source address type: - <code>unicast</code> - an IP address used for point-to-point transmission. - <code>local</code> - the address is assigned to one of the router's interfaces. - <code>broadcast</code> - a packet is sent to all devices in the subnet. - <code>multicast</code> - a packet is forwarded to a defined group of devices.</li>
+<li><strong>dst-address-type</strong> <code>super { !
+, type: ubit (unicast, local, broadcast, multicast, blackhole)
+ }</code> — Matches the destination address type: - <code>unicast</code> - an IP address used for point-to-point transmission. - <code>local</code> - the destination address is assigned to one of the router's interfaces. - <code>broadcast</code> - a packet is sent to all devices in a subnet. - <code>multicast</code> - a packet is forwarded to a defined group of devices.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the source address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the destination address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>hotspot</strong> <code>multi { array-id, array-id, flag: super { !
+, flag: enum (from-client | auth | local-dst | to-client | http) { from-client:0, auth:1, local-dst:2, to-client:3, http:4 }
+ }
+ }</code> — Matches packets received from HotSpot clients against various HotSpot matchers. - <code>auth</code> - matches authenticated HotSpot client packets. - <code>from-client</code> - matches packets coming from the HotSpot client. - <code>http</code> - matches HTTP requests sent to the HotSpot server. - <code>local-dst</code> - matches packets destined to the HotSpot server. - <code>to-client</code> - matches packets sent to the HotSpot client. IPv4 only.</li>
+<li><strong>address-list</strong> <code>enum ()</code> — Name of the address list to be used. Applicable if the action is <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code>.</li>
+<li><strong>address-list-timeout</strong> <code>alt { address-list-timeout: enum (none-dynamic | none-static) { none-dynamic:0, none-static:0xffffffff }
+, address-list-timeout: time [ .. 21474836]
+ }</code> — Time interval after which the address will be removed from the address list specified by the <code>address-list</code> parameter. Used in conjunction with <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code> actions. - <code>none-dynamic</code> (<code>00:00:00</code>) will leave the address in the address list till reboot. - <code>none-static</code> will leave the address in the address list forever and will be included in the configuration export/backup.</li>
+<li><strong>ttl</strong> <code>super { mode: enum (equal | not-equal | less-than | greater-than) { equal:0, not-equal:1, less-than:2, greater-than:3 }
+, [value] :num [0 .. 255]
+ }</code> — Matches the packet TTL value. IPv4 only.</li>
+<li><strong>connection-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular connection mark. If <code>no-mark</code> is set, the rule will match any unmarked connection.</li>
+<li><strong>connection-type</strong> <code>super { !
+, type: enum (ftp | pptp | h323 | sip | irc | quake3 | tftp) { ftp:0, pptp:1, h323:2, sip:3, irc:4, quake3:5, tftp:6 }
+ }</code> — Matches packets from related connections based on information from their connection tracking helpers. A relevant connection helper must be enabled under <code>/ip/firewall/service-port</code>.</li>
+<li><strong>connection-bytes</strong> <code>super { from: num
+, [to] -num
+ }</code> — Matches packets only if a given amount of bytes has been transferred through the particular connection. 0 means infinity, for example <code>connection-bytes=2000000-0</code> means that the rule matches if more than 2MB has been transferred through the relevant connection.</li>
+<li><strong>connection-rate</strong> <code>super { !
+, from: num
+, [to] -num
+ }</code> — Allows capturing traffic based on the present speed of the connection.</li>
+<li><strong>routing-mark</strong> <code>super { !
+, mark: enum ()
+ }</code> — Matches packets marked by the mangle facility with a particular routing mark.</li>
+<li><strong>in-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet has entered the router.</li>
+<li><strong>out-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet is leaving the router.</li>
+<li><strong>in-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-interface</code>.</li>
+<li><strong>out-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-interface</code>.</li>
+<li><strong>in-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet has entered the router if the incoming interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>out-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet leaves the router if the outgoing interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>in-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-bridge-port</code>.</li>
+<li><strong>out-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-bridge-port</code>.</li>
+<li><strong>packet-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular packet mark. If <code>no-mark</code> is set, the rule will match any unmarked packet.</li>
+<li><strong>src-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of source ports and ranges of source ports. Applicable only if the protocol is TCP or UDP.</li>
+<li><strong>dst-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of destination port numbers or port number ranges.</li>
+<li><strong>port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — Matches if any (source or destination) port matches the specified list of ports or port ranges. Applicable only if <code>protocol</code> is TCP or UDP.</li>
+<li><strong>icmp-options</strong> <code>super { !
+, type: num [0 .. 255]
+, [code] [ :range [ .. 255]]
+ }</code> — Matches ICMP type:code fields.</li>
+<li><strong>src-mac-address</strong> <code>super { !
+, address: macAddr
+ }</code> — Matches the source MAC address of the packet.</li>
+<li><strong>content</strong> <code>super { !
+, content: string
+ }</code> — Matches packets that contain the specified text.</li>
+<li><strong>ingress-priority</strong> <code>super { !
+, ingress-priority: num [0 .. 63]
+ }</code> — Matches the priority of an ingress packet. Priority may be derived from VLAN, WMM, DSCP, or MPLS EXP bit.</li>
+<li><strong>priority</strong> <code>super { !
+, priority: num [0 .. 63]
+ }</code> — Matches the packet's priority after a new priority has been set. Priority may be derived from VLAN, WMM, DSCP, MPLS EXP bit, or from the priority set by using the set-priority action.</li>
+<li><strong>dscp</strong> <code>super { !
+, dscp: num [0 .. 63]
+ }</code> — Matches the DSCP IP header field.</li>
+<li><strong>tos</strong> <code>super { !
+, tos: num [0 .. 255]
+, [mask] [ /num [0 .. 255]]
+ }</code></li>
+<li><strong>limit</strong> <code>super { !
+, count: num [1 .. 32000000000]
+, [time] [ /time [1 .. ]]
+, [burst] ,num [ .. 2000000000]
+, [mode] [ :enum (packet | bit) { packet:0, bit:1 }]
+ }</code> — Matches packets up to a limited rate (packet rate or bit rate). A rule with this matcher will match until this limit is reached. Parameters are written in the following format: <code>rate[/time],burst:mode</code>. - <code>rate</code> - packet or bit count per time interval to match. - <code>time</code> - specifies the time interval in which the packet or bit rate cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets or bits to match: this number gets recharged every 10ms so burst should be at least 1/100 of a rate per second. - <code>mode</code> - packet or bit mode.</li>
+<li><strong>dst-limit</strong> <code>super { count: num
+, [time] [ /time]
+, [burst] ,num
+, [mode] ,enum (dst-address | dst-address-and-port | src-address | src-and-dst-addresses | addresses-and-dst-port) { dst-address:1, dst-address-and-port:3, src-address:4, src-and-dst-addresses:5, addresses-and-dst-port:7 }
+, [expire] [ /time]
+ }</code> — Matches packets until a given rate is exceeded. Rate is defined as packets per time interval. As opposed to the <code>limit</code> matcher, every flow has its own limit. Flow is defined by a mode parameter. Parameters are written in the following format: <code>rate[/time],burst,mode[/expire]</code>. - <code>rate</code> - packet count per time interval per-flow to match. - <code>time</code> - specifies the time interval in which the packet count rate per flow cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets per flow to match: this number gets recharged by one every time/rate, up to this number. - <code>mode</code> - specifies what unique fields define flow (src-address, dst-address, src-and-dst-address, dst-address-and-port, addresses-and-dst-port). - <code>expire</code> - specifies interval after which flow with no packets will be allowed to be deleted (optional).</li>
+<li><strong>time</strong> <code>super { !
+, start: time [0 .. 86400]
+, [end] -time [0 .. 86400]
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Creates a filter based on the packets' arrival time and date or, for locally generated packets, departure time and date. The matcher takes into account the time and timezone configured on the router.</li>
+<li><strong>random</strong> <code>super { percent: num [1 .. 99]
+ }</code> — Matches packets randomly with a given probability.</li>
+<li><strong>nth</strong> <code>super { !
+, every: num [1 .. ]
+, [packet] [ ,num [1 .. ]]
+ }</code> — Matches every nth packet: <code>nth=2,1</code> will match every first packet of 2, hence, 50% of all the traffic matched by the rule.</li>
+<li><strong>tcp-mss</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Matches the TCP MSS value of an IP packet.</li>
+<li><strong>per-connection-classifier</strong> <code>super { !
+, values-to-hash: enum (src-address | dst-address | both-addresses | src-port | src-address-and-port | dst-port | dst-address-and-port | both-ports | both-addresses-and-ports) { src-address:1, dst-address:2, both-addresses:3, src-port:4, src-address-and-port:5, dst-port:8, dst-address-and-port:10, both-ports:12, both-addresses-and-ports:15 }
+, [denominator] :num [1 .. ]
+, [remainder] /num [0 .. ]
+ }</code> — PCC matcher allows dividing traffic into equal streams with the ability to keep packets with a specific set of options in one particular stream.</li>
+<li><strong>packet-size</strong> <code>super { !
+, min: num [ .. 65535]
+, [max] -num [ .. 65535]
+ }</code> — Matches packets of specified size or size range in bytes.</li>
+<li><strong>log</strong> <code>bool</code> — Add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. Allows logging of packets even if the action is not <code>log</code>, useful for debugging the firewall.</li>
+<li><strong>log-prefix</strong> <code>string</code> — Adds the specified text at the beginning of every log message. Applicable if <code>action=log</code> or <code>log=yes</code> is configured.</li>
+<li><strong>ipsec-policy</strong> <code>super { direction: enum (in | out) { in:0, out:1 }
+, [policy] ,enum (none | ipsec) { none:0, ipsec:1 }
+ }</code> — Matches the policy used by IPsec. Value is written in the following format: <code>direction, policy</code>. - <code>in</code> - valid in the PREROUTING, INPUT, and FORWARD chains. - <code>out</code> - valid in the POSTROUTING, OUTPUT, and FORWARD chains. - <code>ipsec</code> - matches if the packet is subject to IPsec processing. - <code>none</code> - matches packets that are not subject to IPsec processing.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all">reset-counters-all</h1>
+<blockquote>
+<p>RouterOS command reference for /ip/firewall/calea/reset-counters-all.</p>
+</blockquote>
+<hr />
+<h2 id="ipfirewallcaleareset-counters-all">ip/firewall/calea/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>RouterOS command reference for /ip/firewall/calea/reset-counters.</p>
+</blockquote>
+<hr />
+<h2 id="ipfirewallcaleareset-counters">ip/firewall/calea/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>certificate · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="certificate">certificate</h1>
+<h1 id="certificate_1">certificate</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate.</p>
+</blockquote>
+<hr />
+<h2 id="certificate_2">certificate</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>K</strong> <code>private-key</code> — private-key</li>
+<li><strong>L</strong> <code>crl</code> — crl</li>
+<li><strong>C</strong> <code>smart-card-key</code> — smart-card-key</li>
+<li><strong>A</strong> <code>authority</code> — authority</li>
+<li><strong>I</strong> <code>issued</code> — issued</li>
+<li><strong>R</strong> <code>revoked</code> — revoked</li>
+<li><strong>E</strong> <code>expired</code> — expired</li>
+<li><strong>T</strong> <code>trusted</code> — trusted</li>
+<li><strong>a</strong> <code>acme-managed</code> — acme-managed</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>active</strong> <code>switch</code></li>
+<li><strong>inactive</strong> <code>switch</code></li>
+<li><strong>name</strong> <code>string</code> — Name of the certificate or template in the store.</li>
+<li><strong>pem</strong> <code>string</code> — import certificate or unencrypted private key from a pasted PEM string</li>
+<li><strong>trust-store</strong> <code>alt { all: enum (all)
+, component: ubit (ipsec, wpa-eap, capsman, fetch, sstp, ovpn, mqtt, email, netwatch, radius, container, userman, lora, wiliot, openflow, tr069, dot1x, dns, www, api, reverse-proxy, logging)
+ }</code> — Services that use the certificate as a trusted authority. Default: <code>all</code>.</li>
+<li><strong>digest-algorithm</strong> <code>enum (md5 | sha1 | sha256 | sha384 | sha512)</code> — Hash algorithm of the certificate signature. Default: <code>sha256</code>.</li>
+<li><strong>trusted</strong> <code>bool</code> — Whether services trust the certificate as an authority. A self-signed authority created on the router and an imported certificate are trusted by default. A certificate issued by an authority on the router is not.</li>
+<li><strong>common-name</strong> <code>string</code> — Common name (CN) of the subject.</li>
+<li><strong>organization</strong> <code>string</code></li>
+<li><strong>unit</strong> <code>string</code></li>
+<li><strong>locality</strong> <code>string</code></li>
+<li><strong>state</strong> <code>string</code></li>
+<li><strong>country</strong> <code>string</code></li>
+<li><strong>subject-alt-name</strong> <code>object { alt-name: composite { type: enum (IP | DNS | email)
+, value: alt { ip: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+, string: string
+ }
+ }
+ }</code> — Subject alternative names as a list of <code>DNS:</code>, <code>IP:</code> and <code>email:</code> entries, for example <code>DNS:router.example.com,IP:192.168.88.1</code>.</li>
+<li><strong>key-size</strong> <code>enum (prime256v1 | secp384r1 | secp521r1 | 1024 | 1536 | 2048 | 4096 | 8192) { 1024:1024, 1536:1536, 2048:2048, 4096:4096, 8192:8192 }</code> — RSA key size in bits, or the name of an elliptic curve for an EC key. Default: <code>2048</code>.</li>
+<li><strong>key-usage</strong> <code>ubit (digital-signature, content-commitment, key-encipherment, data-encipherment, key-agreement, key-cert-sign, crl-sign, encipher-only, decipher-only, tls-server, tls-client, code-sign, email-protect, timestamp, ocsp-sign, dvcs)</code> — Allowed uses of the key. Default: <code>digital-signature,key-encipherment,data-encipherment,key-cert-sign,crl-sign,tls-server,tls-client</code>.</li>
+<li><strong>days-valid</strong> <code>num</code> — Number of days the certificate is valid from the time it is signed. Default: <code>365</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>ca-crl-host</strong> <code>string</code> — Host where this authority publishes its certificate revocation list.</li>
+<li><strong>ca</strong> <code>enum</code> — Authority on this router that issued the certificate.</li>
+<li><strong>scep-url</strong> <code>string</code> — URL of the SCEP server the certificate was enrolled from.</li>
+<li><strong>fingerprint</strong> <code>string</code></li>
+<li><strong>req-fingerprint</strong> <code>string</code></li>
+<li><strong>ca-fingerprint</strong> <code>string</code></li>
+<li><strong>expires-after</strong> <code>time</code> — Time left until the certificate expires.</li>
+<li><strong>challenge-password</strong> <code>string</code></li>
+<li><strong>domain-names</strong> <code>string</code> — Domain names of the ACME certificate.</li>
+<li><strong>directory-url</strong> <code>string</code> — Directory URL of the ACME authority.</li>
+<li><strong>acme-status</strong> <code>string</code> — State of the ACME client. For an issued certificate, the time of the next renewal.</li>
+<li><strong>revoked</strong> <code>date</code> — Time when the certificate was revoked.</li>
+<li><strong>status</strong> <code>string</code> — State of the SCEP client.</li>
+<li><strong>issuer</strong> <code>multi { array-id, issuer: string
+ }</code> — Subject of the authority that issued the certificate.</li>
+<li><strong>key-type</strong> <code>enum (rsa | dsa | ec)</code> — Type of the key.</li>
+<li><strong>invalid-before</strong> <code>date</code> — Start of the validity time.</li>
+<li><strong>invalid-after</strong> <code>date</code> — End of the validity time.</li>
+<li><strong>serial-number</strong> <code>string</code> — Serial number of the certificate.</li>
+<li><strong>akid</strong> <code>string</code> — Authority key identifier: the subject key identifier of the issuer.</li>
+<li><strong>skid</strong> <code>string</code> — Subject key identifier.</li>
+</ul>
+<hr />
+<h1 id="acme-renew">acme-renew</h1>
+<blockquote>
+<p>Renew an existing ACME certificate.</p>
+</blockquote>
+<hr />
+<h2 id="certificateacme-renew">certificate/acme-renew</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Renew an existing ACME certificate.</p>
+<hr />
+<h1 id="add-acme">add-acme</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/add-acme.</p>
+</blockquote>
+<hr />
+<h2 id="certificateadd-acme">certificate/add-acme</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the certificate.</li>
+<li><strong>domain-names</strong> <code>string</code> — comma separated list of domain names or a wildcard domain</li>
+<li><strong>directory-url</strong> <code>string</code> — Directory URL of the ACME authority. Default: Let's Encrypt.</li>
+<li><strong>eab-kid</strong> <code>string</code></li>
+<li><strong>eab-key-b64</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="add-scep">add-scep</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/add-scep.</p>
+</blockquote>
+<hr />
+<h2 id="certificateadd-scep">certificate/add-scep</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>ca-identity</strong> <code>string</code></li>
+<li><strong>template</strong> <code>enum</code> — Template to enrol.</li>
+<li><strong>scep-url</strong> <code>string</code> — URL of the SCEP server.</li>
+<li><strong>challenge-password</strong> <code>string</code> — One-time password generated on the SCEP server.</li>
+<li><strong>on-smart-card</strong> <code>bool</code> — stores private key on smart card if hardware supports it</li>
+<li><strong>refresh</strong> <code>bool</code> — check certificate expiry and refresh it if expired</li>
+</ul>
+<hr />
+<h1 id="builtin">builtin</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/builtin.</p>
+</blockquote>
+<hr />
+<h2 id="certificatebuiltin">certificate/builtin</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>common-name</strong> <code>string</code></li>
+<li><strong>organization</strong> <code>string</code></li>
+<li><strong>unit</strong> <code>string</code></li>
+<li><strong>locality</strong> <code>string</code></li>
+<li><strong>state</strong> <code>string</code></li>
+<li><strong>country</strong> <code>string</code></li>
+<li><strong>subject-alt-name</strong> <code>object { alt-name: composite { type: enum (IP | DNS | email)
+, value: alt { ip: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+, string: string
+ }
+ }
+ }</code></li>
+<li><strong>key-size</strong> <code>enum (prime256v1 | secp384r1 | secp521r1 | 1024 | 1536 | 2048 | 4096 | 8192) { 1024:1024, 1536:1536, 2048:2048, 4096:4096, 8192:8192 }</code></li>
+<li><strong>key-usage</strong> <code>ubit (digital-signature, content-commitment, key-encipherment, data-encipherment, key-agreement, key-cert-sign, crl-sign, encipher-only, decipher-only, tls-server, tls-client, code-sign, email-protect, timestamp, ocsp-sign, dvcs)</code></li>
+<li><strong>days-valid</strong> <code>num</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>issuer</strong> <code>multi { array-id, issuer: string
+ }</code></li>
+<li><strong>key-type</strong> <code>enum (rsa | dsa | ec)</code></li>
+<li><strong>invalid-before</strong> <code>date</code></li>
+<li><strong>invalid-after</strong> <code>date</code></li>
+<li><strong>serial-number</strong> <code>string</code></li>
+<li><strong>akid</strong> <code>string</code></li>
+<li><strong>skid</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="card-reinstall">card-reinstall</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/card-reinstall.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecard-reinstall">certificate/card-reinstall</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>pin</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="card-verify">card-verify</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/card-verify.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecard-verify">certificate/card-verify</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>pin</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="create-certificate-request">create-certificate-request</h1>
+<blockquote>
+<p>Create a certificate request and a private key from a template. Writes the files certificate-request.pem and certificate-requestkey.pem.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecreate-certificate-request">certificate/create-certificate-request</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Create a certificate request and a private key from a template. Writes the files <code>certificate-request.pem</code> and <code>certificate-request_key.pem</code>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>template</strong> <code>enum</code> — Template to create the request from.</li>
+<li><strong>key-passphrase</strong> <code>string</code> — Passphrase that encrypts the private key file.</li>
+<li><strong>challenge-passphrase</strong> <code>string</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>progress</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="crl">crl</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/crl.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecrl">certificate/crl</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>E</strong> <code>expired</code> — expired</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>url</strong> <code>string</code> — URL of the revocation list.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>cert</strong> <code>enum (none)</code> — Certificate the list was added from.</li>
+<li><strong>trust-store</strong> <code>alt { all: enum (all)
+, component: ubit (ipsec, wpa-eap, capsman, fetch, sstp, ovpn, mqtt, email, netwatch, radius, container, userman, lora, wiliot, openflow, tr069, dot1x, dns, www, api, reverse-proxy, logging)
+ }</code></li>
+<li><strong>num</strong> <code>num</code></li>
+<li><strong>revoked</strong> <code>num</code> — Number of revoked certificates in the list.</li>
+<li><strong>next-update</strong> <code>date</code></li>
+<li><strong>last-update</strong> <code>date</code></li>
+<li><strong>akid</strong> <code>string</code></li>
+<li><strong>fingerprint</strong> <code>string</code></li>
+<li><strong>signature</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="download">download</h1>
+<blockquote>
+<p>Download the revocation lists immediately.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecrldownload">certificate/crl/download</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Download the revocation lists immediately.</p>
+<hr />
+<h1 id="flush">flush</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/crl/flush.</p>
+</blockquote>
+<hr />
+<h2 id="certificatecrlflush">certificate/crl/flush</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="enable-ssl-certificate">enable-ssl-certificate</h1>
+<blockquote>
+<p>Obsolete. The command ends with an error that points to /certificate/add-acme.</p>
+</blockquote>
+<hr />
+<h2 id="certificateenable-ssl-certificate">certificate/enable-ssl-certificate</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Obsolete. The command ends with an error that points to <code>/certificate/add-acme</code>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>dns-name</strong> <code>string</code> — domain name for SSL certificate</li>
+<li><strong>directory-url</strong> <code>string</code> — ACME directory url</li>
+<li><strong>eab-hmac-key</strong> <code>string</code> — base64url encoded EAB hmac key</li>
+<li><strong>eab-kid</strong> <code>string</code> — EAB account id</li>
+<li><strong>reset-private-key</strong> <code>bool</code> — initialize new private key</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>progress</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="export-certificate">export-certificate</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/export-certificate.</p>
+</blockquote>
+<hr />
+<h2 id="certificateexport-certificate">certificate/export-certificate</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>export-passphrase</strong> <code>string</code> — Passphrase that encrypts the exported private key. Without it, only the certificate is exported.</li>
+<li><strong>type</strong> <code>enum (pem | pkcs12)</code> — Format of the export. - <code>pem</code> (default) - A <code>.crt</code> file with the certificate and, with <code>export-passphrase</code>, a <code>.key</code> file with the encrypted private key. - <code>pkcs12</code> - One <code>.p12</code> file with the certificate, its private key and the certificate of the authority.</li>
+<li><strong>file-name</strong> <code>file</code> — Name of the exported files without the extension. Default: <code>cert_export_&lt;certificate name&gt;</code>.</li>
+</ul>
+<hr />
+<h1 id="import">import</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/import.</p>
+</blockquote>
+<hr />
+<h2 id="certificateimport">certificate/import</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name for the imported certificate.</li>
+<li><strong>file-name</strong> <code>file</code> — File to import. The file is deleted after the import.</li>
+<li><strong>pem</strong> <code>string</code> — import certificate or private key from a pasted PEM string; an encrypted private key is accepted when passphrase is supplied</li>
+<li><strong>passphrase</strong> <code>string</code> — Passphrase of an encrypted private key or PKCS12 file.</li>
+<li><strong>trusted</strong> <code>bool</code> — mark as trusted</li>
+<li><strong>trust-store</strong> <code>alt { all: enum (all)
+, component: ubit (ipsec, wpa-eap, capsman, fetch, sstp, ovpn, mqtt, email, netwatch, radius, container, userman, lora, wiliot, openflow, tr069, dot1x, dns, www, api, reverse-proxy, logging)
+ }</code> — Services that use the imported certificate as a trusted authority. Default: <code>all</code>.</li>
+<li><strong>no-key-export</strong> <code>bool</code> — disallow private key export</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>certificates-imported</strong> <code>num</code></li>
+<li><strong>private-keys-imported</strong> <code>num</code></li>
+<li><strong>files-imported</strong> <code>num</code></li>
+<li><strong>decryption-failures</strong> <code>num</code></li>
+<li><strong>keys-with-no-certificate</strong> <code>num</code></li>
+<li><strong>keys-decrypted</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="issued-revoke">issued-revoke</h1>
+<blockquote>
+<p>Revoke a certificate issued by an authority on this router. The certificate is added to the revocation list of the authority.</p>
+</blockquote>
+<hr />
+<h2 id="certificateissued-revoke">certificate/issued-revoke</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Revoke a certificate issued by an authority on this router. The certificate is added to the revocation list of the authority.</p>
+<hr />
+<h1 id="scep-renew">scep-renew</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/scep-renew.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-renew">certificate/scep-renew</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="scep-server">scep-server</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/scep-server.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-server">certificate/scep-server</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ca-cert</strong> <code>enum</code> — Authority certificate that signs the requests.</li>
+<li><strong>next-ca-cert</strong> <code>enum (none) { none:0 }</code></li>
+<li><strong>path</strong> <code>string</code> — Path of the server in the URL, for example <code>/scep/example</code>.</li>
+<li><strong>days-valid</strong> <code>num</code></li>
+<li><strong>request-lifetime</strong> <code>time</code></li>
+</ul>
+<hr />
+<h1 id="otp">otp</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/scep-server/otp.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverotp">certificate/scep-server/otp</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>E</strong> <code>expired</code> — expired</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>password</strong> <code>string</code> — One-time password.</li>
+<li><strong>expires</strong> <code>time</code> — Time left until the password expires.</li>
+<li><strong>used</strong> <code>bool</code> — Whether the password has been used.</li>
+</ul>
+<hr />
+<h1 id="generate">generate</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/scep-server/otp/generate.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverotpgenerate">certificate/scep-server/otp/generate</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>minutes-valid</strong> <code>num</code> — Time in minutes the password is valid.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>password</strong> <code>string</code> — The generated one-time password.</li>
+</ul>
+<hr />
+<h1 id="ra">ra</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/scep-server/ra.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverra">certificate/scep-server/ra</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>C</strong> <code>smart-card-key</code> — smart-card-key</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>server-url</strong> <code>string</code></li>
+<li><strong>template</strong> <code>enum</code></li>
+<li><strong>challenge-password</strong> <code>string</code></li>
+<li><strong>ca-identity</strong> <code>string</code></li>
+<li><strong>fingerprint-algorithm</strong> <code>enum (sha256 | sha1 | md5)</code></li>
+<li><strong>ra-path</strong> <code>string</code></li>
+<li><strong>ra-transaction-lifetime</strong> <code>time</code></li>
+<li><strong>on-smart-card</strong> <code>bool</code> — stores private key on smart card</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>req-fingerprint</strong> <code>string</code></li>
+<li><strong>ca-fingerprint</strong> <code>string</code></li>
+<li><strong>status</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="renew">renew</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/scep-server/ra/renew.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverrarenew">certificate/scep-server/ra/renew</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="requests">requests</h1>
+<blockquote>
+<p>RouterOS directory reference for /certificate/scep-server/requests.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverrequests">certificate/scep-server/requests</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>authority</strong> <code>alt { ca: enum
+, ra: enum
+ }</code></li>
+<li><strong>status</strong> <code>enum (pending | granted | denied | authorized | waiting | failed | issued | invalid) { pending:1, granted:2, denied:3, authorized:4, waiting:10, failed:11, issued:12, invalid:13 }</code></li>
+<li><strong>created</strong> <code>date</code></li>
+<li><strong>transaction-id</strong> <code>string</code></li>
+<li><strong>req-fingerprint</strong> <code>string</code></li>
+<li><strong>country</strong> <code>string</code></li>
+<li><strong>state</strong> <code>string</code></li>
+<li><strong>locality</strong> <code>string</code></li>
+<li><strong>organization</strong> <code>string</code></li>
+<li><strong>unit</strong> <code>string</code></li>
+<li><strong>common-name</strong> <code>string</code></li>
+<li><strong>serial-number</strong> <code>string</code></li>
+<li><strong>subject-alt-name</strong> <code>object { alt-name: composite { type: enum (IP | DNS | email)
+, value: alt { ip: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+, string: string
+ }
+ }
+ }</code></li>
+</ul>
+<hr />
+<h1 id="grant">grant</h1>
+<blockquote>
+<p>Approve a pending request.</p>
+</blockquote>
+<hr />
+<h2 id="certificatescep-serverrequestsgrant">certificate/scep-server/requests/grant</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Approve a pending request.</p>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /certificate/settings.</p>
+</blockquote>
+<hr />
+<h2 id="certificatesettings">certificate/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>builtin-trust-store</strong> <code>alt { all-none: enum (default | all | untrusted)
+, component: ubit (ipsec, wpa-eap, capsman, fetch, sstp, ovpn, mqtt, email, netwatch, radius, container, userman, lora, wiliot, openflow, tr069, dot1x, dns, www, api, reverse-proxy, logging)
+ }</code> — RouterOS provided CA certificates</li>
+<li><strong>current-defaults</strong> <code>ubit (ipsec, wpa-eap, capsman, fetch, sstp, ovpn, mqtt, email, netwatch, radius, container, userman, lora, wiliot, openflow, tr069, dot1x, dns, www, api, reverse-proxy, logging)</code> — Read-only. Services that use the built-in authorities when <code>builtin-trust-store=default</code>.</li>
+<li><strong>crl-download</strong> <code>bool</code> — auto CRL download and update</li>
+<li><strong>crl-use</strong> <code>bool</code> — perform CRL checking when validating trust chain</li>
+<li><strong>crl-store</strong> <code>enum (system | ram)</code> — CRL storage location</li>
+</ul>
+<hr />
+<h1 id="sign-certificate-request">sign-certificate-request</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/sign-certificate-request.</p>
+</blockquote>
+<hr />
+<h2 id="certificatesign-certificate-request">certificate/sign-certificate-request</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ca</strong> <code>enum</code> — Authority that signs the request.</li>
+<li><strong>file-name</strong> <code>file</code> — File with the certificate request.</li>
+<li><strong>days-valid</strong> <code>num</code></li>
+<li><strong>digest-algorithm</strong> <code>enum (md5 | sha1 | sha256 | sha384 | sha512)</code></li>
+</ul>
+<hr />
+<h1 id="sign">sign</h1>
+<blockquote>
+<p>RouterOS command reference for /certificate/sign.</p>
+</blockquote>
+<hr />
+<h2 id="certificatesign">certificate/sign</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>ca-crl-host</strong> <code>multi { array-id, host: string
+ }</code> — adds CRL URL to created certificate</li>
+<li><strong>ca-on-smart-card</strong> <code>bool</code> — stores CA's private key on smart card</li>
+<li><strong>ca</strong> <code>enum</code> — issuer CA</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>progress</strong> <code>string</code></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

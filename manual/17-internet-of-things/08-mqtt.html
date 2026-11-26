@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MQTT · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Internet of Things</p>
+      <h1 id="mqtt">MQTT</h1>
+<h1 id="mqtt_1">MQTT</h1>
+<blockquote>
+<p>This page documents MQTT integration in MikroTik RouterOS, covering publisher/subscriber workflows for IoT platforms like Kaa and ThingsBoard. It explains MQTT protocol basics, RouterOS capabilities as an MQTT...</p>
+</blockquote>
+<h1 id="mqtt_2">MQTT</h1>
+<p>This section covers MQTT integration examples. Use it to connect RouterOS MQTT publishing and subscription workflows to IoT platforms such as Kaa IoT and ThingsBoard.</p>
+<p>MQTT is an open OASIS and ISO standard lightweight, publish-subscribe network protocol that transports messages between devices. A typical MQTT communication topology consists of:</p>
+<ul>
+<li>An MQTT publisher → a device that sends information to the server.</li>
+<li>An MQTT broker → a server where the data is stored.</li>
+<li>An MQTT subscriber → a device that reads/monitors the data published on the server.</li>
+</ul>
+<p>RouterOS can act as an MQTT publisher and subscriber (starting with <strong>7.11beta2</strong>). You can also run an MQTT broker/server via the <a href="../../containers/index.md">container</a> feature. For Mosquitto MQTT broker configuration visit the <a href="../../containers/user-guides/container-mosquitto-mqtt-server.md">link here</a>.</p>
+<p>You can find application examples for MQTT publish scenarios below:</p>
+<p>a) <a href="https://help.mikrotik.com/docs/pages/viewpage.action?pageId=63045633">MQTT/HTTPS example with AWS cloud platform</a></p>
+<p>b) <a href="https://help.mikrotik.com/docs/display/UM/MQTT+and+Azure+configuration">MQTT example with Azure cloud platform</a></p>
+<p>c) <a href="./mqtt-and-thingsboard-configuration.md">MQTT and ThingsBoard configuration</a></p>
+<p>Please note that AWS and Azure examples (scripts) showcase publishing Bluetooth tag data. Currently, only the <a href="https://mikrotik.com/product/knot">KNOT</a> has a Bluetooth chip built-in.</p>
+<h2 id="configuration">Configuration</h2>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt</code></p>
+<p><em><strong>note</strong>:</em> The <strong>iot</strong> package is required.</p>
+<p>The IoT package is available with RouterOS version 6.48.3. You can get it from our <a href="https://mikrotik.com/download">download page</a> - under "Extra packages".</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>brokers</strong></td>
+<td style="text-align: left;">A list of configured MQTT brokers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connect</strong></td>
+<td style="text-align: left;">A command that specifies which broker to connect to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disconnect</strong></td>
+<td style="text-align: left;">A command that specifies which broker to disconnect from.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>publish</strong></td>
+<td style="text-align: left;">A command that defines the MQTT message that needs to be published.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>subscribe</strong></td>
+<td style="text-align: left;">A command that defines MQTT topics to subscribe to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>subscriptions</strong></td>
+<td style="text-align: left;">A list of subscribed topics and received messages.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>unsubscribe</strong></td>
+<td style="text-align: left;">A command that specifies which topic to unsubscribe from.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="brokers">Brokers</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/brokers</code></p>
+<p>To add a new MQTT broker (or an MQTT server), run the following command:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add
+</code></pre>
+<p>Configurable properties are shown below:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>address</strong> (<em>IP|hostname</em>; Default: )</td>
+<td style="text-align: left;">IP address or hostname of the broker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>auto-connect</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">When enabled, after the connection with the MQTT broker goes down/gets interrupted, RouterOS will try to re-establish the connection over and over again.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/certificates.md">Certificate from certificate store</a> that is going to be used for the SSL connection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>client-id</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">A unique ID used for the connection. The broker uses this ID to identify the client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep-alive</strong> (<em>integer:30..64800</em>; Default: <strong>60</strong>)</td>
+<td style="text-align: left;">A parameter that defines the time (in seconds), after which the client should "ping" the MQTT broker that it is "alive", to ensure the connection stays ongoing. This value should be set according to MQTT broker settings.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Descriptive name of the broker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>parallel-scripts-limit</strong>(<em>integer:3..1000;</em> Default: off)</td>
+<td style="text-align: left;">A parameter that defines how many scripts the <a href="#subscriptions">on-message</a> feature for this broker is allowed to run at the exact same time. Can be useful to reduce CPU, in cases when a large number of messages are constantly published.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>password</strong> (<em>string</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Password for the broker (if required by the broker).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>integer:</em>0..4294967295**; Default: <strong>1883</strong>)</td>
+<td style="text-align: left;">Network port used by the broker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssl</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Secure Socket Layer configuration.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>username</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Username for the broker (if required by the broker).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>will-message</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Configures a Last Will and Testament (LWT) message, which is going to be sent to the broker during the connection. This message will get stored on the broker. The message will not get published (by the broker), unless RouterOS unexpectedly disconnects from the broker (without sending a proper "DISCONNECT" packet).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>will-qos</strong>(<em>integer</em>; Default: )</td>
+<td style="text-align: left;">Configures the QoS value for the LWT message.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>will-retain</strong>(yes | no; Default: )</td>
+<td style="text-align: left;">Configures whether to retain the LWT message or not to retain it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>will-topic</strong>(<em>string</em>; Default: )</td>
+<td style="text-align: left;">Configures an LWT topic, where the <strong>will-message</strong> should be published.</td>
+</tr>
+</tbody>
+</table>
+<p>An example of adding a broker:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=&quot;broker&quot; address=&quot;192.168.88.33&quot; port=1883 ssl=no client-id=&quot;test-client&quot; auto-connect=no keep-alive=60
+</code></pre>
+<p>The result:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/print
+ 0 name=&quot;broker&quot; address=&quot;192.168.88.33&quot; port=1883 ssl=no client-id=&quot;test-client&quot; auto-connect=no keep-alive=60 connected=no 
+</code></pre>
+<h3 id="connect">Connect</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/connect</code></p>
+<p>To connect to the pre-configured MQTT broker, issue the command:</p>
+<pre><code class="language-ros">/iot/mqtt/connect broker=&quot;broker&quot;
+</code></pre>
+<p>If the connection is successful, the "<strong>connected</strong>" parameter should change to "<strong>yes</strong>":</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/print
+ 0 name=&quot;broker&quot; address=&quot;192.168.88.33&quot; port=1883 ssl=no client-id=&quot;test-client&quot; auto-connect=no keep-alive=60 connected=yes
+</code></pre>
+<h3 id="disconnect">Disconnect</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/disconnect</code></p>
+<p>To disconnect from the MQTT broker, issue the command:</p>
+<pre><code class="language-ros">/iot/mqtt/disconnect broker=&quot;broker&quot;
+</code></pre>
+<p>To confirm that the broker was disconnected, issue the command below and it should indicate "<strong>connected=no</strong>":</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/print            
+ 0 name=&quot;broker&quot; address=&quot;192.168.88.33&quot; port=1883 ssl=no client-id=&quot;test-client&quot; auto-connect=no keep-alive=60 connected=no 
+</code></pre>
+<h3 id="publish">Publish</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/publish</code></p>
+<p>The Publish menu is used to send MQTT messages to the MQTT broker.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>broker</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Select the broker, where to publish the message.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disconnect-after</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Parameter that ensures that the connection with the broker will be automatically disconnected after the publish message is sent.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>force</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">If set to "yes", when the connection with the broker is not yet established ("<strong>connected=no</strong>"), and the message is attempted to be published, RouterOS will try to establish an MQTT connection with the specified broker first and then publish the message. If set to "no", RouterOS will not be able to send the message, unless the connection is already established beforehand ("<strong>connected=yes</strong>").</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>message</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">The message that you wish to publish to the broker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>qos</strong> (<em>integer:</em>0..2**; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Quality of service parameter, as defined by the broker. qos=0 → the message will be received at most once (the message gets sent...fire and forget);qos=1 → the message will be received at least once (the message gets sent until the publisher receives a confirmation packet <code>PUBACK</code> from the broker);qos=2 → the message will be received exactly once (the message gets sent and a 4 way packet exchange happens to ensure it is delivered once);</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>retain</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to retain the message or to discard it if no one is subscribed to the topic. This parameter is defined by the broker.  Retained messages are saved on the broker and are automatically sent to the new subscribers (by the broker).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>topic</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Topic, as defined by the broker.</td>
+</tr>
+</tbody>
+</table>
+<p>An example of publishing the message:</p>
+<pre><code class="language-ros">/iot/mqtt/publish message=&quot;test-message&quot; broker=&quot;broker&quot; topic=&quot;my/test/topic&quot;
+</code></pre>
+<h3 id="subscribe">Subscribe</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/subscribe</code></p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Please remember that if you have an on-going connection with the broker (the connection is in the "<strong>connected=yes</strong>" status) and you subscribe to the topic via that broker, you have to re-establish the connection!</p>
+</div>
+<p>This menu is used to subscribe to MQTT topics from the broker.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>broker</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Select the broker to subscribe to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>force</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">If set to "yes", when the connection with the broker is not yet established ("<strong>connected=no</strong>"), and subscription is attempted, RouterOS will try to establish an MQTT connection with the specified broker first and then subscribe to the topic. If set to "no", RouterOS will not be able to subscribe to the topic, unless the connection is already established beforehand ("<strong>connected=yes</strong>").</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>qos</strong> (<em>integer:</em>0..2**; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Quality of service parameter, as defined by the broker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>topic</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Topic, as defined by the broker, to subscribe to.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="an-example-of-a-subscription">An example of a subscription</h4>
+<pre><code class="language-ros">/iot/mqtt/subscribe broker=&quot;broker&quot; topic=&quot;my/test/topic&quot;
+</code></pre>
+<p>Wildcard (single level "<strong>+</strong>" and multi-level "<strong>#</strong>") subscriptions are also supported (RouterOS <strong>does not allow publishing</strong> to wildcard topics <strong>but allows subscribing</strong> to them):</p>
+<pre><code class="language-ros">/iot/mqtt/subscribe broker=&quot;broker&quot; topic=&quot;my/test/#&quot;
+/iot/mqtt/subscribe broker=&quot;broker&quot; topic=&quot;my/test/+&quot;
+</code></pre>
+<p>This means that if you subscribe to <code>topic="my/test/#"</code>, you will be able to receive messages published to any topic that begins with the pattern before the wildcard symbol "#" (e.g., <code>"my/test/topic"</code>, <code>"my/test/topic/something"</code>).</p>
+<p>And, if you subscribe to <code>topic="my/test/+"</code>, you will be able to receive messages published on the topic +1 level (e.g., <code>"my/test/topic"</code>, <code>"my/test/something"</code>).</p>
+<h3 id="subscriptions">Subscriptions</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/subscriptions</code></p>
+<p>This section is used to manage already-added subscriptions (that were previously added via the <a href="./index.md#subscribe">Subscribe</a> section).</p>
+<p>It has the same properties as the <a href="./index.md#subscribe">Subscribe</a> section.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Starting with <strong>v7.12beta9</strong>, this menu allows you to add the "<strong>on-message</strong>" setting to your subscriptions.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>on-message</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Configure a <a href="../../developer-guides/scripting/index.md">script</a> that will be automatically initiated/run whenever a new message is received in the subscribed topic.</td>
+</tr>
+</tbody>
+</table>
+<p>To check already subscribed topics, issue the command:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/print
+0 broker=broker topic=&quot;my/test/topic&quot; qos=0
+</code></pre>
+<p>After you publish a test message as shown in the <strong>Publish</strong> section above:</p>
+<pre><code class="language-ros">/iot/mqtt/publish message=&quot;test-message&quot; broker=&quot;broker&quot; topic=&quot;my/test/topic&quot;
+</code></pre>
+<p>You should be able to check the received message under:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/recv/print
+ 0 broker=broker topic=&quot;my/test/topic&quot; data=&quot;test-message&quot; time=2023-05-22 16:57:00 
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The received message list is limited to 1024 entries, after which, older entries will get overwritten with the new ones.</p>
+</div>
+<p>To clear stored messages, issue the command:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/recv/clear
+</code></pre>
+<p>To run a <a href="../../developer-guides/scripting/index.md">script</a> (for example, a basic "log" script) whenever any new message appears in the subscribed topic, you can use the <code>on-message</code> feature:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/set on-message={:log info &quot;Got data {$msgData} from topic {$msgTopic}&quot;} broker=broker 0
+</code></pre>
+<p>The script can use <strong>$msgData</strong> and <strong>$msgTopic</strong> variables. <strong>$msgData</strong> defines the MQTT message that was published and <strong>$msgTopic</strong> defines the MQTT topic where the message was published. Both variables are automatically generated when a new message appears.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<ul>
+<li><strong>$msgData</strong> and <strong>$msgTopic</strong> variables will not work when used in the "<strong>System&gt;Script</strong>" section-created scripts, meaning, they will not work inside "/iot/mqtt/subscriptions/set <strong>on-message={<code>/system/script/run</code> x}</strong>" added scripts. Both variables will work only when they are used inside the "<strong>on-message={}</strong>" written script, like, for example, "<strong>on-message={:log info "Got data {$msgData} from topic {$msgTopic}"}</strong>".</li>
+<li>The same applies to <a href="../../developer-guides/scripting/index.md#scopes">global</a> variable usage. If there are global variables that are "generated" using other scripts (variables that appear under the System&gt;Script&gt;Environment section), they will not work inside the "on-message" script.</li>
+</ul>
+</div>
+<p>After you publish a new MQTT message to the subscribed topic, a new log entry should appear:</p>
+<pre><code class="language-ros">/log/print
+10:19:15 script,info Got data {test-message} from topic {my/test/topic}
+</code></pre>
+<p>A second example shows how to run a script whenever a specific message (keywords from the message) appears. To achieve a scenario where we want to run a script only when the MQTT message has specific content or a keyword, we can utilize the <strong>if</strong> <a href="../../developer-guides/scripting/index.md#conditional-statement">condition statement</a>:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/set 0 on-message={:if ($msgData~&quot;\\{\&quot;test\&quot;:\&quot;123\&quot;\\}&quot;) do={:log info &quot;Got data {$msgData} from topic {$msgTopic}&quot;}}
+</code></pre>
+<p>Or:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/set 0 on-message={:if ($msgData~&quot;test&quot;) do={:log info &quot;Got data {$msgData} from topic {$msgTopic}&quot;}}
+</code></pre>
+<p>As a result, on every received MQTT message, the script will check whether the if condition is true. If it is true (if <strong>$msgData</strong> contains the JSON string <strong>{"test":"123"}</strong>or if <strong>$msgData</strong> contains the string "<strong>test</strong>"), the log entry will be generated. Otherwise, nothing will happen.</p>
+<p>Meaning, the script will be run only when you publish a message like this:</p>
+<pre><code class="language-ros">/iot/mqtt/publish broker=broker topic=&quot;my/test/topic&quot; message=&quot;{\&quot;test\&quot;:\&quot;123\&quot;}&quot;
+</code></pre>
+<p>When you receive a message from a topic that falls under multiple subscriptions with <code>on-message</code> configuration, only <strong>x1</strong> <code>on-message</code> script will be run. RouterOS will choose which <code>on-message</code> script to run using the following logic/priority:</p>
+<ol>
+<li>If the topic configured for the subscription is an exact match → the first priority.</li>
+<li>If the topic name is not an exact match (wildcard is used) → the second priority is for single level wildcard topics.</li>
+<li>If the topic does not fall under the single level wildcard category → the third priority is for multi-level wildcard topics based on the topic level.</li>
+</ol>
+<p>An example:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/print
+ 0 broker=broker topic=&quot;some/sort/of/topic&quot; qos=0 on-message=&quot;/system/script/run script1&quot; 
+
+ 1 broker=broker topic=&quot;some/#&quot; qos=0 on-message=&quot;/system/script/run script2&quot; 
+
+ 2 broker=broker topic=&quot;some/sort/of/+&quot; qos=0 on-message=&quot;/system/script/run script3&quot;  
+
+ 3 broker=broker topic=&quot;some/thing/#&quot; qos=0 on-message=&quot;/system/script/run script4&quot;   
+</code></pre>
+<p>When you publish the data to <code>some/sort/of/topic</code>, script1 will be initiated because the topic is an exact match.</p>
+<p>When you publish the data to <code>some/sort/of/thing</code>, script3 will be initiated → because it falls under the single 1v1 wildcard topic name.</p>
+<p>When you publish the data to <code>some/name</code>, script2 will be initiated →  because it falls under the multi-level wildcard topic name.</p>
+<p>When you publish the data to <code>some/thing/else</code>, script 4 will be initiated → because it falls under the multi-level wildcard topic name (even though it is also matched by <code>some/#</code> wildcard, it is one level closer to the <code>some/thing/#</code> entry).</p>
+<h3 id="unsubscribe">Unsubscribe</h3>
+<p><strong>Sub-menu:</strong> <code>/iot/mqtt/unsubscribe</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>broker</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Select the broker to unsubscribe from.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>topic</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Select a topic, as defined by the broker, to unsubscribe from.</td>
+</tr>
+</tbody>
+</table>
+<p>An example of unsubscribing from the broker and the topic is shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/unsubscribe broker=&quot;broker&quot; topic=&quot;my/test/topic&quot;
+</code></pre>
+<h2 id="publishing-routeros-statistics-using-scripts">Publishing RouterOS statistics using scripts</h2>
+<p>You can also use <a href="../../developer-guides/scripting/index.md">scripts</a> to structure MQTT messages that contain RouterOS statistics. Then, you can apply the <a href="../../system-information-and-utilities/scheduler.md">scheduler</a> to run the script whenever you like.</p>
+<p>For example, you can run a script like <a href="pathname:///assets/200573055_mqttpublish.rsc">mqttpublish.rsc</a> (copy the content of the RouterOS code shown below into a new terminal and press <kbd>Enter</kbd>):</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=mqttpublish owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;#\
+    \_Required packages: iot\r\
+    \n\r\
+    \n################################ Configuration #########################\
+    #######\r\
+    \n# Name of an existing MQTT broker that should be used for publishing\r\
+    \n:local broker \&quot;broker\&quot;\r\
+    \n\r\
+    \n# MQTT topic where the message should be published\r\
+    \n:local topic \&quot;my/test/topic\&quot;\r\
+    \n\r\
+    \n#################################### System ############################\
+    #######\r\
+    \n:put (\&quot;[*] Gathering system info...\&quot;)\r\
+    \n:local cpuLoad [/system/resource/get cpu-load]\r\
+    \n:local freeMemory [/system/resource/get free-memory]\r\
+    \n:local usedMemory ([/system/resource/get total-memory] - \$freeMemory)\r\
+    \n:local rosVersion [/system/package/get value-name=version \\\r\
+    \n\A0 \A0 [/system/package/find where name ~ \&quot;^routeros\&quot;]]\r\
+    \n:local model [/system/routerboard/get value-name=model]\r\
+    \n:local serialNumber [/system/routerboard/get value-name=serial-number]\r\
+    \n:local upTime [/system/resource/get uptime]\r\
+    \n\r\
+    \n#################################### MQTT ##############################\
+    #######\r\
+    \n:local message \\\r\
+    \n\A0 \A0 \&quot;{\\\&quot;model\\\&quot;:\\\&quot;\$model\\\&quot;,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;sn\\\&quot;:\\\&quot;\$serialNumber\\\&quot;,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;ros\\\&quot;:\\\&quot;\$rosVersion\\\&quot;,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;cpu\\\&quot;:\$cpuLoad,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;umem\\\&quot;:\$usedMemory,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;fmem\\\&quot;:\$freeMemory,\\\r\
+    \n\A0 \A0 \A0 \A0 \A0 \A0 \A0 \A0 \\\&quot;uptime\\\&quot;:\\\&quot;\$upTime\\\&quot;}\&quot;\r\
+    \n\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message to MQTT broker...\&quot;)\r\
+    \n/iot/mqtt/publish broker=\$broker topic=\$topic message=\$message\r\
+    \n:put (\&quot;[*] Done\&quot;)&quot;
+</code></pre>
+<p>The script collects the data from the RouterOS (model name, serial number, RouterOS version, current CPU, used memory, free memory, and uptime) and publishes the message (the data) to the broker in the JSON format:</p>
+<pre><code class="language-ros">/system/script/run mqttpublish
+[*] Gathering system info...
+[*] Total message size: 125 bytes
+[*] Sending message to MQTT broker...
+
+[*] Done
+</code></pre>
+<p>You can subscribe to the topic to check the results:</p>
+<pre><code class="language-ros">/iot/mqtt/subscriptions/recv/print
+ 0 broker=broker topic=&quot;my/test/topic&quot; data=&quot;{&quot;model&quot;:&quot;RB924i-2nD-BT5&amp;BG77&quot;,&quot;sn&quot;:&quot;E9C80EAEXXXX&quot;,&quot;ros&quot;:&quot;7.9&quot;,&quot;cpu&quot;:13,&quot;umem&quot;:47476736,
+     &quot;fmem&quot;:19632128,&quot;uptime&quot;:&quot;02:21:18&quot;}&quot; 
+   time=2023-05-22 17:03:52 
+</code></pre>
+<p>Do not forget to change the "Configuration" part of the script (topic and the broker) based on your settings.</p>
+<hr />
+<h1 id="kaa-iot-setup">Kaa IoT setup</h1>
+<blockquote>
+<p>This page introduces Kaa IoT setup for MikroTik RouterOS, covering MQTT and HTTP protocol support, system resource monitoring via scripting, and Kaa IoT portal configuration steps including application/device...</p>
+</blockquote>
+<h1 id="kaa-iot-setup_1">Kaa IoT setup</h1>
+<p><a href="./index.md">MQTT</a> and <a href="../../system-information-and-utilities/fetch.md">HTTP</a> are among the most popular protocols that are used for transferring all kinds of data. Both protocols are heavily utilized in different IoT setups, and they both are supported by <a href="../../getting-started/software-specifications/index.md">RouterOS</a>.</p>
+<p>What kind of data, you might ask? Pretty much anything... RouterOS <a href="../../developer-guides/scripting/index.md">scripting</a> is a very powerful tool that can help you automate your devices with the help of <a href="../../system-information-and-utilities/scheduler.md">scheduling</a>.</p>
+<p>For example, you can check your system's resource information with the help of the command <code>/system/resource/print</code> :</p>
+<pre><code class="language-ros">/system/resource/print
+                   uptime: 4d1h37m55s
+                  version: 7.14.3 (stable)
+               build-time: 2024-04-17 12:47:58
+         factory-software: 6.45.9
+              free-memory: 926.0MiB
+             total-memory: 1024.0MiB
+                      cpu: ARM
+                cpu-count: 4
+            cpu-frequency: 533MHz
+                 cpu-load: 0%
+           free-hdd-space: 88.5MiB
+          total-hdd-space: 128.0MiB
+  write-sect-since-reboot: 1107
+         write-sect-total: 1447413
+               bad-blocks: 0%
+        architecture-name: arm
+               board-name: RB1100AHx4
+                 platform: MikroTik
+</code></pre>
+<p>This command shows you useful information, like CPU usage, RAM-memory usage, device's uptime and its firmware version. Another command will print out <a href="../../mobile-networking/gps/index.md">GPS</a> coordinates (if the device has a GPS chip built-in) and so on...</p>
+<p>What this means, essentially, is that anything that can be "printed out" into the RouterOS <a href="../../management-tools/console.md">terminal</a>, can be scripted to be structured into JSON format messages and sent out with a configured interval. We will showcase a more detailed example later on in the guide.</p>
+<p>In other words, you are able to send the data from your MikroTik to any MQTT or HTTP server of your choice. <a href="https://www.kaaiot.com/">Kaa IoT</a> is one such server.</p>
+<p><a href="https://www.kaaiot.com/advantages/platform">Why Kaa IoT?</a></p>
+<h2 id="kaa-iot-configuration">Kaa IoT configuration</h2>
+<p>Make sure to check <a href="https://www.kaaiot.com/docs/tutorials/getting-started/connecting-your-first-device">KAA: Connecting your first device</a>.</p>
+<p>After you log into the portal, to start, follow the steps from the <a href="https://www.kaaiot.com/docs/tutorials/getting-started/connecting-your-first-device">playbook</a>:</p>
+<p>a) Create an application, under "<strong>Home&gt;Device management&gt;Applications</strong>", by clicking on the "<strong>Add application</strong>" button, name it, and "<strong>Create</strong>" it:</p>
+<p>b) Create a device, under "<strong>Home&gt;Device management&gt;Devices</strong>", by clicking on the "<strong>Add device</strong>" button, name it, and "<strong>Create</strong>" it:</p>
+<p>Input your own "Endpoint token" or let the system auto-generate one for you. Make sure to "save" it (because you will not be able to access it again).</p>
+<p>All that is left is to connect our router to the server using MQTT or HTTP, post some data and customize our first dashboard to more easily visualize it.</p>
+<h2 id="routeros-configuration">RouterOS configuration</h2>
+<p>First things first, the device should have internet access. Check our <a href="../../getting-started/first-time-configuration.md">First Time Configuration</a> guide.</p>
+<p>Once you have the Internet up and running, if you are planning to use <a href="./index.md">MQTT</a> protocol, make sure you have the <strong>iot</strong> package installed. You can download it from our <a href="https://mikrotik.com/download">download page</a>, under the "Extra packages" file (for your device's respective architecture). Unzip the "Extra packages" file and upload the <strong>iot</strong> package to the "<a href="../../system-information-and-utilities/files.md">Files</a>" (reboot the device after that). If you are planning on only using <a href="../../system-information-and-utilities/fetch.md">HTTP posting</a>, there is no need for the iot package installation.</p>
+<p>Before going further, visit Kaa IoT <a href="https://www.kaaiot.com/docs/device-connectivity/mqtt-device-api">MQTT</a> and <a href="https://www.kaaiot.com/docs/device-connectivity/http-device-api">HTTP</a> device API guides.</p>
+<h3 id="using-http-to-post-the-data">Using HTTP to post the data</h3>
+<p>To post a basic JSON message:</p>
+<pre><code class="language-bash">{&quot;test&quot;:&quot;data&quot;}
+</code></pre>
+<p>Simply run the command:</p>
+<pre><code class="language-ros">/tool/fetch url=&quot;https://next.kaaiot.com/kpc/kp1/&lt;app-version&gt;/epmx/&lt;token&gt;/update/keys&quot; http-method=post  http-header-field=&quot;Content-Type: application/json&quot; http-data=&quot;{\&quot;test\&quot;:\&quot;data\&quot;}&quot; output=user mode=https
+</code></pre>
+<p>, where you should change <code>&lt;app-version&gt;</code> (that you can check under the "<strong>Home&gt;Device management&gt;Devices&gt;Specific device</strong>" tab) and <code>&lt;token&gt;</code> (that you've generated after creating a device on the platform) to your respective values.</p>
+<p>You should be able to see that a new "Metadata" value appeared under the "<strong>Home&gt;Device management&gt;Devices&gt;Specific device&gt;Overview</strong>" tab or check logs under the "<strong>Home&gt;Device management&gt;Devices&gt;Specific device&gt;Data logs"</strong> tab.</p>
+<p>To collect <code>/system/resource/print</code> information and post it, we can use scripting. Copy and paste the content of the script shown below into the command line:</p>
+<pre><code class="language-ros">/system/script
+add dont-require-permissions=no name=systeminfo owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;#####################\
+    ############### System ###################################\r\
+    \n:put (\&quot;[*] Gathering system info...\&quot;)\r\
+    \n:local cpuLoad [/system/resource/get cpu-load];\r\
+    \n:local freeMemory [/system/resource/get free-memory];\r\
+    \n:local usedMemory ([/system/resource/get total-memory] - \$freeMemory);\r\
+    \n:local rosVersion [/system/package/get value-name=version \\\r\
+    \n[/system/package/find where name ~ \&quot;^routeros\&quot;]];\r\
+    \n:local model [/system/routerboard/get value-name=model];\r\
+    \n:local serialNumber [/system/routerboard/get value-name=serial-number];\r\
+    \n:local upTime [/system/resource/get uptime];\r\
+    \n\r\
+    \n#################################### message #####################################\r\
+    \n:local message \\\r\
+    \n\&quot;{\\\&quot;model\\\&quot;:\\\&quot;\$model\\\&quot;,\\\r\
+    \n\\\&quot;sn\\\&quot;:\\\&quot;\$serialNumber\\\&quot;,\\\r\
+    \n\\\&quot;ros\\\&quot;:\\\&quot;\$rosVersion\\\&quot;,\\\r\
+    \n\\\&quot;cpu\\\&quot;:\\\&quot;\$cpuLoad\\\&quot;,\\\r\
+    \n\\\&quot;umem\\\&quot;:\\\&quot;\$usedMemory\\\&quot;,\\\r\
+    \n\\\&quot;fmem\\\&quot;:\\\&quot;\$freeMemory\\\&quot;,\\\r\
+    \n\\\&quot;uptime\\\&quot;:\\\&quot;\$upTime\\\&quot;}\&quot;\r\
+    \n\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message...\&quot;)\r\
+    \n/tool/fetch url=\&quot;https://next.kaaiot.com/kpc/kp1/&lt;app-version&gt;/epmx/&lt;token&gt;/up\
+    date/keys\&quot; http-method=post  http-header-field=\&quot;Content-Type: application/json\&quot; http-data=\
+    \&quot;\$message\&quot; output=user mode=https\r\
+    \n:put (\&quot;[*] Done\&quot;)&quot;
+</code></pre>
+<p>Change the URL's <code>&lt;app-version&gt;</code> and <code>&lt;token&gt;</code> values. Then, run the script using:</p>
+<pre><code class="language-ros">/system/script/run systeminfo
+</code></pre>
+<p>The JSON message will look like this:</p>
+<pre><code class="language-bash">{
+  &quot;model&quot;: &quot;RB924iR-2nD-BT5&amp;BG77&quot;,
+  &quot;sn&quot;: &quot;XXXXXXX&quot;,
+  &quot;ros&quot;: &quot;7.99&quot;,
+  &quot;cpu&quot;: &quot;7&quot;,
+  &quot;umem&quot;: &quot;45113344&quot;,
+  &quot;fmem&quot;: &quot;21995520&quot;,
+  &quot;uptime&quot;: &quot;4d22:16:08&quot;
+}
+</code></pre>
+<h3 id="using-mqtt-to-post-the-data">Using MQTT to post the data</h3>
+<p>In order to use a one-way SSL MQTT scenario, get the root certificate from "<strong>Home&gt;Device management&gt;Credentials</strong>" by clicking on the "<strong>Get root certificate</strong>" button. More info can be found <a href="https://www.kaaiot.com/docs/tutorials/getting-started/authenticating-client-with-tls-certificate">here</a>.</p>
+<p>Upload the ca.pem certificate file to RouterOS and import it using:</p>
+<pre><code class="language-ros">/certificate/import file-name=ca.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Add a new MQTT broker:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers
+add address=mqtt.next.kaaiot.com name=kaaiot port=8883 ssl=yes
+</code></pre>
+<p>Connect to the broker and check whether the connection is ongoing with the help of the "print" command ("<strong>connected=yes</strong>" should be present):</p>
+<pre><code class="language-ros">/iot/mqtt/connect broker=kaaiot
+
+/iot/mqtt/brokers/print
+0 name=&quot;kaaiot&quot; address=&quot;mqtt.next.kaaiot.com&quot; port=8883 ssl=yes auto-connect=no keep-alive=60 parallel-scripts-limit=off connected=yes
+
+</code></pre>
+<p>To post a basic JSON message:</p>
+<pre><code class="language-bash">{&quot;test&quot;:&quot;data&quot;}
+</code></pre>
+<p>Simply run the command:</p>
+<pre><code class="language-ros">/iot/mqtt/publish broker=kaaiot message=&quot;{\&quot;test\&quot;:\&quot;data\&quot;}&quot; topic=&quot;kp1/&lt;app-version&gt;/epmx/&lt;token&gt;/update/keys/88&quot;
+</code></pre>
+<p>, where you should change <code>&lt;app-version&gt;</code> (that you can check under the "<strong>Home&gt;Device management&gt;Devices&gt;Specific device</strong>" tab) and <code>&lt;token&gt;</code> (that you've generated after creating a device on the platform) to your respective values.</p>
+<p>You should be able to see that a new "Metadata" value appeared under "<strong>Home&gt;Device management&gt;Devices&gt;Specific device&gt;Overview</strong>" tab or check logs under "<strong>Home&gt;Device management&gt;Devices&gt;Specific device&gt;Data logs</strong>" tab.</p>
+<p>To collect <code>/system/resource/print</code> information and post it, we can use scripting. Copy and paste the content of the script shown below into the command line:</p>
+<pre><code class="language-ros">/system/script
+add dont-require-permissions=no name=systeminfo owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;#####\
+    ############################### System ###################################\r\
+    \n:put (\&quot;[*] Gathering system info...\&quot;)\r\
+    \n:local cpuLoad [/system/resource/get cpu-load];\r\
+    \n:local freeMemory [/system/resource/get free-memory];\r\
+    \n:local usedMemory ([/system/resource/get total-memory] - \$freeMemory);\r\
+    \n:local rosVersion [/system/package/get value-name=version \\\r\
+    \n[/system/package/find where name ~ \&quot;^routeros\&quot;]];\r\
+    \n:local model [/system/routerboard/get value-name=model];\r\
+    \n:local serialNumber [/system/routerboard/get value-name=serial-number];\r\
+    \n:local upTime [/system/resource/get uptime];\r\
+    \n\r\
+    \n#################################### message #####################################\r\
+    \n:local message \\\r\
+    \n\&quot;{\\\&quot;model\\\&quot;:\\\&quot;\$model\\\&quot;,\\\r\
+    \n\\\&quot;sn\\\&quot;:\\\&quot;\$serialNumber\\\&quot;,\\\r\
+    \n\\\&quot;ros\\\&quot;:\\\&quot;\$rosVersion\\\&quot;,\\\r\
+    \n\\\&quot;cpu\\\&quot;:\\\&quot;\$cpuLoad\\\&quot;,\\\r\
+    \n\\\&quot;umem\\\&quot;:\\\&quot;\$usedMemory\\\&quot;,\\\r\
+    \n\\\&quot;fmem\\\&quot;:\\\&quot;\$freeMemory\\\&quot;,\\\r\
+    \n\\\&quot;uptime\\\&quot;:\\\&quot;\$upTime\\\&quot;}\&quot;\r\
+    \n\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message...\&quot;)\r\
+    \n/iot/mqtt/publish broker=kaaiot message=\$message topic=\&quot;kp1/&lt;app-version&gt;/epmx/&lt;token&gt;/update/keys/88\&quot;\r\
+    \n:put (\&quot;[*] Done\&quot;)&quot;
+</code></pre>
+<p>Change the topic's <code>&lt;app-version&gt;</code> and <code>&lt;token&gt;</code> values. Then, run the script using:</p>
+<pre><code class="language-ros">/system/script/run systeminfo
+</code></pre>
+<p>The JSON message will look like this:</p>
+<pre><code class="language-bash">{
+  &quot;model&quot;: &quot;RB924iR-2nD-BT5&amp;BG77&quot;,
+  &quot;sn&quot;: &quot;XXXXXXX&quot;,
+  &quot;ros&quot;: &quot;7.99&quot;,
+  &quot;cpu&quot;: &quot;7&quot;,
+  &quot;umem&quot;: &quot;45113344&quot;,
+  &quot;fmem&quot;: &quot;21995520&quot;,
+  &quot;uptime&quot;: &quot;4d22:16:08&quot;
+}
+</code></pre>
+<h2 id="data-visualization-using-dashboards">Data visualization using dashboards</h2>
+<p>To visualize previously posted data, go to "<strong>Home&gt;Solutions&gt;Your_Solution&gt;Dashboards&gt;Your_Dashboard</strong>" and click on "<strong>Add widget</strong>":</p>
+<p>Select a widget type (we will use "<strong>Device management</strong>"), and a pre-set widget (we will use "<strong>Endpoint metadata</strong>").</p>
+<p>"<strong>Edit</strong>" the widget and choose your "Endpoint ID" under "<strong>Data source&gt;Endpoint ID</strong>". From here, you can customize the dashboard further:</p>
+<p>And so, you can create your own scripts that collect information that is important to you instead, and then just apply a <a href="../../system-information-and-utilities/scheduler.md">scheduler</a> to run the script with an interval of your choice. Maybe you want to collect GPS coordinates from your <a href="https://mikrotik.com/product/ltap#fndtn-specifications">LTAP</a> and visualize them using the "map" widget? It is only up to you!</p>
+<hr />
+<h1 id="mqtt-and-thingsboard-configuration">MQTT and ThingsBoard configuration</h1>
+<blockquote>
+<p>This page guides MikroTik RouterOS users through configuring MQTT data publishing to ThingsBoard, covering device setup, authentication scenarios (access tokens, basic credentials, SSL/TLS), and certificate...</p>
+</blockquote>
+<h1 id="mqtt-and-thingsboard-configuration_1">MQTT and ThingsBoard configuration</h1>
+<h3 id="introduction">Introduction</h3>
+<p>One of the many cloud services that you can use to monitor information that is sent by an MQTT publisher is <a href="https://thingsboard.io/">Thingsboard</a>. This article will demonstrate how to configure both Thingsboard and RouterOS to publish the data using the MQTT protocol. RouterOS, in this scenario, is going to act as a gateway and publish the data from the RouterBoard to the Thingsboard server. Thingsboard, in this scenario, will act as an MQTT broker (server, where data will be posted).</p>
+<p>Before we proceed with the settings, you need to either:</p>
+<ul>
+<li>a) Create an account in the Thingsboard's system. You can do so by following this <a href="https://thingsboard.cloud/signup">link</a>. This will allow you to use the ThingsBoard cloud solution for free for a limited/test time period.</li>
+<li>b) Set up your own server by following the <a href="https://thingsboard.io/docs/user-guide/install/installation-options/">guide</a>. There is a community edition that can be installed and used free of charge.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Please consider using <strong>SSL MQTT (TCP port 8883 and certificates)</strong>, instead of non-SSL MQTT (TCP port 1883). If you use non-SSL MQTT, the communication between the client (MQTT publisher) and the server (MQTT broker) can be easily sniffed/packet captured, and that will compromise authentication data (such as client-ids, usernames and passwords).</p>
+</div>
+<h3 id="thingsboard-configuration">Thingsboard configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In this guide, we will showcase local instance/server installation configuration, but the same principles apply to the cloud option.</p>
+</div>
+<p>Access the login page via your browser and log in. Go to the "<strong>Devices</strong>" menu.</p>
+<p>Create a new device by clicking on the add button "+" and "Add new device":</p>
+<p>Enter the name of the device and click on "Add":</p>
+<p>By default, access token authentication is selected for the newly created device.</p>
+<h4 id="access-token-scenario">Access token scenario</h4>
+<p>You can change the token by clicking on the created device and entering the "<strong>Manage Credentials</strong>" settings (in the "<strong>Details</strong>" section):</p>
+<p>This token will be used as a "username" for the MQTT publisher (in RouterOS settings).</p>
+<p>You can find more information by following the <a href="https://thingsboard.io/docs/reference/mqtt-api/">link</a>.</p>
+<h4 id="mqtt-basic-scenario">MQTT Basic scenario</h4>
+<p>You can change the credentials type in the "<strong>Device Credentials</strong>" section for the specific device:</p>
+<p>MQTT Basic scenario allows you to specify the Client ID, Username, and Password for the MQTT authentication.</p>
+<p>You can find more information by following the <a href="https://thingsboard.io/docs/user-guide/basic-mqtt/">link</a>.</p>
+<h4 id="one-way-ssl-communication-scenario">One-way SSL communication scenario</h4>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Recommended scenario to use!</p>
+<p><strong>Important:</strong> This type of authentication requires you to use a server certificate for SSL communication. A server certificate must be generated and uploaded to the ThingsBoard instance.</p>
+<p>To generate a server certificate, use <a href="https://thingsboard.io/docs/user-guide/mqtt-over-ssl/">this guide</a> as a reference → generate the certificate (for example, using the OPENSSL tool), install/upload it into the correct folder, and enable MQTT SSL in the ThingsBoard configuration file.</p>
+</div>
+<p>The configuration will be the same as shown in the <strong>Access token</strong> and <strong>MQTT Basic scenarios</strong> shown above. So choose either one.</p>
+<p>The only difference, in this case, is the communication between the device and the server (you will only have to slightly change the MQTT broker configuration in RouterOS settings which will be shown later on).</p>
+<p><strong>When using this scenario, the communication is going to be encrypted (using SSL)</strong>.</p>
+<h4 id="x509-two-way-ssl-communication-scenario">X.509 (two-way SSL communication) scenario</h4>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This type of authentication requires you to use a server certificate and a client certificate for SSL communication. A server certificate must be generated and uploaded to the ThingsBoard instance.</p>
+<p>To generate a server certificate, use <a href="https://thingsboard.io/docs/user-guide/mqtt-over-ssl/">this guide</a> as a reference → generate the certificate (for example, using OPENSSL tool), install/upload it into the correct folder, and enable MQTT SSL in the ThingsBoard configuration file.</p>
+<p>To generate a client certificate, use <a href="https://thingsboard.io/docs/user-guide/certificates/">this guide</a> as a reference.</p>
+</div>
+<p>You can change the credentials type in the "<strong>Device Credentials</strong>" section for the specific device:</p>
+<p>X.509 scenario uses a client certificate for authentication.</p>
+<p>Once the certificate is generated (for example, using OpenSSL), copy the RSA public key into the field and click on the "Save" button.</p>
+<h3 id="routeros-configuration_1">RouterOS configuration</h3>
+<p><em><strong>note</strong>: In order to configure MQTT, make sure that the <strong>iot</strong> <a href="../../getting-started/installation-and-upgrade/packages.md">package</a> is installed beforehand.</em></p>
+<h4 id="mqtt-broker">MQTT Broker</h4>
+<h5 id="access-token-scenario_1">Access token scenario</h5>
+<p>Add an MQTT broker as shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=1883 username=access_token
+</code></pre>
+<ul>
+<li>Change the <code>address</code> to the actual IP/domain address of your ThingsBoard server.</li>
+<li>Change the <code>username</code> to the access token that you've used in the ThingsBoard settings.</li>
+</ul>
+<h5 id="mqtt-basic-scenario_1">MQTT Basic scenario</h5>
+<p>Add an MQTT broker as shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x client-id=clientid password=password username=username
+</code></pre>
+<ul>
+<li>Change <code>address</code> to the actual IP/domain address of your ThingsBoard server;</li>
+<li>Change the <code>username</code>, <code>password</code> and <code>client-id</code> to the actual values that you've used in the ThingsBoard settings.</li>
+</ul>
+<h5 id="one-way-ssl-communication-scenario_1">One-way SSL communication scenario</h5>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Recommended scenario to use!</p>
+</div>
+<p>In this scenario, RouterOS needs to have a server certificate imported into its system.</p>
+<p>Drag and drop the server certificate that was installed into ThingsBoard, into the router's "File List" menu:</p>
+<p>Import server certificate:</p>
+<pre><code class="language-ros">/certificate/import file-name=mqttserver.pem passphrase=&quot;&quot;
+</code></pre>
+<p>When using <strong>SSL one-way communication</strong> and an <strong>access token scenario</strong>, add an MQTT broker as shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=8883 username=access_token ssl=yes
+</code></pre>
+<ul>
+<li>Change the <code>address</code> to the actual IP/domain address of your ThingsBoard server.</li>
+<li>Change the <code>username</code> to the access token that you've used in the ThingsBoard settings.</li>
+<li>Make sure to use <code>port=8883</code> (the MQTT SSL port that the server is listening on).</li>
+<li>Make sure to enable <code>ssl=yes</code>.</li>
+</ul>
+<p>When using <strong>SSL one-way communication</strong> and an <strong>MQTT Basic scenario</strong>, add an MQTT broker as shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=8883 client-id=clientid password=password username=username ssl=yes
+</code></pre>
+<ul>
+<li>Change the <code>address</code> to the actual IP/domain address of your ThingsBoard server.</li>
+<li>Change the <code>username</code>, <code>password</code> and <code>client-id</code> to the actual values that you've used in the ThingsBoard settings.</li>
+<li>Make sure to use <code>port=8883</code> (the MQTT SSL port that the server is listening on).</li>
+<li>Make sure to enable <code>ssl=yes</code>.</li>
+</ul>
+<h5 id="x509-two-way-ssl-communication-scenario_1">X.509 (two-way SSL communication) scenario</h5>
+<p>Drag-and-drop the certificates into the router's "Files/File List" menu →  <em>server certificate, client certificate, and its private key.</em></p>
+<p>Import certificates one by one:</p>
+<pre><code class="language-ros">/certificate/import file-name=mqttserver.pem passphrase=&quot;&quot;
+/certificate/import file-name=cert.pem passphrase=&quot;&quot;
+/certificate/import file-name=key.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Add an MQTT broker as shown below:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=8883 certificate=cert.pem_0 ssl=yes
+</code></pre>
+<ul>
+<li>Change the <code>address</code> to the actual IP/domain address of your ThingsBoard server.</li>
+<li>Change the <code>certificate</code> selected to the actual client certificate name that you've imported.</li>
+<li>Make sure to use <code>port=8883</code> (the MQTT SSL port that the server is listening on).</li>
+<li>Make sure to enable <code>ssl=yes</code>.</li>
+</ul>
+<h4 id="mqtt-publish">MQTT Publish</h4>
+<p>a) A quick MQTT publish test with a static value:</p>
+<pre><code class="language-ros">/iot/mqtt/publish broker=&quot;tb&quot; topic=&quot;v1/devices/me/telemetry&quot; message=&quot;{\&quot;cpu\&quot;:\&quot;7\&quot;}&quot;
+</code></pre>
+<p>b) In order to publish relevant data from RouterOS to Thingsboard, you can use the script shown below as a reference. The script collects the data from the RouterOS device (model name, serial number, RouterOS version, current CPU, used memory, free memory, and uptime) and publishes the message (the data) to the broker in the JSON format:</p>
+<pre><code class="language-ros"># Required packages: iot
+################################ Configuration ################################  
+# Name of an existing MQTT broker that should be used for publishing  
+:local broker &quot;tb&quot;
+# MQTT topic where the message should be published  
+:local topic &quot;v1/devices/me/telemetry&quot;
+#################################### System ###################################  
+:put (&quot;[\*] Gathering system info...&quot;)  
+:local cpuLoad [/system/resource/get cpu-load]  
+:local freeMemory [/system/resource/get free-memory]  
+:local usedMemory ([/system/resource/get total-memory] - $freeMemory)  
+:local rosVersion [/system/package/get value-name=version \  
+[/system/package/find where name ~ &quot;^routeros&quot;]]  
+:local model [/system/routerboard/get value-name=model]  
+:local serialNumber [/system/routerboard/get value-name=serial-number]  
+:local upTime [/system/resource/get uptime]
+#################################### MQTT #####################################  
+:local message \  
+&quot;{\&quot;model\&quot;:\&quot;$model\&quot;,\  
+\&quot;sn\&quot;:\&quot;$serialNumber\&quot;,\  
+\&quot;ros\&quot;:\&quot;$rosVersion\&quot;,\  
+\&quot;cpu\&quot;:$cpuLoad,\  
+\&quot;umem\&quot;:$usedMemory,\  
+\&quot;fmem\&quot;:$freeMemory,\  
+\&quot;uptime\&quot;:\&quot;$upTime\&quot;}&quot;
+:log info &quot;$message&quot;;  
+:put (&quot;[\*] Total message size: $[:len $message] bytes&quot;)  
+:put (&quot;[\*] Sending message to MQTT broker...&quot;)  
+/iot/mqtt/publish broker=$broker topic=$topic message=$message  
+:put (&quot;[\*] Done&quot;)
+</code></pre>
+<p>2 script lines should be taken into account.</p>
+<pre><code class="language-ros">:local broker &quot;tb&quot;
+</code></pre>
+<p>line, where you should specify the broker's name within the quotation marks "".</p>
+<pre><code class="language-ros">:local topic &quot;v1/devices/me/telemetry&quot;
+</code></pre>
+<p>line, where you should specify the correct topic within the quotation marks "" (check Thingsboard's <a href="https://thingsboard.io/docs/reference/mqtt-api/">documentation</a> for the exact topic that needs to be used).</p>
+<p>The rest of the script configuration depends on the overall requirements.</p>
+<p>Copy and paste the above script into a notepad, and copy it again. Navigate to System&gt;Scripts menu, add a new script there, and paste the script that is shown above. Name it, for example, script1.</p>
+<p>To run the script, you can use the command line:</p>
+<pre><code class="language-ros">/system/script/run script1
+</code></pre>
+<h3 id="verification">Verification</h3>
+<p>You can check the received/published data for the device under the "Latest telemetry" section:</p>
+<hr />
+<h1 id="wiliot">Wiliot</h1>
+<blockquote>
+<p>Wiliot is an IoT company offering battery-free Bluetooth tags that broadcast telemetry data, requiring MikroTik RouterOS devices with Bluetooth support for gateway and bridge modes. The documentation guides users...</p>
+</blockquote>
+<h1 id="wiliot_1">Wiliot</h1>
+<p><strong><a href="https://www.wiliot.com/company">Wiliot</a></strong> is an <strong>Internet of Things</strong> company that is known for their <a href="https://www.wiliot.com/product/iot-pixels">IoT Pixels</a> (labels) amongst other solutions. The great benefit of the pixel is that it is a battery free and label-size (compact) Bluetooth "tag" (that broadcasts Bluetooth beacons with telemetry data).</p>
+<ul>
+<li>To power the IoT Pixel, you need a bridge ("energizer") device. It provides "energy" over radio waves and powers the IoT pixels from a distance.</li>
+<li>To forward IoT Pixel's data to the server ("dashboard"), you need a gateway device. It establishes the connection with the server using a TCP/IP connection, and forwards label's payloads that contain sensor's data (like temperature).</li>
+</ul>
+<p>Both operation modes can be performed by a single device, or by separate devices.</p>
+<p>RouterOS allows the usage of Wiliot <code>gateway</code> and <code>bridge</code> modes on devices that have Bluetooth support.</p>
+<p>Wiliot <code>gateway</code> mode is responsible for establishing the connection with the MQTT server (by registering the gateway through the API, obtaining required tokens and credentials, and authorizing the device). It is also responsible for forwarding Pixel's Bluetooth payloads that it captures over the air via the established MQTT connection, and for relaying additional commands it might get from the subscribed MQTT topic via Bluetooth advertising.</p>
+<p>Wiliot <code>bridge</code> mode is responsible for providing energy over the frequency and keeping the IoT Pixels powered.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p><code>bridge</code> mode is not implemented yet.</p>
+</div>
+<h2 id="step-by-step">Step by step</h2>
+<p>Step by step requires two quick steps:</p>
+<ol>
+<li>To register the device and activate the MikroTik board;</li>
+<li>To set up IoT Pixels.</li>
+</ol>
+<h3 id="step-1-gateway-registration">Step #1, Gateway Registration</h3>
+<h4 id="on-the-wiliot-portal">On the Wiliot portal</h4>
+<ul>
+<li>
+<p>Login to the Wiliot registration page →  <a href="https://deployment-tool.wiliot.com">https://deployment-tool.wiliot.com</a></p>
+</li>
+<li>
+<p>Select "Gateway Registration".</p>
+</li>
+<li>Select "Manual input" (top right corner of the screen).</li>
+<li>Enter "Gateway ID".</li>
+</ul>
+<p>You can copy "Gateway ID" from the RouterOS settings (<code>gateway-id</code> field):</p>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /iot wiliot configuration print
+                  status: inactive                
+              gateway-id: XXXXXXXXX          
+                    type: mikrotik-knot-embedded
+                   owner: xxxx              
+               spoof-gps: xx                   
+                     lat: xx                    
+                    long: xx                    
+  token-refresh-handicap: 3600                  
+                  server: Wiliot US East        
+                 scanner: bt1                   
+              advertiser: bt1                   
+                   wi-fi: none                  
+                features: gateway  
+</code></pre>
+<ul>
+<li>The new gateway should appear on the platform in the "pre-registered" state → <a href="https://platform.wiliot.com/edge/gateways">https://platform.wiliot.com/edge/gateways</a></li>
+</ul>
+<h4 id="in-the-routeros">In the RouterOS</h4>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You can navigate the settings using different tools. The advised way of management is by using <a href="../management-tools/winbox.md">Winbox</a> software. <a href="https://mikrotik.com/download/winbox">Download the tool using this link</a> and run it. Connect your PC with an "ethernet" cable to any port beginning with ether2+ (avoid using ether1 as, in most cases, it is configured as a WAN port and is restricted by the firewall, while the rest of the ports are LAN ports with open access and DHCP-server enabled), or connect using Wi-Fi (if the board has a Wi-Fi chip).</p>
+<p>In Winbox, navigate to the "Neighbors" tab (Select from: Neighbors), find the MAC-address of your MikroTik board (which is printed on the label on the device), click on the MAC-address, enter login credentials (also printed on the label) and "connect" to it.</p>
+<p>From here, you can use "GUI" or "CLI" commands. <strong>The guide shows "CLI" command examples</strong>, which you can run by opening "New Terminal" from the Winbox options. However, the exact same sections and tabs are available in GUI as well. For example, if the command is shown as "<strong><code>/iot/wiliot/enable</code></strong>", go to the <strong>IoT→ Wiliot</strong> tab and click on the "<strong>enable</strong>" button.</p>
+</div>
+<ul>
+<li>Enable "wiliot" functionality.</li>
+</ul>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /iot/wiliot/enable
+</code></pre>
+<ul>
+<li>Confirm that the device successfully obtained a token, was authorized and connected to the MQTT server with the "<strong>active</strong>" status (<code>status: active</code>).</li>
+</ul>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /iot/wiliot/configuration/print
+                  status: active                  
+              gateway-id: XXXXXXXXX           
+                    type: mikrotik-knot-embedded
+                   owner: xxxx              
+  token-refresh-handicap: 3600                  
+                  server: Wiliot US East        
+                 scanner: bt1                   
+              advertiser: bt1                   
+                   wi-fi: none                  
+                features: gateway               
+</code></pre>
+<p>Gateway status should change from "pre-registered" to "approved" (or/and to "online") on the Wiliot platform → <a href="https://platform.wiliot.com/edge/gateways">https://platform.wiliot.com/edge/gateways</a></p>
+<h3 id="step-2-adding-iot-pixel-label">Step #2, Adding IoT Pixel (label)</h3>
+<h4 id="on-the-wiliot-portal_1">On the Wiliot portal</h4>
+<ul>
+<li>Login to the Wiliot platform and navigate to the "Category" tab → <a href="https://platform.wiliot.com/categories">https://platform.wiliot.com/categories</a>. Add a new "Category" ("Add new"). Name it and select a required category type.</li>
+<li>Navigate to the "Pixels" tab → <a href="https://platform.wiliot.com/edge/pixels">https://platform.wiliot.com/edge/pixels</a>. Check the "ID" of your label. Labels should be already assigned to your account.</li>
+<li>Go to "Assets" tab → <a href="https://platform.wiliot.com/assets">https://platform.wiliot.com/assets</a>. Create a new asset ("Add New"). Select/link the asset to the previously created "Category", enter "Asset ID" (or generate a random one) and select pixel's ID from the list.</li>
+<li>By clicking on the created "asset" entry (once the label is energized and gateway is ready), you will be able to see label's readings (temperature, etc.).</li>
+</ul>
+<h2 id="routeros-settings">RouterOS settings</h2>
+<p><strong>Sub-menu:</strong> <code>/iot/wiliot</code></p>
+<p><em><strong>note</strong>:</em> <strong>iot</strong> package is required.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>configuration</strong></td>
+<td style="text-align: left;">General Wiliot gateway/bridge settings.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>servers</strong></td>
+<td style="text-align: left;">MQTT server configuration.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bluetooth traffic</strong></td>
+<td style="text-align: left;">Bluetooth traffic menu.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mqtt traffic</strong></td>
+<td style="text-align: left;">MQTT traffic menu.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration-general-options">Configuration (General options)</h3>
+<p>To enable the configuration, use the command:</p>
+<pre><code class="language-routeros">/iot/wiliot/enable
+</code></pre>
+<p>To disable it:</p>
+<pre><code class="language-routeros">/iot/wiliot/disable
+</code></pre>
+<p>To clear (purge) MQTT connection/authentication data (only usable when "disabled"):</p>
+<pre><code class="language-routeros">/iot/wiliot/disable
+/iot/wiliot/clear
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>After "clearing" the configuration, you will have to delete the gateway (<a href="https://platform.wiliot.com/edge/gateways">https://platform.wiliot.com/edge/gateways</a>) and re-register the gateway anew (<a href="https://deployment-tool.wiliot.com/">https://deployment-tool.wiliot.com/</a>).</p>
+</div>
+<p>Configuration properties can be applied using the "set" command (only usable when "disabled"):</p>
+<pre><code class="language-routeros">/iot/wiliot/set
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-routeros">/iot/wiliot/set features=gateway
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>advertiser</strong> (Default: bt1)</td>
+<td style="text-align: left;">Select Bluetooth interface which will be used for advertising (relaying commands obtained from the MQTT server).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>scanner</strong> (Default: bt1)</td>
+<td style="text-align: left;">Select Bluetooth interface which will be used for scanning (capturing Pixel's payloads).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>spoof-gps</strong> (<em>yes | no</em>; Default: no)</td>
+<td style="text-align: left;">Choose whether to use manual GPS coordinates, which are going to be delivered to the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lat</strong> (Default: )</td>
+<td style="text-align: left;">Set GPS latitude value to be included during connection with the server when using "spoof-gps".</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>long</strong> (Default: )</td>
+<td style="text-align: left;">Set GPS longitude value to be included during connection with the server when using "spoof-gps".</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>features</strong> (<em>gateway | bridge</em> ; Default: )</td>
+<td style="text-align: left;">Select a role for the device: gateway. In this mode, the device establishes MQTT connection with the server and forwards scanner's captured IoT Pixel beacons to it. It also advertises commands to the nearby bridges received from the subscribed topic.bridge. In this mode, the device energizes surrounding IoT Pixels (powering them up).<strong>Caution:</strong> <code>bridge</code> mode is not implemented yet.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>server</strong>(Default: )</td>
+<td style="text-align: left;">Set the server for the MQTT connection.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servers">Servers</h3>
+<p>To change MQTT server's settings:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>address</strong> (Default: )</td>
+<td style="text-align: left;">IP/domain name address of the MQTT server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (Default: )</td>
+<td style="text-align: left;">Specify <a href="../authentication-authorization-accounting/certificates.md">certificate from certificate store</a> to be used for the SSL MQTT connection if required by the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (Default: )</td>
+<td style="text-align: left;">Server's name.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (Default: )</td>
+<td style="text-align: left;">TCP port used by the MQTT server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssl</strong> (yes | no; Default: )</td>
+<td style="text-align: left;">To enable SSL communication with the server.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bluetooth-traffic">Bluetooth traffic</h3>
+<p>Displays nearby IoT Pixel raw data:</p>
+<pre><code class="language-routeros">/iot/wiliot/bluetooth-traffic/print 
+Columns: TIME, ADDRESS, RSSI, PAYLOAD
+ #  TIME        ADDRESS            RSSI    PAYLOAD                                                                                     
+ 0  2026-01-07  E9:B7:32:XX:XX:XX  -34dBm  1E 16 C6 FC 03 00 7C 7B 3C 22 0E D8 54 38 B0 03 E0 DA 8C 06 36 B4 CF AC 8A D6 76 54 BD FC B9
+    14:23:26                                                                                                                           
+ 1  2026-01-07  E9:B7:32:XX:XX:XX  -41dBm  1E 16 C6 FC 03 00 3C DB 7D 72 BF A0 C1 62 9C 5F B6 D5 90 00 C1 62 BF 68 EC E5 64 02 63 F9 C3
+    14:23:26                                                                                                                           
+ 2  2026-01-07  E9:B7:32:XX:XX:XX  -42dBm  1E 16 C6 FC 03 00 3C A8 3B 27 17 25 BC 6D 01 F5 49 E1 98 03 CA 3C 64 04 30 B2 E1 86 FC 80 CB
+    14:23:28                                                                                                                           
+ 3  2026-01-07  E9:B7:32:XX:XX:XX  -33dBm  1E 16 C6 FC 03 00 3C F5 AF 22 CC E2 60 FA BC 4E 57 F7 8C 01 80 6A 21 EF 82 CB 62 2A 16 5A 3F
+    14:23:29                                                                                                                           
+ 4  2026-01-07  E9:B7:32:XX:XX:XX  -33dBm  1E 16 C6 FC 03 00 3C FC AC 9A 1B 9A BD 2C DE B7 02 FF 7C 03 C7 28 BD AB 20 1B 91 89 B9 ED 88
+</code></pre>
+<h3 id="mqtt-traffic">MQTT traffic</h3>
+<p>Displays MQTT traffic:</p>
+<pre><code class="language-routeros">/iot/wiliot/mqtt-traffic/print
+   time: 2026-03-02                                                                                                                      &gt;
+         07:37:43                                                                                                                        &gt;
+  topic: update/mikrotik/XXXXXXXXXXX                                                                                                     &gt;
+   data: {&quot;txPacket&quot;:&quot;1E16C6FC0000ED070C3443B7D39DE2CE08993D7F40B2F56B822096AA19CD00&quot;,&quot;txMaxRetries&quot;:8,&quot;txMaxDurationMs&quot;:700,&quot;action&quot;:0} &gt;
+</code></pre>
+<h3 id="debugging">Debugging</h3>
+<p>You can enable "wiliot" debug logging, using the command:</p>
+<pre><code class="language-routeros">/system/logging
+add topics=wiliot
+</code></pre>
+<p>As a result, you should see more detailed entries in the logs (<code>/log/print</code> command):</p>
+<pre><code class="language-routeros"> 2026-02-12 12:04:54 wiliot,debug [CFG] authorizing...
+ 2026-02-12 12:04:54 wiliot,debug [CFG] authorization complete
+ 2026-02-12 12:04:54 wiliot,debug [CFG] registering...
+ 2026-02-12 12:04:55 wiliot,debug [CFG] registration complete
+ 2026-02-12 12:04:55 wiliot,debug [CFG] polling for token...
+ 2026-02-12 12:04:55 wiliot,debug [CFG] token obtained
+ 2026-02-12 12:04:55 wiliot,debug [CFG] ownerId
+ 2026-02-12 12:04:55 wiliot,debug [CFG] authorization complete
+ 2026-02-12 12:04:55 wiliot,debug [CFG] updating MQTT credentials
+ 2026-02-12 12:04:56 wiliot,debug [CFG] MQTT credentials updated
+ 2026-02-12 12:04:56 wiliot,debug [CFG] connecting to MQTT server
+  2026-02-12 12:04:56 wiliot,debug [CFG] subscribing to BLE advertisements
+ 2026-02-12 12:04:56 wiliot,debug [CFG] active
+</code></pre>
+<h3 id="certificates">Certificates</h3>
+<p>Wiliot functionality initiates HTTP posts using <a href="../system-information-and-utilities/fetch.md">/tool/fetch</a> and establishes an MQTT connection using <a href="./mqtt/index.md">/mqtt</a>. Both HTTP and MQTT require SSL certificates. RouterOS has a "builtin trust store" which contains all the required certificates from the get-go.</p>
+<p><strong><a href="../authentication-authorization-accounting/certificates.md#settings">By default</a>,</strong> "<strong>all</strong>" <strong>services should be allowed to use the built-in certificate store</strong>, so you do not have to do anything. However, if you decide to restrict that (if you decide not to allow "all" services to have access to the "store"), for "wiliot" to work, you need to enable "wiliot", "mqtt" and "fetch" services (or disable builtin-trust-store and upload certificates manually):</p>
+<pre><code class="language-routeros">[admin@MikroTik] &gt; /certificate/settings/print
+  builtin-trust-store: fetch                    
+                       mqtt                      
+                       wiliot                     
+         crl-download: no    
+              crl-use: no    
+            crl-store: ram 
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

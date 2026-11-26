@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAID · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Storage</p>
+      <h1 id="raid">RAID</h1>
+<h1 id="raid_1">RAID</h1>
+<blockquote>
+<p>RAID technology in RouterOS enables data storage across multiple drives with improved performance and protection, supporting RAID levels 0,1,4,5,6, linear, and nested configurations. Includes configuration examples...</p>
+</blockquote>
+<h1 id="raid_2">RAID</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="../index.md">Storage</a>.</p>
+</div>
+<p>RAID (Redundant Array of Independent Disks) stores data on multiple drives and combines them into one logical disk, for better performance, better protection against disk failures, or both.</p>
+<p>RouterOS supports software RAID levels 0, 1, 4, 5, 6, linear, and nested RAID (a RAID array made of other RAID arrays). When a member of a redundant array fails, the array keeps working in a degraded state. With a <a href="./hot-spare.md">hot spare</a>, the rebuild starts on the spare at once; otherwise, <a href="#replace-a-failed-disk">replace the failed disk</a>.</p>
+<h2 id="create-a-raid-6-array">Create a RAID 6 array</h2>
+<p>The same procedure applies to the other RAID types. This example creates a RAID 6 array of six disks, <code>nvme1</code> to <code>nvme6</code>. All data on the disks is lost.</p>
+<p>Create the RAID block device:</p>
+<pre><code class="language-routeros">/disk/add type=raid slot=raid6 raid-type=6 raid-device-count=6
+</code></pre>
+<p>Add the disks to the array. <code>raid-role</code> is the position of each disk in the array, starting from 0:</p>
+<pre><code class="language-routeros">/disk/set nvme1 raid-master=raid6 raid-role=0
+/disk/set nvme2 raid-master=raid6 raid-role=1
+/disk/set nvme3 raid-master=raid6 raid-role=2
+/disk/set nvme4 raid-master=raid6 raid-role=3
+/disk/set nvme5 raid-master=raid6 raid-role=4
+/disk/set nvme6 raid-master=raid6 raid-role=5
+</code></pre>
+<p>Format the RAID block device:</p>
+<pre><code class="language-routeros">/disk/format raid6 file-system=ext4
+</code></pre>
+<p>Check the array with <code>/disk/print detail where slot=raid6</code>:</p>
+<pre><code class="language-text">7 BM type=raid slot=&quot;raid6&quot; slot-default=&quot;&quot; parent=&quot;&quot; fs-label=&quot;raid6-fs&quot;
+     fs-uuid=&quot;3ffda391-66ff-40f1-8837-e716898d8a45&quot; fs=ext4
+     model=&quot;RAID6 2-parity-disks&quot; size=8 585 740 288 free=8 346 079 232
+     total-inodes=524 288 free-inodes=524 277 use=0% mount-point=&quot;raid6&quot;
+     mount-filesystem=yes mount-read-only=no compress=no sector-size=512
+     raid-type=6 raid-device-count=6 raid-max-component-size=none
+     raid-chunk-size=1M raid-master=none state=&quot;active&quot;
+     raid-uuid=&quot;9aea18da-07061d4e-fbd0175e-7ab46c87&quot; nvme-tcp-export=no
+     iscsi-export=no nfs-sharing=no smb-sharing=no media-sharing=no
+     media-interface=none swap=no
+</code></pre>
+<p><code>state</code> shows the condition of the array, for example <code>active</code> or <code>clean</code>, <code>degraded by 1</code> when a member is missing, and the progress of a rebuild (<code>sync:recover, recovery = 76.6%</code>).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Avoid using multiple partitions on a single physical disk in multiple RAID arrays. Using the same physical disk in multiple RAID arrays can result in low performance.</p>
+</div>
+<h2 id="replace-a-failed-disk">Replace a failed disk</h2>
+<p>A failed member has the <code>f</code> (<code>raid-member-failed</code>) flag in <code>/disk/print</code>. To replace a member that has not failed, for example a disk that reports errors, mark it as failed first:</p>
+<pre><code class="language-routeros">/disk/set nvme3 raid-member-failed=yes
+</code></pre>
+<p>Remove the failed disk from the array, and add the new disk with the same <code>raid-role</code>:</p>
+<pre><code class="language-routeros">/disk/set nvme3 raid-master=none
+/disk/set nvme7 raid-master=raid6 raid-role=2
+</code></pre>
+<p>The rebuild starts at once; <code>state</code> shows its progress and returns to <code>clean</code> when it is done. A role that a failed disk still holds cannot be given to another disk: <code>failure: already have device with raid-role=2 in this raid</code>.</p>
+<h2 id="monitor-the-array">Monitor the array</h2>
+<p>Monitor the array for failures. This script checks every 30 seconds for members with the <code>raid-member-failed</code> flag, writes <code>ERROR: RAID has failed!</code> to the log and sends an e-mail:</p>
+<pre><code class="language-routeros">/system/scheduler
+add interval=30s name=MRaidHealthCheckCall on-event=MraidHealthCheck policy=ftp,read,write,policy,test,sniff start-time=startup
+/system/script
+add dont-require-permissions=no name=MraidHealthCheck owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global CheckRAID;\
+    \n:local sysadmin; \
+    \n\
+    \n:set  \$sysadmin \&quot;&lt;servername@domain.tld&gt;\&quot;;\
+    \n\
+    \n:local temp [/disk/print count-only where raid-member-failed];\
+    \n:if ( \$temp &gt; 0 ) do={\
+    \n   :if ( \$CheckRAID &lt; 1 ) do={\
+    \n      /log/info message=\&quot;ERROR: RAID has failed!\&quot;;\
+    \n      /tool/e-mail/send to= \$sysadmin subject=([/system/identity/get name].\&quot; RAID failed\&quot;) body=(\&quot;Go check it! Value: \&quot;.\$temp);\
+    \n      :set \$CheckRAID 7;\
+    \n      :delay 5s;\
+    \n    }\
+    \n   }       \
+    \n   :if ( \$CheckRAID &gt; 0 ) do={\
+    \n      :set \$CheckRAID ( \$CheckRAID -1 );\
+    \n   }\
+    \n&quot;
+</code></pre>
+<p>You will also need to configure your RouterOS device's e-mail server settings:</p>
+<pre><code class="language-routeros">/tool/e-mail
+set from=&lt;raidcheck@domain.tld&gt; port=587 server=smtp.domain.com tls=starttls
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Make sure you configure your e-mail server's settings under <code>/tool/e-mail</code> and change the e-mail address in the script above with the values that match your e-mail server's settings.</p>
+</div>
+<h2 id="raid-types">RAID types</h2>
+<h3 id="raid-0">RAID 0</h3>
+<p>All data is written evenly over all disks in this RAID, this configuration does not provide any fault tolerance but provides best performance.</p>
+<p><em>[gambar: RAID 0 diagram: data striped across disks]</em></p>
+<h3 id="raid-1">RAID 1</h3>
+<p>The same data is written to all drives (data is mirrored), this configuration provides best fault tolerance, but performance-wise write speeds will be equal to the slowest disk used in the array.</p>
+<p><em>[gambar: RAID 1 diagram: data mirrored between disks]</em></p>
+<h3 id="raid-4">RAID 4</h3>
+<p>Block-level data is striped across data disks, with parity bits stored on a dedicated disk. Performance will be limited to the parity writing speed.</p>
+<p><em>[gambar: RAID 4 diagram: block-level striping with dedicated parity disk]</em></p>
+<h3 id="raid-5">RAID 5</h3>
+<p>Block-level data is striped evenly over the available disks. It can be recovered from 1 disk failure.</p>
+<p><em>[gambar: RAID 5 diagram: block-level striping with distributed parity]</em></p>
+<h3 id="raid-6">RAID 6</h3>
+<p>Block-level data is striped evenly over the available disks. It can be recovered from 2 disk failures.</p>
+<p><em>[gambar: RAID 6 diagram: block-level striping with double distributed parity]</em></p>
+<h3 id="raid-linear">RAID linear</h3>
+<p>Data is appended over multiple disks combining them into a single large disk. Provides no redundancy and is limited to the single disk read/write speed.</p>
+<p><em>[gambar: RAID linear diagram: data appended across disks]</em></p>
+<h3 id="nested-raid">Nested RAID</h3>
+<p>Combination of multiple RAID configurations into another RAID. For example RAID 10 (RAID 1+0) combines disk mirroring (RAID 1) and disk striping (RAID 0)</p>
+<p><em>[gambar: Nested RAID diagram: RAID 1+0 combining mirroring and striping]</em></p>
+<h3 id="create-a-nested-raid-10-array">Create a nested RAID 10 array</h3>
+<p>RAID 10 is a RAID 0 array made of RAID 1 arrays. This example uses four disks, <code>nvme1</code> to <code>nvme4</code>, in two mirrors.</p>
+<p>Create the RAID 0 array, and the two RAID 1 arrays as its members:</p>
+<pre><code class="language-routeros">/disk/add type=raid slot=raid10 raid-type=0 raid-device-count=2
+/disk/add type=raid slot=mirror1 raid-type=1 raid-device-count=2 \
+    raid-master=raid10 raid-role=0
+/disk/add type=raid slot=mirror2 raid-type=1 raid-device-count=2 \
+    raid-master=raid10 raid-role=1
+</code></pre>
+<p>Add the disks to the mirrors:</p>
+<pre><code class="language-routeros">/disk/set nvme1 raid-master=mirror1 raid-role=0
+/disk/set nvme2 raid-master=mirror1 raid-role=1
+/disk/set nvme3 raid-master=mirror2 raid-role=0
+/disk/set nvme4 raid-master=mirror2 raid-role=1
+</code></pre>
+<p>Format the RAID 10 array:</p>
+<pre><code class="language-routeros">/disk/format raid10 file-system=ext4
+</code></pre>
+<p>The array has the size of two disks (<code>/disk/print detail where slot=raid10</code>):</p>
+<pre><code class="language-text">6 BM type=raid slot=&quot;raid10&quot; slot-default=&quot;&quot; parent=&quot;&quot; fs-label=&quot;raid10-fs&quot;
+     fs-uuid=&quot;9efc2ffb-bd5e-4020-bf9d-0fdd23cf1147&quot; fs=ext4
+     model=&quot;RAID0 striped&quot; size=4 290 772 992 free=4 139 458 560
+     total-inodes=262 144 free-inodes=262 133 use=0% mount-point=&quot;raid10&quot;
+     mount-filesystem=yes mount-read-only=no compress=no sector-size=512
+     raid-type=0 raid-device-count=2 raid-max-component-size=none
+     raid-chunk-size=1M raid-master=none state=&quot;clean&quot;
+     raid-uuid=&quot;04cbbdec-baab5216-8ad762b2-2b74d214&quot; nvme-tcp-export=no
+     iscsi-export=no nfs-sharing=no smb-sharing=no media-sharing=no
+     media-interface=none swap=no
+</code></pre>
+<p>For more disks, add more mirrors to the RAID 0 array. Other nested RAID types are built in the same way.</p>
+<hr />
+<h1 id="set-a-hot-spare-disk">Set a hot spare disk</h1>
+<blockquote>
+<p>This page explains how to configure a hot spare disk for a RAID array in RouterOS, enabling automatic rebuild on disk failure by assigning a spare disk to the RAID setup.</p>
+</blockquote>
+<h1 id="set-a-hot-spare-disk_1">Set a hot spare disk</h1>
+<p>A hot spare is a disk that waits in the array for a member to fail. When a member fails, the rebuild starts on the spare at once. The spare is a member of the array with <code>raid-role=spare</code>.</p>
+<p>Add the RAID array with the desired number of disks:</p>
+<pre><code class="language-ros">/disk/add raid-device-count=4 raid-type=5 type=raid slot=raid5
+</code></pre>
+<p>Add the disks and the spare to the array. In this example, <code>nvme5</code> is the spare:</p>
+<pre><code class="language-ros">/disk/set raid-master=raid5 raid-role=0 nvme1
+/disk/set raid-master=raid5 raid-role=1 nvme2
+/disk/set raid-master=raid5 raid-role=2 nvme3
+/disk/set raid-master=raid5 raid-role=3 nvme4
+
+/disk/set raid-master=raid5 raid-role=spare nvme5
+</code></pre>
+<p>When a member fails, the spare takes its <code>raid-role</code>, and the failed disk gets the <code>f</code> (<code>raid-member-failed</code>) flag and the role <code>spare</code>. During the rebuild, <code>state</code> of the array shows its progress, for example <code>degraded by 1, clean, sync:recover, recovery = 97.4%</code>, and <code>clean</code> when it is done. To put a new disk in place of the failed one, see <a href="./index.md#replace-a-failed-disk">Replace a failed disk</a>.</p>
+<hr />
+<h1 id="moving-your-raid-array-to-a-different-device">Moving your RAID array to a different device</h1>
+<blockquote>
+<p>This page explains how to move a RAID 5 array from an old device to a new one by creating the RAID on the new device, ejecting disks from the old device, and transferring them to the new device where RouterOS...</p>
+</blockquote>
+<h1 id="moving-your-raid-array-to-a-different-device_1">Moving your RAID array to a different device</h1>
+<p>It is possible to move your RAID array from one device to another.</p>
+<p>In this example we are using a RAID 5 array on an RDS2216 consisting of 4 members.</p>
+<p>First, on the "new" device, create a RAID array with the same number of members and assign the member slots:</p>
+<pre><code class="language-ros"># New device
+/disk/add raid-device-count=4 raid-type=5 type=raid slot=raid5
+</code></pre>
+<pre><code class="language-ros"># New device - assign roles to the (currently empty) slots
+/disk/set raid-master=raid5 raid-role=0 nvme1
+/disk/set raid-master=raid5 raid-role=1 nvme2
+/disk/set raid-master=raid5 raid-role=2 nvme3
+/disk/set raid-master=raid5 raid-role=3 nvme4
+</code></pre>
+<p>On the "old" device, eject the disks you want to switch to the "new" device:</p>
+<pre><code class="language-ros"># Old device
+/disk/eject nvme1
+/disk/eject nvme2
+/disk/eject nvme3
+/disk/eject nvme4
+</code></pre>
+<p>Remove the disks from the "old" device and insert them into the assigned slots in the "new" one. RouterOS will automatically detect the RAID superblock and mount the array without any additional input.</p>
+<hr />
+<h1 id="ramdisk">Ramdisk</h1>
+<blockquote>
+<p>A ramdisk is a block device in RAM. Format it before use, or use it as a RAID member. It needs the rose-storage package and is empty after every reboot.</p>
+</blockquote>
+<h1 id="ramdisk_1">Ramdisk</h1>
+<p>A ramdisk is a block device in RAM. Like a disk, it needs a file system before it can hold files, and it can be a member of a RAID or be used anywhere else a device is needed. A <a href="tmpfs">tmpfs</a> is a folder in RAM instead: it holds files without formatting, but it is not a device and cannot be formatted or be a RAID member.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Ramdisks need the <code>rose-storage</code> package (see <a href="./">Storage</a>). To install the package when it is available on the router, enable it and apply the change. Applying the change reboots the router:</p>
+<pre><code class="language-ros">/system/package/enable rose-storage
+/system/package/apply-changes
+</code></pre>
+<p>For more about packages, see <a href="../getting-started/installation-and-upgrade/packages">Packages</a>.</p>
+</div>
+<h2 id="create-and-format-a-ramdisk">Create and format a ramdisk</h2>
+<p>Add a ramdisk of 500 MB:</p>
+<pre><code class="language-ros">/disk/add type=ramdisk ramdisk-size=500M
+</code></pre>
+<p>The first ramdisk gets the slot name <code>ramdisk1</code>, the next ones <code>ramdisk2</code>, <code>ramdisk3</code> and so on. The size is rounded up to a multiple of 16 KiB. The router does not reserve the RAM when the ramdisk is added.</p>
+<p>Format the ramdisk before you use it:</p>
+<pre><code class="language-ros">/disk/format ramdisk1 file-system=ext4
+</code></pre>
+<p>The formatted ramdisk is mounted at its slot name, so files go to paths such as <code>ramdisk1/capture.pcap</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The contents of a ramdisk are lost when the router reboots or loses power. After a reboot, the ramdisk is there again but empty and without a file system, so format it again before you use it.</p>
+</div>
+<h2 id="use-ramdisks-in-a-raid">Use ramdisks in a RAID</h2>
+<p>Ramdisks can be RAID members, for example to try a RAID configuration on a router without disks. To build a RAID 1 from two ramdisks, add the RAID and assign both ramdisks to it:</p>
+<pre><code class="language-ros">/disk/add type=raid raid-type=1 raid-device-count=2 slot=raid1
+/disk/set ramdisk1 raid-master=raid1 raid-role=0
+/disk/set ramdisk2 raid-master=raid1 raid-role=1
+</code></pre>
+<p><code>/disk/print</code> then shows <code>raid1</code> with the model <code>RAID1 mirrored</code> and the state <code>clean</code>, and both ramdisks as RAID members with the member state <code>in_sync</code>. After a reboot, the router assembles the RAID again from the empty ramdisks. For more about RAID, see <a href="raid/">RAID</a>.</p>
+<h2 id="remove-a-ramdisk">Remove a ramdisk</h2>
+<p>Remove a RAID that uses ramdisks first, then the ramdisks:</p>
+<pre><code class="language-ros">/disk/remove raid1
+/disk/remove ramdisk1
+/disk/remove ramdisk2
+</code></pre>
+<p>For all parameters, see the <a href="../cli-reference/disk/"><code>/disk</code></a> CLI reference.</p>
+<hr />
+<h1 id="rsync">Rsync</h1>
+<blockquote>
+<p>Rsync in RouterOS allows efficient file synchronization between systems, with configurable local/remote paths and modes for upload/download. Dynamic IPsec entries are created when a password is set, ensuring secure...</p>
+</blockquote>
+<h1 id="rsync_1">Rsync</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="./index.md">Storage</a>.</p>
+</div>
+<p><code>/file/sync</code> keeps a file or folder in sync with another RouterOS device. When a file changes, only the changes are transferred.</p>
+<p>A sync entry on one router (the host) connects to the other router (the remote device) and logs in with <code>user</code> and <code>password</code>, like WinBox: it needs the remote device's WinBox <a href="../system-information-and-utilities/services.md">service</a> port, TCP 8291, and a user on the remote device. The rsync daemon in <code>/file/rsync-daemon</code> is not needed for a sync between RouterOS devices. When a <code>password</code> is set, RouterOS also creates dynamic IPsec entries and encrypts the transfer.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the remote device's TCP port 8291 is not reachable, the status in <code>/file/sync/print</code> stays at <code>making control connection to &lt;ip&gt;</code>. With a password, the IPsec connection also needs UDP port 500 and IPsec ESP (protocol 50) between the devices.</p>
+</div>
+<h2 id="configuration-example">Configuration example</h2>
+<p>Upload the file <code>BtrfsDisk/rs2.txt</code> to the <code>BackupBtrfsDisk</code> disk of the remote device 10.99.0.2, logging in as <code>syncuser</code>:</p>
+<pre><code class="language-routeros">/file/sync/add local-path=BtrfsDisk/rs2.txt mode=upload \
+    remote-address=10.99.0.2 remote-path=BackupBtrfsDisk/ \
+    user=syncuser password=&lt;password&gt;
+</code></pre>
+<p>When the file is transferred, the entry has the status <code>in sync</code> on the host device (<code>/file/sync/print</code>):</p>
+<pre><code class="language-text"># REMOTE-ADDRESS  MODE    LOCAL-PATH         REMOTE-PATH       STATUS 
+2 10.99.0.2       upload  BtrfsDisk/rs2.txt  BackupBtrfsDisk/  in sync
+</code></pre>
+<p>The remote device shows a dynamic entry in the opposite direction:</p>
+<pre><code class="language-text">#   REMOTE-ADDRESS  MODE      LOCAL-PATH                REMOTE-PATH       
+1 D 10.99.0.1       download  BackupBtrfsDisk/          BtrfsDisk/rs2.txt 
+</code></pre>
+<h3 id="ipsec-dynamic-entries">IPsec dynamic entries</h3>
+<p>With a password, both devices get a dynamic IPsec peer and policy named <code>file-sync-&lt;address of the other device&gt;</code> (<code>/ip/ipsec/policy/print where dynamic</code> on the host):</p>
+<pre><code class="language-text">Flags: D - DYNAMIC, A - ACTIVE
+Columns: PEER, TUNNEL, SRC-ADDRESS, DST-ADDRESS, PROTOCOL, ACTION, LEVEL
+#   PEER                 TU  SRC-ADDRESS   DST-ADDRESS   PRO  ACTION   LEVEL  
+;;; file-sync-10.99.0.2
+0 D file-sync-10.99.0.2  no  10.99.0.1/32  10.99.0.2/32  tcp  encrypt  require
+</code></pre>
+<hr />
+<h1 id="self-encrypting-drives-sed">Self-encrypting drives (SED)</h1>
+<blockquote>
+<p>RouterOS supports Self-Encrypting Drives (SED) using the TCG-Opal standard, requiring the Storage package. Supported drives show o (inactive) / O (active) flags in /disk/print, and encryption can be enabled with...</p>
+</blockquote>
+<h1 id="self-encrypting-drives-sed_1">Self-encrypting drives (SED)</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <a href="./index.md">Storage</a> package.</p>
+</div>
+<p>For using SED, drives have to be <a href="https://en.wikipedia.org/wiki/Opal_Storage_Specification">Opal</a>-compliant. Please consult the drive manufacturer's documentation to find out if a particular drive supports this feature before buying drives.</p>
+<p>SED is not supported on setups using USB bridges; the disk must be attached directly (SATA or NVMe).</p>
+<p>RouterOS marks supported drives with the <strong>o (TCG-OPAL supported, encryption not active)</strong> or <strong>O (TCG-OPAL supported and encryption active)</strong> flags:</p>
+<pre><code class="language-ros">/disk/print
+Flags: B - BLOCK-DEVICE; M, F - FORMATTING; o - TCG-OPAL-SELF-ENCRYPTION-SUPPORTED (inactive); O - TCG-OPAL-SELF-ENCRYPTION-SUPPORTED (active)
+Columns: SLOT, MODEL, SERIAL, INTERFACE, SIZE, FREE, FS, RAID-MASTER
+#     SLOT   MODEL                  SERIAL           INTERFACE                   SIZE             FREE  FS    RAID
+0 BMo sata1  Samsung SSD 860 2.5in  S3Z9NX0N414510L  SATA 6.0 Gbps  1 000 204 886 016  983 351 111 680  ext4  none
+1 BMo sata2  Samsung SSD 860        S5GENG0N307602J  SATA 6.0 Gbps  1 000 204 886 016  983 351 128 064  ext4  none
+2 BMO sata3  Samsung SSD 860        S5GENG0N307604H  SATA 6.0 Gbps  1 000 204 886 016  983 351 128 064  ext4  none
+3 BMO sata4  Samsung SSD 860 2.5in  S4CSNX0N838150B  SATA 6.0 Gbps  1 000 204 886 016  983 351 128 064  ext4  none
+</code></pre>
+<p>To enable self-encryption on a drive, set <code>self-encryption-password</code>:</p>
+<pre><code class="language-ros">/disk/set sata1 self-encryption-password=securepassword
+</code></pre>
+<p>Once set, the drive locks itself on power loss and requires the password every time it's connected; RouterOS supplies it automatically (the flag changes to <code>O</code>).</p>
+<p>To disable self-encryption, unset the password:</p>
+<pre><code class="language-ros">/disk/unset sata1 self-encryption-password
+</code></pre>
+<p>or:</p>
+<pre><code class="language-ros">/disk/set sata1 !self-encryption-password
+</code></pre>
+<hr />
+<h1 id="smb">SMB</h1>
+<blockquote>
+<p>RouterOS includes a built-in SMB server for file sharing over SMB/CIFS protocols, supporting SMB2.1, 3.0, and 3.1.1. Users can configure server settings, shares, and user permissions through /ip/smb, /ip/smb/shares,...</p>
+</blockquote>
+<h1 id="smb_1">SMB</h1>
+<p>RouterOS includes an <strong>SMB server</strong> for sharing folders of the router with network clients, and an <strong>SMB client</strong> that mounts remote SMB shares as disks. Both are part of the base system; the <a href="./">Storage package</a> is not needed.</p>
+<h2 id="smb-server">SMB server</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/smb</code> <strong>Packages required:</strong> <code>system</code></p>
+<p>SMB server provides file sharing access to configured folders of the router, allowing network clients to browse, read, write, and manage files stored on the router's storage media over the SMB/CIFS protocol. This enables the router to function as a simple network-attached storage (NAS) device for local network sharing of files, backups data, or router configuration backups files.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>RouterOS only supports SMB2.1, SMB3.0, and SMB3.1.1. SMB1 is not supported due to security vulnerabilities.</p>
+<p>SMB is not supported on SMIPS devices.</p>
+</div>
+<p>The server starts on its own once the first share is added (<code>enabled=auto</code> is the default; see <a href="../cli-reference/ip/smb/"><code>/ip/smb</code></a> for the settings), it can also be limited to specific interfaces and renamed.</p>
+<h3 id="shares">Shares</h3>
+<p><strong>Sub-menu:</strong> <code>/ip/smb/shares</code></p>
+<p><a href="../cli-reference/ip/smb/shares"><code>/ip/smb/shares</code></a> configures the share names and directories accessible over SMB. If the directory provided in the configuration does not exist, it will be created automatically. Access can be limited per share with <code>valid-users</code> / <code>invalid-users</code>, enforced encryption with <code>require-encryption</code> (recommended for macOS clients), and read-only access with <code>read-only</code>.</p>
+<h3 id="users">Users</h3>
+<p><strong>Sub-menu:</strong> <code>/ip/smb/users</code></p>
+<p><a href="../cli-reference/ip/smb/users"><code>/ip/smb/users</code></a> sets up the users that can access the router's SMB shares. Each user has a name, a password, and a <code>read-only</code> restriction (default: yes) that applies across all shares. A default <code>guest</code> user is created automatically; it has read-only access to the shares without a password. Disable it unless anyone in the network may read the shares.</p>
+<h3 id="example">Example</h3>
+<p>To make a folder of the router available through SMB:</p>
+<ol>
+<li>Create a user:</li>
+</ol>
+<p><code>routeros
+   /ip/smb/users/add read-only=no name=mtuser password=mtpasswd</code></p>
+<ol start="2">
+<li>Create the folder and the share. When the folder exists, clients can open the share:</li>
+</ol>
+<p><code>routeros
+   /file/add name=backup type=directory
+   /ip/smb/shares/add directory=backup name=backup</code></p>
+<ol start="3">
+<li>Disable the <code>guest</code> user, so that only <code>mtuser</code> can open the share:</li>
+</ol>
+<p><code>routeros
+   /ip/smb/users/disable guest</code></p>
+<p>The server starts when the first share is added (<code>enabled=auto</code>); <code>/ip/smb/set enabled=yes</code> starts it in any case. Check the settings:</p>
+<pre><code class="language-text">/ip/smb/print
+     enabled: auto       
+      status: enabled    
+      domain: MSHOME     
+     comment: MikrotikSMB
+  interfaces: all
+</code></pre>
+<pre><code class="language-text">/ip/smb/users/print
+Flags: X - DISABLED; * - DEFAULT; r - READ-ONLY
+Columns: NAME
+#     NAME  
+0 X*r guest 
+1     mtuser
+</code></pre>
+<p>The default share <code>pub</code> is disabled:</p>
+<pre><code class="language-text">/ip/smb/shares/print
+Flags: X - DISABLED; * - DEFAULT
+Columns: NAME, DIRECTORY, REQUIRE-ENCRYPTION
+#    NAME    DIRECTORY  REQUIRE-ENCRYPTION
+0 X* pub     /pub       no                
+1    backup  /backup    no
+</code></pre>
+<p>A Linux client connects with, for example, <code>smbclient //192.168.88.1/backup -U mtuser</code>. SMB1 clients cannot connect.</p>
+<h2 id="smb-client">SMB client</h2>
+<p><strong>Sub-menu:</strong> <code>/disk</code></p>
+<p>The SMB client mounts a remote SMB share as a disk on the router. It supports the SMB2.1, SMB3.0, and SMB3.1.1 dialects; SMB1 is not supported.</p>
+<h3 id="configuration-example_1">Configuration example</h3>
+<pre><code class="language-routeros">/disk/add type=smb smb-address=10.0.2.2 smb-share=share1 \
+    smb-user=smbu smb-password=&lt;password&gt;
+</code></pre>
+<p>The share is mounted as <code>smb-&lt;address&gt;-&lt;share&gt;</code>, here <code>smb-10-0-2-2-share1</code>, and its files appear in <code>/file</code> like the files of any other disk.</p>
+<hr />
+<h1 id="sshfs">SSHFS</h1>
+<blockquote>
+<p>SSHFS allows mounting a folder from a remote SSH server as a local disk in RouterOS, using the sshfs type of /disk. The mount is configured with the remote address, user credentials, and path, and appears in /file...</p>
+</blockquote>
+<h1 id="sshfs_1">SSHFS</h1>
+<p>SSHFS (SSH Filesystem) mounts a remote folder over SSH as a local disk on the router. It is configured with <code>/disk/add type=sshfs</code>, and the remote directory then appears under <code>/file</code> like other mounted storage, so files can be browsed and copied locally. SSHFS is part of the base system; the <a href="./index.md">Storage</a> package is not needed. The remote side can be any SSH server with SFTP, including another RouterOS device.</p>
+<p>RouterOS tracks each sshfs item under <code>/disk</code> with the slot automatically derived from the address and path, for example <code>sshfs-192-168-88-1--srv-files</code> for address <code>192.168.88.1</code> and path <code>/srv/files</code>, and it exposes the mount as <code>sshfs://&lt;user&gt;@&lt;address&gt;:&lt;port&gt;//&lt;path&gt;</code>.</p>
+<h2 id="configuration-example_2">Configuration example</h2>
+<pre><code class="language-routeros">/disk/add type=sshfs sshfs-address=192.168.88.1 sshfs-port=22 \
+    sshfs-user=user sshfs-password=superSecret sshfs-path=/srv/files
+</code></pre>
+<p>After the item is added, the router connects in the background. While it connects, <code>state</code> in <code>/disk/print detail</code> is <code>mounting</code>; if the connection fails, <code>state</code> shows the error, for example <code>state="connectHandler: Host is unreachable"</code>. A mounted item has the <code>M</code> flag:</p>
+<pre><code class="language-text">Flags: M - MOUNTED
+Columns: SLOT, FS, MOUNT-POINT
+ #   SLOT                              FS     MOUNT-POINT                     
+11 M sshfs-10-99-0-2--BackupBtrfsDisk  sshfs  sshfs-10-99-0-2--BackupBtrfsDisk
+12   sshfs-10-99-0-9--srv-files        sshfs                                  
+</code></pre>
+<p>Once mounted, the remote folder shows up as a directory in <code>/file</code> under the mount point (<code>/file/print</code>).</p>
+<p>The entry can be adjusted with <code>/disk/set</code>, for example to change the port:</p>
+<pre><code class="language-routeros">/disk/set [find where type=sshfs] sshfs-port=2222
+</code></pre>
+<p>Remove the mount with <code>/disk/remove &lt;slot&gt;</code>.</p>
+<p>Authentication uses the user/password of the remote SSH server (<code>sshfs-user</code> / <code>sshfs-password</code>). <code>sshfs-local-user</code> is read-only on the router and indicates the local RouterOS user the mount runs under (for example <code>admin</code>).</p>
+<hr />
+<h1 id="tmpfs">Tmpfs</h1>
+<blockquote>
+<p>A tmpfs is a folder in RAM for temporary files such as packet captures and downloads. Its size is capped, and its contents are lost on reboot.</p>
+</blockquote>
+<h1 id="tmpfs_1">Tmpfs</h1>
+<p>A tmpfs is a folder in RAM. RouterOS shows it as a disk, for example <code>tmp1</code>, and files go into it like into any other disk. Use it for files that are needed only for a while and should not wear out or fill the flash: packet captures, files that a script downloads and imports, and other temporary files. Tmpfs is part of the base RouterOS package and works on every device that has the <code>/disk</code> menu, which SMIPS devices do not have.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The contents of a tmpfs are lost when the router reboots or loses power. Copy the files you want to keep to the flash, a USB disk or a computer.</p>
+</div>
+<h2 id="create-a-ram-folder">Create a RAM folder</h2>
+<p>Add a folder that can hold up to 100 MB:</p>
+<pre><code class="language-ros">/disk/add type=tmpfs tmpfs-max-size=100M
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print
+Flags: M - MOUNTED
+Columns: SLOT, MOUNT-POINT, MODEL, INTERFACE, SIZE, FREE, USE, FS
+#   SLOT  MOUNT-POINT  MODEL  INTERFACE         SIZE         FREE  USE  FS
+0 M tmp1  tmp1         tmpfs  ram        100 003 840  100 003 840  0%   tmpfs
+</code></pre>
+<p>The first folder gets the slot name <code>tmp1</code>, the next one <code>tmp2</code>. The slot name is the start of the file path, for example <code>tmp1/capture.pcap</code>, and other commands refer to the folder by it.</p>
+<p>Sizes use decimal units: <code>100M</code> is 100 000 000 bytes. The size in <code>/disk/print</code> is rounded up to whole 4 KiB memory pages, so the folder shows 100 003 840. <code>tmpfs-max-size</code> is the most the folder can grow to; RAM is used only by the files stored in it.</p>
+<h2 id="check-what-the-folder-shares">Check what the folder shares</h2>
+<p>On routers whose default configuration turns on automatic disk sharing, a new tmpfs is shared as soon as it is created. Check the settings of your router first:</p>
+<pre><code class="language-ros">/disk/settings/print
+</code></pre>
+<p>The default configuration of the hAP ax², for example, sets <code>auto-smb-sharing=yes</code>, <code>auto-media-sharing=yes</code> and <code>auto-media-interface=bridge</code>. The folder then gets an SMB share for the read-only <code>guest</code> user, who needs no password, and a DLNA media server on <code>bridge</code>. When <code>/ip/smb</code> is set to <code>enabled=auto</code>, the share also starts the SMB server. The SMB server listens on all interfaces (<code>interfaces=all</code>), and only the firewall limits who reaches it; the default firewall allows the LAN. Anyone who reaches the SMB server can read the files in the folder as <code>guest</code>, packet captures included, unless the <code>guest</code> user is disabled in <code>/ip/smb/users</code>.</p>
+<p>When automatic sharing is on, create the folder with sharing turned off. The setting stays after a reboot:</p>
+<pre><code class="language-ros">/disk/add type=tmpfs tmpfs-max-size=100M smb-sharing=no media-sharing=no
+</code></pre>
+<p>The flags <code>s</code> (SMB sharing) and <code>m</code> (media sharing) in <code>/disk/print</code> show which folders are shared. Here <code>tmp1</code> was created with the automatic sharing and <code>tmp2</code> with the previous command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print
+Flags: M - MOUNTED; s - SMB-SHARING; m - MEDIA-SHARING
+Columns: SLOT, MOUNT-POINT, MODEL, INTERFACE, SIZE, FREE, USE, FS
+#     SLOT  MOUNT-POINT  MODEL  INTERFACE         SIZE         FREE  USE  FS
+0 Msm tmp1  tmp1         tmpfs  ram        100 003 840  100 003 840  0%   tmpfs
+1 M   tmp2  tmp2         tmpfs  ram        100 003 840  100 003 840  0%   tmpfs
+</code></pre>
+<p>The SMB share of a folder is a dynamic entry in <code>/ip/smb/shares</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/smb/shares/print
+Flags: D - DYNAMIC; X - DISABLED; * - DEFAULT
+Columns: NAME, DIRECTORY, REQUIRE-ENCRYPTION, VALID-USERS
+#     NAME  DIRECTORY  REQUIRE-ENCRYPTION  VALID-USERS
+0  X* pub   /pub       no
+1 D   tmp1  /tmp1      no                  guest
+</code></pre>
+<p>Stop sharing a folder that is already shared:</p>
+<pre><code class="language-ros">/disk/set tmp1 smb-sharing=no media-sharing=no
+</code></pre>
+<p>Stop sharing new disks and folders automatically:</p>
+<pre><code class="language-ros">/disk/settings/set auto-smb-sharing=no auto-media-sharing=no
+</code></pre>
+<p>To share files on purpose, with your own users, see <a href="smb">SMB</a> and <a href="dlna">DLNA media server</a>.</p>
+<h2 id="keep-packet-captures-in-ram">Keep packet captures in RAM</h2>
+<p>A packet capture can grow fast. Write it to the tmpfs instead of the flash, and keep <code>file-limit</code> (in KiB) below the folder size: <code>50000KiB</code> is about 51 MB, which fits in the 100 MB folder.</p>
+<pre><code class="language-ros">/tool/sniffer/set file-name=tmp1/capture.pcap file-limit=50000KiB \
+    filter-interface=ether1
+/tool/sniffer/start
+</code></pre>
+<p>Stop the capture when it has the packets you need:</p>
+<pre><code class="language-ros">/tool/sniffer/stop
+</code></pre>
+<p>Download <code>tmp1/capture.pcap</code> before the router reboots, with the Files menu in WinBox or WebFig (see <a href="../system-information-and-utilities/files#manage-files-in-winbox">Manage files in WinBox</a>) or with <code>scp</code> from your computer:</p>
+<pre><code class="language-bash">scp admin@192.168.88.1:tmp1/capture.pcap .
+</code></pre>
+<p>For filters and live streaming, see <a href="../diagnostics-monitoring-and-troubleshooting/packet-sniffer">Packet sniffer</a>.</p>
+<h2 id="check-how-full-the-folder-is">Check how full the folder is</h2>
+<p>The <code>FREE</code> and <code>USE</code> columns of <code>/disk/print</code> show how much of the folder is used. They update a few seconds after a write. List the files in the folder:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;^tmp1&quot;
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME               TYPE        SIZE     LAST-MODIFIED
+0 tmp1               disk                 2026-10-01 08:35:03
+1 tmp1/capture.pcap  .pcap file  19.8KiB  2026-10-01 08:35:08
+</code></pre>
+<p>When the folder is full, writes to it fail. For example, <code>/tool/fetch</code> stops with <code>failure: cannot download: file too large, no space left on disk</code> and does not keep the partial file.</p>
+<h2 id="change-the-size-or-delete-the-folder">Change the size or delete the folder</h2>
+<p>A new size applies at once, also to a mounted folder:</p>
+<pre><code class="language-ros">/disk/set tmp1 tmpfs-max-size=200M
+</code></pre>
+<p>Delete the folder together with all files in it. RouterOS does not ask for confirmation:</p>
+<pre><code class="language-ros">/disk/remove tmp1
+</code></pre>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="size-limit">Size limit</h3>
+<p>Without <code>tmpfs-max-size</code> (it reads <code>0</code>), the folder can grow to about half of the router's RAM, for example 464 MB on a router with 1 GB of RAM. RouterOS adds up the maximum sizes of all tmpfs folders, counting a folder without <code>tmpfs-max-size</code> as half of the RAM, and refuses a new size when the total is more than the router can provide:</p>
+<pre><code class="language-text">failure: too much memory requested for tmpfs/ramdisk
+</code></pre>
+<h3 id="memory-use">Memory use</h3>
+<p>An empty tmpfs reserves no RAM. The files in it use RAM and lower <code>free-memory</code> in <code>/system/resource</code>. Files that fill the RAM can make the router run out of memory, so keep <code>tmpfs-max-size</code> well below the free memory.</p>
+<h3 id="after-a-reboot">After a reboot</h3>
+<p>The <code>/disk</code> entry and its settings stay in the configuration. After a reboot, RouterOS mounts the folder again under the same slot name, empty. Automatic SMB and DLNA shares of the folder come back with it, and a folder set to <code>smb-sharing=no</code> and <code>media-sharing=no</code> stays unshared.</p>
+<h3 id="not-a-block-device">Not a block device</h3>
+<p>A tmpfs is a file system, not a block device, so it cannot be formatted:</p>
+<pre><code class="language-text">failure: cannot format nfs/smb/tmpfs/sshfs file systems
+</code></pre>
+<p>For RAM that works as a block device, for example as a RAID member, use a <a href="ramdisk">Ramdisk</a>.</p>
+<p>For the parameters, see the <a href="../cli-reference/disk/"><code>/disk</code> CLI reference</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

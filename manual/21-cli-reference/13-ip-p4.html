@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ip · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="ip-part-44">ip (part 4/4)</h1>
+<h1 id="direct">direct</h1>
+<blockquote>
+<p>Rules that decide which requests go directly to the server when a parent proxy is set with parent-proxy and parent-proxy-port in /ip/proxy. The proxy checks the rules from top to bottom, and the first matching rule...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxydirect">ip/proxy/direct</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Rules that decide which requests go directly to the server when a parent proxy is set with <code>parent-proxy</code> and <code>parent-proxy-port</code> in <a href="../"><code>/ip/proxy</code></a>. The proxy checks the rules from top to bottom, and the first matching rule decides. A request that matches no rule goes through the parent proxy. Without a parent proxy, every request goes directly to the server and the list has no effect. The matchers work as in <a href="../access/"><code>/ip/proxy/access</code></a>. Prefix a matcher value with <code>!</code> to negate it, for example <code>src-address=!192.168.88.0/24</code>. For an example, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The rule is not used. New rules are created enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the client: an IPv4 address, range or prefix, or an IPv6 prefix.</li>
+<li><strong>dst-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the server the proxy connects to, which is the resolved address of the host name in the request. Same format as <code>src-address</code>.</li>
+<li><strong>dst-port</strong> <code>super { !
+, ports: multi { ports: range [ .. 65535]
+ }
+ }</code> — Port of the server, for HTTPS requests the port of the <code>CONNECT</code> tunnel. A port, a range or a comma-separated list, for example <code>dst-port=!443</code>.</li>
+<li><strong>local-port</strong> <code>super { !
+, port: num [0 .. 65535]
+ }</code> — Port of the proxy the request arrived on. Use it when <code>port</code> in <a href="../"><code>/ip/proxy</code></a> lists several ports.</li>
+<li><strong>dst-host</strong> <code>super { !
+, host: string
+ }</code> — Host name of the request, for HTTPS requests the host of the <code>CONNECT</code> tunnel. The value must match the whole name and is not case-sensitive, so <code>example.com</code> does not match <code>www.example.com</code>. - Wildcards: <code>*</code> matches any characters and <code>?</code> one character, for example <code>*.example.com</code>. - A value that starts with <code>:</code> is a regular expression, which can match any part of the name: <code>:mail</code> matches <code>mail.example.com</code>. Anchor it with <code>^</code> and <code>$</code>, for example <code>:^www</code>.</li>
+<li><strong>path</strong> <code>super { !
+, path: string
+ }</code> — Path of the requested URL, including the query string, for example <code>/music/a.mp3?x=1</code>. Wildcards and regular expressions work as in <code>dst-host</code>. - Wildcards must match the whole path including the query string, so <code>*.mp3</code> matches <code>/music/a.mp3</code> but not <code>/music/a.mp3?x=1</code>. - The path always starts with <code>/</code>, so the router refuses a value such as <code>music/*</code>, which could never match. - HTTPS requests have no path, so a rule with <code>path</code> never matches them.</li>
+<li><strong>method</strong> <code>super { !
+, method: enum (GET | HEAD | POST | PUT | CONNECT | OPTIONS | DELETE | TRACE)
+ }</code> — HTTP method of the request: <code>GET</code>, <code>HEAD</code>, <code>POST</code>, <code>PUT</code>, <code>CONNECT</code>, <code>OPTIONS</code>, <code>DELETE</code> or <code>TRACE</code>. Clients of the proxy request HTTPS pages with <code>CONNECT</code>. The methods are defined in <a href="https://www.rfc-editor.org/rfc/rfc9110#name-methods">RFC 9110</a>.</li>
+<li><strong>action</strong> <code>enum (allow | deny)</code> — How the proxy sends a matching request. - <code>allow</code> (default) - Connect directly to the server. - <code>deny</code> - Send the request through the parent proxy.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>hits</strong> <code>num</code> — Number of requests the rule matched. Reset it with <a href="reset-counters"><code>reset-counters</code></a> or <a href="reset-counters-all"><code>reset-counters-all</code></a>.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all">reset-counters-all</h1>
+<blockquote>
+<p>Resets the hits counter of all rules in /ip/proxy/direct. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxydirectreset-counters-all">ip/proxy/direct/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of all rules in <a href="../direct/"><code>/ip/proxy/direct</code></a>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>Resets the hits counter of the given rules in /ip/proxy/direct, for example /ip/proxy/direct/reset-counters [find comment=test]. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxydirectreset-counters">ip/proxy/direct/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of the given rules in <a href="../direct/"><code>/ip/proxy/direct</code></a>, for example <code>/ip/proxy/direct/reset-counters [find comment=test]</code>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="inserts">inserts</h1>
+<blockquote>
+<p>Counters of the objects the proxy writes to its cache. For an overview of caching, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyinserts">ip/proxy/inserts</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Counters of the objects the proxy writes to its cache. For an overview of caching, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>successes</strong> <code>num</code> — Objects stored in the cache.</li>
+<li><strong>denied</strong> <code>num</code> — Responses not stored because a <a href="cache/"><code>/ip/proxy/cache</code></a> rule with <code>action=deny</code> matched the request.</li>
+<li><strong>too-large</strong> <code>num</code></li>
+<li><strong>no-memory</strong> <code>num</code></li>
+<li><strong>errors</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="lookups">lookups</h1>
+<blockquote>
+<p>Counters of the requests the proxy looks up in its cache. For an overview of caching, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxylookups">ip/proxy/lookups</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Counters of the requests the proxy looks up in its cache. For an overview of caching, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>successes</strong> <code>num</code> — Requests answered from the cache.</li>
+<li><strong>not-found</strong> <code>num</code> — Requests for objects that are not in the cache.</li>
+<li><strong>non-cacheable</strong> <code>num</code> — Requests the proxy does not look up in the cache because of their method, for example <code>POST</code> and <code>HEAD</code>.</li>
+<li><strong>denied</strong> <code>num</code> — Requests matched by a <a href="cache/"><code>/ip/proxy/cache</code></a> rule with <code>action=deny</code>.</li>
+<li><strong>expired</strong> <code>num</code> — Requests for an object found in the cache that the proxy fetched from the server again.</li>
+<li><strong>no-expiration-info</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>Shows the state and the counters of the web proxy. Add once for a single reading, for example /ip/proxy/monitor once. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxymonitor">ip/proxy/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the state and the counters of the web proxy. Add <code>once</code> for a single reading, for example <code>/ip/proxy/monitor once</code>. For an overview, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>enum (stopped | running | invalid-address | building-cache | passthrough) { stopped:0, running:1, invalid-address:4, building-cache:5 }</code> — State of the proxy, for example: - <code>running</code> - The proxy is enabled and serves requests. - <code>stopped</code> - The proxy is disabled.</li>
+<li><strong>uptime</strong> <code>time</code> — Time since the proxy started.</li>
+<li><strong>client-connections</strong> <code>num</code> — Open connections from clients.</li>
+<li><strong>server-connections</strong> <code>num</code> — Open connections to servers.</li>
+<li><strong>requests</strong> <code>num</code> — Number of requests the proxy received.</li>
+<li><strong>hits</strong> <code>num</code> — Number of requests answered from the cache.</li>
+<li><strong>cache-used</strong> <code>num</code> — Size of the objects in the cache, in KiB.</li>
+<li><strong>total-ram-used</strong> <code>num</code></li>
+<li><strong>received-from-servers</strong> <code>num</code> — Data received from servers, in KiB.</li>
+<li><strong>sent-to-clients</strong> <code>num</code> — Data sent to clients, in KiB.</li>
+<li><strong>hits-sent-to-clients</strong> <code>num</code> — Data sent to clients from the cache, in KiB.</li>
+</ul>
+<hr />
+<h1 id="refreshes">refreshes</h1>
+<blockquote>
+<p>Counters of the cached objects the proxy revalidated with the server before it answered the client. To revalidate an object, the proxy sends a conditional request with If-Modified-Since or If-None-Match. Each counter...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyrefreshes">ip/proxy/refreshes</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Counters of the cached objects the proxy revalidated with the server before it answered the client. To revalidate an object, the proxy sends a conditional request with <code>If-Modified-Since</code> or <code>If-None-Match</code>. Each counter counts one reason. For an overview of caching, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>url-requests</strong> <code>num</code> — Objects whose URL has a query string. The proxy revalidates them on every request.</li>
+<li><strong>request-max-age</strong> <code>num</code></li>
+<li><strong>expired</strong> <code>num</code></li>
+<li><strong>response-max-age</strong> <code>num</code></li>
+<li><strong>config-max-fresh</strong> <code>num</code></li>
+<li><strong>heuristic</strong> <code>num</code></li>
+<li><strong>other</strong> <code>num</code> — Other reasons, for example an object that has an <code>ETag</code> header but no <code>Last-Modified</code> header.</li>
+</ul>
+<hr />
+<h1 id="reset-html">reset-html</h1>
+<blockquote>
+<p>Writes the default template of the proxy's error page to the file webproxy/error.html on the router and replaces a changed copy. The proxy builds its error pages, for example the page for a request denied by...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyreset-html">ip/proxy/reset-html</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Writes the default template of the proxy's error page to the file <code>webproxy/error.html</code> on the router and replaces a changed copy. The proxy builds its error pages, for example the page for a request denied by <a href="access/"><code>/ip/proxy/access</code></a>, from this file, so you can edit it; the proxy uses the changed file at once. Without the file, the proxy uses the same page built in. The template uses the variables <code>$(status)</code>, <code>$(url)</code>, <code>$(error)</code>, <code>$(admin)</code> (the <code>cache-administrator</code> setting) and <code>$(signature)</code>, and the block <code>$(if error)</code> ... <code>$(endif)</code>. For an overview, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="reverse-proxy">reverse-proxy</h1>
+<blockquote>
+<p>Each rule forwards the HTTPS requests for one host name to an HTTP server. The reverse proxy accepts HTTPS connections on the port of the reverse-proxy service in /ip/service, selects the rule whose sni matches the...</p>
+</blockquote>
+<hr />
+<h2 id="ipreverse-proxy">ip/reverse-proxy</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Directory</p>
+<p>Each rule forwards the HTTPS requests for one host name to an HTTP server. The reverse proxy accepts HTTPS connections on the port of the <code>reverse-proxy</code> service in <a href="service/"><code>/ip/service</code></a>, selects the rule whose <code>sni</code> matches the server name the client sends, terminates TLS with the certificate of that rule and forwards the requests as HTTP to <code>ip-address</code> and <code>port</code>. The service port is open only while at least one enabled rule exists. For an overview and examples, see <a href="../../network-management/proxy/reverse-proxy">Reverse Proxy</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The rule is disabled. New rules are created enabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — The rule was created by RouterOS for a container app with <code>use-https=yes</code> and a web interface (see <a href="../app/"><code>/app</code></a>). Its <code>sni</code> is the host name of the app URL, and its certificate is the one set in <code>/app/settings</code>.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>sni</strong> <code>string</code> — Host name the rule serves. It is compared with the server name (SNI) the client sends in the TLS handshake and must match it exactly; a wildcard such as <code>*.example.com</code> matches nothing. The router closes a connection whose server name matches no rule, and the <code>rproxy</code> log shows <code>no matching rule for &lt;name&gt;</code>.</li>
+<li><strong>ip-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — IPv4 or IPv6 address of the server the requests are forwarded to. The router connects from its own address and forwards each request as HTTP/1.1. It keeps the <code>Host</code> header and adds <code>X-Forwarded-For</code> and <code>X-Real-Ip</code> with the address of the client, <code>X-Forwarded-Proto: https</code>, <code>X-Forwarded-Host</code> and <code>Forwarded</code>.</li>
+<li><strong>port</strong> <code>num</code> — TCP port of the server. The router always connects with plain HTTP, also when the port is 443, so the server must accept HTTP on this port.</li>
+<li><strong>certificate</strong> <code>enum (none)</code> — Certificate the router presents to clients of this rule, for example one issued for the <code>sni</code> host name. With <code>none</code>, the certificate of the <code>reverse-proxy</code> service in <a href="service/"><code>/ip/service</code></a> is used. When that is also <code>none</code>, the TLS handshake fails, and the <code>rproxy</code> log shows <code>certificate missing for rule &lt;sni&gt;</code>. Default: none.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the router uses for the connection to the server. The <code>ip-address</code> of the rule must be reachable in this VRF; otherwise the client receives a <code>502 Bad Gateway</code> response. The VRF in which the reverse proxy accepts clients is set separately, with the <code>vrf</code> of the <code>reverse-proxy</code> service in <a href="service/"><code>/ip/service</code></a>. Default: main.</li>
+</ul>
+<hr />
+<h1 id="route">route</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/route.</p>
+</blockquote>
+<hr />
+<h2 id="iproute">ip/route</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>inactive</code> — inactive</li>
+<li><strong>A</strong> <code>active</code> — active</li>
+<li><strong>c</strong> <code>connect</code> — connect</li>
+<li><strong>s</strong> <code>static</code> — static</li>
+<li><strong>r</strong> <code>rip</code> — rip</li>
+<li><strong>b</strong> <code>bgp</code> — bgp</li>
+<li><strong>o</strong> <code>ospf</code> — ospf</li>
+<li><strong>i</strong> <code>is-is</code> — is-is</li>
+<li><strong>d</strong> <code>dhcp</code> — dhcp</li>
+<li><strong>v</strong> <code>vpn</code> — vpn</li>
+<li><strong>m</strong> <code>modem</code> — modem</li>
+<li><strong>y</strong> <code>bgp-mpls-vpn</code> — bgp-mpls-vpn</li>
+<li><strong>H</strong> <code>hw-offloaded</code> — hw-offloaded</li>
+<li><strong>+</strong> <code>ecmp</code> — ecmp</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>dst-address</strong> <code>address (flags=4/)</code></li>
+<li><strong>routing-table</strong> <code>enum</code></li>
+<li><strong>pref-src</strong> <code>address (flags=4)</code></li>
+<li><strong>gateway</strong> <code>address (flags=46ivL)</code></li>
+<li><strong>blackhole</strong> <code>switch</code></li>
+<li><strong>check-gateway</strong> <code>enum (none | arp | ping | bfd)</code></li>
+<li><strong>distance</strong> <code>num</code></li>
+<li><strong>scope</strong> <code>num</code></li>
+<li><strong>target-scope</strong> <code>num</code></li>
+<li><strong>vrf-interface</strong> <code>iface_enum</code></li>
+<li><strong>suppress-hw-offload</strong> <code>bool</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>immediate-gw</strong> <code>multi { gw: address (flags=46i)
+ }</code></li>
+<li><strong>local-address</strong> <code>address (flags=4iv)</code></li>
+</ul>
+<hr />
+<h1 id="check">check</h1>
+<blockquote>
+<p>RouterOS command reference for /ip/route/check.</p>
+</blockquote>
+<hr />
+<h2 id="iproutecheck">ip/route/check</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-ip</strong> <code>ipAddr</code></li>
+<li><strong>dst-ip</strong> <code>ipAddr</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code></li>
+<li><strong>interface</strong> <code>iface_enum</code></li>
+<li><strong>nexthop</strong> <code>ipAddr</code></li>
+</ul>
+<hr />
+<h1 id="service">service</h1>
+<blockquote>
+<p>The management and service listeners of the router: WinBox, SSH, Telnet, FTP, the web server (www for HTTP, www-ssl for HTTPS), the API (api, api-ssl) and the reverse proxy. Each entry sets the port, the addresses...</p>
+</blockquote>
+<hr />
+<h2 id="ipservice">ip/service</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The management and service listeners of the router: WinBox, SSH, Telnet, FTP, the web server (<code>www</code> for HTTP, <code>www-ssl</code> for HTTPS), the API (<code>api</code>, <code>api-ssl</code>) and the reverse proxy. Each entry sets the port, the addresses and VRF a service accepts clients from, and the certificate of the TLS services. You cannot add services, only change and disable the existing ones. The list also shows dynamic entries: ports other features and containers listen on, and established connections to the services. For the web server parts (WebFig, REST API, graphs), see <a href="webserver"><code>/ip/service/webserver</code></a>. For an overview and the list of ports RouterOS uses, see <a href="../../../system-information-and-utilities/services">Services</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — Dynamic entry created by RouterOS: a port that another feature or a container listens on (for example <code>btest</code>, <code>discover</code>, <code>resolver</code>, <code>dhcp</code>, <code>upnp</code>), or, together with the <code>c</code> flag, an established connection to a service.</li>
+<li><strong>X</strong> <code>disabled</code> — The service is disabled and does not listen on its port.</li>
+<li><strong>I</strong> <code>invalid</code> — The service cannot run with its settings, for example because another service already uses the port. The reason is shown as a comment, such as <code>cannot bind to port 80: Address in use (12)</code>.</li>
+<li><strong>c</strong> <code>connection</code> — The entry is an established connection to a service. <code>local</code> and <code>remote</code> show the addresses of the connection.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>port</strong> <code>num</code> — TCP port the service listens on, <code>1..65535</code>. When another service already listens on the port, the entry becomes invalid (<code>I</code>). The default depends on the service: <code>ftp</code> 21, <code>ssh</code> 22, <code>telnet</code> 23, <code>www</code> 80, <code>www-ssl</code> 443, <code>winbox</code> 8291, <code>api</code> 8728, <code>api-ssl</code> 8729, <code>reverse-proxy</code> 443.</li>
+<li><strong>address</strong> <code>object { address: alt { address: ipPrefix
+, address: ip6Prefix
+ }
+ }</code> — Deprecated name of <code>available-from</code>. A value set with <code>address</code> is written to <code>available-from</code>.</li>
+<li><strong>available-from</strong> <code>object { address: alt { address: ipPrefix
+, address: ip6Prefix
+ }
+ }</code> — IPv4 and IPv6 prefixes of the clients allowed to use the service. A client from another address can still open the TCP connection, and the router then closes it without serving the client, so the port stays visible. To hide a service from untrusted networks, drop the traffic in the firewall input chain as well. Empty means any address. Default: empty.</li>
+<li><strong>certificate</strong> <code>enum (none) { none:0 }</code> — Certificate the service presents to TLS clients. Applies to <code>www-ssl</code>, <code>api-ssl</code> and <code>reverse-proxy</code>. With <code>none</code>, <code>www-ssl</code> and <code>api-ssl</code> accept only anonymous Diffie-Hellman ciphers: the connection is encrypted, but the router does not prove its identity, and browsers and tools such as cURL cannot connect. Set a certificate for HTTPS. For <code>reverse-proxy</code>, the certificate is used by the rules that have none of their own (see <a href="../reverse-proxy"><code>/ip/reverse-proxy</code></a>). Default: none.</li>
+<li><strong>tls-version</strong> <code>enum (any | only-1.2 | only-1.3 | min-1.2 | min-1.3) { any:0, only-1.2:2, only-1.3:3, min-1.2:4, min-1.3:5 }</code> — TLS versions the service accepts. Applies to the TLS services. - <code>any</code> (default) - TLS 1.0, 1.1 and 1.2. - <code>only-1.2</code> - Only TLS 1.2.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the service listens in. Default: main.</li>
+<li><strong>max-sessions</strong> <code>num</code> — Maximum number of simultaneous sessions of the service, <code>1..1000</code>. Default: 20.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>container</strong> <code>enum () { :0 }</code> — Name of the container that listens on the port, for dynamic entries created by containers.</li>
+<li><strong>netns</strong> <code>num</code> — Network namespace number of the container that listens on the port, for dynamic entries created by containers.</li>
+<li><strong>name</strong> <code>string</code> — Name of the service. For dynamic entries, the feature or program that listens on the port or holds the connection.</li>
+<li><strong>proto</strong> <code>enum ()</code> — Transport protocol of the port: <code>tcp</code> or <code>udp</code>.</li>
+<li><strong>local</strong> <code>ip6Addr</code> — Router address of an established connection (entries with the <code>c</code> flag).</li>
+<li><strong>remote</strong> <code>composite { ip: ip6Addr
+, port: num
+ }</code> — Client address and port of an established connection (entries with the <code>c</code> flag).</li>
+</ul>
+<hr />
+<h1 id="webserver">webserver</h1>
+<blockquote>
+<p>Turns individual parts of the router's web server on or off, separately for HTTP (the -plain settings, served by the www service) and HTTPS (the -secure settings, served by www-ssl). All parts are enabled by default....</p>
+</blockquote>
+<hr />
+<h2 id="ipservicewebserver">ip/service/webserver</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Turns individual parts of the router's web server on or off, separately for HTTP (the <code>-plain</code> settings, served by the <code>www</code> service) and HTTPS (the <code>-secure</code> settings, served by <code>www-ssl</code>). All parts are enabled by default. A disabled part answers <code>403 Forbidden</code>, and the other parts keep working, so you can, for example, offer the REST API over HTTPS without WebFig. The port, allowed addresses and certificate of the web server are set in <a href="."><code>/ip/service</code></a>. For the REST API, see <a href="../../../developer-guides/rest-api">REST API</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>index-plain</strong> <code>bool</code> — Home page (login page) and static files such as <code>/favicon.png</code> over HTTP. Takes effect only when <code>webfig-plain</code> and <code>graphs-plain</code> are also <code>no</code>; then the home page, static files and unknown paths answer 403 over HTTP, and the REST API keeps working. Default: yes.</li>
+<li><strong>webfig-plain</strong> <code>bool</code> — WebFig at <code>/webfig/</code> over HTTP. Default: yes.</li>
+<li><strong>graphs-plain</strong> <code>bool</code> — Graphs at <code>/graphs/</code> over HTTP. Default: yes.</li>
+<li><strong>rest-plain</strong> <code>bool</code> — <a href="../../../developer-guides/rest-api">REST API</a> at <code>/rest</code> over HTTP. With <code>no</code>, REST requests over HTTP answer 403, and HTTPS is not affected. Default: yes.</li>
+<li><strong>crl-plain</strong> <code>bool</code> — Certificate revocation list downloads at <code>/crl/</code> over HTTP. Default: yes.</li>
+<li><strong>scep-plain</strong> <code>bool</code> — SCEP server at <code>/scep/</code> over HTTP. Default: yes.</li>
+<li><strong>acme-plain</strong> <code>bool</code> — Answers to ACME HTTP-01 challenge requests at <code>/.well-known/acme-challenge/</code> over HTTP. Default: yes.</li>
+<li><strong>index-secure</strong> <code>bool</code> — Home page (login page) and static files such as <code>/favicon.png</code> over HTTPS. Takes effect only when <code>webfig-secure</code> and <code>graphs-secure</code> are also <code>no</code>; then the home page and static files answer 403 over HTTPS, and the REST API keeps working. Default: yes.</li>
+<li><strong>webfig-secure</strong> <code>bool</code> — WebFig at <code>/webfig/</code> over HTTPS. Default: yes.</li>
+<li><strong>graphs-secure</strong> <code>bool</code> — Graphs at <code>/graphs/</code> over HTTPS. Default: yes.</li>
+<li><strong>rest-secure</strong> <code>bool</code> — <a href="../../../developer-guides/rest-api">REST API</a> at <code>/rest</code> over HTTPS. With <code>no</code>, REST requests over HTTPS answer 403, and HTTP is not affected. Default: yes.</li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>This menu allows you to configure various IPv4 and IPv6-related kernel and system-wide network parameters. These settings control how the operating system handles IP traffic and network communications.</p>
+</blockquote>
+<hr />
+<h2 id="ipsettings">ip/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>This menu allows you to configure various IPv4 and IPv6-related kernel and system-wide network parameters. These settings control how the operating system handles IP traffic and network communications.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ip-forward</strong> <code>bool</code> — Enable or disable packet forwarding between interfaces. Resets all configuration parameters to defaults according to <a href="https://tools.ietf.org/html/rfc1812">RFC 1812</a> for routers.</li>
+<li><strong>send-redirects</strong> <code>bool</code> — Send ICMP redirects. Enable this on routers.</li>
+<li><strong>accept-source-route</strong> <code>bool</code> — Accept packets with the SRR option. Accepting source-routed (SSRR/LSRR) packets is a well-known spoofing/security risk and should be kept disabled unless required by the setup.</li>
+<li><strong>accept-redirects</strong> <code>bool</code> — Accept ICMP redirect messages. Enable on hosts and disable on routers.</li>
+<li><strong>secure-redirects</strong> <code>bool</code> — Accept ICMP redirect messages only for gateways listed in the default gateway list.</li>
+<li><strong>rp-filter</strong> <code>enum (no | strict | loose) { no:0, strict:1, loose:2 }</code> — Enable or disable source validation. - <code>no</code> - Do not validate source addresses. - <code>strict</code> - Strict mode as defined in <a href="https://tools.ietf.org/html/rfc3704">RFC 3704</a> Strict Reverse Path. Each incoming packet is tested against the FIB and if the interface is not the best reverse path, the packet check will fail. By default, failed packets are discarded. - <code>loose</code> - Loose mode as defined in <a href="https://tools.ietf.org/html/rfc3704">RFC 3704</a> Loose Reverse Path. Each incoming packet's source address is tested against the FIB and if the source address is not reachable through any interface, the packet check will fail. <a href="https://tools.ietf.org/html/rfc3704">RFC 3704</a> recommends enabling <code>strict</code> mode to prevent IP spoofing from DDoS attacks. If you use asymmetric routing, complex routing, or VRRP, then <code>strict</code> mode will cause problems, enable <code>loose</code> mode instead.</li>
+<li><strong>ipv4-multipath-hash-policy</strong> <code>enum (l3 | l4 | l3-inner) { l3:0, l4:1, l3-inner:2 }</code> — IPv4 hash policy used for <a href="../../user-guides/routing-and-networking-protocols/routing-decision.md#multipath-ecmp-routes">ECMP</a> routing. - l3 - Layer-3 hashing of source and destination IP addresses. - l3-inner - Layer-3 hashing, or inner layer-3 hashing if available. - l4 - Layer-4 hashing of source and destination IP addresses, IP protocol, source port, and destination port. With <a href="../../bridging-and-switching/l3-hardware-offloading.md">L3 hardware offloading</a> enabled, hardware-forwarded ECMP uses the switch chip's own hash mask, which includes L4 ports for TCP/UDP; the configured policy is ignored. FastTrack-offloaded connections follow the kernel FIB lookup and may select a different nexthop. <a href="../../firewall-and-quality-of-service/packet-flow-in-routeros.md#fast-path">FastPath</a> caches routes by L3.</li>
+<li><strong>tcp-syncookies</strong> <code>bool</code> — Send syncookies when the SYN backlog queue of a socket overflows. This helps prevent SYN flood attacks. However, syncookies violate the TCP protocol and prevent the use of TCP extensions, which can degrade some services (for example, SMTP relaying). This degradation may be visible to your clients and relays contacting you.</li>
+<li><strong>tcp-timestamps</strong> <code>enum (disabled | random-offset | enabled) { disabled:0, random-offset:1, enabled:2 }</code> — Enable or disable TCP timestamps, or add a random offset to TCP timestamps (default behavior). Disabling timestamps can help reduce performance drop spikes.</li>
+<li><strong>max-neighbor-entries</strong> <code>num</code> — Sets Linux <code>gc_thresh3</code>. A maximum number of allowed neighbors in the ARP table. Default value depends on the installed amount of RAM. It is possible to set a higher value than the default, but it increases the risk of out-of-memory condition. The default values for certain RAM sizes: - 2048 for 64 MiB, - 4096 for 128 MiB, - 8192 for 256 MiB, - 16384 for 512 MiB or higher. The ARP cache stores ARP entries, and if some of these entries are incomplete, they can stay in the cache for an indefinite period of time. This will only happen if the number of entries in the cache is less than one-fourth of the maximum number allowed. The reason for this is to prevent the unnecessary running of the garbage-collector when the ARP table is not close to being full.</li>
+<li><strong>arp-timeout</strong> <code>time</code> — Sets Linux <code>base_reachable_time</code> (<code>base_reachable_time_ms</code>) on all interfaces that use ARP. The initial validity of the ARP entry is picked from the interval [<code>timeout/2 - 3*timeout/2</code>] (default from 15s to 45s) after the neighbor was found. Can use postfix ms, s, m, h, d for milliseconds, seconds, minutes, hours, or days. If no postfix is set then seconds (s) are used. The parameter means how long a valid ARP record will be considered complete if no one communicates with the specific MAC/IP during this time. The parameter does not represent a time when an ARP entry is removed from the ARP cache (see <code>max-neighbor-entries</code> setting).</li>
+<li><strong>icmp-rate-limit</strong> <code>num</code> — Limit the maximum rates for sending ICMP packets whose type matches icmp-rate-mask to specific targets. Value of <code>0</code> disables any limiting, other values indicate the minimum space between responses in milliseconds.</li>
+<li><strong>icmp-rate-mask</strong> <code>num</code> — Mask of ICMP types for which rates are limited. For more information, see the <a href="http://man7.org/linux/man-pages/man7/icmp.7.html">Linux man pages</a>.</li>
+<li><strong>icmp-errors-use-inbound-interface-address</strong> <code>bool</code> — When enabled, send ICMP error message replies with a source address equal to the primary address of the receiving interface that caused the error. Use this for complex network debugging.</li>
+<li><strong>ipv4-high-fragment-thresh</strong> <code>num</code> — Sets the upper bound of memory (in bytes) the kernel may consume for all fragment reassembly queues combined (every interface and every flow). When the total memory used by the cache reaches this limit the kernel starts dropping newly arriving fragments, causing packets to be discarded. Raising the limit reduces the chance of drops under heavy fragmentation (e.g. high-throughput links with VPNs, or MTU-limited paths), but it also raises the maximum amount of RAM that can be used. The default value depends on the installed amount of RAM: - 512 KiB for 64 MiB of RAM, - 1024 KiB for 128 MiB of RAM, - 2048 KiB for 256 MiB of RAM, - 4096 KiB for 512MiB of RAM, - 16 MiB for 1 GiB of RAM, - 32 MiB for 2 GiB of RAM or higher.</li>
+<li><strong>ipv4-fragment-time</strong> <code>num</code> — Time in seconds to keep an IPv4 fragment in memory.</li>
+<li><strong>allow-fast-path</strong> <code>bool</code> — Allows <a href="../../firewall-and-quality-of-service/packet-flow-in-routeros#fast-path">Fast Path</a></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>ipv4-fast-path-active</strong> <code>bool</code> — Indicates whether fast-path is active.</li>
+<li><strong>ipv4-fast-path-packets</strong> <code>num</code> — Amount of fast-pathed packets.</li>
+<li><strong>ipv4-fast-path-bytes</strong> <code>num</code> — Amount of fast-pathed bytes.</li>
+<li><strong>ipv4-fasttrack-active</strong> <code>bool</code> — Indicates whether fasttrack is active.</li>
+<li><strong>ipv4-fasttrack-packets</strong> <code>num</code> — Amount of fasttracked packets.</li>
+<li><strong>ipv4-fasttrack-bytes</strong> <code>num</code> — Amount of fasttracked bytes.</li>
+</ul>
+<hr />
+<h1 id="smb">smb</h1>
+<blockquote>
+<p>RouterOS settings reference for /ip/smb.</p>
+</blockquote>
+<hr />
+<h2 id="ipsmb">ip/smb</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>enum (no | auto | yes)</code> — Whether the built-in SMB server runs: - <code>no</code> - the server is disabled. - <code>auto</code> (default) - the server starts automatically when the first non-disabled share is configured in <a href="shares"><code>shares</code></a>. - <code>yes</code> - the server is enabled.</li>
+<li><strong>domain</strong> <code>string</code> — Name of the Windows workgroup the SMB server belongs to. Default: MSHOME.</li>
+<li><strong>comment</strong> <code>string</code> — Comment of the SMB server. Default: MikrotikSMB.</li>
+<li><strong>interfaces</strong> <code>multi { array-id, interface: iface_enum { all:0 }
+ }</code> — Interfaces on which the SMB service listens. Default: all.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Actual state of the SMB server, for example <code>enabled</code>.</li>
+</ul>
+<hr />
+<h1 id="shares">shares</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/smb/shares.</p>
+</blockquote>
+<hr />
+<h2 id="ipsmbshares">ip/smb/shares</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The entry is created automatically.</li>
+<li><strong>X</strong> <code>disabled</code> — The share is disabled and not accessible to clients.</li>
+<li>***** <code>default</code> — The entry is a default entry created by the system.</li>
+<li><strong>r</strong> <code>read-only</code> — The share only allows clients to read; write access is denied.</li>
+<li><strong>c</strong> <code>require-encryption</code> — The share accepts only encrypted connections.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the SMB share that clients connect to.</li>
+<li><strong>directory</strong> <code>file</code> — Directory on the router that the share points to. When it is not set, the value of <code>name</code> from the root directory is used. The directory is created automatically if it does not exist.</li>
+<li><strong>read-only</strong> <code>bool</code> — Whether clients can only read the share. Access can also be restricted per user with <code>read-only</code> in <a href="users"><code>users</code></a>. Default: no.</li>
+<li><strong>require-encryption</strong> <code>bool</code> — Whether only encrypted connections can access the share; recommended for macOS clients. Default: no.</li>
+<li><strong>valid-users</strong> <code>multi { array-id, user: enum
+ }</code> — List of SMB users allowed to access the share. When the list is empty, all users can access it.</li>
+<li><strong>invalid-users</strong> <code>multi { array-id, user: enum
+ }</code> — List of SMB users explicitly denied access to the share.</li>
+</ul>
+<hr />
+<h1 id="users">users</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/smb/users.</p>
+</blockquote>
+<hr />
+<h2 id="ipsmbusers">ip/smb/users</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The entry is created automatically.</li>
+<li><strong>X</strong> <code>disabled</code> — The user is disabled and cannot log in.</li>
+<li>***** <code>default</code> — The entry is a default entry created by the system.</li>
+<li><strong>r</strong> <code>read-only</code> — The user has read-only access to the shares.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Login name of the SMB service user.</li>
+<li><strong>password</strong> <code>string</code> — Password of the SMB user.</li>
+<li><strong>read-only</strong> <code>bool</code> — Whether the user has read-only access to the shares. Default: yes.</li>
+</ul>
+<hr />
+<h1 id="socks">socks</h1>
+<blockquote>
+<p>The SOCKS proxy server accepts SOCKS client connections on its TCP port and relays them to the requested destinations, applying the access rules and, optionally, users authentication. For more information, see SOCKS.</p>
+</blockquote>
+<hr />
+<h2 id="ipsocks">ip/socks</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>The SOCKS proxy server accepts SOCKS client connections on its TCP port and relays them to the requested destinations, applying the <a href="access"><code>access</code></a> rules and, optionally, <a href="users"><code>users</code></a> authentication. For more information, see <a href="../../../network-management/socks">SOCKS</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Whether the SOCKS proxy server runs. Default: <code>no</code>.</li>
+<li><strong>port</strong> <code>num</code> — TCP port the proxy listens on. Default: <code>1080</code>.</li>
+<li><strong>connection-idle-timeout</strong> <code>time</code> — Time after which an idle proxied connection is terminated. Default: <code>2m</code>.</li>
+<li><strong>max-connections</strong> <code>num</code> — Maximum number of simultaneous proxied connections, <code>1</code> to <code>500</code>. Default: <code>200</code>.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the proxy listens in. With a VRF other than <code>main</code>, the port is reachable only inside that VRF. Default: <code>main</code>.</li>
+<li><strong>version</strong> <code>enum (4 | 5)</code> — SOCKS protocol version the server accepts. - <code>4</code> (default) - Accept only SOCKS4 clients. - <code>5</code> - Accept only SOCKS5 clients. Required for password authentication and for the <a href="../socksify"><code>socksify</code></a> service, which always speaks SOCKS5.</li>
+<li><strong>auth-method</strong> <code>enum (none | password)</code> — Authentication the server requires from clients. - <code>none</code> (default) - No authentication. - <code>password</code> - Clients must authenticate with a username and password from <a href="users"><code>users</code></a>. If no users exist, every connection is rejected.</li>
+</ul>
+<hr />
+<h1 id="access">access</h1>
+<blockquote>
+<p>Access control list the server evaluates before it dials the requested destination. The rules are checked in order and the first matching rule decides. A request that matches no rule is allowed, so an empty list...</p>
+</blockquote>
+<hr />
+<h2 id="ipsocksaccess">ip/socks/access</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Access control list the server evaluates before it dials the requested destination. The rules are checked in order and the first matching rule decides. A request that matches no rule is allowed, so an empty list allows everything and a restrictive list needs a trailing <code>deny</code> rule. For more information, see <a href="../../../network-management/socks">SOCKS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The rule is not used.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>super { !
+, alt-address: alt { range: ipRange
+, src-ipv6: ip6Prefix
+ }
+ }</code> — Address or subnet of the SOCKS client, the requester. Unset matches any.</li>
+<li><strong>src-port</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Source TCP port of the client's connection. Unset matches any.</li>
+<li><strong>dst-address</strong> <code>super { !
+, alt-address: alt { range: ipRange
+, dst-ipv6: ip6Prefix
+, dst-domain: string
+ }
+ }</code> — Destination requested by the client: an IP address, a range or a domain name. A domain name matches only clients that request the destination by name (the SOCKS5 domain address type). The <a href="../socksify"><code>socksify</code></a> client always requests by IP address, so a domain-name rule does not match socksified traffic.</li>
+<li><strong>dst-port</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Requested destination port or range, for example <code>21</code> or <code>1024-65535</code>. Unset matches any.</li>
+<li><strong>action</strong> <code>enum (deny | allow) { deny:0, allow:1 }</code> — What the server does with a matching request. - <code>allow</code> (default) - Forward the connection to the destination. - <code>deny</code> - Reject the connection.</li>
+</ul>
+<hr />
+<h1 id="connections">connections</h1>
+<blockquote>
+<p>Read-only list of active proxied connections. An entry exists while a proxied connection is open. For more information, see SOCKS.</p>
+</blockquote>
+<hr />
+<h2 id="ipsocksconnections">ip/socks/connections</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Read-only list of active proxied connections. An entry exists while a proxied connection is open. For more information, see <a href="../../../network-management/socks">SOCKS</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>composite { address: alt { addr-ipv4: ipAddr
+, addr-ipv6: ip6Addr
+ }
+, port: num
+ }</code> — Address and port of the SOCKS client.</li>
+<li><strong>dst-address</strong> <code>composite { address: alt { addr-ipv4: ipAddr
+, addr-ipv6: ip6Addr
+, addr-domain: string
+ }
+, port: num
+ }</code> — The requested destination address and port.</li>
+<li><strong>type</strong> <code>enum (unknown | out | in) { unknown:0, out:1, in:2 }</code> — Type of the connection. - <code>unknown</code> - The connection was just initiated. - <code>out</code> - The connection is being relayed to the requested destination. - <code>in</code> - The connection is incoming.</li>
+<li><strong>tx</strong> <code>num</code> — Bytes relayed to the destination on this connection.</li>
+<li><strong>rx</strong> <code>num</code> — Bytes received from the destination on this connection.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>user</strong> <code>enum</code> — Username from <a href="users"><code>users</code></a> the client authenticated with. Empty when <code>auth-method=none</code>.</li>
+</ul>
+<hr />
+<h1 id="users_1">users</h1>
+<blockquote>
+<p>Users for SOCKS5 username/password authentication, used when /ip/socks has auth-method=password. New users are created enabled. For more information, see SOCKS.</p>
+</blockquote>
+<hr />
+<h2 id="ipsocksusers">ip/socks/users</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Users for SOCKS5 username/password authentication, used when <a href="."><code>/ip/socks</code></a> has <code>auth-method=password</code>. New users are created enabled. For more information, see <a href="../../../network-management/socks">SOCKS</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The user cannot authenticate. New users are created enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Username for SOCKS5 authentication.</li>
+<li><strong>password</strong> <code>string</code> — Password for SOCKS5 authentication. Not shown in <code>print</code> output.</li>
+<li><strong>only-one</strong> <code>bool</code></li>
+<li><strong>rate-limit</strong> <code>string</code> — Rate limit applied to the user's proxied connections, in bits per second, for example <code>64000</code>.</li>
+</ul>
+<hr />
+<h1 id="socksify">socksify</h1>
+<blockquote>
+<p>Service that forwards traffic redirected to it by a firewall NAT rule (action=socksify, typically in the dstnat chain) through an upstream SOCKS5 server. Changes to a record's properties apply after you disable and...</p>
+</blockquote>
+<hr />
+<h2 id="ipsocksify">ip/socksify</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Service that forwards traffic redirected to it by a firewall NAT rule (<code>action=socksify</code>, typically in the <code>dstnat</code> chain) through an upstream SOCKS5 server. Changes to a record's properties apply after you disable and re-enable the record.</p>
+<p>See <a href="../../network-management/socks/socksify">Socksify</a> for the full documentation.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled (set by default)</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the socksify service record.</li>
+<li><strong>connection-timeout</strong> <code>num</code> — Time in seconds (0 to 3000) to wait for the SOCKS server and the destination during connection setup before aborting with an error. Set to 0 to disable the timeout. Default: <code>60</code>.</li>
+<li><strong>port</strong> <code>num</code> — Local TCP port the service listens on; the <code>socksify</code> NAT action redirects intercepted connections to this port. Default: <code>952</code>.</li>
+<li><strong>socks5-server</strong> <code>ipAddr</code> — IPv4 address of the upstream SOCKS5 server. IPv6 addresses are not accepted. Default: <code>0.0.0.0</code>.</li>
+<li><strong>socks5-port</strong> <code>num</code> — Listening port of the SOCKS5 server. Default: <code>1080</code>.</li>
+<li><strong>socks5-user</strong> <code>string</code> — Username for the upstream SOCKS5 server. Shown as plain text in <code>print detail</code> output. Default: empty.</li>
+<li><strong>socks5-password</strong> <code>string</code> — Password for the upstream SOCKS5 server. Shown as plain text in <code>print detail</code> output. Default: empty.</li>
+</ul>
+<hr />
+<h1 id="ssh">ssh</h1>
+<blockquote>
+<p>SSH server settings (ciphers, forwarding, authentication) and the settings controlling how the router verifies remote servers when it connects as an SSH client. See SSH for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="ipssh">ip/ssh</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>SSH server settings (ciphers, forwarding, authentication) and the settings controlling how the router verifies remote servers when it connects as an SSH client. See <a href="../../../management-tools/ssh">SSH</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ciphers</strong> <code>multi { array-id, cipher: enum (aes-gcm | aes-ctr | aes-cbc | 3des-cbc | null | auto)
+ }</code> — Allowed cipher list.</li>
+<li><strong>forwarding-enabled</strong> <code>enum (no | local | remote | both)</code> — Control which SSH forwarding method to allow: <code>no</code> - SSH forwarding is disabled, <code>local</code> - allow SSH clients to originate connections from the server (router), this also controls dynamic forwarding, <code>remote</code> - allow SSH clients to listen on the server (router) and forward incoming connections, <code>both</code> - allow both local and remote forwarding methods.</li>
+<li><strong>password-authentication</strong> <code>enum (yes | no | yes-if-no-key)</code> — Whether to allow password login when public key authorization is configured for a user.</li>
+<li><strong>publickey-authentication-options</strong> <code>enum (none | touch-required | verify-required)</code> — Public key authentication options. The <code>touch-required</code> option causes public key authentication by using a FIDO authenticator algorithm to always require the signature to attest that a physically present user explicitly confirmed the authentication (usually by touching the authenticator). The <code>verify-required</code> option requires a FIDO key signature to attest that the user was verified, for example, by using a PIN.</li>
+<li><strong>strong-crypto</strong> <code>bool</code> — Use stronger encryption, HMAC algorithms, use bigger DH primes and disallow weaker ones: use 256 and 192 bit encryption instead of 128 bits, disable null encryption, use sha256 for hashing instead of sha1, disable md5, use 2048bit prime for Diffie-Hellman exchange instead of 1024bit.</li>
+<li><strong>known-hosts-validation</strong> <code>bool</code> — Verify the server's host key against the keys stored in <a href="known-hosts"><code>known-hosts</code></a> whenever the router connects as an SSH client (fetch SFTP, <a href="../../system/ssh"><code>/system/ssh</code></a>, <a href="../../system/ssh-exec"><code>/system/ssh-exec</code></a>). With validation enabled and no matching key stored, the interactive client shows the server's fingerprint and asks <code>do you want to trust this host key?</code>, while non-interactive commands fail with <code>host key not trusted</code>. On new installations validation is enabled; upgraded routers keep the previous value. Default: yes.</li>
+<li><strong>known-hosts-trusted-subnets</strong> <code>object { subnets: ip6Prefix
+ }</code> — Skip host key validation for servers whose address belongs to these subnets, even when <code>known-hosts-validation</code> is enabled. Hosts outside the listed subnets are still validated.</li>
+<li><strong>host-key-size</strong> <code>enum (1024 | 1536 | 2048 | 4096 | 8192) { 1024:1024, 1536:1536, 2048:2048, 4096:4096, 8192:8192 }</code> — RSA key size when host key is regenerated.</li>
+<li><strong>host-key-type</strong> <code>enum (rsa | ed25519)</code> — Host key type.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>host-key-fingerprint</strong> <code>string</code> — Fingerprint of the current host key. Can be used to verify that you are connecting to the correct router.</li>
+</ul>
+<hr />
+<h1 id="export-host-key">export-host-key</h1>
+<blockquote>
+<p>Export public and private RSA/Ed25519 keys to files.</p>
+</blockquote>
+<hr />
+<h2 id="ipsshexport-host-key">ip/ssh/export-host-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Export public and private RSA/Ed25519 keys to files.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Host keys are exported in PKCS#8 format.</p>
+<p>Exporting the SSH host key requires "sensitive" user policy.</p>
+</div>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-file-prefix</strong> <code>string</code> — Prefix for the generated files: for example <code>my</code> produces <code>my_rsa.pem</code> (private key) and <code>my_rsa_pub.pem</code> (public key) for an RSA host key, or <code>my_ed25519.pem</code> and <code>my_ed25519_pub.pem</code> for an Ed25519 one. Both files are in PKCS#8 PEM format.</li>
+<li><strong>passphrase</strong> <code>string</code> — Private key passphrase.</li>
+</ul>
+<hr />
+<h1 id="import-host-key">import-host-key</h1>
+<blockquote>
+<p>Import and replace the private RSA/Ed25519 key from a specified file</p>
+</blockquote>
+<hr />
+<h2 id="ipsshimport-host-key">ip/ssh/import-host-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Import and replace the private RSA/Ed25519 key from a specified file</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The private key is supported in PEM or PKCS#8 format.</p>
+</div>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>private-key-file</strong> <code>file</code> — Name of the private RSA/Ed25519 key file in PEM or PKCS#8 format.</li>
+<li><strong>passphrase</strong> <code>string</code> — Private key passphrase.</li>
+</ul>
+<hr />
+<h1 id="known-hosts">known-hosts</h1>
+<blockquote>
+<p>Host public keys of remote SSH servers that the router's SSH client trusts. A key is stored when you answer y to the interactive client's trust prompt, or pinned manually with add. Each address holds one key; entries...</p>
+</blockquote>
+<hr />
+<h2 id="ipsshknown-hosts">ip/ssh/known-hosts</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Host public keys of remote SSH servers that the router's SSH client trusts. A key is stored when you answer <code>y</code> to the interactive client's trust prompt, or pinned manually with <code>add</code>. Each address holds one key; entries have no <code>set</code> command, so replace a key by removing the entry and adding it again. Used when <code>known-hosts-validation</code> is enabled in <a href="."><code>/ip/ssh</code></a>. See <a href="../../../management-tools/ssh">SSH</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>host</strong> <code>ip6Addr</code> — IP address of the SSH server the key belongs to. The entry applies to every port of that address. A second <code>add</code> for the same address fails with <code>host already exists</code>.</li>
+<li><strong>key</strong> <code>string</code> — Public host key of the server as one OpenSSH-style entry: <code>&lt;type&gt; &lt;base64&gt;</code>, for example <code>ssh-ed25519 AAAAC3...</code>, as in the server's <code>.pub</code> host key file; a trailing comment is allowed. Ed25519 and RSA keys are accepted; ECDSA keys and a line that starts with the host address fail with <code>key import failed!</code>. Pasting the key of a different server stores it as-is; a mismatched key causes later connections to fail with <code>host key not trusted</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-type</strong> <code>enum (rsa | ed25519)</code> — Key type of the pinned host key: <code>rsa</code> or <code>ed25519</code>.</li>
+<li><strong>fingerprint</strong> <code>string</code> — SHA256 fingerprint of the pinned key. Compare it with the server's <code>host-key-fingerprint</code> shown by <code>/ip/ssh/print</code> on that server.</li>
+</ul>
+<hr />
+<h1 id="regenerate-host-key">regenerate-host-key</h1>
+<blockquote>
+<p>Generates new and replaces the current set of private keys (RSA/Ed25519) on the router. Previously imported keys may stop working.</p>
+</blockquote>
+<hr />
+<h2 id="ipsshregenerate-host-key">ip/ssh/regenerate-host-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Generates new and replaces the current set of private keys (RSA/Ed25519) on the router. Previously imported keys may stop working.</p>
+<hr />
+<h1 id="tftp">tftp</h1>
+<blockquote>
+<p>Access rules of the TFTP server. The server runs while at least one rule exists (the dynamic tftpd entry on UDP port 69 in /ip/service). Each request is checked against the rules in order, and the first rule that...</p>
+</blockquote>
+<hr />
+<h2 id="iptftp">ip/tftp</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Access rules of the TFTP server. The server runs while at least one rule exists (the dynamic <code>tftpd</code> entry on UDP port 69 in <code>/ip/service</code>). Each request is checked against the rules in order, and the first rule that matches the client address and the requested file name decides; a request that no rule matches is refused with <code>permission denied!</code>. See <a href="../../../system-information-and-utilities/tftp">TFTP</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The rule is disabled and is not used.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ip-addresses</strong> <code>object { ip-addresses: alt { ip6: ip6Prefix
+, ip: ipRange
+ }
+ }</code> — Client addresses the rule applies to: IPv4 addresses, ranges or prefixes, or IPv6 prefixes. Empty (default) means any client.</li>
+<li><strong>req-filename</strong> <code>string</code> — Requested file name as a regular expression; empty (default) matches any name. Case-sensitive. A value that does not start with <code>^</code> must match the whole name (<code>phone\.cfg</code> matches only <code>phone.cfg</code>, <code>.*\.cfg</code> every <code>.cfg</code> name); the anchors are added around the whole value, so write alternatives in a group, <code>(aaa|bbb)\.bin</code>. A value that starts with <code>^</code> is used as written. The name is the one the client requests, not the path on the router. In a rule that serves a folder or the requested name, a pattern such as <code>.*</code>, or an empty value, also matches names that lead out of the folder: use a pattern such as <code>[^/.][^/]*</code> that allows no slash and no leading dot.</li>
+<li><strong>real-filename</strong> <code>string</code> — What the rule serves. Empty (default) serves the requested name itself; a file serves that file for every matching request; a folder is put in front of the requested name (<code>real-filename=tftp</code> answers a request for <code>phone.cfg</code> or <code>/phone.cfg</code> with <code>tftp/phone.cfg</code>). Uploads are written to the same place. The value is used literally: references such as <code>\1</code> to parts of <code>req-filename</code> are not supported.</li>
+<li><strong>allow</strong> <code>bool</code> — <code>yes</code> serves matching requests, <code>no</code> refuses them with <code>permission denied!</code>. Default: yes.</li>
+<li><strong>read-only</strong> <code>bool</code> — With <code>yes</code>, an upload fails with <code>illegal operation</code>. Set <code>no</code> to accept uploads. Default: yes.</li>
+<li><strong>allow-rollover</strong> <code>bool</code> — Allow transfers of more than 65535 blocks: after block 65535 the router continues with block 0, which the client must support. Without it, such a transfer fails at the limit with <code>illegal operation</code>. Default: no.</li>
+<li><strong>allow-overwrite</strong> <code>bool</code> — With <code>read-only=no</code>, allow an upload to replace an existing file. Without it, the upload fails with <code>file exists</code>. Default: no.</li>
+<li><strong>reading-window-size</strong> <code>alt { window-size: enum (none | pipelining) { none:0 }
+ }</code> — - <code>none</code> (default) - Send each block of a download after the previous one is acknowledged. - <code>pipelining</code> - Send several blocks of a download before waiting for acknowledgements, which speeds up downloads.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>hits</strong> <code>num</code> — Number of requests the rule answered.</li>
+</ul>
+<hr />
+<h1 id="settings_1">settings</h1>
+<blockquote>
+<p>Settings of the TFTP server. See TFTP.</p>
+</blockquote>
+<hr />
+<h2 id="iptftpsettings">ip/tftp/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings of the TFTP server. See <a href="../../../system-information-and-utilities/tftp">TFTP</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>max-block-size</strong> <code>enum (512 | 1454 | 4096 | 8192) { 512:512, 1454:1454, 4096:4096, 8192:8192 }</code> — Largest block size the router agrees to when a client asks for one (the <code>blksize</code> option); a client that asks for more gets this size. Clients that do not ask use 512 bytes. Values: <code>512</code>, <code>1454</code>, <code>4096</code>, <code>8192</code>. Default: 4096.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the TFTP server listens in. Default: main.</li>
+</ul>
+<hr />
+<h1 id="traffic-flow">traffic-flow</h1>
+<blockquote>
+<p>RouterOS settings reference for /ip/traffic-flow.</p>
+</blockquote>
+<hr />
+<h2 id="iptraffic-flow">ip/traffic-flow</h2>
+<p><strong>Type:</strong> Settings Directory
+Traffic-Flow (NetFlow/IPFIX-compatible) configuration. Turn it on with <code>enabled=yes</code> and add export destinations under <a href="target"><code>target</code></a>. Flows pass only through the CPU path of the router, so HW-offloaded traffic cannot be exported. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-flow">Traffic Flow</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enable or disable the Traffic-Flow service</li>
+<li><strong>interfaces</strong> <code>multi { array-id, interface-or-list: alt { interface: iface_enum { local:0, all:0xFFFFFFFF }
+, interface-list: enum
+ }
+ }</code> — Comma-separated interface names (or <code>all</code>) whose forwarded traffic is accounted</li>
+<li><strong>cache-entries</strong> <code>enum (1k | 2k | 4k | 8k | 16k | 32k | 64k | 128k | 256k | 512k | 1M | 2M | 4M | 8M | 16M | 32M) { 1k:0x400, 2k:0x800, 4k:0x1000, 8k:0x2000, 16k:0x4000, 32k:0x8000, 64k:0x10000, 128k:0x20000, 256k:0x40000, 512k:0x80000, 1M:0x100000, 2M:0x200000, 4M:0x400000, 8M:0x800000, 16M:0x1000000, 32M:0x2000000 }</code> — Number of flow records held in memory at once (the default value depends on the device memory: 256k on larger boards, down to 4k on the smallest)</li>
+<li><strong>active-flow-timeout</strong> <code>time</code> — Maximum lifetime of a flow, even when packets keep matching it; the flow is expired and exported after this time. Default: 30m</li>
+<li><strong>inactive-flow-timeout</strong> <code>time</code> — A flow that sees no packet for this long is expired and exported; the next packet starts a new flow. If the timeout is too small, it can create many flows and overflow the buffer. Default: 15s</li>
+<li><strong>packet-sampling</strong> <code>bool</code> — Enable packet sampling: packets are accounted only per <code>sampling-interval</code> and <code>sampling-space</code></li>
+<li><strong>sampling-interval</strong> <code>num</code> — Number of consecutive packets that are sampled in each sampling cycle</li>
+<li><strong>sampling-space</strong> <code>num</code> — Number of consecutive packets that are omitted in each sampling cycle</li>
+</ul>
+<hr />
+<h1 id="ipfix">ipfix</h1>
+<blockquote>
+<p>RouterOS settings reference for /ip/traffic-flow/ipfix.</p>
+</blockquote>
+<hr />
+<h2 id="iptraffic-flowipfix">ip/traffic-flow/ipfix</h2>
+<p><strong>Type:</strong> Settings Directory
+Select the fields included in IPFIX flow records. A row set to <code>yes</code> exports that field per flow.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>nat-events</strong> <code>bool</code> — Include the NAT bitmask of the flow (event flags)</li>
+<li><strong>first-forwarded</strong> <code>bool</code> — Include the timestamp of the first forwarded packet of the flow</li>
+<li><strong>last-forwarded</strong> <code>bool</code> — Include the timestamp of the last forwarded packet of the flow</li>
+<li><strong>sys-init-time</strong> <code>bool</code> — Include the system boot time reference of the flow</li>
+<li><strong>packets</strong> <code>bool</code> — Include the number of packets in the flow</li>
+<li><strong>bytes</strong> <code>bool</code> — Include the total byte count of the flow</li>
+<li><strong>src-port</strong> <code>bool</code> — Include the source port number of the flow</li>
+<li><strong>dst-port</strong> <code>bool</code> — Include the destination port number of the flow</li>
+<li><strong>in-interface</strong> <code>bool</code> — Include the interface the flow was received on</li>
+<li><strong>out-interface</strong> <code>bool</code> — Include the interface the flow was sent out on</li>
+<li><strong>protocol</strong> <code>bool</code> — Include the IP protocol number (TCP, UDP, ICMP, ...)</li>
+<li><strong>tos</strong> <code>bool</code> — Include the IP header TOS (Type of Service) field</li>
+<li><strong>tcp-flags</strong> <code>bool</code> — Include the cumulative TCP flags of the flow (SYN, ACK, ...)</li>
+<li><strong>dst-mac-address</strong> <code>bool</code> — Include the destination MAC address of the flow</li>
+<li><strong>src-mac-address</strong> <code>bool</code> — Include the source MAC address of the flow</li>
+<li><strong>src-address</strong> <code>bool</code> — Include the source IP address of the flow</li>
+<li><strong>dst-address</strong> <code>bool</code> — Include the destination IP address of the flow</li>
+<li><strong>src-address-mask</strong> <code>bool</code> — Include the source netmask length (summarization)</li>
+<li><strong>dst-address-mask</strong> <code>bool</code> — Include the destination netmask length</li>
+<li><strong>gateway</strong> <code>bool</code> — Include the gateway IP address the flow was routed to</li>
+<li><strong>ttl</strong> <code>bool</code> — Include the TTL of the packets</li>
+<li><strong>ip-header-length</strong> <code>bool</code> — Include the IP header length</li>
+<li><strong>is-multicast</strong> <code>bool</code> — Mark the multicast flows</li>
+<li><strong>ip-total-length</strong> <code>bool</code> — Include the total IP packet length in bytes</li>
+<li><strong>nat-src-address</strong> <code>bool</code> — Include the NATed source address of the flow</li>
+<li><strong>nat-dst-address</strong> <code>bool</code> — Include the NATed destination address of the flow</li>
+<li><strong>nat-src-port</strong> <code>bool</code> — Include the NATed source port of the flow</li>
+<li><strong>nat-dst-port</strong> <code>bool</code> — Include the NATed destination port of the flow</li>
+<li><strong>nat-src-address6</strong> <code>bool</code></li>
+<li><strong>nat-dst-address6</strong> <code>bool</code></li>
+<li><strong>ipv6-flow-label</strong> <code>bool</code> — Include the IPv6 flow label field</li>
+<li><strong>udp-length</strong> <code>bool</code> — Include the UDP payload length</li>
+<li><strong>tcp-seq-num</strong> <code>bool</code> — Include the TCP sequence number</li>
+<li><strong>tcp-ack-num</strong> <code>bool</code> — Include the TCP acknowledgment number</li>
+<li><strong>tcp-window-size</strong> <code>bool</code> — Include the TCP window size</li>
+<li><strong>igmp-type</strong> <code>bool</code> — Include the IGMP message type</li>
+<li><strong>icmp-type</strong> <code>bool</code> — Include the ICMP type</li>
+<li><strong>icmp-code</strong> <code>bool</code> — Include the ICMP code</li>
+</ul>
+<hr />
+<h1 id="monitor_1">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /ip/traffic-flow/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="iptraffic-flowmonitor">ip/traffic-flow/monitor</h2>
+<p><strong>Type:</strong> Command
+Show the current flow-cache counters (live-updating output; stops after <code>duration</code>).</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>finished-flows</strong> <code>num</code> — Number of flows that expired and were exported</li>
+<li><strong>active-flows</strong> <code>num</code> — Number of flows in the cache right now</li>
+<li><strong>unmanaged-packets</strong> <code>num</code> — Packets that did not fit into any tracked flow</li>
+<li><strong>unmanaged-bytes</strong> <code>num</code> — Bytes of the unmanaged packets</li>
+</ul>
+<hr />
+<h1 id="target">target</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/traffic-flow/target.</p>
+</blockquote>
+<hr />
+<h2 id="iptraffic-flowtarget">ip/traffic-flow/target</h2>
+<p><strong>Type:</strong> Directory
+Export targets: the collector hosts (for example a NetFlow analyzer host) that receive traffic-flow data over UDP.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>alt { ip: ipAddr
+, ipv6: ip6Addr
+ }</code> — Source address of the export packets. 0.0.0.0 means auto-detect: the router uses the source of the outgoing interface</li>
+<li><strong>dst-address</strong> <code>alt { ip: ipAddr
+, ipv6: ip6Addr
+ }</code> — IP address of the host that receives the flow data</li>
+<li><strong>port</strong> <code>num</code> — UDP port to send flows to. Default: 2055</li>
+<li><strong>version</strong> <code>enum (1 | 5 | 9 | ipfix) { 1:1, 5:5, 9:9, ipfix:10 }</code> — NetFlow format of the export packets: <code>1</code>, <code>5</code>, <code>9</code> or <code>ipfix</code></li>
+<li><strong>v9-template-refresh</strong> <code>num</code> — Number of export packets after which the FlowSet template is resent (version 9 and IPFIX only). Default: 20</li>
+<li><strong>v9-template-timeout</strong> <code>time</code> — Send the FlowSet template after this interval if it has not been sent by then (version 9 and IPFIX only)</li>
+</ul>
+<hr />
+<h1 id="upnp">upnp</h1>
+<blockquote>
+<p>Universal Plug and Play (UPnP) service settings. The service answers SSDP discovery on UDP port 1900 and control connections on TCP port 2828 of each internal interface. Any change in this menu restarts the service:...</p>
+</blockquote>
+<hr />
+<h2 id="ipupnp">ip/upnp</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Universal Plug and Play (UPnP) service settings. The service answers SSDP discovery on UDP port 1900 and control connections on TCP port 2828 of each <a href="interfaces">internal interface</a>. Any change in this menu restarts the service: all dynamic port mappings are removed and clients have to request them again. Configuration examples are on the <a href="../../../firewall-and-quality-of-service/upnp">UPnP guide page</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enable the UPnP service. Default: no.</li>
+<li><strong>allow-disable-external-interface</strong> <code>bool</code> — Allow UPnP clients on the internal interfaces to disable the router's external interface with the <code>ForceTermination</code> action, without any authentication. The UPnP standard requires this action to work; set to <code>no</code> so local clients cannot take the Internet connection down. Disabling the external interface this way also removes its dynamic port mappings. Default: no.</li>
+<li><strong>show-dummy-rule</strong> <code>bool</code> — Report an inactive placeholder port mapping (port 0, client 0.0.0.0, description "Dummy inactive rule for windows to work") as the first entry when a client enumerates port mappings. A workaround for client applications that misbehave when no port mappings exist. The dummy entry never appears in <code>/ip/firewall/nat</code>. Default: yes.</li>
+</ul>
+<hr />
+<h1 id="interfaces">interfaces</h1>
+<blockquote>
+<p>Interface assignments for the UPnP service: which interface connects to the Internet (external) and which interfaces the local UPnP clients are connected to (internal). Each external interface gets its own...</p>
+</blockquote>
+<hr />
+<h2 id="ipupnpinterfaces">ip/upnp/interfaces</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Interface assignments for the UPnP service: which interface connects to the Internet (<code>external</code>) and which interfaces the local UPnP clients are connected to (<code>internal</code>). Each external interface gets its own WANConnectionDevice service, so several external interfaces can be active at the same time. See the <a href="../../../firewall-and-quality-of-service/upnp">UPnP guide page</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The interface is not used by UPnP. New entries are created enabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Name of the interface. On an <code>internal</code> interface the control service listens on TCP port 2828 of its addresses and SSDP announcements are sent out of it.</li>
+<li><strong>type</strong> <code>enum (external | internal) { external:1, internal:2 }</code> — UPnP interface role: - <code>external</code> - the interface facing the Internet. Dynamic dst-nat rules for client port mappings are created with this interface as <code>in-interface</code> and its address as <code>dst-address</code>. - <code>internal</code> - the local interface the UPnP clients are connected to.</li>
+<li><strong>forced-ip</strong> <code>super { forced-ip: ipAddr
+ }</code> — Use this address as the external IP address of the interface: it is reported to clients in <code>GetExternalIPAddress</code> responses and used as <code>dst-address</code> in the dynamic dst-nat rules. Set when the external interface has several addresses. When not set, the primary address of the interface is used.</li>
+</ul>
+<hr />
+<h1 id="vrf">vrf</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/vrf.</p>
+</blockquote>
+<hr />
+<h2 id="ipvrf">ip/vrf</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li>***** <code>builtin</code> — builtin</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>interfaces</strong> <code>object { interface: iface_enum
+ }</code></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

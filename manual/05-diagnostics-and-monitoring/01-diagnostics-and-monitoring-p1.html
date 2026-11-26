@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostics and Monitoring · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Diagnostics and Monitoring</p>
+      <h1 id="diagnostics-and-monitoring-part-12">Diagnostics and Monitoring (part 1/2)</h1>
+<h1 id="diagnostics-and-monitoring">Diagnostics and Monitoring</h1>
+<blockquote>
+<p>This section provides tools for inspecting traffic, testing connectivity, collecting logs, monitoring resources, analyzing flow data, and troubleshooting network or device issues in RouterOS.</p>
+</blockquote>
+<h1 id="diagnostics-and-monitoring_1">Diagnostics and Monitoring</h1>
+<p>This section covers RouterOS diagnostic and monitoring tools. Use it to inspect traffic, test connectivity, collect logs, monitor resources, analyze flow data, and investigate network or device issues.</p>
+<hr />
+<h1 id="ping">Ping</h1>
+<blockquote>
+<p>The RouterOS ping tool: check that a host or the internet is reachable, read the status of each reply, find the path MTU, ping from a chosen address, interface or VRF, reach hosts that block ICMP with ARP and ND...</p>
+</blockquote>
+<h1 id="ping_1">Ping</h1>
+<p>Ping checks whether a host answers and how long the answer takes. The router sends Internet Control Message Protocol (ICMP) echo requests (type 8) to the host, and the host answers each one with an echo reply (type 0). The time between a request and its reply is the round-trip time. A request whose reply does not arrive within <code>interval</code>, 1 second by default, is reported as a timeout.</p>
+<p>Each reply also shows its Time to Live (TTL). Every router that forwards a packet lowers its TTL by one, and a packet whose TTL runs out is dropped. The TTL column shows the TTL of the reply as it arrived, so it tells roughly how many routers the reply crossed: most systems send with TTL 64, 128 or 255, so a reply that arrives with TTL 62 crossed two routers. The router sends its own requests with TTL 255 (IPv4) or hop limit 64 (IPv6).</p>
+<p><code>/ping</code> is the short form of <code>/tool/ping</code>. To find out where on the path packets stop, use <a href="traceroute">Traceroute</a>.</p>
+<h2 id="check-that-a-host-is-reachable">Check that a host is reachable</h2>
+<p>To check the internet connection, ping a public address, then a name:</p>
+<pre><code class="language-ros">/ping 1.1.1.1 count=3
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 1.1.1.1                                    56  60 1ms45us
+    1 1.1.1.1                                    56  60 1ms89us
+    2 1.1.1.1                                    56  60 1ms163us
+    sent=3 received=3 packet-loss=0% min-rtt=1ms45us avg-rtt=1ms99us max-rtt=1ms163us
+</code></pre>
+<pre><code class="language-ros">/ping mikrotik.com count=3
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 159.148.172.205                            56  55 1ms582us
+    1 159.148.172.205                            56  55 1ms450us
+    2 159.148.172.205                            56  55 1ms513us
+    sent=3 received=3 packet-loss=0% min-rtt=1ms450us avg-rtt=1ms515us max-rtt=1ms582us
+</code></pre>
+<p>The router resolves the name with its own <a href="../network-management/dns">DNS</a> settings. When the address answers and the name does not, the connection works and the DNS configuration is at fault. A name that does not resolve fails with <code>failure: resolve failed</code>; see <a href="../network-management/dns#check-and-troubleshoot">Check and troubleshoot</a> on the DNS page. In <a href="../management-tools/winbox">WinBox</a> 4 and <a href="../management-tools/webfig">WebFig</a>, Tools &gt; Ping sends the name to the router, which also resolves it with its DNS; WinBox 3 resolves the name on the computer it runs on.</p>
+<p>Each row is one reply:</p>
+<ul>
+<li><code>SEQ</code> - Number of the request the row answers.</li>
+<li><code>HOST</code> - Address the reply came from: the host, or a router on the path that sent an error.</li>
+<li><code>SIZE</code> - Size of the received packet in bytes.</li>
+<li><code>TTL</code> - TTL of the received packet.</li>
+<li><code>TIME</code> - Round-trip time.</li>
+<li><code>STATUS</code> - Empty for an IPv4 reply and <code>echo reply</code> for an IPv6 reply; otherwise what went wrong.</li>
+</ul>
+<p>The last line sums up the run: requests sent, replies received, the share of lost requests and the shortest, average and longest round-trip time. Without <code>count</code>, ping runs until you stop it with <kbd>Control</kbd>+<kbd>C</kbd>.</p>
+<h2 id="read-the-status-column">Read the status column</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Status</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>timeout</code></td>
+<td style="text-align: left;">No reply arrived within <code>interval</code>. The host is down, it does not answer ping, a firewall on the path drops the request or the reply, or the round-trip time is longer than <code>interval</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>net unreachable</code></td>
+<td style="text-align: left;">The router shown in <code>HOST</code> has no route to the destination network, or a firewall rule there rejects the packet with the default <code>reject</code> action.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>host unreachable</code></td>
+<td style="text-align: left;">The router shown in <code>HOST</code> reports that it cannot reach the host, or a firewall rule there rejects the packet with <code>reject-with=icmp-host-unreachable</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>admin prohibited</code></td>
+<td style="text-align: left;">A firewall rule on the router shown in <code>HOST</code> rejects the packet with <code>reject-with=icmp-admin-prohibited</code>. Traceroute shows the same answer as <code>packet filtered</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TTL exceeded</code></td>
+<td style="text-align: left;">The TTL ran out on the router shown in <code>HOST</code>. Usually a routing loop.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fragmentation needed and DF set</code></td>
+<td style="text-align: left;">The router shown in <code>HOST</code> must forward the packet over a link with a smaller MTU, and the Don't Fragment flag prevents it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>packet too large and cannot be fragmented</code></td>
+<td style="text-align: left;">The packet is larger than the MTU of the outgoing interface or than the path MTU the router has learned, and the Don't Fragment flag is set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>no route to host</code></td>
+<td style="text-align: left;">The router has no route to the address. For ND ping, the address is not on a directly connected subnet.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>echo reply</code></td>
+<td style="text-align: left;">An IPv6 echo reply. IPv4 replies leave the status empty.</td>
+</tr>
+</tbody>
+</table>
+<p>A routing loop sends packets back and forth between two routers until their TTL runs out. The first router where it runs out reports it:</p>
+<pre><code class="language-ros">/ping 198.51.100.10 count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 203.0.113.1                                84  64 20ms894us  TTL exceeded
+    1 203.0.113.1                                84  64 20ms404us  TTL exceeded
+    sent=2 received=0 packet-loss=100%
+</code></pre>
+<h2 id="find-the-path-mtu">Find the path MTU</h2>
+<p>When a link on the path has a smaller maximum transmission unit (MTU) than the links around it, for example a PPPoE connection or a tunnel, small packets pass and large ones are lost: pings work, but web pages load only partly and file transfers stall. To find the largest packet that crosses the path, ping with the Don't Fragment flag. Start with 1500, or 1492 on a PPPoE connection, and lower <code>size</code> until replies arrive: the largest size that gets replies is the path MTU.</p>
+<p><code>size</code> is the size of the whole IP packet, including the IP header. <code>size=1500</code> is a full-size packet on an Ethernet link and matches <code>ping -l 1472</code> on Windows and <code>ping -s 1472</code> on Linux, which count only the data. For IPv6, the header is 40 bytes, so <code>size=1500</code> matches <code>ping -s 1452</code>.</p>
+<pre><code class="language-ros">/ping 198.51.100.10 size=1500 do-not-fragment count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 203.0.113.6                               576  63 893us      fragmentation needed and DF set
+    1                                                              packet too large and cannot be fragmented
+    sent=2 received=0 packet-loss=100%
+</code></pre>
+<p>The router at 203.0.113.6 has the link with the smaller MTU and answers the first request with <code>fragmentation needed and DF set</code>; <code>SIZE</code> 576 is the size of that error message, not the MTU. The message tells the router the MTU of that link, and the router remembers it as the path MTU for this destination for a while: a larger ping then fails immediately with <code>packet too large and cannot be fragmented</code>, without leaving the router. The same status appears when <code>size</code> is larger than the MTU of the outgoing interface.</p>
+<pre><code class="language-ros">/ping 198.51.100.10 size=1401 do-not-fragment count=1
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0                                                              packet too large and cannot be fragmented
+    sent=1 received=0 packet-loss=100%
+</code></pre>
+<pre><code class="language-ros">/ping 198.51.100.10 size=1400 do-not-fragment count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 198.51.100.10                            1400  62 1ms347us
+    1 198.51.100.10                            1400  62 1ms41us
+    sent=2 received=2 packet-loss=0% min-rtt=1ms41us avg-rtt=1ms194us max-rtt=1ms347us
+</code></pre>
+<p>1400 is the largest size that gets replies: the path MTU is 1400 bytes. Without <code>do-not-fragment</code>, a larger ping is fragmented and gets replies, so it does not show the MTU problem. When a firewall on the path drops the fragmentation needed messages, pings above the path MTU only time out.</p>
+<p>To see which router on the path has the smaller link, run <a href="traceroute#find-the-hop-with-the-smaller-mtu">traceroute with <code>do-not-fragment</code></a>. To keep TCP connections working across such a link, clamp the TCP MSS with a <a href="../firewall-and-quality-of-service/firewall/mangle#change-mss">mangle rule</a>.</p>
+<h2 id="ping-from-a-specific-address-interface-or-vrf">Ping from a specific address, interface or VRF</h2>
+<p>By default, the router picks the source address as for its other traffic: the <code>pref-src</code> of the route when it is set, otherwise the address of the outgoing interface. That is not always the address a test needs. An <a href="../virtual-private-networks/ipsec/">IPsec</a> site-to-site tunnel, for example, carries only traffic between the two LANs: a ping from the router's WAN address to the remote LAN does not match the IPsec policy and does not enter the tunnel. To test the tunnel, ping from the router's LAN address:</p>
+<pre><code class="language-ros">/ping 192.168.2.10 src-address=192.168.88.1 count=3
+</code></pre>
+<p><code>interface=</code> sets the interface the requests leave through. When no route through that interface covers the destination, the router treats the destination as directly connected there and sends ARP requests for it. ARP ping, ND ping to a global address and pings to IPv6 link-local addresses need <code>interface=</code>.</p>
+<p><code>vrf=</code> sends the ping in a <a href="../user-guides/routing-and-networking-protocols/vrf">VRF</a>:</p>
+<pre><code class="language-ros">/ping 10.0.0.1 vrf=customer1 count=3
+</code></pre>
+<p>Only VRFs are accepted. A routing table that exists for policy routing is not a VRF, and the ping is refused with <code>input does not match any value of vrf</code>. To test such a table, set <code>src-address</code> to an address that a <a href="../user-guides/routing-and-networking-protocols/policy-routing">routing rule</a> sends to that table: the rules apply to the router's own pings.</p>
+<h2 id="find-a-host-that-does-not-answer-ping">Find a host that does not answer ping</h2>
+<p>Many hosts drop ICMP echo requests, for example computers with their firewall turned on, so a working host can look like it is down:</p>
+<pre><code class="language-ros">/ping 192.168.88.20 count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 192.168.88.20                                                timeout
+    1 192.168.88.20                                                timeout
+    sent=2 received=0 packet-loss=100%
+</code></pre>
+<p>A host on the same subnet as the router must still answer ARP, or it cannot receive any traffic. With <code>arp-ping=yes</code>, the router sends ARP requests instead of ICMP echo requests, and <code>HOST</code> shows the MAC address of the host that answered. ARP ping works for IPv4 addresses on a directly connected subnet and needs <code>interface=</code>, the interface that has the router's address on that subnet (<code>bridge</code> in the default configuration); without it, the ping fails with <code>interface needs to be specified for arp ping</code>.</p>
+<pre><code class="language-ros">/ping 192.168.88.20 arp-ping=yes interface=bridge count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 FE:14:80:BE:47:5B                                 386us
+    1 FE:14:80:BE:47:5B                                 346us
+    sent=2 received=2 packet-loss=0% min-rtt=346us avg-rtt=366us max-rtt=386us
+</code></pre>
+<p>To find out which device has that MAC address, look it up in the <a href="../network-management/dhcp/server#leases">DHCP server leases</a> or on the device's label.</p>
+<p>For IPv6, <code>nd-ping=yes</code> does the same with Neighbor Discovery: the router sends Neighbor Solicitations (NS) instead of ICMPv6 echo requests and counts a Neighbor Advertisement (NA) as a reply. It confirms that a host is present and that Neighbor Discovery works, even when ICMPv6 echo is filtered or turned off on the host. ND ping works only for addresses on a directly connected IPv6 subnet; an address on another subnet returns a <code>no route to host</code> error. A global address needs <code>interface=</code>, otherwise the ping fails with <code>interface needs to be specified for ND ping</code>; a link-local address carries the interface in its <code>%interface</code> suffix:</p>
+<pre><code class="language-ros">/ping fe80::fc14:80ff:febe:475b%ether1 nd-ping=yes count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 fe80::fc14:80ff:febe:475b                         622us
+    1 fe80::fc14:80ff:febe:475b                         581us
+    sent=2 received=2 packet-loss=0% min-rtt=581us avg-rtt=601us max-rtt=622us
+</code></pre>
+<pre><code class="language-ros">/ping 2001:db8:0:1::2 nd-ping=yes interface=ether1
+</code></pre>
+<p>In WinBox, Tools &gt; Ping has an ND Ping checkbox next to ARP Ping, with an interface selector.</p>
+<h2 id="discover-ipv6-hosts-on-a-link">Discover IPv6 hosts on a link</h2>
+<p>Most IPv6 hosts answer an echo request sent to the all-nodes multicast address <code>ff02::1</code>; hosts whose firewall drops such requests do not. Ping it on an interface to list the IPv6 hosts on that link:</p>
+<pre><code class="language-ros">/ping ff02::1%ether1 count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 fe80::fc89:f0ff:fe95:7d86                  56  64 395us      echo reply
+    0 fe80::fc14:80ff:febe:475b                  56  64 1ms87us    echo reply
+    sent=1 received=2 packet-loss=-100% min-rtt=395us avg-rtt=741us max-rtt=1ms87us
+</code></pre>
+<p>All hosts answer the same request, so several rows share one <code>SEQ</code>, and the list includes the router's own address on that interface. Each answer counts toward <code>count</code> and toward the summary line, which therefore shows more replies than requests.</p>
+<h2 id="ping-a-mac-address">Ping a MAC address</h2>
+<p>MAC ping reaches a MikroTik device by its MAC address, without IP configuration, on the same layer-2 segment. The target answers when its MAC ping server is enabled, which it is by default (see <a href="../management-tools/mac-server">MAC server</a>):</p>
+<pre><code class="language-ros">/tool/mac-server/ping/set enabled=yes
+</code></pre>
+<p>Ping the MAC address and name the interface after <code>%</code>:</p>
+<pre><code class="language-ros">/ping FE:14:80:BE:47:5B%ether1 count=2
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 FE:14:80:BE:47:5B                          70     775us
+    1 FE:14:80:BE:47:5B                          70     579us
+    sent=2 received=2 packet-loss=0% min-rtt=579us avg-rtt=677us max-rtt=775us
+</code></pre>
+<p>Without the <code>%interface</code> suffix, the router sends each request out of every interface. This adds traffic to all of them and returns duplicate replies when the target is reachable through more than one.</p>
+<h2 id="use-ping-in-a-script">Use ping in a script</h2>
+<p>In a script, ping returns the number of replies it received:</p>
+<pre><code class="language-ros">:if ([/ping 198.51.100.10 count=3] = 0) do={
+    :log warning &quot;Server 198.51.100.10 does not answer&quot;
+}
+</code></pre>
+<p>When the address is a name that does not resolve, ping fails with <code>resolve failed</code> and stops the script; put it in <code>:do { ... } on-error={ ... }</code> to handle that case. To run the check regularly, add the script to the <a href="../system-information-and-utilities/scheduler">scheduler</a>.</p>
+<p>With <code>as-value</code>, ping returns one entry per reply, with the <code>host</code>, <code>seq</code>, <code>size</code>, <code>ttl</code> and <code>time</code> of the reply, or its <code>status</code> when it failed. To watch a host continuously and run scripts when it goes down or comes back, use <a href="netwatch">Netwatch</a> instead of a scheduled ping.</p>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="packet-size">Packet size</h3>
+<p><code>size</code> sets the size of the whole packet, IP header included: 28 to 65535 bytes for IPv4 and 48 to 65535 bytes for IPv6 (a smaller IPv6 size fails with <code>packet size is too small</code>), 56 by default. A packet larger than the MTU of the outgoing interface is fragmented, unless <code>do-not-fragment</code> is set. The <code>SIZE</code> column shows the size of the received packet, which for an error message from a router is the size of that message (576 and 84 in the examples on this page).</p>
+<h3 id="interval-and-count">Interval and count</h3>
+<p>The router sends one request per <code>interval</code>, 10 ms to 5 s, 1 s by default. A reply that arrives later than <code>interval</code> counts as a timeout, so on links with long round-trip times, such as satellite or congested mobile links, raise <code>interval</code> above the round-trip time. Without <code>count</code>, it sends requests until you stop it.</p>
+<h3 id="ttl-and-hop-limit">TTL and hop limit</h3>
+<p><code>ttl</code> sets the TTL of IPv4 requests and the hop limit of IPv6 requests, 1 to 255. Without it, IPv4 requests leave with TTL 255 and IPv6 requests with hop limit 64.</p>
+<h3 id="dscp">DSCP</h3>
+<p><code>dscp</code> sets the Differentiated Services Code Point in the IP header of the requests, 0 to 63. <code>dscp=46</code> (Expedited Forwarding) gives a ToS byte of <code>0xb8</code>. Use it to check how the path treats traffic of a QoS class.</p>
+<h3 id="link-local-addresses">Link-local addresses</h3>
+<p>An IPv6 link-local address (<code>fe80::/10</code>) exists on every link, so it needs the interface as a suffix: <code>fe80::1%ether1</code>.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/ping"><code>/tool/ping</code> CLI reference</a>.</p>
+<hr />
+<h1 id="traceroute">Traceroute</h1>
+<blockquote>
+<p>The RouterOS traceroute tool: list the routers on the path to a host, read the per-hop loss and round-trip statistics, find where a path breaks, loops or is filtered, and trace from a VRF or a chosen source address.</p>
+</blockquote>
+<h1 id="traceroute_1">Traceroute</h1>
+<p>Traceroute lists the routers that packets pass on their way to a remote host, and shows for each of them how many probes it answered and how long the answers took. Use it to find where a connection fails or slows down: in your own network, at the ISP gateway or further away. To test only whether one host answers, use <a href="ping">ping</a>.</p>
+<p>Traceroute relies on the time to live (TTL) field in the IP header, which prevents routing loops: every router decrements the TTL of a packet it forwards, and when the TTL reaches zero, the router discards the packet and sends an ICMP time exceeded message back to the sender. Traceroute sends its first probe with TTL 1, so the first router on the path answers; the next probe has TTL 2 and reaches the second router, and so on, until the probe reaches the destination, which answers the probe itself.</p>
+<p>RouterOS sends ICMP echo requests as probes, up to 30 hops away. When a round is done, it starts the next one, at most once a second, and keeps statistics for each hop, like the <code>mtr</code> tool, until you stop it with <kbd>Control</kbd>+<kbd>C</kbd>, or until it has done <code>count</code> rounds or run for <code>duration</code>. Other systems have similar tools: <code>traceroute</code> or <code>tracepath</code> on Unix-like systems and <code>tracert</code> on Windows.</p>
+<h2 id="trace-the-path-to-a-host">Trace the path to a host</h2>
+<p>To trace the path to a server, with three rounds of probes:</p>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 count=3
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV
+#  ADDRESS        LOSS  SENT  LAST   AVG  BEST  WORST  STD-DEV
+0  203.0.113.1    0%       3  0.3ms  0.4  0.3   0.4          0
+1  203.0.113.6    0%       3  0.4ms  0.4  0.4   0.4          0
+2  198.51.100.10  0%       3  0.5ms  0.5  0.5   0.5          0
+</code></pre>
+<p>The packets pass two routers, 203.0.113.1 and 203.0.113.6, before they reach the server. The <code>#</code> column starts at 0, so row 0 is the first hop. The table updates in place after every round. The columns are:</p>
+<ul>
+<li><code>ADDRESS</code> - The address of the router that answered for this hop: the address it sends its answer from, usually the address of its interface towards you.</li>
+<li><code>LOSS</code> - The share of the probes to this hop that got no answer.</li>
+<li><code>SENT</code> - The number of probes sent to this hop.</li>
+<li><code>LAST</code>, <code>AVG</code>, <code>BEST</code>, <code>WORST</code> - The round-trip time of the last answer, and the average, shortest and longest round-trip time, in milliseconds. <code>LAST</code> shows <code>timeout</code> when the last probe got no answer.</li>
+<li><code>STD-DEV</code> - The standard deviation of the round-trip times, in milliseconds: how much they vary from round to round.</li>
+<li><code>STATUS</code> - Shown when a hop answers with an error instead of time exceeded, for example because a firewall rejects the traffic.</li>
+</ul>
+<h2 id="show-host-names">Show host names</h2>
+<p>With <code>use-dns=yes</code>, traceroute shows the host name of each hop instead of its address. The router looks the names up with reverse DNS queries through its own <a href="../network-management/dns">DNS resolver</a>, so a hop without a reverse DNS record keeps its address. The destination can also be a host name:</p>
+<pre><code class="language-ros">/tool/traceroute server.example.com count=3 use-dns=yes
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV
+#  ADDRESS                 LOSS  SENT  LAST   AVG  BEST  WORST  STD-DEV
+0  edge1.isp.example.net.  0%       3  0.4ms  0.5  0.4   0.5    0
+1  core1.isp.example.net.  0%       3  0.4ms  0.5  0.4   0.6    0.1
+2  server.example.com.     0%       3  0.6ms  0.6  0.5   0.7    0.1
+</code></pre>
+<p>Names can show which network or location a router belongs to.</p>
+<h2 id="find-where-the-path-breaks">Find where the path breaks</h2>
+<p>When a host does not answer, traceroute shows how far the packets get. Each of the following outputs shows one typical result.</p>
+<h3 id="hops-stop-answering">Hops stop answering</h3>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 count=1 max-hops=4
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV
+#  ADDRESS      LOSS  SENT  LAST     AVG  BEST  WORST  STD-DEV
+0  203.0.113.1  0%       1  0.4ms    0.4  0.4   0.4          0
+1               100%     1  timeout
+2               100%     1  timeout
+3               100%     1  timeout
+</code></pre>
+<p>The first router answers, and nothing after it does. The problem is after the last hop that answers: a link that is down, a missing route, a missing route back to your address (for example when you trace with <code>src-address</code> set to a LAN address that the remote network does not route back), or a firewall that drops the packets without an answer. Check the router 203.0.113.1: its route to the destination and the link to its next hop. Without <code>max-hops</code>, the trace continues with timeouts up to 30 hops.</p>
+<p>The same output appears when every router on the path answers but the destination itself drops ICMP echo requests: the rows after the last router stay empty. <a href="ping">Ping</a> the destination, or use <a href="ping#find-a-host-that-does-not-answer-ping">ARP ping</a> when it is on a directly connected subnet.</p>
+<h3 id="a-router-rejects-the-traffic">A router rejects the traffic</h3>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 count=1
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV, STATUS
+#  ADDRESS      LOSS  SENT  LAST   AVG  BEST  WORST  STD-DEV  STATUS
+0  203.0.113.1  0%       1  0.4ms  0.4  0.4   0.4          0
+1  203.0.113.1  0%       1  0.3ms  0.3  0.3   0.3          0  host unreachable from 203.0.113.1
+2               0%       0  0ms
+</code></pre>
+<p>The router 203.0.113.1 answers the second probe with an error instead of forwarding it, and the trace ends there; the empty row after it is the hop the probes did not reach. <code>host unreachable from 203.0.113.1</code> means that the router cannot deliver the packet to the host; a firewall rule that rejects packets with <code>reject-with=icmp-host-unreachable</code> gives the same answer. <code>network unreachable from 203.0.113.1</code> means that the router has no route to the destination network, or that a firewall rule rejects the packet with the default <code>reject</code> action. <code>packet filtered from 203.0.113.1</code> means that a firewall on the router rejects the packet as administratively prohibited (<code>reject-with=icmp-admin-prohibited</code>); <a href="ping">ping</a> shows the same answer as <code>admin prohibited</code>.</p>
+<h3 id="the-same-routers-repeat">The same routers repeat</h3>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 count=1 max-hops=8
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV
+#  ADDRESS      LOSS  SENT  LAST   AVG  BEST  WORST  STD-DEV
+0  203.0.113.1  0%       1  0.4ms  0.4  0.4   0.4          0
+1  203.0.113.6  0%       1  0.4ms  0.4  0.4   0.4          0
+2  203.0.113.1  0%       1  0.4ms  0.4  0.4   0.4          0
+3  203.0.113.6  0%       1  0.6ms  0.6  0.6   0.6          0
+4  203.0.113.1  0%       1  0.5ms  0.5  0.5   0.5          0
+5  203.0.113.6  0%       1  0.6ms  0.6  0.6   0.6          0
+6  203.0.113.1  0%       1  0.7ms  0.7  0.7   0.7          0
+7  203.0.113.6  0%       1  0.8ms  0.8  0.8   0.8          0
+</code></pre>
+<p>Two routers alternate: a routing loop. Each of them routes the destination to the other, so the packets go back and forth until their TTL runs out. Check the routes to the destination on both routers. A <a href="ping">ping</a> to the destination then reports <code>TTL exceeded</code> from one of the routers instead of a reply.</p>
+<p>The router 203.0.113.1 receives the looping packets from 203.0.113.6 on a different interface than the probes that come from you, but it answers every time from its address towards you.</p>
+<h3 id="one-hop-shows-loss-later-hops-do-not">One hop shows loss, later hops do not</h3>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 count=10
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV
+#  ADDRESS        LOSS  SENT  LAST     AVG  BEST  WORST  STD-DEV
+0  203.0.113.1    0%      10  0.2ms    0.2  0.2   0.4    0.1
+1  203.0.113.6    90%     10  timeout  0.4  0.4   0.4    0
+2  198.51.100.10  0%      10  0.8ms    0.8  0.5   0.8    0.1
+</code></pre>
+<p>The router 203.0.113.6 answered only one probe of ten, but every probe to the server, which passes through the same router, got an answer. Many routers limit how often they send time exceeded messages, or give them a low priority, so loss that does not continue to the later hops is not packet loss on the path. Real packet loss starts at one hop and shows on every hop after it. A router that never sends time exceeded messages shows as a hop with 100% loss and no address between hops that answer.</p>
+<h3 id="round-trip-times-grow">Round-trip times grow</h3>
+<p>The round-trip time of a hop includes the way back from that router to you. A time that rises at one hop and stays higher at every later hop points to a slow, long or congested link before that hop. A high time or a large <code>STD-DEV</code> at one hop only, with normal times after it, means that this router is slow to answer, not that traffic through it is slow.</p>
+<h2 id="find-the-hop-with-the-smaller-mtu">Find the hop with the smaller MTU</h2>
+<p>With <code>do-not-fragment</code> and a large <code>size</code>, the probes cannot be fragmented, and the router that must forward them over a link with a smaller MTU answers with an error instead:</p>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 size=1500 do-not-fragment count=1
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, LOSS, SENT, LAST, AVG, BEST, WORST, STD-DEV, STATUS
+#  ADDRESS      LOSS  SENT  LAST   AVG  BEST  WORST  STD-DEV  STATUS
+0  203.0.113.1  0%       1  0.5ms  0.5  0.5   0.5          0
+1  203.0.113.6  0%       1  0.6ms  0.6  0.6   0.6          0
+2  203.0.113.6  0%       1  0.6ms  0.6  0.6   0.6          0  fragmentation needed from 203.0.113.6
+3               0%       0  0ms
+</code></pre>
+<p>The router 203.0.113.6 has the smaller link. To find the MTU of the path, see <a href="ping#find-the-path-mtu">Find the path MTU</a> on the ping page.</p>
+<h2 id="trace-from-a-vrf-or-a-specific-source">Trace from a VRF or a specific source</h2>
+<p>By default, traceroute sends the probes by the main routing table, from the address of the outgoing interface. On a provider router, a customer's network is often in a <a href="../user-guides/routing-and-networking-protocols/vrf">VRF</a>; <code>vrf</code> traces the path the customer's traffic takes:</p>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 vrf=customer1
+</code></pre>
+<p><code>vrf</code> accepts only VRFs. A routing table created for policy routing is not a VRF, and the command refuses it.</p>
+<p>To trace the path as traffic from a particular network sees it, for example from the LAN address instead of the WAN address, set the source address of the probes. <a href="../user-guides/routing-and-networking-protocols/policy-routing">Routing rules</a> that match the source address apply to the probes too, so <code>src-address</code> also traces the path of a policy-routing table:</p>
+<pre><code class="language-ros">/tool/traceroute 198.51.100.10 src-address=192.168.88.1
+</code></pre>
+<p><code>interface</code> sends the probes out of one interface. When no route through that interface covers the destination, the router treats the destination as directly connected there and sends ARP requests for it, so the trace only times out.</p>
+<h2 id="technical-details_1">Technical details</h2>
+<h3 id="probes">Probes</h3>
+<ul>
+<li>The probes are ICMP echo requests. <code>size</code> is the size of the whole IP packet: the default of 28 bytes is an IPv4 header and an ICMP header without any payload.</li>
+<li>The first probe of a round has TTL 1, and each next probe one more. A probe waits up to <code>timeout</code>, 1 second by default, for its answer; the next probe is sent as soon as the answer arrives or the timeout expires.</li>
+<li>A round ends when the destination answers, when a router answers with a destination unreachable message, or after <code>max-hops</code> probes, 30 by default. The next round starts when the round is done, at the earliest one second after the previous round started.</li>
+<li>With <code>protocol=udp</code>, the probes are UDP datagrams to <code>port</code>, 33434 by default. The destination port is the same for every probe; the source port changes from hop to hop. The destination answers with an ICMP port unreachable message instead of an echo reply.</li>
+</ul>
+<h3 id="host-names-in-winbox-and-webfig">Host names in WinBox and WebFig</h3>
+<p>When you enter a host name in Tools &gt; Traceroute in WinBox 4 or in WebFig, the router resolves the name with its own <a href="../network-management/dns">DNS resolver</a>. WinBox 3 resolves the name on the computer it runs on.</p>
+<p>For all parameters, see <a href="../cli-reference/tool/traceroute"><code>/tool/traceroute</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="torch">Torch</h1>
+<blockquote>
+<p>Torch shows the traffic that passes one interface right now, grouped into flows by address, protocol, port and DSCP, with the rate in each direction. Find the host that uses the bandwidth, watch one protocol or port,...</p>
+</blockquote>
+<h1 id="torch_1">Torch</h1>
+<p>Torch shows the traffic that passes one interface right now. It groups the packets into flows, one row for each combination of addresses, protocol, ports and DSCP value, and shows the rate of each flow in both directions. Use it to find out who uses a link, which protocols run over it, or whether the packets of a connection arrive at all.</p>
+<p>Torch sees received packets before the firewall filters them, so traffic that a firewall rule drops still appears on the interface it arrives on. Packets the router sends are counted as they leave, so traffic dropped in the forward chain does not appear on the outgoing interface. While Torch runs, the router turns IP fast path and FastTrack off, as it does for the <a href="packet-sniffer">packet sniffer</a>; on a busy router the CPU load rises for that time. To see the contents of packets or save them to a file, use the packet sniffer instead.</p>
+<p>Torch runs until you stop it with <kbd>Control</kbd>+<kbd>C</kbd>. To stop it after a set time, add <code>duration</code>, for example <code>duration=10s</code>.</p>
+<p>Watch the <a href="https://youtu.be/45E2uwI3xhc">video about Torch</a>.</p>
+<h2 id="see-what-passes-an-interface">See what passes an interface</h2>
+<p>Give Torch the interface to watch. The interface name can be given without <code>interface=</code>:</p>
+<pre><code class="language-ros">/tool/torch bridge
+</code></pre>
+<pre><code class="language-text">Columns: MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, SRC-PORT, DST-ADDRESS, DST-PORT, TX, RX, TX-PACKETS, RX-PACKETS
+MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS    SRC-PORT  DST-ADDRESS   DST-PORT        TX         RX         TX-PACKETS  RX-PACKETS
+ip            icmp            0  192.168.88.21            192.168.88.1                  197.3kbps  197.3kbps          48          48
+ip            tcp             0  192.168.88.20     58910  192.168.88.1  2000 (btserv)   1152bps    1152bps             2           2
+ip            udp             0  192.168.88.20      2257  192.168.88.1  2001 (glimpse)  2.0Mbps    0bps              172           0
+</code></pre>
+<p>The table updates every second until you stop Torch. In this example, 192.168.88.21 pings the router, and 192.168.88.20 runs a bandwidth test in which it receives 2 Mbps from the router.</p>
+<p>Each row is one flow between two addresses:</p>
+<ul>
+<li><code>SRC-ADDRESS</code> and <code>SRC-PORT</code> - The address and port on the far side of the interface: the side whose traffic the interface receives. This holds even when the router started the conversation, and for traffic that the router forwards.</li>
+<li><code>DST-ADDRESS</code> and <code>DST-PORT</code> - The other end of the flow. Port numbers are shown with their service names, such as <code>2000 (btserv)</code>.</li>
+<li><code>RX</code> - The rate of the traffic that the interface receives from <code>SRC-ADDRESS</code>, in bits per second.</li>
+<li><code>TX</code> - The rate of the traffic that the interface sends towards <code>SRC-ADDRESS</code>, in bits per second.</li>
+<li><code>TX-PACKETS</code> and <code>RX-PACKETS</code> - The same two directions in packets per second.</li>
+</ul>
+<p>A column appears only when a flow has a value for it: the port columns appear only when TCP or UDP flows are present.</p>
+<h2 id="find-the-host-that-uses-the-bandwidth">Find the host that uses the bandwidth</h2>
+<p>On the LAN interface, <code>SRC-ADDRESS</code> is the LAN host, so <code>TX</code> is what the host downloads and <code>RX</code> what it uploads. The rows with the highest rates show who uses the connection. A host with many connections, such as a web browser, has many rows; filter by its address to see them together. Watch the LAN interface, not the WAN interface: after source NAT, the flows on the WAN interface have the router's public address instead of the hosts' addresses.</p>
+<p>To watch one host, filter by its address:</p>
+<pre><code class="language-ros">/tool/torch bridge src-address=192.168.88.21/32
+</code></pre>
+<pre><code class="language-text">Columns: MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, DST-ADDRESS, TX, RX, TX-PACKETS, RX-PACKETS
+MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS    DST-ADDRESS   TX         RX         TX-PACKETS  RX-PACKETS
+ip            icmp            0  192.168.88.21  192.168.88.1  197.3kbps  197.3kbps          48          48
+</code></pre>
+<p>The address filters match the columns as Torch shows them: <code>src-address</code> matches <code>SRC-ADDRESS</code>, the far side of the interface, and <code>dst-address</code> matches <code>DST-ADDRESS</code>. On a LAN interface, filter the hosts with <code>src-address</code>; <code>dst-address</code> set to a LAN host usually matches nothing there. For IPv6, use <code>src-address6</code> and <code>dst-address6</code>.</p>
+<h2 id="watch-one-protocol-or-port">Watch one protocol or port</h2>
+<p>To show only one IP protocol or one port, use <code>ip-protocol</code> and <code>port</code>:</p>
+<pre><code class="language-ros">/tool/torch bridge ip-protocol=tcp port=443
+</code></pre>
+<p><code>port</code> matches either <code>SRC-PORT</code> or <code>DST-PORT</code>. It takes one port or <code>any</code>; a list such as <code>port=80,443</code> fails with <code>expected end of command</code>. The port filter applies only to flows that have ports: flows without ports, such as ICMP, still appear with a port filter.</p>
+<h2 id="check-vlan-tags-and-dscp-marking">Check VLAN tags and DSCP marking</h2>
+<p>On an interface that carries tagged VLANs, Torch adds a <code>VLAN-ID</code> column for the tagged traffic. To check that traffic arrives in the right VLAN with the right DSCP value, for example voice traffic in VLAN 99 with DSCP 46 (Expedited Forwarding), watch the parent interface. In this example, a test ping marked with DSCP 46 runs in VLAN 99:</p>
+<pre><code class="language-ros">/tool/torch ether1
+</code></pre>
+<pre><code class="language-text">Columns: VLAN-ID, MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, DST-ADDRESS, TX, RX, TX-PACKETS, RX-PACKETS
+VLAN-ID  MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS   DST-ADDRESS   TX         RX         TX-PACKETS  RX-PACKETS
+     99  ip            icmp           46  198.51.100.1  198.51.100.2  237.3kbps  235.7kbps          48          48
+         ip            icmp            0  203.0.113.1   203.0.113.2   120.5kbps  120.5kbps          48          48
+</code></pre>
+<p>The first row is tagged with VLAN 99 and marked with DSCP 46; the second row is untagged. <code>vlan-id=99</code> or <code>dscp=46</code> shows only the matching flows. On the VLAN interface itself, the frames are already untagged, so the <code>VLAN-ID</code> column does not appear there. For an untagged device, such as a phone on a bridge port, watch the bridge and filter by the phone's address, for example <code>src-address=192.168.88.30/32</code>.</p>
+<p>The DSCP value is part of a flow, so when the two directions of a conversation are marked differently, they show as two rows: one with only <code>RX</code> and one with only <code>TX</code>. Here the requests arrive with DSCP 46 and the answers leave with DSCP 0:</p>
+<pre><code class="language-ros">/tool/torch ether1
+</code></pre>
+<pre><code class="language-text">Columns: MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, DST-ADDRESS, TX, RX, TX-PACKETS, RX-PACKETS
+MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS  DST-ADDRESS  TX         RX         TX-PACKETS  RX-PACKETS
+ip            icmp            0  203.0.113.1  203.0.113.2  165.6kbps  0bps               50           0
+ip            icmp           46  203.0.113.1  203.0.113.2  0bps       165.6kbps           0          50
+</code></pre>
+<p>Torch does not show the VLAN priority (PCP) of the frames; use the <a href="packet-sniffer">packet sniffer</a> to check it.</p>
+<h2 id="see-traffic-that-the-firewall-drops">See traffic that the firewall drops</h2>
+<p>Torch counts packets before the firewall, so it shows traffic that a firewall rule drops. In this example, a rule in the input chain drops the pings from 192.168.88.21:</p>
+<pre><code class="language-ros">/tool/torch bridge src-address=192.168.88.21/32
+</code></pre>
+<pre><code class="language-text">Columns: MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, DST-ADDRESS, TX, RX, TX-PACKETS, RX-PACKETS
+MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS    DST-ADDRESS   TX    RX         TX-PACKETS  RX-PACKETS
+ip            icmp            0  192.168.88.21  192.168.88.1  0bps  197.3kbps           0          48
+</code></pre>
+<p>The requests arrive (<code>RX</code>), and the router sends nothing back (<code>TX</code> is 0). The same picture, with traffic in one direction only, also shows a connection whose replies take another path or never come, so check the counters of the rule itself to confirm that it drops the traffic: <code>/ip/firewall/filter/print stats</code> (see <a href="../firewall-and-quality-of-service/firewall/filter">Filter</a>).</p>
+<h2 id="see-which-cpu-handles-the-traffic">See which CPU handles the traffic</h2>
+<p>On routers with several CPUs, <code>cpu=any</code> adds a <code>CPU</code> column, with one row for each CPU that handled packets of a flow. Use it to see whether one heavy flow keeps a single CPU busy:</p>
+<pre><code class="language-ros">/tool/torch bridge cpu=any
+</code></pre>
+<pre><code class="language-text">Columns: CPU, MAC-PROTOCOL, IP-PROTOCOL, DSCP, SRC-ADDRESS, DST-ADDRESS, TX, RX, TX-PACKETS, RX-PACKETS
+CPU  MAC-PROTOCOL  IP-PROTOCOL  DSCP  SRC-ADDRESS    DST-ADDRESS   TX         RX         TX-PACKETS  RX-PACKETS
+  0  ip            icmp            0  192.168.88.20  192.168.88.1  170.3kbps  389.3kbps          21          48
+  0  ip            icmp            0  192.168.88.21  192.168.88.1  201.4kbps  201.4kbps          49          49
+  1  ip            icmp            0  192.168.88.20  192.168.88.1  32.4kbps   0bps                4           0
+  3  ip            icmp            0  192.168.88.20  192.168.88.1  186.5kbps  0bps               23           0
+</code></pre>
+<p>Here the router's pings to 192.168.88.20 leave from CPUs 0, 1 and 3, and the replies are received on CPU 0.</p>
+<h2 id="technical-details_2">Technical details</h2>
+<h3 id="fast-path">Fast path</h3>
+<p>While Torch runs, the router turns IP fast path and FastTrack off for all traffic, not only on the watched interface. Both come back on when Torch stops.</p>
+<h3 id="traffic-that-torch-does-not-see">Traffic that Torch does not see</h3>
+<p>Torch sees the packets that reach the router's CPU on the watched interface:</p>
+<ul>
+<li>On a bridge with hardware offloading, the switch chip forwards traffic between ports without the CPU, so Torch does not see it. Unknown unicast, broadcast and some multicast traffic still reach the CPU and remain visible. See <a href="../bridging-and-switching/user-guides/layer2-misconfiguration#packet-flow-with-hardware-offloading-and-mac-learning">Packet flow with hardware offloading and MAC learning</a>.</li>
+<li>With <a href="../bridging-and-switching/l3-hardware-offloading">L3 hardware offloading</a>, routed traffic that the switch chip forwards does not reach the CPU either.</li>
+<li>Unicast traffic between wireless clients with client-to-client forwarding enabled is not visible to Torch.</li>
+</ul>
+<p>Torch shows protocols and IP addresses, not MAC addresses. To find the MAC address of a host, see its lease in the <a href="../network-management/dhcp/server#leases">DHCP server</a>.</p>
+<p>For all parameters, see <a href="../cli-reference/tool/torch"><code>/tool/torch</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="packet-sniffer">Packet Sniffer</h1>
+<blockquote>
+<p>The RouterOS packet sniffer: capture packets on the router, filter them, watch them live in the console, save them to a pcapng file for Wireshark or stream them to a PC over TZSP, and know what the sniffer cannot see.</p>
+</blockquote>
+<h1 id="packet-sniffer_1">Packet Sniffer</h1>
+<p>The packet sniffer captures packets that the router receives, sends and forwards. Use it to diagnose network problems: whether a device sends a request and gets an answer, which packets arrive on an interface, or what a protocol exchange looks like. You can watch the packets live in the console, save them to a file for <a href="https://www.wireshark.org/">Wireshark</a>, or stream them to a PC while they are captured.</p>
+<p>The sniffer keeps the captured packets in memory, 100 KiB by default. Filters decide which packets it captures; without filters, it captures everything on every interface, which on a busy router fills the memory quickly. Captures hold the traffic of your users, so treat the files like other private data.</p>
+<h2 id="capture-packets-and-open-them-in-wireshark">Capture packets and open them in Wireshark</h2>
+<p>A computer at 192.168.88.50 cannot open a website. Start the sniffer on the LAN bridge with a filter for the computer's address, reproduce the problem, stop the sniffer and save the packets to a file:</p>
+<pre><code class="language-ros">/tool/sniffer/start interface=bridge ip-address=192.168.88.50/32
+/tool/sniffer/stop
+/tool/sniffer/save file-name=capture.pcap
+</code></pre>
+<p>Capture on the LAN side: on the WAN interface, source NAT has already replaced the computer's address with the router's.</p>
+<p>Download <code>capture.pcap</code> from the router's files (the Files menu in WinBox or WebFig, or <code>scp admin@192.168.88.1:capture.pcap .</code>) and open it in Wireshark. The file is in pcapng format, whatever its extension, and records for each packet the interface, the direction and a timestamp with nanosecond resolution.</p>
+<p>To write the packets to a file while the sniffer runs, set the file name first:</p>
+<pre><code class="language-ros">/tool/sniffer/set file-name=capture.pcap file-limit=10000KiB
+/tool/sniffer/start interface=bridge ip-address=192.168.88.50/32
+</code></pre>
+<p>Each start overwrites the file. When the file reaches <code>file-limit</code>, the sniffer stops writing to it but keeps running. For long captures, write the file to a USB disk or a <a href="../storage/tmpfs">RAM disk</a> instead of the router's flash, with a path such as <code>file-name=usb1/capture.pcap</code>. To stop writing a file, set <code>file-name=""</code>.</p>
+<h2 id="watch-packets-live">Watch packets live</h2>
+<p><code>quick</code> shows matching packets in the console as they arrive, without changing the settings. It runs until you press <kbd>Q</kbd>, or for <code>duration</code>; <code>proplist</code> selects the columns. To see whether the router's DHCP client on ether1 gets answers, filter by port: a DHCP client starts without an address, so an address filter misses its first packets:</p>
+<pre><code class="language-ros">/tool/sniffer/quick interface=ether1 port=bootps,bootpc duration=10s \
+    proplist=time,dir,src-address,dst-address,size
+</code></pre>
+<pre><code class="language-text">Columns: TIME, DIR, SRC-ADDRESS, DST-ADDRESS, SIZE
+TIME      DIR  SRC-ADDRESS                DST-ADDRESS                SIZE
+4.922348  -&gt;   192.168.88.24:68 (bootpc)  192.168.88.1:67 (bootps)    342
+4.923657  &lt;-   192.168.88.1:67 (bootps)   192.168.88.24:68 (bootpc)   342
+</code></pre>
+<p><code>TIME</code> counts seconds since the start, <code>&lt;-</code> marks received and <code>-&gt;</code> sent packets. Without <code>interface</code>, a packet to or from the router through a bridge appears twice: once on the bridge and once on the bridge port. <code>quick</code> does not run while the sniffer is started.</p>
+<h2 id="look-at-a-capture-in-the-console">Look at a capture in the console</h2>
+<p>After <code>stop</code>, the captured packets stay in memory for 10 minutes, or until the next <code>start</code>, and four menus show them. Save them to a file to keep them longer:</p>
+<pre><code class="language-ros">/tool/sniffer/packet/print
+</code></pre>
+<pre><code class="language-text">Columns: TIME, INTERFACE, SRC-ADDRESS, DST-ADDRESS, IP-PROTOCOL, SIZE, CPU
+#  TIME      INTERFACE  SRC-ADDRESS    DST-ADDRESS    IP-PROTOCOL  SIZE  CPU
+0  1.191491  bridge     192.168.88.1   192.168.88.10  icmp           70    3
+1  1.191726  bridge     192.168.88.10  192.168.88.1   icmp           70    0
+2  2.193866  bridge     192.168.88.1   192.168.88.10  icmp           70    2
+3  2.194027  bridge     192.168.88.10  192.168.88.1   icmp           70    0
+</code></pre>
+<p><code>/tool/sniffer/protocol/print</code> counts the packets and bytes per protocol, IP protocol and port, with their share of the capture. <code>/tool/sniffer/host/print</code> shows the rate, peak rate and total bytes per address, each as two values: to the address and from it. The rates are calculated when the capture stops:</p>
+<pre><code class="language-text">Columns: ADDRESS, RATE, PEAK-RATE, TOTAL
+#  ADDRESS        RATE           PEAK-RATE      TOTAL
+0  192.168.88.1   560bps/560bps  560bps/560bps  280/280
+1  192.168.88.10  560bps/560bps  560bps/560bps  280/280
+</code></pre>
+<p><code>/tool/sniffer/connection/print</code> lists the TCP connections with their bytes, resends and MSS in each direction:</p>
+<pre><code class="language-text">Columns: SRC-ADDRESS, DST-ADDRESS, BYTES, RESENDS, MSS
+# SRC-ADDRESS          DST-ADDRESS              BYTES     RESENDS  MSS
+0 192.168.88.1:55042   192.168.88.10:80 (http)  104/1536  0/0      1460/1460
+</code></pre>
+<p>To see which hosts use the most bandwidth right now, use <a href="torch">Torch</a> instead: it shows the rates live.</p>
+<h2 id="stream-packets-to-wireshark">Stream packets to Wireshark</h2>
+<p>The sniffer can send every captured packet to a PC over the TaZmen Sniffer Protocol (TZSP), so Wireshark shows the packets while they are captured. Set the PC's address as <code>streaming-server</code> (the port defaults to 37008) and turn on <code>filter-stream</code>:</p>
+<pre><code class="language-ros">/tool/sniffer/set streaming-enabled=yes streaming-server=192.168.88.10 \
+    filter-stream=yes
+/tool/sniffer/start interface=ether1
+</code></pre>
+<p>With only <code>interface</code> given, the sniffer streams all traffic of ether1. Each captured packet crosses the network again inside an unencrypted UDP packet, so streaming a busy interface loads the path to the PC.</p>
+<p><code>filter-stream=yes</code> keeps the sniffer from capturing its own stream packets. Without it (the default is <code>no</code>), when the stream leaves through a sniffed interface, the sniffer captures the stream packets and streams them again, in a loop. With <code>yes</code>, the sniffer also leaves out ICMP packets to and from the PC, even while streaming is off.</p>
+<p>In Wireshark, capture on the PC's network interface with the capture filter <code>udp port 37008</code>, or show only the stream with the display filter <code>udp.port==37008</code>. Wireshark decodes the TZSP packets and shows the captured frames inside:</p>
+<p><em>[gambar: Wireshark display filter bar with the filter udp.port==37008]</em></p>
+<p>To stop streaming, set <code>streaming-enabled=no</code>; the setting stays until you change it.</p>
+<h2 id="choose-what-to-capture">Choose what to capture</h2>
+<p>Set the filters with <code>/tool/sniffer/set</code> to keep them for every capture, or give them to <code>start</code> or <code>quick</code> for one run. The arguments are the filter names without <code>filter-</code> (<code>interface</code>, <code>ip-address</code>, <code>port</code>), and <code>vlan-id</code> for <code>filter-vlan</code>. With arguments, only the filters given apply: saved filters that you do not repeat are ignored for that run. Without arguments, the saved filters apply, so check them with <code>/tool/sniffer/print</code>, and clear all settings with <code>/tool/sniffer/reset</code>.</p>
+<ul>
+<li><code>filter-interface</code> - The interfaces to sniff. Empty means all interfaces.</li>
+<li><code>filter-ip-address</code>, <code>filter-src-ip-address</code>, <code>filter-dst-ip-address</code> and the IPv6 and MAC address variants - Addresses in either direction, as source or as destination. For one direction of a flow, use the source and destination filters.</li>
+<li><code>filter-port</code>, <code>filter-src-port</code>, <code>filter-dst-port</code> - Ports, by number or name (<code>ssh</code>, <code>dns</code>, <code>bootps</code>).</li>
+<li><code>filter-ip-protocol</code>, <code>filter-mac-protocol</code> - Protocols, by name or number.</li>
+<li><code>filter-vlan</code> - VLAN IDs of tagged frames on the port that carries them. The address and protocol filters match the packet inside the tag. On the VLAN interface itself, the packets are untagged.</li>
+<li><code>filter-direction</code> - <code>rx</code> for packets received on the sniffed interface, <code>tx</code> for sent ones, <code>any</code> (default) for both.</li>
+<li><code>filter-operator-between-entries</code> - With <code>or</code> (default), a packet that matches any entry of a filter matches; with <code>and</code>, it has to match all of them, for example both addresses in <code>ip-address=192.168.88.50/32,192.168.88.1/32</code>.</li>
+</ul>
+<p>Separate several values with commas, and prefix a value with <code>!</code> to exclude it. Different filters always combine: a packet is captured only when it matches every filter that is set.</p>
+<p>The sniffer keeps up to <code>memory-limit</code> of packets in memory. With <code>memory-scroll=yes</code> (default), new packets replace the oldest ones when the memory is full, so the memory holds the latest packets: stop the sniffer right after the problem appears. With <code>no</code>, the sniffer keeps the first packets and stores no more. <code>only-headers=yes</code> keeps and saves only the packet headers, which fits more packets into the same memory or file. Keep <code>memory-limit</code> well below the router's free memory (<code>/system/resource/print</code>).</p>
+<p>For all settings, see <a href="../cli-reference/tool/sniffer/"><code>/tool/sniffer</code></a> in the CLI reference.</p>
+<h2 id="what-the-sniffer-sees">What the sniffer sees</h2>
+<ul>
+<li>The sniffer captures received packets before the firewall and NAT, and sent packets after them. It shows packets that the firewall then drops, as received only, and it shows the addresses and ports as they are on the wire.</li>
+<li>While the sniffer runs, the router turns off IPv4 <a href="../firewall-and-quality-of-service/packet-flow-in-routeros#fast-path">fast path</a>, and with it FastTrack, so forwarded traffic takes more CPU.</li>
+<li>Packets that a bridge forwards in hardware (hardware offloading) never reach the router's CPU and are not captured; flooded packets, such as broadcast, multicast and unknown unicast, can be.</li>
+<li>Unicast traffic between wireless clients with client-to-client forwarding does not pass the sniffer.</li>
+<li>Packets of the <a href="traffic-generator">traffic generator</a> are not visible on the same interface unless its <code>fast-path</code> parameter is set.</li>
+</ul>
+<h2 id="technical-details_3">Technical details</h2>
+<ul>
+<li>The packet list shows the time in seconds since the start of the capture, with microseconds.</li>
+<li><code>save</code> and <code>file-name</code> write pcapng files from RouterOS 7.20; earlier versions wrote pcap. The traffic generator's <code>inject-pcap</code> reads pcapng files from RouterOS 7.21.</li>
+<li>The TZSP stream uses TZSP version 1 with Ethernet encapsulation and carries each captured frame complete.</li>
+</ul>
+<hr />
+<h1 id="bandwidth-test">Bandwidth test</h1>
+<blockquote>
+<p>The bandwidth test measures TCP or UDP throughput between two MikroTik routers: the client in /tool/bandwidth-test sends to or receives from the bandwidth test server of the other router. It covers prerequisites,...</p>
+</blockquote>
+<h1 id="bandwidth-test_1">Bandwidth test</h1>
+<p>The bandwidth test measures the throughput between two MikroTik routers. The client (<code>/tool/bandwidth-test</code>) on one router connects to the bandwidth test server (<code>/tool/bandwidth-server</code>) of the other router, sends or receives TCP or UDP traffic, and shows the rate every second. Use it to check a wireless or WAN link, or to find the bottleneck on a path.</p>
+<p>To measure latency, jitter and TCP and UDP throughput in both directions in one run, use <a href="speed-test">Speed test</a>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A test without a speed limit uses all the bandwidth the path can give and a large part of the routers' CPU time, and other traffic on the link, routing protocols and management access suffer. On a link in use, set a speed limit or test when the link is quiet.</p>
+</div>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>On the router that runs the server:</p>
+<ul>
+<li>The bandwidth test server is on. It is on by default, with authentication:</li>
+</ul>
+<p><code>ros
+  [admin@MikroTik] &gt; /tool/bandwidth-server/print
+                    enabled: yes
+               authenticate: yes
+    allocate-udp-ports-from: 2000
+               max-sessions: 100
+         allowed-addresses4:
+         allowed-addresses6:</code></p>
+<ul>
+<li><a href="../system-information-and-utilities/device-mode">Device mode</a> allows the bandwidth test, on the server and on the client: <code>/system/device-mode/print</code> shows <code>bandwidth-test: yes</code>. Most routers delivered with RouterOS 7.17 or later come in the <code>home</code> or <code>basic</code> mode, which turn it off (CCR and 1100 series routers come in <code>advanced</code>). Turning it on needs physical access to the router, so check it before you install a router at a remote site.</li>
+<li>A user on the server for the client to log in with, in a group with both the <code>test</code> and the <code>winbox</code> policy; the server checks both. The default <code>read</code> and <code>full</code> groups have both, so an existing administrator works too. A group with only these two policies is enough:</li>
+</ul>
+<p><code>ros
+  /user/group/add name=btest policy=test,winbox
+  /user/add name=btest group=btest password=change-this-password</code></p>
+<ul>
+<li>The firewall accepts TCP port 2000 and UDP ports 2000-65535 from the client. The default firewall drops them from the WAN side; when the server is reachable only over the internet, add rules for the test, as in <a href="speed-test#open-the-firewall-for-a-test-over-the-internet">Open the firewall for a test over the internet</a>, and remove them afterwards.</li>
+</ul>
+<p>On the client, UDP tests in the <code>receive</code> and <code>both</code> directions need the server's UDP packets to arrive: a client behind NAT or a firewall that drops them receives nothing. Use TCP in that case, or accept UDP from the server on the client.</p>
+<p>After the tests, remove the test user (<code>/user/remove btest</code> and <code>/user/group/remove btest</code>) and any firewall rules you added.</p>
+<h2 id="test-a-link">Test a link</h2>
+<p>To check that a wireless link carries 50 Mbit/s in each direction without taking it over, set a speed limit in both directions:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/bandwidth-test address=10.0.0.2 user=btest \
+    password=change-this-password protocol=tcp direction=both \
+    local-tx-speed=50M remote-tx-speed=50M duration=10s
+                status: done testing
+              duration: 11s
+            tx-current: 50.3Mbps
+  tx-10-second-average: 49.9Mbps
+      tx-total-average: 49.9Mbps
+            rx-current: 51.3Mbps
+  rx-10-second-average: 49.8Mbps
+      rx-total-average: 49.8Mbps
+           random-data: no
+             direction: both
+      connection-count: 20
+        local-cpu-load: 9%
+       remote-cpu-load: 0%
+</code></pre>
+<p><code>local-tx-speed</code> limits what the client sends, <code>remote-tx-speed</code> what the server sends. Without <code>duration</code>, the test runs until you press <kbd>Control</kbd>+<kbd>C</kbd>.</p>
+<h3 id="check-a-link-for-packet-loss">Check a link for packet loss</h3>
+<p>To check that a link delivers a rate without loss, send UDP at that rate and watch <code>lost-packets</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/bandwidth-test address=10.0.0.2 user=btest \
+    password=change-this-password direction=receive \
+    remote-tx-speed=500M duration=10s
+                status: done testing
+              duration: 11s
+            rx-current: 491.1Mbps
+  rx-10-second-average: 486.2Mbps
+      rx-total-average: 486.2Mbps
+          lost-packets: 3
+           random-data: no
+             direction: receive
+               rx-size: 1500
+      connection-count: 20
+        local-cpu-load: 3%
+       remote-cpu-load: 6%
+</code></pre>
+<p>At 491 Mbit/s of 1500-byte packets, about 41,000 packets arrive per second, so 3 lost packets in the last second are a loss of less than 0.01%. A link that loses a share of the packets at a rate below its capacity has a problem, for example interference on a wireless link. TCP does not show such loss: it sends the lost data again and only slows down.</p>
+<p>Most wireless links share the air time between the two directions. Test each direction on its own (<code>direction=transmit</code>, then <code>direction=receive</code>) to see what each direction gets, and <code>direction=both</code> to see what the link carries in total.</p>
+<h3 id="measure-the-maximum-throughput">Measure the maximum throughput</h3>
+<p>Without speed limits, the test sends as much as it can:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/bandwidth-test address=10.0.0.2 user=btest \
+    password=change-this-password protocol=tcp direction=both \
+    duration=10s
+                status: done testing
+              duration: 10s
+            tx-current: 920.3Mbps
+  tx-10-second-average: 918.0Mbps
+      tx-total-average: 918.0Mbps
+            rx-current: 748.4Mbps
+  rx-10-second-average: 674.0Mbps
+      rx-total-average: 674.0Mbps
+           random-data: no
+             direction: both
+      connection-count: 20
+        local-cpu-load: 16%
+       remote-cpu-load: 4%
+</code></pre>
+<p>TCP shows what TCP applications get on the path: TCP slows down when packets are lost or delayed. With the default 20 connections, the result is the total of many connections; one connection (<code>connection-count=1</code>) is closer to a single download, which the latency of the path limits more. UDP shows how much the path delivers when the sender does not slow down, and how much it loses. The default test is UDP, with the server sending (<code>direction=receive</code>) 1500-byte packets:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/bandwidth-test address=10.0.0.2 user=btest \
+    password=change-this-password duration=10s
+                status: done testing
+              duration: 11s
+            rx-current: 957.3Mbps
+  rx-10-second-average: 943.9Mbps
+      rx-total-average: 943.9Mbps
+          lost-packets: 18632
+           random-data: no
+             direction: receive
+               rx-size: 1500
+      connection-count: 20
+        local-cpu-load: 5%
+       remote-cpu-load: 7%
+</code></pre>
+<p>To test with other packet sizes, set <code>local-udp-tx-size</code> (client) and <code>remote-udp-tx-size</code> (server). The size is the whole IP packet, from 52 to 64000 bytes over IPv4; packets larger than the smallest MTU on the path are fragmented. Small packets test how many packets per second a path forwards, large packets how many bits.</p>
+<p>To test to a router's IPv6 link-local address, add the interface: <code>address=fe80::34:23ff:fe6a:570c%ether1</code>.</p>
+<h2 id="read-the-results">Read the results</h2>
+<ul>
+<li><code>tx-</code> values are what the client sends, <code>rx-</code> values what it receives.</li>
+<li><code>current</code> is the last second, <code>10-second-average</code> the last 10 seconds, and <code>total-average</code> the whole test.</li>
+<li>UDP counts the whole IP packet, headers included. TCP counts only the data, so a TCP result is a few percent lower than the traffic on the link, and the acknowledgements that flow back are not counted at all. On a wireless link, they also use air time.</li>
+<li><code>lost-packets</code> (UDP) is the number of packets that did not arrive in the last second, not a total. The client shows it for what it receives (<code>receive</code> and <code>both</code>); for what the client sends, the server's session list shows it.</li>
+<li><code>local-cpu-load</code> and <code>remote-cpu-load</code> are the CPU load of the client and the server during the test. A load near 100% means that the router, not the link, limits the result. A lower value does not rule this out: one busy CPU core can limit a test while the others idle, so check the cores in <code>/system/resource/cpu/print</code>.</li>
+<li><code>connection-count</code> is the number of TCP connections, or of UDP streams with their own ports: 20, or the number of CPU cores on routers with more than 20. Several connections spread the load over the CPU cores.</li>
+</ul>
+<p>Without a speed limit, a UDP sender sends at full rate for about the first second, then more than the receiver reports. On a link slower than the sender, <code>lost-packets</code> therefore stays above zero, and the <code>rx-</code> values are the throughput of the link. To check a link for loss, set a speed below its capacity, as in Check a link for packet loss.</p>
+<p>To test a link that compresses data, set <code>random-data=yes</code>: the test then sends data that cannot be compressed. It costs more CPU time on both routers, and on routers with slow CPUs it can limit the result.</p>
+<h2 id="test-a-routers-forwarding-capacity">Test a router's forwarding capacity</h2>
+<p>Generating and receiving the test traffic takes CPU time on the client and the server. To measure how much a router forwards, do not run the test from or to that router: connect three routers in a chain, run the server on one end, the client on the other, and test through the router in the middle. Route the end routers' subnets through the middle router, and watch <code>local-cpu-load</code> and <code>remote-cpu-load</code>: when an end router is near 100%, it limits the result, not the router in the middle. The end routers must be able to send and receive more than the router in the middle forwards. Use 1500-byte packets to measure the bit rate, and small UDP packets (<code>local-udp-tx-size=64</code>) to measure the packet rate, which limits most routers first. When one pair of routers cannot load the router under test, use more pairs or the <a href="traffic-generator">traffic generator</a>.</p>
+<h2 id="secure-the-server">Secure the server</h2>
+<p>The server answers every client that reaches TCP port 2000. With <code>authenticate=yes</code> (the default), a client must log in with a user that has the <code>test</code> and <code>winbox</code> policies. Do not set <code>authenticate=no</code> on a router that untrusted networks reach: anyone could then load the router and its links. The default firewall drops TCP port 2000 from the WAN side; keep it that way, or accept it only from known addresses.</p>
+<p>To accept tests only from known addresses, list them; other clients get <code>can not connect</code>. A user's own <code>address</code> setting does not limit bandwidth test logins, so use these lists. Set <code>allowed-addresses6</code> too when the router has IPv6 addresses:</p>
+<pre><code class="language-ros">/tool/bandwidth-server/set allowed-addresses4=192.0.2.0/24 \
+    allowed-addresses6=2001:db8::/32
+</code></pre>
+<p>To turn the server off:</p>
+<pre><code class="language-ros">/tool/bandwidth-server/set enabled=no
+</code></pre>
+<p><code>max-sessions</code> limits how many tests run at once (100 by default), whatever their number of connections. A single test cannot use more connections than <code>max-sessions</code> either, so keep it at or above the clients' <code>connection-count</code>.</p>
+<p>The server lists the running tests in <code>/tool/bandwidth-server/session</code>, from the server's view (<code>send</code> means that the server sends):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/bandwidth-server/session/print \
+    proplist=protocol,direction,user,tx-current,rx-current
+Columns: PROTOCOL, DIRECTION, USER, TX-CURRENT, RX-CURRENT
+#  PROTOCOL  DIRECTION  USER   TX-CURRENT  RX-CURRENT
+0  tcp       both       admin  624.1Mbps   917.2Mbps
+</code></pre>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Status or symptom</th>
+<th style="text-align: left;">Cause and fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>authentication failed</code></td>
+<td style="text-align: left;">Wrong user or password, or no user when the server has <code>authenticate=yes</code>. The user must exist on the server, in a group with both the <code>test</code> and <code>winbox</code> policies (<code>/user/group/print</code> on the server).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>can not connect</code></td>
+<td style="text-align: left;">The server is off or not reachable on TCP port 2000, the client is not in <code>allowed-addresses4</code>/<code>allowed-addresses6</code>, or the server already runs <code>max-sessions</code> tests.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>disconnected</code></td>
+<td style="text-align: left;">The connection was lost during the test, or the test uses more connections than the server's <code>max-sessions</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>not allowed by device-mode</code></td>
+<td style="text-align: left;">Device mode on the router that runs the test has <code>bandwidth-test: no</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">A UDP <code>receive</code> test shows 0 bps.</td>
+<td style="text-align: left;">The server's UDP packets do not reach the client: the client is behind NAT or a firewall. Use TCP, or allow UDP from the server. UDP <code>transmit</code> tests work from behind NAT.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The result is lower than the link speed, with a CPU load near 100%.</td>
+<td style="text-align: left;">The router limits the test; test through the router instead (see Test a router's forwarding capacity).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details_4">Technical details</h2>
+<h3 id="ports-and-connections">Ports and connections</h3>
+<p>The client opens a TCP connection to port 2000 of the server (the <code>btest</code> service in <code>/ip/service</code>), logs in and exchanges the results over it. UDP test data uses ports from <code>allocate-udp-ports-from</code> (2000 by default) upward on both routers: the server one port per test, the client one port per stream. Each router takes free ports, so the numbers move up while other tests run. TCP tests use <code>connection-count</code> TCP connections to port 2000. The server shows IPv4 clients in IPv4-mapped IPv6 form (the IPv4 address after <code>::ffff:</code>), for example <code>::ffff:192.0.2.1</code>.</p>
+<h3 id="packet-size-and-counting">Packet size and counting</h3>
+<p><code>local-udp-tx-size</code> and <code>remote-udp-tx-size</code> set the IP packet size: 1500 bytes is 1472 bytes of UDP data. The UDP rate counts the IP packets, the TCP rate the TCP data. Interface counters also include the Ethernet header, so they show slightly more than the test.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/bandwidth-test"><code>/tool/bandwidth-test</code></a>, <a href="../cli-reference/tool/bandwidth-server/"><code>/tool/bandwidth-server</code></a> and <a href="../cli-reference/tool/bandwidth-server/session"><code>/tool/bandwidth-server/session</code></a> CLI reference.</p>
+<hr />
+<h1 id="speed-test">Speed Test</h1>
+<blockquote>
+<p>Speed test measures ping, jitter and TCP and UDP throughput in both directions between two MikroTik routers in one run, through the bandwidth test server of the remote router.</p>
+</blockquote>
+<h1 id="speed-test_1">Speed Test</h1>
+<p>Speed test measures the link between this router and another MikroTik router in one command: latency and jitter with pings, then TCP and UDP throughput in both directions. It connects to the bandwidth test server of the other router and shows the CPU load of the routers next to the throughput results. Use it to check what a link between two sites, a wireless backhaul or a VPN tunnel delivers. To test one protocol or one direction, or to set packet sizes and speed limits, use <a href="bandwidth-test">Bandwidth test</a> instead.</p>
+<h2 id="prerequisites_1">Prerequisites</h2>
+<ul>
+<li>The bandwidth test server runs on the remote router. It is enabled by default, with <code>authenticate=yes</code> (<code>/tool/bandwidth-server</code>).</li>
+<li>The remote router has a user for the test, in a group with the <code>test</code> and <code>winbox</code> policies. The default <code>read</code> and <code>full</code> groups have both.</li>
+<li>The firewalls let the test through: the remote router accepts ICMP (the default firewall does), TCP port 2000 and UDP ports 2000-65535 from the testing router, and the testing router accepts UDP from the remote router.</li>
+<li><a href="../system-information-and-utilities/device-mode">Device mode</a> allows <code>bandwidth-test</code> on both routers. Check it with <code>/system/device-mode/print</code> (<code>bandwidth-test: yes</code>). Most routers delivered with RouterOS 7.17 or later come in the <code>home</code> or <code>basic</code> mode, which turn it off (CCR and 1100 series routers come in <code>advanced</code>). Turning it on needs physical access to the router.</li>
+</ul>
+<p>To limit which routers can run tests against a router, set <code>allowed-addresses4</code> and <code>allowed-addresses6</code> of its bandwidth test server. The <code>address</code> setting of the test user does not limit bandwidth test logins. Do not set <code>authenticate=no</code> on a router that the internet can reach.</p>
+<h2 id="test-the-link-to-another-router">Test the link to another router</h2>
+<p>To check what the link from router A (192.168.88.1) to router B (192.168.88.2) delivers, add a user for the test on router B. A group with only the <code>test</code> and <code>winbox</code> policies is enough:</p>
+<pre><code class="language-ros">/user/group/add name=speedtest policy=test,winbox
+/user/add name=speedtest group=speedtest password=YourStrongPassword
+</code></pre>
+<p>Run the test on router A. Use the address of router B on the path you want to measure: for a VPN, the tunnel address of router B. The test fills the link for its whole duration, so users of the link notice it. <code>test-duration=5s</code> makes each part of the test 5 seconds long, which is enough for a quick check. With the default, the whole test takes about a minute; on links with high latency, use the default or a longer duration:</p>
+<pre><code class="language-ros">/tool/speed-test address=192.168.88.2 test-duration=5s \
+    user=speedtest password=YourStrongPassword
+</code></pre>
+<p>The router updates the results during the test. When the test ends, it shows:</p>
+<pre><code class="language-ros">              status: done
+      time-remaining: 0s
+    ping-min-avg-max: 225us / 265us / 432us
+  jitter-min-avg-max: 0s / 29us / 164us
+                loss: 0% (0/100)
+        tcp-download: 930Mbps local-cpu-load:71%
+          tcp-upload: 932Mbps local-cpu-load:61% remote-cpu-load:79%
+        udp-download: 924Mbps local-cpu-load:46% remote-cpu-load:52%
+          udp-upload: 953Mbps local-cpu-load:56% remote-cpu-load:43%
+</code></pre>
+<p>When you no longer need the test user, delete it and its group on router B:</p>
+<pre><code class="language-ros">/user/remove speedtest
+/user/group/remove speedtest
+</code></pre>
+<h2 id="open-the-firewall-for-a-test-over-the-internet">Open the firewall for a test over the internet</h2>
+<p>When the remote router is reachable only over the internet, behind the default firewall, both routers need rules for the test. In this example, router A (198.51.100.10) runs the test, and router B (203.0.113.20) is the remote router.</p>
+<p>On router B, accept TCP port 2000 and the UDP ports of the test from router A:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=tcp \
+    src-address=198.51.100.10 dst-port=2000 \
+    comment=&quot;Speed test from router A&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+/ip/firewall/filter/add chain=input action=accept protocol=udp \
+    src-address=198.51.100.10 dst-port=2000-65535 \
+    comment=&quot;Speed test from router A&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>On router A, accept UDP from router B. Without this rule, the default firewall of router A drops the UDP traffic that router B sends, and the result has no <code>udp-download</code> line:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=udp \
+    src-address=203.0.113.20 comment=&quot;Speed test to router B&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>Remove the rules after the test, on router B:</p>
+<pre><code class="language-ros">/ip/firewall/filter/remove [find comment=&quot;Speed test from router A&quot;]
+</code></pre>
+<p>And on router A:</p>
+<pre><code class="language-ros">/ip/firewall/filter/remove [find comment=&quot;Speed test to router B&quot;]
+</code></pre>
+<h2 id="read-the-results_1">Read the results</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Line</th>
+<th style="text-align: left;">Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ping-min-avg-max</code></td>
+<td style="text-align: left;">Shortest, average and longest round-trip time of the pings.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>jitter-min-avg-max</code></td>
+<td style="text-align: left;">Variation of the round-trip time between pings: smallest, average and largest.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>loss</code></td>
+<td style="text-align: left;">Lost pings in percent, then lost and sent pings: <code>(0/100)</code> means that none of 100 pings was lost.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>tcp-download</code>, <code>udp-download</code></td>
+<td style="text-align: left;">Throughput from the remote router to this router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>tcp-upload</code>, <code>udp-upload</code></td>
+<td style="text-align: left;">Throughput from this router to the remote router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>local-cpu-load</code>, <code>remote-cpu-load</code></td>
+<td style="text-align: left;">CPU load of this router and of the remote router during that part of the test. <code>tcp-download</code> shows only the local load.</td>
+</tr>
+</tbody>
+</table>
+<p>Download and upload are seen from the router that runs the test.</p>
+<p>The pings run before the throughput parts, on an idle link, so they do not show the latency under load.</p>
+<p>The throughput is the total of all connections of the test: 20 TCP connections by default (more on routers with more than 20 CPU cores), and the UDP parts also use several flows. One connection can get less, for example over bonding or per-connection load balancing, where each connection takes one path.</p>
+<h2 id="results-limited-by-the-cpu">Results limited by the CPU</h2>
+<p>When the CPU of a router is close to full load during the test, the results start with this line:</p>
+<pre><code class="language-text">;;; results can be limited by cpu, note that traffic generation/termination performance might not be representative of forwarding
+;;; performance
+</code></pre>
+<p>Creating and receiving test traffic costs a router more CPU than forwarding the same traffic. When the warning appears, the test shows the limit of the routers as the source and the destination of the traffic. The link, and traffic that the routers only forward, can carry more. To measure a router or switch as a device under test, run the test between two other routers, one on either side of the device, so that the test traffic passes through it.</p>
+<p>Between two sites, the result also depends on both internet connections: the upload of one site is the download of the other. Over a VPN, the encryption also loads the CPU of both routers.</p>
+<h2 id="troubleshoot_1">Troubleshoot</h2>
+<ul>
+<li><code>authentication failed</code> on every throughput line: the user name or password is wrong, the group of the test user lacks the <code>test</code> or <code>winbox</code> policy, or <code>user</code> was not given. Without <code>user</code>, the command sends no user name, which only a server with <code>authenticate=no</code> accepts. The ping part still runs, and the test still takes its full time.</li>
+<li><code>loss: 100%</code>: the remote router does not answer the pings. Check the address and the path to it. When the throughput lines appear anyway, ICMP is filtered on the path or on the remote router.</li>
+<li>Only the ping results appear, without throughput lines: the bandwidth test server of the remote router is turned off, its firewall drops TCP port 2000, or its <code>allowed-addresses4</code> or <code>allowed-addresses6</code> do not include this router. The test still runs through all its parts.</li>
+<li>The TCP lines appear, but one or both UDP lines are missing: the firewall of the remote router or of this router drops the UDP traffic of the test. The firewall section of this page has the rules for both routers.</li>
+<li>The command fails with <code>not allowed by device-mode</code>: device mode turns off <code>bandwidth-test</code> on this router. See <a href="../system-information-and-utilities/device-mode">Device mode</a>.</li>
+</ul>
+<h2 id="technical-details_5">Technical details</h2>
+<h3 id="test-phases">Test phases</h3>
+<p>The test runs five parts in this order, shown in <code>status</code>: <code>ping</code>, <code>tcp download</code>, <code>tcp upload</code>, <code>udp download</code> and <code>udp upload</code>, then <code>done</code>. <code>test-duration</code> sets the length of each part: 10 seconds by default, at least 5 seconds. The router pauses for about a second between the parts, so a test with the default takes about 55 seconds.</p>
+<h3 id="ping-phase">Ping phase</h3>
+<p>The ping part sends ICMP echo requests, 20 per second: 200 pings with the default <code>test-duration</code>, 100 with <code>test-duration=5s</code>.</p>
+<h3 id="connections-and-ports">Connections and ports</h3>
+<p>The TCP parts use <code>connection-count</code> TCP connections, from 1 to 255. The default is 20, or the number of CPU cores of the router that runs the test when it has more than 20: a 64-core router uses 64, also against a server with fewer cores. The session list of the remote server (<code>/tool/bandwidth-server/session/print detail</code>) shows the number as <code>tcp-connection-count</code>. The TCP connections go to port 2000 of the remote router. The UDP parts use ports from <code>allocate-udp-ports-from</code> on the remote router (2000 by default) upward.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/speed-test"><code>/tool/speed-test</code></a> and <a href="../cli-reference/tool/bandwidth-server/"><code>/tool/bandwidth-server</code></a> CLI reference.</p>
+<hr />
+<h1 id="flood-ping">Flood Ping</h1>
+<blockquote>
+<p>Flood ping sends a series of up to 1000 ICMP echo requests in one run and shows only the totals: requests sent, replies received and the shortest, average and longest round-trip time. It needs the traffic-gen...</p>
+</blockquote>
+<h1 id="flood-ping_1">Flood Ping</h1>
+<p>Flood ping sends a series of ICMP echo requests to one host and, instead of a line for every reply as <a href="ping">ping</a> prints, shows only the totals: how many requests it sent, how many replies came back, and the shortest, average and longest round-trip time. Use it to check a link for packet loss with many requests, for example a wireless link or a VPN tunnel. It works with IPv4 and IPv6 addresses and is not available on devices with the SMIPS architecture.</p>
+<p>Flood ping loads the link and the target, so use it only on links and hosts that you manage.</p>
+<h2 id="enable-flood-ping">Enable flood ping</h2>
+<p>Flood ping belongs to the <code>traffic-gen</code> feature of <a href="../system-information-and-utilities/device-mode">device mode</a>, which is off in every device mode. On a router where it is off, the command fails with <code>failure: not allowed by device-mode</code>. To turn it on, run the update and confirm it on the router itself within the time the router shows, by pressing the reset or mode button or by turning the power off and on. The router then reboots. The <a href="../system-information-and-utilities/device-mode">device mode</a> page describes the confirmation and its limits:</p>
+<pre><code class="language-ros">/system/device-mode/update traffic-gen=yes
+</code></pre>
+<h2 id="test-a-link-for-packet-loss">Test a link for packet loss</h2>
+<p>To send 1000 requests with <code>size=1400</code> to the far end of a link:</p>
+<pre><code class="language-ros">/tool/flood-ping address=10.0.0.2 count=1000 size=1400
+</code></pre>
+<p>When the run ends, the router shows the totals: <code>sent</code> and <code>received</code> requests, and <code>min-rtt</code>, <code>avg-rtt</code> and <code>max-rtt</code>, the round-trip times. A difference between <code>sent</code> and <code>received</code> is packet loss, on the link or at the target: many hosts limit how many ICMP requests they answer, so test against a device you know does not. To find an MTU problem on the path, use <a href="ping#find-the-path-mtu">ping with <code>do-not-fragment</code></a> instead: flood ping has no such option.</p>
+<p>For an IPv6 host, give the IPv6 address:</p>
+<pre><code class="language-ros">/tool/flood-ping address=2001:db8::2 count=500
+</code></pre>
+<h2 id="limits">Limits</h2>
+<ul>
+<li><code>count</code> - Up to 1000 requests per run.</li>
+<li><code>size</code> - Size of each request, 10 to 1500.</li>
+<li><code>timeout</code> - How long to wait for each reply, 10 ms to 5 s.</li>
+<li><code>interval</code> - Time between requests, 20 ms to 5 s.</li>
+</ul>
+<p>For more requests, a longer test, or options such as a source address or a VRF, use <a href="ping">ping</a> with <code>count</code> and <code>interval</code>.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/flood-ping"><code>/tool/flood-ping</code> CLI reference</a>.</p>
+<hr />
+<h1 id="interface-stats-and-monitor-traffic">Interface stats and monitor-traffic</h1>
+<blockquote>
+<p>Interface statistics and real-time traffic monitoring on MikroTik RouterOS: print interface counters (stats, stats-detail), watch per-second rates with monitor-traffic, and run script triggers when a rate crosses a...</p>
+</blockquote>
+<h1 id="interface-stats-and-monitor-traffic_1">Interface stats and monitor-traffic</h1>
+<p>Every RouterOS interface contains various counters, for example the number of received and transmitted packets, <a href="../firewall-and-quality-of-service/packet-flow-in-routeros#fast-path">Fast Path</a> bytes, the number of link downs on the physical side, and packets dropped by the interface queue. These statistics give real-time visibility into network utilization and hardware performance; the <code>monitor-traffic</code> command shows a live per-second rate view for verifying throughput and troubleshooting bottlenecks.</p>
+<h2 id="inspect-the-counters">Inspect the counters</h2>
+<p>Print cumulative counters per interface with <code>stats</code> (or <code>stats-detail</code> for a per-interface list including link events):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/print stats
+Flags: X - DISABLED; R - RUNNING; S - SLAVE
+Columns: NAME, RX-BYTE, TX-BYTE, RX-PACKET, TX-PACKET, RX-DROP, TX-DROP,
+         TX-QUEUE-DROP, RX-ERROR, TX-ERROR
+#     NAME            RX-BYTE    TX-BYTE  RX-PACKET  TX-PACKET  R  T  T  R  T
+0   S ether1                0          0          0          0        0
+1  RS ether2       28 805 078  8 117 511    221 798     17 287        0
+2   S ether3                0          0          0          0        0
+3   S ether4                0          0          0          0        0
+4   S ether5                0          0          0          0        0
+</code></pre>
+<p>The values starting with <code>fp</code> are Fast Path counters; <code>tx-queue-drop</code> counts the packets dropped by the <a href="../firewall-and-quality-of-service/queues/#interface-queue">interface queue</a> (a congestion signal). <code>stats-detail</code> adds the link-up/down timestamps and the <code>link-downs</code> count, which are used to spot a flapping cable (when the number keeps rising, check the cable, SFP, or PoE; the interface-specific error counters live in the <a href="../wired-connections/ethernet#stats">Ethernet statistics</a> menu):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/print stats-detail
+Flags: X - DISABLED; R - RUNNING; S - SLAVE
+ 0   S name=&quot;ether1&quot; link-downs=0 rx-byte=0 tx-byte=0 rx-packet=0 tx-packet=0
+       tx-queue-drop=0 fp-rx-byte=0 fp-tx-byte=0 fp-rx-packet=0 fp-tx-packet=0
+       fp-rps-drop=0
+
+ 1  RS name=&quot;ether2&quot; last-link-up-time=2026-10-09 12:41:25 link-downs=0
+       rx-byte=28 805 078 tx-byte=8 117 511 rx-packet=221 798 tx-packet=17 287
+       tx-queue-drop=0 fp-rx-byte=27 917 886 fp-tx-byte=0 fp-rx-packet=221 798
+       fp-tx-packet=0 fp-rps-drop=0
+</code></pre>
+<h2 id="watch-the-live-rate">Watch the live rate</h2>
+<p><code>/interface/monitor-traffic</code> shows per-second rates for the chosen interfaces:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/monitor-traffic ether2 duration=3
+                       name:   ether2
+      rx-packets-per-second:       26
+         rx-bits-per-second: 26.4kbps
+   fp-rx-packets-per-second:       26
+      fp-rx-bits-per-second: 25.6kbps
+      tx-packets-per-second:        2
+         tx-bits-per-second: 12.7kbps
+   fp-tx-packets-per-second:        0
+      fp-tx-bits-per-second:     0bps
+  tx-queue-drops-per-second:        0
+</code></pre>
+<p>The view refreshes continuously until you stop it; use <code>duration</code> to bound it. Use it to verify a newly configured VLAN or bridge member passes traffic or that a WAN port does not pass more than it should. Pass several interfaces to compare them side by side, or <code>aggregate</code> to watch the router as a whole. Use <a href="torch">Torch</a> for a per-connection breakdown when a single interface stays busy.</p>
+<h2 id="trigger-a-script-on-a-rate-threshold">Trigger a script on a rate threshold</h2>
+<p>The <a href="../cli-reference/tool/traffic-monitor"><code>/tool/traffic-monitor</code></a> menu runs a script when an interface's transmitted or received rate goes <code>above</code> a threshold, below it, or every poll (<code>always</code>):</p>
+<pre><code class="language-ros">/system/script/add name=rate-alert \
+    source=&quot;:log info \&quot;ether2 over threshold\&quot;&quot;
+/tool/traffic-monitor/add name=high-load interface=ether2 \
+    traffic=received trigger=above threshold=100000000 \
+    on-event=rate-alert
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The <code>/tool/traffic-monitor</code> menu runs scripts with the <code>ftp</code>, <code>reboot</code>, <code>read</code>, <code>write</code>, and <code>test</code> policies. See <a href="../developer-guides/scripting/#script-permissions">script permissions</a> for more information.</p>
+</div>
+<h2 id="technical-details_6">Technical details</h2>
+<ul>
+<li>The values starting with <code>fp</code> count the traffic that took the Fast Path (the streamlined CPU forwarding path). When regular counters grow much faster than the fp counters, the traffic instead takes the full CPU path (firewall processing and so on) — useful on busy routers.</li>
+<li>Interface drop/error counters (<code>rx-drop</code>, <code>tx-drop</code>, <code>rx-error</code>, <code>tx-error</code>) count the problems seen by the driver; <code>tx-queue-drop</code> belongs to the queueing system.</li>
+<li><code>link-downs</code> counts only the physical link drops; a rising number with no link-down timestamps on a VLAN member usually points to a physical issue on the member's parent interface.</li>
+</ul>
+<p>For all the counters and rate rows, see the <a href="../cli-reference/interface"><code>/interface</code></a> and <a href="../cli-reference/interface/monitor-traffic"><code>/interface/monitor-traffic</code></a> CLI references; the <a href="../wired-connections/ethernet#stats">Ethernet statistics</a> menu adds hardware-level counters.</p>
+<hr />
+<h1 id="traffic-generator">Traffic Generator</h1>
+<blockquote>
+<p>Traffic Generator is a MikroTik RouterOS tool for evaluating device performance by generating and sending raw packets over ports, collecting latency, jitter, throughput, and packet loss data. It supports advanced...</p>
+</blockquote>
+<h1 id="traffic-generator_1">Traffic Generator</h1>
+<p>Traffic Generator is a tool that allows evaluating the performance of a DUT (Device Under Test) or SUT (System Under Test).</p>
+<p>The tool can generate and send raw packets over specific ports. It also collects latency and jitter values, TX/RX rates, counts lost packets, and detects Out-of-Order (OOO) packets.</p>
+<p>Traffic Generator can be used similarly to the <a href="./bandwidth-test.md">bandwidth test</a> tool, as well as to generate packets that will be routed back to the packet generator for advanced status collection.</p>
+<p>All properties and commands of the traffic generator are described in the <a href="../cli-reference/tool/traffic-generator/"><code>/tool/traffic-generator</code> CLI reference</a>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>On a device that generates packets, packets generated by the traffic generator cannot be captured with a sniffer tool, torch, or firewall on the outgoing interface.</p>
+<p>Because this tool can be used maliciously, it is disabled by default in every <a href="../system-information-and-utilities/device-mode">device mode</a>. While <code>traffic-gen</code> is disabled, <code>quick</code> fails with a <code>not allowed by device-mode</code> error. Run <code>/system/device-mode/print</code> to check the current value. To enable it, run <code>/system/device-mode/update traffic-gen=yes</code> and confirm the change within the activation timeout (5 minutes by default) with physical access to the device: press the reset or mode button, or unplug the power. The device reboots after the confirmation; a regular reboot cancels the change. See <a href="../system-information-and-utilities/device-mode#change-device-mode">Change device-mode</a>.</p>
+</div>
+<h2 id="general">General</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator</code></p>
+<p>This menu holds the overall traffic generator settings: the <code>test-id</code> of the current measurement session, whether Out-of-Order (OOO) packets are measured (<code>measure-out-of-order</code>), the maximum latency range of the latency distribution (<code>latency-distribution-max</code>) and how many statistics samples are kept (<code>stats-samples-to-keep</code>). It also shows whether the generator is running (<code>running</code>) and the current latency measurement range (<code>latency-distribution-measure-interval</code>, <code>latency-distribution-samples</code>).</p>
+<h3 id="commands">Commands</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>quick</strong></td>
+<td style="text-align: left;">Starts the packet generator, prints the statistics to the terminal and assembles the latency/jitter report. Accepts parameters that override the packet template and stream settings: <strong>cpu-core, entries-to-show, id, interface, mbps, measure-out-of-order, packet-count, packet-size, port, pps, stream, test-id, tx-template</strong>. Parameters specified when running the quick command override configured values; if a parameter is specified only for one header, the value is multiplied for all the other headers (if required).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>start</strong></td>
+<td style="text-align: left;">Starts the traffic generator in the background. Accepts the same override parameters as <strong>quick</strong>, except <code>entries-to-show</code> (there is no terminal output).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>stop</strong></td>
+<td style="text-align: left;">Stops the background traffic generator started with the <strong>start</strong> command.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>inject</strong></td>
+<td style="text-align: left;">Injects raw data into an interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>inject-pcap</strong></td>
+<td style="text-align: left;">Replays packets from a PCAP or PCAPNG file on an interface. The <a href="./packet-sniffer.md">sniffer tool</a> saves captures in PCAPNG format, which the traffic generator supports.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="packet-template">Packet Template</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/packet-template</code></p>
+<p>This sub-menu builds the packet content of a stream from header parameters. Based on the parameters you can build IP packets with VLAN tags, set UDP or TCP ports, or build IPv6 packets. A raw packet template is generated from the provided parameters. The full parameter list is described in the <a href="../cli-reference/tool/traffic-generator/packet-template">packet-template CLI reference</a>.</p>
+<p>If you need more low-level packets or want to take full advantage of the traffic generator, use a raw-packet-template builder to build the packet.</p>
+<p>If the same type of header is present in the packet more than once, header field values are passed as a comma-separated list. For example, if there are two IP headers, source addresses are given like <code>ip-src=1.1.1.1,2.2.2.2</code>.</p>
+<p>For quicker header construction, many header field values are assumed. For example, if the header stack is "mac, ip", the traffic generator assumes that the mac-protocol value is "ip". Or if the "port" or "interface" setting is specified, the traffic generator assumes "mac-src" to be the MAC address of the interface. Assumed values have distinct names that start with "assumed-" and are read-only. Manually specified values override assumed ones.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Assumed values are not automatically updated. New values are assumed after a template edit — <code>/tool/traffic-generator/packet-template/set [find]</code> is enough to trigger new assumed values.</p>
+</div>
+<p>The <code>header-stack</code> property defines the sequence of headers in the generated packet. It supports <strong>mac</strong> (Ethernet, 14 bytes), <strong>vlan</strong> (802.1Q tag, 4 bytes), <strong>ip</strong> (IPv4, 20 bytes), <strong>udp</strong> (UDP, 8 bytes), <strong>raw</strong> (arbitrary bytes as a hex string), <strong>ipv6</strong> (IPv6, 40 bytes) and <strong>tcp</strong> (TCP, variable length). Sequence limitations follow protocol rules — for example, a VLAN header can follow only a mac header or another VLAN header; at most two IP headers and one UDP header are allowed per packet. Further limitations (for example, on repeated IPv6 or TCP headers) are validated when the template is created. The traffic generator suggests the first header for a packet template (in the port menu), but the first header is not enforced.</p>
+<h2 id="port-configuration">Port Configuration</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/port</code></p>
+<p>This menu configures ports that bind an interface to the traffic generator for transmitting and receiving generated packets. A port entry is created automatically (dynamic) when a packet template specifies only an <code>interface</code>. The <code>disabled</code> flag (see the CLI reference) stops the port from transmitting and receiving; the examples set it to <code>disabled=no</code> to be explicit. The read-only <code>first-header</code> property of a port shows the suggested first header for packets sent out of that interface: <code>mac</code>, <code>vlan</code>, <code>ip</code>, <code>udp</code>, <code>raw</code>, <code>ipv6</code> or <code>tcp</code>. All properties and flags are described in the <a href="../cli-reference/tool/traffic-generator/port">port CLI reference</a>.</p>
+<h2 id="stats">Stats</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stats</code></p>
+<p>If the traffic generator is not running in <strong>quick</strong> mode, all statistics about the test are stored in this menu without being printed to the terminal.</p>
+<h3 id="latency-distribution">Latency Distribution</h3>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stats/latency-distribution</code></p>
+<p>This sub-menu shows how many packets were received in a specific latency range. The latency range can be viewed by streams or by sequences, for example <code>print stream-id=3</code> or <code>print seq=10</code>.</p>
+<p>Here is an example output of the latency graph:</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator/stats/latency-distribution&gt; print            
+ # LATENCY                 COUNT        SHARE GRAPH                                               
+ 0 0-15.5us                    0           0%
+ 1 15.5us-31us                 0           0%
+ 2 31us-46.5us                 0           0%
+ 3 46.5us-62.1us               0           0%
+ 4 62.1us-77.6us               0           0%
+ 5 77.6us-93.1us               0           0%
+ 6 93.1us-109us                0           0%
+ 7 109us-124us                 0           0%
+ 8 124us-140us                 0           0%
+ 9 140us-155us                 0           0%
+10 155us-171us                 0           0%
+11 171us-186us                 4           0% *                                                   
+12 186us-202us                29           0% *                                                   
+13 202us-217us                90       0.001% *                                                   
+14 217us-233us               302       0.004% *                                                   
+15 233us-248us               630       0.009% *                                                   
+16 248us-264us               789       0.011% *                                                   
+17 264us-279us             1 384       0.021% -*                                                  
+18 279us-295us             1 990        0.03% --*                                                 
+19 295us-310us             2 966       0.045% ---*                                                
+20 310us-326us             4 089       0.062% -----*                                              
+21 326us-341us             4 958       0.075% ------*                                             
+22 341us-357us             6 059       0.091% -------*                                            
+23 357us-372us             6 660       0.101% --------*                                           
+24 372us-388us             8 320       0.126% ----------*                                         
+25 388us-403us             9 988       0.151% -------------*                                      
+26 403us-419us            11 781       0.178% ---------------*                                    
+27 419us-434us            12 512       0.189% ----------------*                                   
+28 434us-450us            13 836        0.21% -----------------*                                  
+29 450us-465us            15 681       0.238% --------------------*                               
+30 465us-481us            17 740       0.269% ----------------------*                             
+31 481us-496us            19 913       0.302% --------------------------*                         
+32 496us-512us            21 106        0.32% ---------------------------*                        
+33 512us-528us            22 848       0.346% -----------------------------*                      
+34 528us-543us            25 059        0.38% --------------------------------*                   
+35 543us-559us            26 593       0.403% ----------------------------------*                 
+36 559us-574us            27 663       0.419% -----------------------------------*                
+37 574us-590us            29 351       0.445% -------------------------------------*              
+38 590us-605us            31 265       0.474% ----------------------------------------*           
+39 605us-621us            33 224       0.504% -------------------------------------------*        
+40 621us-636us            34 464       0.523% --------------------------------------------*       
+41 636us-652us            35 630        0.54% ----------------------------------------------*     
+42 652us-667us            37 245       0.565% ------------------------------------------------*   
+43 667us-683us            38 158       0.579% -------------------------------------------------*  
+44 683us-698us            38 626       0.586% --------------------------------------------------* 
+45 698us-714us            38 985       0.591% --------------------------------------------------* 
+46 714us-729us            39 061       0.592% --------------------------------------------------* 
+47 729us-745us            39 750       0.603% ---------------------------------------------------*
+48 745us-760us            39 145       0.594% --------------------------------------------------* 
+49 760us-776us            39 162       0.594% --------------------------------------------------* 
+50 776us-791us            38 197       0.579% -------------------------------------------------*  
+51 791us-807us            37 811       0.573% -------------------------------------------------*  
+52 807us-822us            37 364       0.567% ------------------------------------------------*   
+53 822us-838us            36 770       0.558% -----------------------------------------------*    
+54 838us-853us            35 831       0.543% ----------------------------------------------*     
+55 853us-869us            35 380       0.536% ----------------------------------------------*     
+56 869us-884us            34 472       0.523% --------------------------------------------*       
+57 884us-900us            33 672       0.511% -------------------------------------------*        
+58 900us-915us            33 799       0.513% --------------------------------------------*       
+59 915us-931us            32 754       0.497% ------------------------------------------*         
+60 931us-946us            32 339        0.49% ------------------------------------------*         
+61 946us-962us            32 419       0.492% ------------------------------------------*         
+62 962us-977us            32 107       0.487% -----------------------------------------*          
+63 977us-993us            31 552       0.478% -----------------------------------------*          
+64 0-993us             1 221 523       18.54%
+</code></pre>
+<p>The columns are described in the <a href="../cli-reference/tool/traffic-generator/stats/latency-distribution">latency-distribution CLI reference</a>.</p>
+<h3 id="stream-stats">Stream Stats</h3>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stats/stream</code></p>
+<p>This sub-menu stores statistics sorted by streams. The output is the same as in <strong>quick</strong> mode.</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator/stats/stream&gt; print 
+ # SEQ    ID      TX-PACKET   TX-RATE     RX-PACKET   RX-RATE   LOST-PACKET LOST-RATE
+ 0 1      3          43 064 499.5Mbps        25 180 292.0Mbps        17 884 207.4Mbps
+ 1 1      4          43 062 499.5Mbps        39 946 463.3Mbps         3 116  36.1Mbps
+ 2 1      TOT        86 126 999.0Mbps        65 126 755.4Mbps        21 000 243.6Mbps
+ 3 2      3          43 544 505.1Mbps        30 449 353.2Mbps        13 095 151.9Mbps
+ 4 2      4          43 543 505.0Mbps        42 982 498.5Mbps           561   6.5Mbps
+ 5 2      TOT        87 087 1010.2...        73 431 851.7Mbps        13 656 158.4Mbps
+
+... 
+
+59 20     TOT        87 277 1012.4...        73 755 855.5Mbps        13 522 156.8Mbps
+60 21     3          43 546 505.1Mbps        30 605 355.0Mbps        12 941 150.1Mbps
+61 21     4          43 546 505.1Mbps        42 682 495.1Mbps           864  10.0Mbps
+62 21     TOT        87 092 1010.2...        73 287 850.1Mbps        13 805 160.1Mbps
+63 TOT    3         913 942 504.8Mbps       629 210 347.5Mbps       284 732 157.2Mbps
+64 TOT    4         913 939 504.8Mbps       898 374 496.2Mbps        15 565   8.5Mbps
+65 TOT    TOT     1 827 881 1009.6...     1 527 584 843.8Mbps       300 297 165.8Mbps
+</code></pre>
+<h3 id="port-stats">Port Stats</h3>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stats/port</code></p>
+<p>This sub-menu stores statistics sorted by rx/tx ports.</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator/stats/port&gt; print 
+ # SEQ    PORT        RX-UNK-PACKET    RX-UNK-BYTE RX-UNK...     TX-PACKET   TX-RATE     RX-PACKET
+ 0 1      port0:et...             0              0      0bps        43 064 499.5Mbps        39 946
+ 1 1      port1:et...             0              0      0bps        43 062 499.5Mbps        25 180
+ 2 1      TOT                     0              0      0bps        86 126 999.0Mbps        65 126
+ 3 2      port0:et...             0              0      0bps        43 544 505.1Mbps        42 982
+ 4 2      port1:et...             0              0      0bps        43 543 505.0Mbps        30 449
+ 5 2      TOT                     0              0      0bps        87 087 1010.2...        73 431
+ 6 3      port0:et...             0              0      0bps        43 540 505.0Mbps        42 615
+ 7 3      port1:et...             0              0      0bps        43 540 505.0Mbps        30 191
+ 8 3      TOT                     0              0      0bps        87 080 1010.1...        72 806
+</code></pre>
+<h3 id="raw-stats">Raw Stats</h3>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stats/raw</code></p>
+<p>This sub-menu stores raw statistics data.</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator/stats/raw&gt; print 
+ # SEQ    PORT       ID      TX-PACKET   TX-RATE     RX-PACKET   RX-RATE   LOST-PACKET LOST-RATE
+ 0 1      port0:e... 3          43 064 499.5Mbps             0      0bps        43 064 499.5Mbps
+ 1 1      port1:e... 3               0      0bps        25 180 292.0Mbps       -25 180 292.0Mbps
+ 2 1      TOT        3          43 064 499.5Mbps        25 180 292.0Mbps        17 884 207.4Mbps
+ 3 1      port0:e... 4               0      0bps        39 946 463.3Mbps       -39 946 463.3Mbps
+ 4 1      port1:e... 4          43 062 499.5Mbps             0      0bps        43 062 499.5Mbps
+ 5 1      TOT        4          43 062 499.5Mbps        39 946 463.3Mbps         3 116  36.1Mbps
+ 6 1      port0:e... TOT        43 064 499.5Mbps        39 946 463.3Mbps         3 118  36.1Mbps
+ 7 1      port1:e... TOT        43 062 499.5Mbps        25 180 292.0Mbps        17 882 207.4Mbps
+ 8 2      port0:e... 3          43 544 505.1Mbps             0      0bps        43 544 505.1Mbps
+ 9 2      port1:e... 3               0      0bps        30 449 353.2Mbps       -30 449 353.2Mbps
+10 2      TOT        3          43 544 505.1Mbps        30 449 353.2Mbps        13 095 151.9Mbps
+</code></pre>
+<p>All statistics columns (seq, id, tx/rx counters and rates, out-of-order, bad-checksum, lost, latency and jitter) are described in the <a href="../cli-reference/tool/traffic-generator/stats/stream">stream</a>, <a href="../cli-reference/tool/traffic-generator/stats/port">port</a> and <a href="../cli-reference/tool/traffic-generator/stats/raw">raw</a> CLI reference pages.</p>
+<h2 id="streams">Streams</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/traffic-generator/stream</code></p>
+<p>A stream defines the generated traffic: the packet template used (<code>tx-template</code>, mandatory) and the port it is transmitted through (<code>port</code>, usually taken from the template), the transmission rate (<code>pps</code> and/or <code>mbps</code>), the L2 packet size (<code>packet-size</code>, can be a range for random sizes), how many packets to transmit (<code>packet-count</code>) and the CPU core (or core range) the stream is pinned to (<code>cpu-core</code>, for multi-core tests). Its read-only <code>default-port</code> shows the port the stream transmits on, derived from the template. All properties are described in the <a href="../cli-reference/tool/traffic-generator/stream">stream CLI reference</a>.</p>
+<p>Each stream has a unique <code>id</code> (the old property name <code>num</code> is no longer used) that identifies its packets in the statistics and in the <strong>start</strong> and <strong>quick</strong> commands.</p>
+<h2 id="configuration-examples">Configuration Examples</h2>
+<h3 id="ipsec-tunnel-performance-test">IPsec tunnel performance test</h3>
+<p>Consider the following test setup:</p>
+<p><em>[gambar: Traffic generator IPsec test setup]</em></p>
+<p>System Under Test (SUT) consists of two routers connected to a traffic generator server. The connection between both SUT routers is IPSec encrypted.</p>
+<p>The traffic generator will run two streams:</p>
+<ul>
+<li>In a direction from 1.1.1.0/24 network to 2.2.2.0/24 network.</li>
+<li>In a direction from 2.2.2.0/24 network to 1.1.1.0/24 network.</li>
+</ul>
+<h4 id="r1-routing-and-ipsec-setup">R1 routing and IPsec setup</h4>
+<pre><code class="language-ros">/ip/address
+add address=192.168.33.1/30 interface=ether1
+add address=1.1.1.2/24 interface=ether2
+
+/ip/route 
+add dst-address=2.2.2.0/24 gateway=192.168.33.2
+
+/ip/ipsec/proposal
+set default enc-algorithms=aes-128-cbc
+
+/ip/ipsec/peer
+add address=192.168.33.2 secret=123
+
+/ip/ipsec/policy
+add sa-src-address=192.168.33.1 sa-dst-address=192.168.33.2 \
+    src-address=1.1.1.0/24 dst-address=2.2.2.0/24 tunnel=yes
+</code></pre>
+<h4 id="r2-routing-and-ipsec-setup">R2 routing and IPsec setup</h4>
+<pre><code class="language-ros">/ip/address
+add address=192.168.33.2/30 interface=ether1
+add address=2.2.2.2/24 interface=ether2
+
+/ip/route 
+add dst-address=1.1.1.0/24 gateway=192.168.33.1
+
+/ip/ipsec/proposal
+set default enc-algorithms=aes-128-cbc
+
+/ip/ipsec/peer
+add address=192.168.33.1 secret=123
+
+/ip/ipsec/policy
+add sa-src-address=192.168.33.2 sa-dst-address=192.168.33.1 \
+    src-address=2.2.2.0/24 dst-address=1.1.1.0/24 tunnel=yes
+</code></pre>
+<h4 id="traffic-generator-server-setup">Traffic generator server setup</h4>
+<pre><code class="language-ros">/ip/address
+add address=1.1.1.1/24 interface=ether2
+add address=2.2.2.1/24 interface=ether3
+</code></pre>
+<p>First, define which ports will be used as traffic generator TX/RX ports:</p>
+<pre><code class="language-ros">/tool/traffic-generator/port
+add disabled=no interface=ether2 name=port0
+add disabled=no interface=ether3 name=port1
+</code></pre>
+<p>To construct the actual packet that will be generated, the packet-template is used:</p>
+<pre><code class="language-ros">/tool/traffic-generator/packet-template
+add header-stack=mac,ip,udp ip-dst=2.2.2.1/32 ip-gateway=1.1.1.2 ip-src=1.1.1.1/32 \
+    name=routing-1 port=port0
+add header-stack=mac,ip,udp ip-dst=1.1.1.1/32 ip-gateway=2.2.2.2 ip-src=2.2.2.1/32 \
+    name=routing-2 port=port1
+</code></pre>
+<p>Notice that MAC addresses were not specified, since the template generator can assume the next-hop MAC address automatically by sending ARP messages. Since routing is performed and the destination IP is not directly reachable, the <strong>ip-gateway</strong> parameter is set to determine the next-hop MAC address.</p>
+<p>When running <strong>print</strong>, you can see all assumed (detected) values, including MAC addresses:</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator/packet-template&gt; print 
+ 0 name=&quot;routing-1&quot; header-stack=mac,ip,udp port=port0 
+   assumed-mac-dst=00:0C:42:00:38:9D assumed-mac-src=00:0C:42:40:94:25 
+   assumed-mac-protocol=ip assumed-ip-dscp=0 assumed-ip-id=0 
+   assumed-ip-frag-off=0 assumed-ip-ttl=64 assumed-ip-protocol=udp 
+   ip-src=1.1.1.1/32 ip-dst=2.2.2.1/32 assumed-udp-src-port=100 
+   assumed-udp-dst-port=200 ip-gateway=1.1.1.2 data=uninitialized data-byte=0 
+
+ 1 name=&quot;routing-2&quot; header-stack=mac,ip,udp port=port1 
+   assumed-mac-dst=00:0C:42:00:38:D1 assumed-mac-src=00:0C:42:40:94:26 
+   assumed-mac-protocol=ip assumed-ip-dscp=0 assumed-ip-id=0 
+   assumed-ip-frag-off=0 assumed-ip-ttl=64 assumed-ip-protocol=udp 
+   ip-src=2.2.2.1/32 ip-dst=1.1.1.1/32 assumed-udp-src-port=100 
+   assumed-udp-dst-port=200 ip-gateway=2.2.2.2 data=uninitialized data-byte=0
+</code></pre>
+<p>If any router in the SUT were to change, the assumed MAC addresses would not be updated automatically. To update packet templates, issue the command:</p>
+<pre><code class="language-ros">/tool/traffic-generator/packet-template/set [find]
+</code></pre>
+<p>The last part is to configure the streams:</p>
+<pre><code class="language-ros">/tool/traffic-generator/stream
+add disabled=no mbps=500 name=str1 id=3 packet-size=1450 port=port0 pps=0 \
+    tx-template=routing-1
+add disabled=no mbps=500 name=str3 id=4 packet-size=1450 port=port1 pps=0 \
+    tx-template=routing-2
+</code></pre>
+<p>Notice that each stream has a unique <strong>id</strong> value. This value identifies the stream packets; without it, the traffic generator will not work.</p>
+<p>Now the test is ready to run. In this case, <strong>quick</strong> mode is used:</p>
+<pre><code class="language-ros">[admin@test-host] /tool/traffic-generator&gt; quick mbps=450
+SEQ    ID      TX-PACKET   TX-RATE     RX-PACKET   RX-RATE        RX-OOO   LOST-PACKET LOST-RATE 
+37     4          39 488 458.0Mbps        39 270 455.5Mbps        15 509           218   2.5Mbps 
+37     TOT        78 976 916.1Mbps        76 485 887.2Mbps        22 529         2 491  28.8Mbps 
+38     3          38 957 451.9Mbps        37 657 436.8Mbps         7 078         1 300  15.0Mbps 
+38     4          38 958 451.9Mbps        38 402 445.4Mbps        14 763           556   6.4Mbps 
+38     TOT        77 915 903.8Mbps        76 059 882.2Mbps        21 841         1 856  21.5Mbps 
+39     3          38 816 450.2Mbps        37 893 439.5Mbps         7 307           923  10.7Mbps 
+39     4          38 815 450.2Mbps        38 642 448.2Mbps        15 110           173   2.0Mbps 
+39     TOT        77 631 900.5Mbps        76 535 887.8Mbps        22 417         1 096  12.7Mbps 
+40     3          39 779 461.4Mbps        37 415 434.0Mbps         7 136         2 364  27.4Mbps 
+40     4          39 780 461.4Mbps        39 567 458.9Mbps        15 908           213   2.4Mbps 
+40     TOT        79 559 922.8Mbps        76 982 892.9Mbps        23 044         2 577  29.8Mbps 
+41     3          39 218 454.9Mbps        37 089 430.2Mbps         7 075         2 129  24.6Mbps 
+41     4          39 218 454.9Mbps        38 663 448.4Mbps        15 752           555   6.4Mbps 
+41     TOT        78 436 909.8Mbps        75 752 878.7Mbps        22 827         2 684  31.1Mbps 
+42     3          39 188 454.5Mbps        37 906 439.7Mbps         6 729         1 282  14.8Mbps 
+42     4          39 187 454.5Mbps        38 954 451.8Mbps        15 565           233   2.7Mbps 
+42     TOT        78 375 909.1Mbps        76 860 891.5Mbps        22 294         1 515  17.5Mbps 
+TOT    3       1 645 468 454.4Mbps     1 568 201 433.1Mbps       280 174        77 267  21.3Mbps 
+TOT    4       1 645 464 454.4Mbps     1 626 896 449.3Mbps       627 480        18 568   5.1Mbps 
+TOT    TOT     3 290 932 908.9Mbps     3 195 097 882.4Mbps       907 654        95 835  26.4Mbps
+</code></pre>
+<p>The stats show the throughput of each stream and the total throughput of both streams, the Out-of-Order packet count, the loss rate, latency and jitter.</p>
+<hr />
+<h1 id="netwatch">Netwatch</h1>
+<blockquote>
+<p>Netwatch monitors network hosts with simple, ICMP, TCP, HTTP, HTTPS or DNS probes at configurable intervals and thresholds, and runs scripts when a host goes up or down.</p>
+</blockquote>
+<h1 id="netwatch_1">Netwatch</h1>
+<p>Netwatch monitors the state of hosts on the network and runs scripts when a host's state changes. Each probe monitors one host and has a state (<code>unknown</code> until the first test completes, then <code>up</code> or <code>down</code>), test statistics and its own interval and timeout.</p>
+<p>Six probe types are available:</p>
+<ul>
+<li><strong>simple</strong> - one ICMP echo request per test. This is how Netwatch worked in older RouterOS versions; its default <code>interval</code> is 60s, while all other probe types default to 10s.</li>
+<li><strong>icmp</strong> - a series of ICMP echo requests per test (10 by default), with round-trip, jitter and loss statistics and configurable fail thresholds.</li>
+<li><strong>tcp-conn</strong> - tests whether a TCP connection to a port can be established.</li>
+<li><strong>http-get</strong> - requests a page and checks the HTTP response code and response time.</li>
+<li><strong>https-get</strong> - like <code>http-get</code>, but over HTTPS.</li>
+<li><strong>dns</strong> - sends a DNS query and checks that the requested record is returned.</li>
+</ul>
+<p>Every probe needs a <code>host</code>: an IP address, a DNS name, an address with a VRF suffix (<code>192.0.2.1@vrf1</code>), or a link-local IPv6 address with an interface (<code>fe80::1%ether1</code>).</p>
+<h2 id="simple-probe">Simple probe</h2>
+<p>A simple probe periodically sends one ICMP echo request to check that the host is reachable. Only the general probe parameters apply.</p>
+<p>Ping Google's public DNS resolver and log the state changes:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=8.8.8.8 \
+    up-script=&quot;:log info \&quot;Ping to 8.8.8.8 successful\&quot;&quot; \
+    down-script=&quot;:log info \&quot;Ping to 8.8.8.8 failed\&quot;&quot;
+</code></pre>
+<p>The first test runs about 3 seconds after the probe is added or enabled (the default <code>start-delay</code>), the state change is logged (topic <code>netwatch,info</code>), and the matching script runs:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;8.8.8.8&quot;
+ 2026-10-09 09:57:10 netwatch,info event up [ type: simple, host: 8.8.8.8 ]
+ 2026-10-09 09:57:10 script,info Ping to 8.8.8.8 successful
+</code></pre>
+<p>The same probe in WinBox (<strong>Tools &gt; Netwatch</strong>):</p>
+<p><em>[gambar: Simple Netwatch probe for 8.8.8.8 with up and down scripts in WinBox]</em></p>
+<h2 id="icmp-probe">ICMP probe</h2>
+<p>The <code>icmp</code> probe type sends multiple ICMP echo requests per test and evaluates the results against <code>thr-*</code> thresholds. It is a more advanced version of the <code>simple</code> probe: you can watch round-trip time, jitter or packet loss instead of plain reachability.</p>
+<p>Watch the average round-trip time to 8.8.8.8 and fail the probe when it rises above 10 ms:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=8.8.8.8 type=icmp thr-avg=10ms \
+    up-script=&quot;:log info \&quot;rtt average is \$\&quot;rtt-avg\&quot; us\&quot;&quot; \
+    down-script=&quot;:log info \&quot;8.8.8.8 down: \$\&quot;loss-percent\&quot;% loss\&quot;&quot;
+</code></pre>
+<p>The scripts can read the probe's statistics, for example <code>rtt-avg</code> and <code>loss-percent</code>. Round-trip values are passed to scripts in microseconds:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;8.8.8.8&quot;
+ 2026-10-09 09:57:11 netwatch,info event up [ type: icmp, host: 8.8.8.8 ]
+ 2026-10-09 09:57:11 script,info rtt average is 9739 us
+</code></pre>
+<p>The collected statistics of the same probe:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/netwatch/print stats
+1  type=icmp host=8.8.8.8 status=up since=2026-10-09 09:57:11 done-tests=1
+   failed-tests=0 sent-count=10 response-count=10 loss-count=0 loss-percent=0%
+   rtt-min=9ms686us rtt-max=9ms935us rtt-avg=9ms739us rtt-jitter=249us
+   rtt-stdev=121us
+</code></pre>
+<p>With <code>thr-loss-count</code>, Netwatch can also report the verdict before the packet train ends: <code>early-failure-detection=yes</code> reports <code>down</code> as soon as the loss count makes failure certain, and <code>early-success-detection=yes</code> reports <code>up</code> as soon as the remaining packets can no longer cross it. Without <code>thr-loss-count</code> the outcome is known only when all packets of the train are accounted for, so the early-detection options are mostly relevant together with that threshold.</p>
+<p>Thresholds have defaults even when you set none (for example <code>thr-avg=100ms</code>), so a slow but working link can report <code>down</code> with a plain <code>type=icmp</code> probe; raise the thresholds or check <code>print stats</code> to see which one tripped.</p>
+<p>The same probe in WinBox:</p>
+<p><em>[gambar: ICMP Netwatch probe with thr-avg threshold in WinBox]</em></p>
+<h2 id="tcp-conn-probe">TCP-conn probe</h2>
+<p>The <code>tcp-conn</code> probe type checks whether the router can establish a TCP connection to a host on a specific port. Use it to monitor a specific service instead of general device availability through ICMP. The connect time is stored in <code>tcp-connect-time</code>, and <code>thr-tcp-conn-time</code> fails the probe when the handshake takes too long.</p>
+<p>Check that the DNS service of 8.8.8.8 accepts TCP connections on port 53:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=8.8.8.8 type=tcp-conn port=53 \
+    up-script=&quot;:log info \&quot;TCP handshake to 8.8.8.8:53 successful\&quot;&quot; \
+    down-script=&quot;:log info \&quot;TCP handshake to 8.8.8.8:53 failed\&quot;&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;8.8.8.8&quot;
+ 2026-10-09 09:57:10 netwatch,info event up [ type: tcp_conn, host: 8.8.8.8 ]
+ 2026-10-09 09:57:10 script,info TCP handshake to 8.8.8.8:53 successful
+</code></pre>
+<p>The same probe in WinBox:</p>
+<p><em>[gambar: TCP Netwatch probe for port 53 in WinBox]</em></p>
+<h2 id="http-get-probe">HTTP-GET probe</h2>
+<p>The <code>http-get</code> probe type performs an HTTP GET request to the host and checks the returned HTTP status code against the configured <code>http-codes</code> range (default <code>100-299</code>). Unlike ICMP or TCP probes, it validates application-layer availability: the web service has to answer, not only accept connections. Commonly used for monitoring website or API availability. The response code is stored in <code>http-status-code</code> and the response time in <code>http-resp-time</code>; <code>thr-http-time</code> fails the probe on slow responses.</p>
+<p>Request the front page of mikrotik.com (159.148.172.205) and log the response code:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=159.148.172.205 type=http-get \
+    up-script=&quot;:log info \&quot;Probe up, code \$\&quot;http-status-code\&quot;\&quot;&quot; \
+    down-script=&quot;:log info \&quot;Probe down, code \$\&quot;http-status-code\&quot;\&quot;&quot;
+</code></pre>
+<p>The probe goes down because mikrotik.com answers a redirect (302), which is outside the default accepted range of <code>100-299</code>. To accept redirects too, widen the range, for example <code>http-codes=100-399</code> (a list of ranges like <code>100-299,302</code> also works). The log output:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;159.148.172.205&quot;
+ 2026-10-09 09:59:01 netwatch,info event down [ type: http_get, host: 159.148.172.205 ]
+ 2026-10-09 09:59:01 script,info Probe down, code 302
+</code></pre>
+<p>The same probe in WinBox:</p>
+<p><em>[gambar: HTTP-GET Netwatch probe in WinBox]</em></p>
+<h2 id="https-get-probe">HTTPS-GET probe</h2>
+<p>The <code>https-get</code> probe type is identical to <code>http-get</code>, but uses HTTPS instead of HTTP, and adds the <code>check-certificate</code> and <code>certificate</code> parameters for <a href="../authentication-authorization-accounting/certificates">TLS certificate</a> validation.</p>
+<p>Monitor the router's own <code>www-ssl</code> service, which provides HTTPS access through <a href="../management-tools/webfig">WebFig</a>:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=127.0.0.1 type=https-get \
+    up-script=&quot;:log info \&quot;HTTPS WebFig is enabled\&quot;&quot; \
+    down-script=&quot;:log info \&quot;HTTPS WebFig is disabled\&quot;&quot;
+</code></pre>
+<p>For the probe to come up, <code>www-ssl</code> must be enabled and configured with a certificate; with a plain self-signed certificate, leave <code>check-certificate=no</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;WebFig&quot;
+ 2026-10-09 09:57:10 netwatch,info event up [ type: https_get, host: 127.0.0.1 ]
+ 2026-10-09 09:57:10 script,info HTTPS WebFig is enabled
+</code></pre>
+<p>The same probe in WinBox:</p>
+<p><em>[gambar: HTTPS-GET Netwatch probe for 127.0.0.1 in WinBox]</em></p>
+<h2 id="dns-probe">DNS probe</h2>
+<p>The <code>dns</code> probe type resolves the <code>host</code> name and checks that the requested <code>record-type</code> (A, AAAA, MX or NS) is returned. With <code>dns-server</code> you can choose which server to query; otherwise the servers configured in <a href="../network-management/dns"><code>/ip/dns</code></a> are used. The results are stored in the read-only <code>ip</code>, <code>ip6</code>, <code>mail-servers</code> and <code>name-servers</code> values.</p>
+<p>Resolve mikrotik.com with Google's public DNS server and log the address:</p>
+<pre><code class="language-ros">/tool/netwatch/add host=mikrotik.com type=dns \
+    dns-server=8.8.8.8 record-type=A \
+    up-script=&quot;:log info \&quot;A type record found: \$ip\&quot;&quot; \
+    down-script=&quot;:log info \&quot;No A type record found\&quot;&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where message~&quot;record&quot;
+ 2026-10-09 09:57:10 netwatch,info event up [ type: dns, host: mikrotik.com ]
+ 2026-10-09 09:57:10 script,info A type record found: 159.148.172.205
+</code></pre>
+<p>The same probe in WinBox:</p>
+<p><em>[gambar: DNS Netwatch probe for mikrotik.com in WinBox]</em></p>
+<h2 id="scripts">Scripts</h2>
+<p>Netwatch runs scripts on probe state changes so RouterOS can react automatically: switch to a backup route, restart a tunnel, send an <a href="../system-information-and-utilities/e-mail">email</a> or write a log entry (see the <a href="../developer-guides/scripting">scripting documentation</a>):</p>
+<ul>
+<li><code>up-script</code> runs when the state changes to <code>up</code> from <code>down</code>, or from <code>unknown</code> (unless <code>ignore-initial-up=yes</code> suppresses the first transition, for example after a reboot);</li>
+<li><code>down-script</code> runs when the state changes to <code>down</code> from <code>up</code>, or from <code>unknown</code> (unless <code>ignore-initial-down=yes</code>);</li>
+<li><code>test-script</code> runs after every probe test.</li>
+</ul>
+<p>Inside a script, the probe's values are available as variables, for example <code>host</code>, <code>type</code>, <code>status</code> (already the new state) and <code>done-tests</code>. Names containing <code>-</code> must be quoted with <code>$"..."</code>, for example <code>$"rtt-avg"</code>; round-trip values are reported in microseconds.</p>
+<p>Scripts run as the internal <code>*sys</code> user in their own environment, separate from other users, the <a href="../system-information-and-utilities/scheduler">scheduler</a> and other probes: global variables set in a Netwatch script are not visible anywhere else.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Netwatch scripts are limited to the <code>read</code>, <code>write</code>, <code>test</code> and <code>reboot</code> policies. See <a href="../developer-guides/scripting/#script-permissions">script permissions</a> for more information.</p>
+</div>
+<p>To run such a command anyway, put it in a script with its own <code>policy</code> and <code>dont-require-permissions=yes</code> under <code>/system/script</code>, and call it with <code>/system/script/run &lt;name&gt;</code> from the Netwatch script: it then runs with the script's policies instead of Netwatch's. This switches the permission check off for that script, so keep it short and give it only the policies it needs (see <a href="../developer-guides/scripting/scripting-tips-and-tricks#be-careful-when-using-dont-require-permissions">dont-require-permissions</a>).</p>
+<p>State changes are logged with the <code>netwatch,info</code> topic. Probes with a <code>name</code> log it (<code>event up [ my-probe ]</code>), unnamed probes log their type and host (<code>event up [ type: icmp, host: 198.51.100.1 ]</code>). For per-test details, add a logging rule with the <code>netwatch,debug</code> topic (see <a href="../diagnostics-monitoring-and-troubleshooting/log">logging</a>).</p>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p>Show the probe states and the statistics of the last test:</p>
+<pre><code class="language-ros">/tool/netwatch/print stats
+</code></pre>
+<p>The <code>status</code> shows the verdict, <code>since</code> the time of the last state change, and <code>done-tests</code>/<code>failed-tests</code> the history counters. Per-type values cover the last test only, for example <code>rtt-*</code> for ICMP or <code>http-status-code</code> for HTTP-GET.</p>
+<p>Common causes for an unexpected <code>down</code> state:</p>
+<ul>
+<li>A short-lived outage before you looked: <code>since</code> shows the last state change, <code>failed-tests</code> counts the failures, and the <code>netwatch,info</code> log holds the history.</li>
+<li>ICMP thresholds: the host answers, but <code>rtt-avg</code> or another value crosses a <code>thr-*</code> threshold - compare <code>print stats</code> with the thresholds.</li>
+<li>HTTP probes: the response code is outside <code>http-codes</code> (a redirect is down by default) or the response is slower than <code>thr-http-time</code>.</li>
+<li>DNS probes: NXDOMAIN or an unreachable <code>dns-server</code> is down; the probe's own <code>timeout</code> applies, unaffected by <code>/ip/dns</code> timeouts.</li>
+</ul>
+<h2 id="technical-details_7">Technical details</h2>
+<ul>
+<li>To keep a probe from testing immediately, use <code>start-delay</code> (applies on add and enable; 3s by default) and <code>startup-delay</code> (after a reboot; 5m by default).</li>
+<li>Log lines spell the probe types with underscores: a <code>tcp-conn</code> probe logs <code>type: tcp_conn</code>, an <code>http-get</code> probe logs <code>http_get</code>.</li>
+<li>With <code>src-address</code> the probes are sent from a specific router address; when that address is no longer on the router (for example a disconnected PPP link), the probe reports <code>down</code>, which scripts can use to react to usable uplinks instead of merely reachable hosts.</li>
+<li>When the ICMP packet train does not fit into the probe's timing (<code>interval &lt; (packet-count - 1) * packet-interval + timeout</code>), RouterOS logs a "packet train not fitting in interval" warning and extends the used interval internally.</li>
+<li>Simple, ICMP, TCP-conn and HTTP/HTTPS-GET probes are sent with the "don't fragment" flag set. An <code>icmp</code> probe with an increased <code>packet-size</code> therefore answers only when the whole path carries packets of that size, which helps with <a href="../hardware/mtu-in-routeros">path MTU problems</a>.</li>
+</ul>
+<p>For all properties, read-only values and their defaults, see <a href="../cli-reference/tool/netwatch"><code>/tool/netwatch</code></a> in the CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1962 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Information and Utilities · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">System Information and Utilities</p>
+      <h1 id="system-information-and-utilities-part-12">System Information and Utilities (part 1/2)</h1>
+<h1 id="system-information-and-utilities">System Information and Utilities</h1>
+<blockquote>
+<p>This page provides an overview of system information and utilities in RouterOS, covering device identity management, clock synchronization via NTP, scheduler tasks, interface lists, and tools for file operations and...</p>
+</blockquote>
+<h1 id="system-information-and-utilities_1">System Information and Utilities</h1>
+<p>System information and utilities documentation covers RouterOS device identity, files, clock, NTP, scheduler, services, fetch, email, neighbor discovery, interface lists, and related system tools. Use this section to manage device-level settings and utilities.</p>
+<hr />
+<h1 id="clock">Clock</h1>
+<blockquote>
+<p>The RouterOS system clock: time sources (NTP client, MikroTik cloud service, GPS), time zone selection and automatic detection, manual GMT offset and daylight saving rules, and clock behavior at startup.</p>
+</blockquote>
+<h1 id="clock_1">Clock</h1>
+<p>The RouterOS system clock provides the local date and time for log entries, the <a href="scheduler">scheduler</a>, file creation times, certificate validity checks and other time-dependent functions. RouterOS keeps the time in UTC and applies the configured GMT offset, including daylight saving time (DST), when the time is displayed.</p>
+<p>No configuration is needed on a router with internet access: the time zone is detected automatically, and the MikroTik cloud service sets the clock when the router starts. For accurate timekeeping, enable the <a href="ntp">NTP client</a>.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The router's internal CPU clock is not a reliable time source for precise timing operations, as its frequency can vary with power management, thermal conditions and hardware differences, even between identical models. This variation does not affect how the router forwards traffic or runs its services. For accurate timekeeping, use network-based time synchronization, for example <a href="ntp">NTP</a>.</p>
+</div>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p>The current clock state:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/clock/print
+                  time: 09:43:19
+                  date: 2026-09-29
+  time-zone-autodetect: yes
+        time-zone-name: Europe/Riga
+            gmt-offset: +03:00
+            dst-active: yes
+</code></pre>
+<p><code>gmt-offset</code> is the offset in use at the moment, with DST included. <code>dst-active</code> shows whether the daylight saving period of the time zone is in effect.</p>
+<p>Common causes of a wrong clock:</p>
+<ul>
+<li>The date is <strong>1970-01-02</strong> (or 1970-01-01 in a time zone west of GMT): the router started without a saved time and no time source has set the clock. Enable the NTP client and check that it reaches its servers, check that the router can reach the MikroTik cloud (with <code>update-time=yes</code> in <a href="../network-management/cloud/"><code>/ip/cloud</code></a>; while the NTP client is enabled, the cloud does not set the clock), or set the time manually.</li>
+<li>The time is correct but the time zone is wrong: the automatic detection used the location of the router's public IP address, which internet providers sometimes register in another region. Set the time zone manually instead, with the detection off.</li>
+<li>The time is an hour off after a reboot: a <code>time-zone-name</code> set by hand while <code>time-zone-autodetect</code> is on is replaced by the detected zone shortly after startup. Turn the detection off when you set the zone yourself, as in <a href="#set-the-time-zone">Set the time zone</a>.</li>
+<li>The time is an hour off after you set the date: <code>date</code> and <code>time</code> set in one command across a daylight saving change use the old offset. Set the time again on its own, for example <code>/system/clock/set time=10:00:00</code>.</li>
+<li>A manual time zone stops switching to daylight saving time in the next year: the manual DST period does not repeat. Update <code>dst-start</code> and <code>dst-end</code>, or use a named time zone.</li>
+</ul>
+<h2 id="set-the-time">Set the time</h2>
+<p>The router can learn the time from several sources:</p>
+<ul>
+<li>The <a href="ntp">NTP client</a>, which synchronizes the clock precisely and keeps it accurate. Use this when clock accuracy matters.</li>
+<li>The <a href="../network-management/cloud/">MikroTik cloud service</a>, which sets the clock once at startup when the NTP client is disabled and <code>update-time</code> is enabled in <code>/ip/cloud</code>. The cloud time is approximate.</li>
+<li>A <a href="../mobile-networking/gps/">GPS</a>, on devices with GPS hardware, when <code>set-system-time</code> is enabled in <code>/system/gps</code>.</li>
+<li>A manual setting:</li>
+</ul>
+<pre><code class="language-ros">/system/clock/set date=2026-10-01
+/system/clock/set time=10:00:00
+</code></pre>
+<p>Set the date first and the time in a separate command. When you set <code>date</code> and <code>time</code> in one command, the time is interpreted with the GMT offset that was in effect before the change, so across a daylight saving change the clock ends up shifted by the DST difference.</p>
+<p>The local time is not part of the exported configuration: <code>/export</code> contains only the time zone settings, never the current date and time.</p>
+<h2 id="set-the-time-zone">Set the time zone</h2>
+<p>Select a named time zone when you can:</p>
+<pre><code class="language-ros">/system/clock/set time-zone-autodetect=no time-zone-name=Europe/Riga
+</code></pre>
+<p>In WinBox, open <strong>System &gt; Clock</strong> and use the <strong>Time</strong> tab:</p>
+<ol>
+<li>Clear <strong>Time Zone Autodetect</strong>, then choose <strong>Time Zone Name</strong>, for example <code>Europe/Riga</code>. Select <strong>OK</strong> to save the selection. Leave autodetection selected if you want the cloud service to choose the zone instead.</li>
+<li>Check the read-only <strong>GMT Offset</strong> and <strong>DST Active</strong> fields to see the offset and daylight saving state in effect.</li>
+</ol>
+<p><em>[gambar: WinBox Clock Time tab with time zone and clock status settings]</em></p>
+<p>The <strong>Time</strong> and <strong>Date</strong> fields are for manual clock changes; use the NTP client for ongoing synchronization.</p>
+<p>RouterOS includes most time zones of the IANA time zone database, with the same names. The names are case sensitive, for example <code>Europe/Riga</code>: press <kbd>Tab</kbd> after <code>time-zone-name=</code> in the terminal to list them. A misspelled name fails with <code>input does not match any value of time-zone-name</code>. The daylight saving rules of the zone are applied automatically, and a zone without daylight saving, such as <code>Asia/Dubai</code>, keeps one offset all year. Because local time on the router is used for timestamping and time-dependent configuration rather than historical date calculations, time zone information about past years is limited: only data starting from 2005 is included.</p>
+<h3 id="automatic-time-zone-detection">Automatic time zone detection</h3>
+<p><code>time-zone-autodetect</code> is enabled by default. At startup, the MikroTik cloud service looks up the time zone for the location of the router's public IP address and applies it, including daylight saving time. Detection also runs when you enable the setting again: the detected zone then replaces a manually set one within seconds. A <code>time-zone-name</code> that you set while detection is on is kept only until the next detection, which runs shortly after the next startup.</p>
+<p>If the detected time zone is wrong, disable the detection when you set the time zone, as in the example in <a href="#set-the-time-zone">Set the time zone</a>.</p>
+<h2 id="set-a-manual-time-zone-and-daylight-saving">Set a manual time zone and daylight saving</h2>
+<p>When no named time zone matches, or you need a custom GMT offset, set <code>time-zone-name</code> to <code>manual</code> and configure the <a href="../cli-reference/system/clock/manual"><code>/system/clock/manual</code></a> submenu. These settings have an effect only while <code>time-zone-name</code> is <code>manual</code>, and only a single DST period can be configured.</p>
+<p>Set an offset of GMT+02:00 with a one-hour DST from the end of March to the end of October:</p>
+<pre><code class="language-ros">/system/clock/set time-zone-autodetect=no time-zone-name=manual
+/system/clock/manual/set time-zone=+02:00 dst-delta=+01:00 \
+    dst-start=&quot;2026-03-29 03:00:00&quot; dst-end=&quot;2026-10-25 04:00:00&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/clock/manual/print
+  time-zone: +02:00
+  dst-delta: +01:00
+  dst-start: 2026-03-29 03:00:00
+    dst-end: 2026-10-25 04:00:00
+</code></pre>
+<p>How the manual settings work:</p>
+<ul>
+<li>While DST is not active, the GMT offset is <code>time-zone</code>. While DST is active, it is <code>time-zone</code> + <code>dst-delta</code>. <code>dst-delta</code> can be negative, for time zones where the winter time is the daylight saving period.</li>
+<li>DST is active from <code>dst-start</code> until <code>dst-end</code>, exactly as configured. The period is a single date range and is not repeated in the following years: update <code>dst-start</code> and <code>dst-end</code> every year, or use a named time zone, which keeps the rules up to date.</li>
+<li>Give <code>dst-start</code> and <code>dst-end</code> with both the date and the time. An omitted part is reset: the date to 1970-01-01, the time to 00:00:00. For example, <code>dst-start=05:00:00</code> gives <code>1970-01-01 05:00:00</code>.</li>
+<li>If <code>dst-start</code> is later than <code>dst-end</code>, DST never becomes active. For the southern hemisphere, where the summer spans the year end, set <code>dst-start</code> in the earlier year and <code>dst-end</code> in the later year, for example <code>2026-10-04 02:00:00</code> to <code>2027-04-04 03:00:00</code>.</li>
+</ul>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="clock-at-startup">Clock at startup</h3>
+<p>RouterOS saves the current time when it is changed, on a clean reboot and once a day, and restores it at startup. After a reboot, the clock therefore starts from the saved time even without a network time source, and a time source corrects it when it answers. When the router has no saved time, for example on a new installation, the date starts at 1970-01-02 00:00:00 UTC, displayed with the gmt-offset of the configured time zone.</p>
+<h3 id="clock-limits">Clock limits</h3>
+<p>The date cannot be set before the build date of the installed RouterOS version: the router answers <code>cannot set time before package build time</code>. The latest date the clock accepts is 2038-01-19 03:14:07 UTC; a later date is ignored without an error, and the clock keeps its time.</p>
+<h3 id="time-zone-detection">Time zone detection</h3>
+<p>The detection uses the same connection to <code>cloud2.mikrotik.com</code> as the other <a href="../network-management/cloud/communication-mikrotik-cloud-servers">MikroTik cloud services</a>. The detected zone is stored in the configuration and appears as <code>time-zone-name</code> in <code>/system/clock/export</code>. Until the first successful detection, <code>time-zone-name</code> is <code>manual</code> with a GMT offset of +00:00.</p>
+<p>For all properties, see <a href="../cli-reference/system/clock/"><code>/system/clock</code></a> and <a href="../cli-reference/system/clock/manual"><code>/system/clock/manual</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="device-mode">Device mode</h1>
+<blockquote>
+<p>Device-mode restricts RouterOS features to protect the router from misuse; changing it requires physical confirmation. Covers the modes, per-feature switches, allowed versions and the flagged state.</p>
+</blockquote>
+<h1 id="device-mode_1">Device mode</h1>
+<p>The <strong>device-mode</strong> limits access to specific configuration options. It protects the router and the network from attackers who gain unauthorized access and use the device as a gateway to attack other networks.</p>
+<p>The available modes are <code>advanced</code>, <code>home</code>, <code>basic</code> and <code>rose</code>. New devices come with a mode configured at the factory: <code>advanced</code> (previously <code>enterprise</code>) on CCR and 1100 series devices, <code>home</code> on home routers and <code>basic</code> on other devices. Devices from before the factory modes were introduced use <code>advanced</code>, and upgrading RouterOS keeps it.</p>
+<p>Check the current settings in the <a href="../cli-reference/system/device-mode"><code>/system/device-mode</code></a> menu.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/print 
+                 mode: advanced     
+     allowed-versions: 7.13+,6.49.8+
+              flagged: no           
+     flagging-enabled: yes          
+            scheduler: yes          
+                socks: yes          
+                fetch: yes          
+                 pptp: yes          
+                 l2tp: yes          
+       bandwidth-test: yes          
+          traffic-gen: no           
+              sniffer: yes          
+                ipsec: yes          
+                romon: yes          
+                proxy: yes          
+              hotspot: yes          
+                  smb: yes          
+                email: yes          
+             zerotier: yes          
+            container: no           
+  install-any-version: no           
+           partitions: no           
+          routerboard: no          
+        attempt-count: 0   
+</code></pre>
+<p>An authorized user can change the device-mode parameters, but physical access is required to approve the change. Confirm it with the reset or mode button on the device, or with a "cold reboot" — unplug the power. A regular reboot does not confirm the change; it cancels it. After confirmation, regardless of the method, the <strong>device reboots</strong>.</p>
+<h2 id="check-device-mode-in-winbox">Check device mode in WinBox</h2>
+<p>Open <strong>System &gt; Device Mode</strong> to inspect the restrictions:</p>
+<ol>
+<li><strong>Mode</strong> and <strong>Allowed Versions</strong> identify the configured mode and permitted RouterOS versions.</li>
+<li>The per-tool fields show which operations are allowed. For example, check <strong>Scheduler</strong>, <strong>Fetch</strong>, or <strong>Email</strong> when one of those tools reports a device-mode restriction.</li>
+</ol>
+<p><em>[gambar: WinBox Device Mode overview with the current mode and per-tool restrictions]</em></p>
+<p>The screenshot shows a router with an existing <code>rose</code> configuration; it is not a factory default. The overview is read-only. The <strong>Update</strong> action starts a mode change, which requires physical confirmation and reboots the device (see the next section).</p>
+<h2 id="change-device-mode">Change device-mode</h2>
+<p>Change the mode or individual features with the <a href="../cli-reference/system/device-mode/update"><code>update</code></a> command.</p>
+<p>Change the mode to <code>home</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/update mode=home
+  update: turn off power or reboot by pressing reset or mode button in 5m to activate changes
+</code></pre>
+<p>If the update is not confirmed in time, the mode change is canceled. To cancel a pending update yourself, run <code>/system/device-mode/update</code> without parameters; it reports <code>canceled previous update</code>. An <code>update</code> with parameters while another update is pending cancels the pending one and is not applied itself; run it again to start a new update.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Some EOL products confirm mode changes only with a power cycle, not with a button press.</p>
+</div>
+<p>An attacker with access can prepare a device-mode change and leave it pending. The change activates on the next button press or power cycle, even when the administrator does not know what it is. To limit that risk, only three update attempts are allowed without a reset. Every <code>update</code> request with parameters increments the <strong>attempt-count</strong> counter, including refused ones; a request that cancels a pending update does not. When the counter reaches 3, further requests are refused and a reset window equal to the <code>activation-timeout</code> of that request opens. The counter resets after a confirmed update, or after a button press or power cycle inside the reset window. An expired request and a plain reboot do not reset it.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/update container=yes 
+  update: too many unsuccessful attempts, turn off power or reboot by pressing reset or mode button in 5m to reset attempt-count
+</code></pre>
+<p>A command that specifies <code>mode</code> replaces the entire device-mode configuration: all per-feature settings are lost except those given in the same command. The <code>print config</code> output shows only the settings that differ from the mode defaults.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/update mode=home email=yes fetch=yes
+  update: turn off power or reboot by pressing reset or mode button in 5m to activate changes
+-- reboot --
+[admin@MikroTik] &gt; /system/device-mode/print config
+              mode: home
+  allowed-versions: 7.13+,6.49.8+
+             fetch: yes
+             email: yes
+[admin@MikroTik] &gt; /system/device-mode/update mode=advanced sniffer=no
+  update: turn off power or reboot by pressing reset or mode button in 5m to activate changes
+-- reboot --
+[admin@MikroTik] &gt; /system/device-mode/print config
+              mode: advanced
+  allowed-versions: 7.13+,6.49.8+
+           sniffer: no
+</code></pre>
+<p>The <code>fetch</code> and <code>email</code> overrides are gone, because the second mode change replaced them. A command that specifies only per-feature settings changes only those:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/update hotspot=no
+  update: turn off power or reboot by pressing reset or mode button in 5m to activate changes
+-- reboot --
+[admin@MikroTik] &gt; /system/device-mode/print config
+              mode: advanced
+  allowed-versions: 7.13+,6.49.8+
+           sniffer: no
+           hotspot: no
+</code></pre>
+<p>A disabled feature rejects interactive commands:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/print config
+              mode: advanced
+  allowed-versions: 7.13+,6.49.8+
+           sniffer: no
+           hotspot: no
+[admin@MikroTik] &gt; /tool/sniffer/quick 
+failure: not allowed by device-mode
+</code></pre>
+<p>Configuration for a disabled feature can still be added; the entry is created disabled, with a comment that the device-mode does not allow it:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/hotspot/add interface=ether1 
+[admin@MikroTik] &gt; /ip/hotspot/print 
+Flags: X - DISABLED
+Columns: NAME, INTERFACE, PROFILE, IDLE-TIMEOUT
+#   NAME      INTERFACE  PROFILE  IDLE-TIMEOUT
+;;; inactivated, not allowed by device-mode
+0 X hotspot1  ether1     default  5m          
+</code></pre>
+<h2 id="configure-device-mode-with-netinstall-or-flashfig">Configure device-mode with Netinstall or FlashFig</h2>
+<p>Netinstall and FlashFig can set <strong>device-mode</strong>, <strong>protected-routerboot</strong> and other settings when they provision a device.</p>
+<p>See the <a href="../getting-started/installation-and-upgrade/netinstall/">Netinstall</a> and <a href="../management-tools/flashfig">FlashFig</a> documentation for details.</p>
+<h2 id="available-device-mode-modes">Available device-mode modes</h2>
+<p>Four modes are available (<code>advanced</code> is the default); each disables a subset of features. No mode has all features enabled — some features must be enabled explicitly even in <code>advanced</code> mode. <code>rose</code> is similar to <code>advanced</code>, intended for RDS and similar devices with broad disk use and factory container support. The table lists what each feature controls. <strong>traffic-gen</strong>, <strong>container</strong>, <strong>partitions</strong> and <strong>routerboard</strong> are disabled in every mode unless enabled explicitly.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature / Property</th>
+<th style="text-align: left;">Actions/unavailable menus</th>
+<th style="text-align: left;">Home</th>
+<th style="text-align: left;">Basic</th>
+<th style="text-align: left;">Advanced</th>
+<th style="text-align: left;">ROSE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="../diagnostics-monitoring-and-troubleshooting/bandwidth-test.md"><strong>Bandwidth Test</strong></a></td>
+<td style="text-align: left;"><code>/tool/bandwidth-test</code>, <code>/tool/bandwidth-server</code>, <code>/tool/speed-test</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../containers/index.md"><strong>Containers</strong></a></td>
+<td style="text-align: left;">All container functionality.</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./e-mail.md"><strong>Email</strong></a></td>
+<td style="text-align: left;"><code>/tool/e-mail</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./fetch.md"><strong>Fetch</strong></a></td>
+<td style="text-align: left;"><code>/tool/fetch</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../authentication-authorization-accounting/hotspot-captive-portal/index.md"><strong>Hotspot</strong></a></td>
+<td style="text-align: left;"><code>/ip/hotspot</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Install Any Version</strong></td>
+<td style="text-align: left;">RouterOS will no longer allow installation of versions outside the <strong>allowed-versions</strong> list.</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../virtual-private-networks/ipsec/index.md"><strong>IPsec</strong></a></td>
+<td style="text-align: left;"><code>/ip/ipsec</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../virtual-private-networks/l2tp/index.md"><strong>L2TP</strong></a></td>
+<td style="text-align: left;"><code>/interface/l2tp-server</code>, <code>/interface/l2tp-client</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./partitions.md"><strong>Partitions</strong></a></td>
+<td style="text-align: left;"><code>/partitions</code> — does not allow changing the count of partitions. If your router is unable to boot, it will still be able to boot into your other partitions. No restriction for crash recovery.</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../virtual-private-networks/pptp.md"><strong>PPTP</strong></a></td>
+<td style="text-align: left;"><code>/interface/pptp-server</code>, <code>/interface/pptp-client</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../network-management/proxy/web-proxy"><strong>Proxy</strong></a></td>
+<td style="text-align: left;"><code>/ip/proxy</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../management-tools/romon.md"><strong>RoMon</strong></a></td>
+<td style="text-align: left;"><code>/tool/romon</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../hardware/routerboard.md"><strong>Routerboard Settings</strong></a></td>
+<td style="text-align: left;"><code>/system/routerboard/settings</code> (except auto-upgrade option)</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./scheduler.md"><strong>Scheduler</strong></a></td>
+<td style="text-align: left;"><code>/system/scheduler</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../storage/smb.md"><strong>SMB</strong></a></td>
+<td style="text-align: left;"><code>/ip/smb</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md"><strong>Sniffer</strong></a></td>
+<td style="text-align: left;"><code>/tool/sniffer</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../network-management/socks/index.md"><strong>SOCKS Proxy</strong></a></td>
+<td style="text-align: left;"><code>/ip/socks</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../diagnostics-monitoring-and-troubleshooting/traffic-generator.md"><strong>Traffic Generator</strong></a></td>
+<td style="text-align: left;"><code>/tool/traffic-generator</code>, <code>/tool/flood-ping</code>, <code>/tool/ping-speed</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../virtual-private-networks/zerotier.md"><strong>ZeroTier</strong></a></td>
+<td style="text-align: left;"><code>/zerotier</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Each feature controlled by device-mode can be enabled or disabled individually.</p>
+<p>For example, with <strong>scheduler</strong> disabled, <code>/system/scheduler</code> cannot perform any action. If the device runs in <code>home</code> mode but your setup needs <code>zerotier</code>, run <code>/system/device-mode/update zerotier=yes</code> and confirm it with physical access to the device. On dual-boot devices, device-mode restricts the SwOS/RouterOS transition; enable it with <code>/system/device-mode/update routerboard=yes</code>.</p>
+<h2 id="allowed-versions">Allowed versions</h2>
+<p>The <strong>allowed-versions</strong> parameter lists the RouterOS versions MikroTik considers secure, without serious vulnerabilities that an attacker could exploit.</p>
+<p>The list works as a separate protection layer, independent of the installed version, to prevent an attacker from downgrading step by step to a known vulnerable release. An upgrade to a release with a newer <strong>allowed-versions</strong> list overwrites the old one; a downgrade leaves the list unchanged. The list is ignored when <strong>install-any-version</strong> is enabled.</p>
+<h2 id="flagged-status">Flagged status</h2>
+<p>RouterOS analyzes the whole configuration at startup for signs of unauthorized access. If it finds suspicious configuration, the device disables it and sets <strong>flagged</strong> to <em>yes</em>, which enforces additional limitations.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/device-mode/print 
+     mode: advanced
+  flagged: yes
+...
+</code></pre>
+<p>In the flagged state, the current configuration keeps working, but these actions are not possible:</p>
+<ul>
+<li>bandwidth-test, traffic-generator and sniffer</li>
+<li>configuration actions that enable or create entries (disabling or deleting them still works) in system scheduler, SOCKS proxy, PPTP, L2TP, IPsec, proxy and SMB.</li>
+</ul>
+<p>Attempting them returns an error:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/sniffer/quick 
+failure: configuration flagged, check all router configuration for unauthorized changes and update device-mode
+[admin@MikroTik] &gt; /interface/l2tp-client/add connect-to=192.0.2.1 user=user1
+failure: configuration flagged, check all router configuration for unauthorized changes and update device-mode
+</code></pre>
+<p>To exit the flagged state, run <code>/system/device-mode/update flagged=no</code> and confirm it with a button press or a power cycle: cut the power, or do a hard reboot of the virtual machine.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Although the system has disabled any malicious-looking rules that triggered the flagged state, inspect
+all of your configuration for other unknown entries before exiting the flagged state. If your system
+has been flagged, assume that it has been compromised and audit all settings before re-enabling it for
+use. After the audit, change all system passwords and upgrade to the latest RouterOS version.</p>
+</div>
+<hr />
+<h1 id="email">Email</h1>
+<blockquote>
+<p>Send email from RouterOS through an SMTP server: TLS modes and ports, certificate verification, Gmail app passwords, attachments, a scheduled configuration export and what the error messages mean.</p>
+</blockquote>
+<h1 id="email_1">Email</h1>
+<p>The router sends email through an SMTP server: the server of your email provider or your own mail server. Scripts and the <a href="./scheduler">scheduler</a> use it to send alerts, backups and configuration exports, and the <a href="../diagnostics-monitoring-and-troubleshooting/watchdog">watchdog</a> uses it to send support output files.</p>
+<p>The router logs in to the server with AUTH PLAIN. For encryption, it uses TLS from the start of the connection (<code>tls=yes</code>) or upgrades a plain connection with STARTTLS (<code>tls=starttls</code>). Without TLS, the user name and password cross the network unencrypted, so use TLS with every server that is not on your own network.</p>
+<h2 id="configure-the-smtp-server">Configure the SMTP server</h2>
+<p>The server settings are in <a href="../cli-reference/tool/e-mail"><code>/tool/e-mail</code></a>. Choose <code>tls</code> to match the port of the server:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Port</th>
+<th style="text-align: left;"><code>tls</code></th>
+<th style="text-align: left;">Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">587</td>
+<td style="text-align: left;"><code>starttls</code></td>
+<td style="text-align: left;">Mail submission with STARTTLS, offered by most email providers.</td>
+</tr>
+<tr>
+<td style="text-align: left;">465</td>
+<td style="text-align: left;"><code>yes</code></td>
+<td style="text-align: left;">Implicit TLS: the connection is encrypted from the start.</td>
+</tr>
+<tr>
+<td style="text-align: left;">25</td>
+<td style="text-align: left;"><code>no</code></td>
+<td style="text-align: left;">Plain SMTP, only for a relay on your own network that accepts it.</td>
+</tr>
+</tbody>
+</table>
+<p>The two do not mix: <code>tls=yes</code> on port 587 fails with <code>TLS handshake failed</code>, and <code>tls=starttls</code> on port 465 fails with <code>timeout occured</code>.</p>
+<p>For example, to send through Gmail with STARTTLS and certificate verification:</p>
+<pre><code class="language-ros">/tool/e-mail/set server=smtp.gmail.com port=587 tls=starttls \
+    certificate-verification=yes from=you@gmail.com \
+    user=you@gmail.com password=&quot;xxxx xxxx xxxx xxxx&quot;
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Gmail does not accept your Google account password from devices such as routers. Turn on 2-Step Verification for your Google account, create an App password (in your Google account under <strong>Security</strong>, <strong>App passwords</strong>), and use the generated 16-character password as <code>password</code>.</p>
+</div>
+<p><code>certificate-verification</code> is <code>no</code> by default: the router encrypts the connection, but does not check the server's certificate. Set it to <code>yes</code> to check the certificate against the router's trust store. The built-in trust store covers email by default, so the certificate of a public provider such as Gmail verifies without further setup. When the certificate does not match the server name, the send fails with <code>TLS handshake failed (ssl: name verification failed for: ...)</code>.</p>
+<p>In WinBox, open <strong>Tools &gt; Email</strong> to configure the SMTP connection:</p>
+<ol>
+<li>Set <strong>Server</strong>, <strong>Port</strong>, and <strong>TLS</strong> to the values supplied by your email provider. The screenshot shows unconfigured values, not settings for a working mail server.</li>
+<li>Enter the sender address in <strong>From</strong>. Use the <strong>+</strong> controls to set <strong>User</strong> and <strong>Password</strong> if the server requires authentication.</li>
+<li>Review <strong>Certificate Verification</strong> for a TLS connection and select <strong>OK</strong> to save the configuration. Use the server settings in the CLI reference for the verification options and certificate requirements.</li>
+</ol>
+<p><em>[gambar: WinBox Email Settings dialog for the SMTP connection]</em></p>
+<h2 id="send-a-message">Send a message</h2>
+<p>Send a message with <a href="../cli-reference/tool/e-mail/send"><code>/tool/e-mail/send</code></a>:</p>
+<pre><code class="language-ros">/tool/e-mail/send to=admin@example.com subject=&quot;Router alert&quot; \
+    body=&quot;The backup link is down.&quot;
+</code></pre>
+<p>The command uses the settings of <code>/tool/e-mail</code>. Any setting given to the command, such as <code>server</code>, <code>port</code>, <code>tls</code> or <code>from</code>, overrides the setting for this message only.</p>
+<ul>
+<li>Separate several recipients with commas, in <code>to</code> and in <code>cc</code>. The router sends one message to all of them.</li>
+<li><code>\n</code> in <code>body</code> starts a new line.</li>
+<li><code>file</code> attaches files from the router's file list, several separated by commas. A file that does not exist is refused before the message is sent, with <code>input does not match any value of file</code>.</li>
+<li>Always set <code>from</code>. Without it, the router sends the message with an empty sender (<code>&lt;&gt;</code>), which many servers refuse.</li>
+</ul>
+<p><code>/tool/e-mail/print</code> shows the result of the last message in <code>last-status</code>: <code>succeeded</code> or <code>failed</code>.</p>
+<p>To send a message in WinBox, open <strong>Tools &gt; Email</strong> and select <strong>Send Email</strong> in the right panel:</p>
+<ol>
+<li>Set <strong>To</strong> and <strong>Subject</strong>. Use <strong>Cc</strong> for additional recipients and <strong>From</strong> to override the configured sender when required.</li>
+<li>Enter the message in <strong>Body</strong>. Use the <strong>+</strong> control beside <strong>Files</strong> to attach a file already stored on the router.</li>
+</ol>
+<p><em>[gambar: WinBox Send Email dialog with recipient, subject, body, and attachments]</em></p>
+<p>Review the SMTP settings and recipients, then select <strong>Send Email</strong> to transmit the message. <strong>Cancel</strong> closes the dialog without sending it. Check <strong>Last Status</strong> in Email Settings if delivery fails.</p>
+<h2 id="email-the-configuration-export-every-day">Email the configuration export every day</h2>
+<p>Send the router's configuration export to an administrator every night.</p>
+<ol>
+<li>Configure the SMTP server, for example a relay on your network:</li>
+</ol>
+<p><code>ros
+   /tool/e-mail/set server=192.0.2.25 port=25 from=router@example.com</code></p>
+<ol start="2">
+<li>Add a <a href="../developer-guides/scripting/">script</a> named <code>export-email</code> that writes the export and sends it:</li>
+</ol>
+<p><code>ros
+   /export file=export
+   /tool/e-mail/send to=config@example.com file=export.rsc \
+       subject="$[/system/identity/get name] export" \
+       body="$[/system/clock/get date] configuration file"</code></p>
+<ol start="3">
+<li>Add a <a href="./scheduler">scheduler</a> entry that runs the script every 24 hours:</li>
+</ol>
+<p><code>ros
+   /system/scheduler/add name=export-email on-event=export-email \
+       start-time=00:00:00 interval=24h</code></p>
+<p>The export hides passwords and other sensitive values by default, see <a href="../getting-started/configuration-management/#export-the-configuration">Configuration export</a>.</p>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<p>When a message cannot be sent, the command stops with a <code>failure:</code> message and <code>last-status</code> is <code>failed</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Message</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>TLS handshake failed (timeout)</code></td>
+<td style="text-align: left;"><code>tls=yes</code> against a STARTTLS port such as 587. Use <code>tls=starttls</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TLS not supported by server</code></td>
+<td style="text-align: left;"><code>tls=starttls</code>, but the server does not offer STARTTLS. The router does not fall back to an unencrypted connection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>timeout occured</code></td>
+<td style="text-align: left;">No answer from the server, for example <code>tls=no</code> or <code>tls=starttls</code> against an implicit TLS port such as 465.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>invalid FROM address</code></td>
+<td style="text-align: left;">The server refused the sender. Gmail also answers this way to a connection without TLS, so check <code>tls</code> as well as <code>from</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>AUTH failed</code></td>
+<td style="text-align: left;">Wrong <code>user</code> or <code>password</code>. Gmail needs an App password.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>recipient address required</code></td>
+<td style="text-align: left;"><code>to</code> is missing.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TLS handshake failed (ssl: name verification failed for: ...)</code></td>
+<td style="text-align: left;">With <code>certificate-verification=yes</code>, the server's certificate does not match the server name.</td>
+</tr>
+</tbody>
+</table>
+<p>When <code>server</code> is a name, <code>last-address</code> in <code>/tool/e-mail/print</code> shows the address the router connected to.</p>
+<h2 id="technical-details_1">Technical details</h2>
+<h3 id="smtp-session">SMTP session</h3>
+<p>The router greets the server with its address in brackets (for example <code>EHLO [192.0.2.1]</code>) and logs in with AUTH PLAIN. Each message has a <code>Date</code> header in the router's time zone and a <code>Message-ID</code> that ends with the router identity.</p>
+<h3 id="text-and-attachments">Text and attachments</h3>
+<p>A message without attachments has no MIME headers: the router sends the subject and body as they are, without declaring a character set. With attachments, the message is <code>multipart/mixed</code>, the text part is declared as US-ASCII, and each file is attached as <code>application/octet-stream</code> with its file name. Gmail shows UTF-8 text in both cases correctly. For alerts that must read correctly in every mail client, use plain ASCII text.</p>
+<h3 id="vrf">VRF</h3>
+<p><code>vrf</code> in <code>/tool/e-mail</code> selects the VRF in which the router opens the connection to the server.</p>
+<p>For all parameters, see the CLI reference for <a href="../cli-reference/tool/e-mail"><code>/tool/e-mail</code></a> and <a href="../cli-reference/tool/e-mail/send"><code>/tool/e-mail/send</code></a>.</p>
+<hr />
+<h1 id="fetch">Fetch</h1>
+<blockquote>
+<p>Fetch transfers files over HTTP, HTTPS, FTP, TFTP and SFTP and makes HTTP requests from the console or scripts: downloads, uploads, POST data and webhooks, certificate checks, redirects, result variables and VRF support.</p>
+</blockquote>
+<h1 id="fetch_1">Fetch</h1>
+<p>Fetch downloads and uploads files over HTTP, HTTPS, FTP, TFTP and SFTP, and makes HTTP requests (GET, POST, PUT and others) to remote servers. It runs in the console and in scripts, prints a live status and either saves the result to a file or returns it to a script variable.</p>
+<p>In WinBox, select <strong>New Terminal</strong> in the left menu to run the commands on this page. The terminal displays the transfer status; open <strong>Files</strong> to find a downloaded file when the command saves its result to the router.</p>
+<h2 id="download-and-upload-files">Download and upload files</h2>
+<p>Copy a file from another RouterOS device over FTP. The device needs the FTP service enabled (<code>/ip/service</code>) and an account with a password:</p>
+<pre><code class="language-ros">/tool/fetch mode=ftp address=192.168.88.2 user=admin \
+    password=mypassword src-path=conf.rsc dst-path=backup.rsc
+</code></pre>
+<p>To upload a file instead, set <code>upload=yes</code> and swap the paths: <code>src-path</code> is the file on the local router, <code>dst-path</code> is the name on the remote device:</p>
+<pre><code class="language-ros">/tool/fetch mode=ftp address=192.168.88.2 user=admin \
+    password=mypassword src-path=backup.rsc dst-path=conf.rsc upload=yes
+</code></pre>
+<p>The same transfers work with <code>mode=sftp</code> on port 22. SFTP uses the SSH service of the remote device, which RouterOS enables by default. Uploads (<code>upload=yes</code>) work in the <code>ftp</code> and <code>sftp</code> modes only; to send data to a web server, use an HTTP request with <code>http-data</code>. Without <code>user</code>, FTP logs in as <code>anonymous</code>.</p>
+<p>You can put the address, credentials and path into a single URL; the mode is then detected from the scheme:</p>
+<pre><code class="language-ros">/tool/fetch url=&quot;ftp://admin:mypassword@192.168.88.2/conf.rsc&quot; \
+    dst-path=backup.rsc
+</code></pre>
+<p><code>mode=tftp</code> downloads from a TFTP server, for example <a href="../cli-reference/ip/tftp/"><code>/ip/tftp</code></a> on another router:</p>
+<pre><code class="language-ros">/tool/fetch address=192.168.88.2 mode=tftp src-path=conf.rsc \
+    dst-path=backup.rsc
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>SFTP host key validation is enabled on new installations and kept disabled on upgraded routers (the <code>known-hosts-validation</code> setting in <a href="../cli-reference/ip/ssh/"><code>/ip/ssh</code></a>). With validation enabled, a fetch to a server whose key is not in <a href="../cli-reference/ip/ssh/known-hosts"><code>/ip/ssh/known-hosts</code></a> fails with <code>host key not trusted</code>; <code>sftp-known-hosts-ignore=yes</code> bypasses this for a single transfer, and <code>known-hosts-trusted-subnets</code> skips the check for whole subnets.</p>
+</div>
+<h2 id="make-http-requests">Make HTTP requests</h2>
+<p>With the <code>url</code> parameter, fetch detects the protocol from the scheme and saves the file with the name from the URL unless <code>dst-path</code> overrides it:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/fetch check-certificate=yes \
+    url=&quot;https://download.mikrotik.com/routeros/7.19/CHANGELOG&quot;
+  status: connecting
+
+      status: finished
+        code: 200
+  downloaded: 18KiB
+       total: 18KiB
+    duration: 1s
+</code></pre>
+<p>Fetch does not validate TLS certificates by default: without <code>check-certificate</code>, it connects even to a server with an expired or self-signed certificate. Set <code>check-certificate=yes</code> for HTTPS downloads you rely on, and always before you import or run what you download. RouterOS includes a builtin trust store with public root certificates (<code>builtin-trust-store</code> in <code>/certificate/settings</code>), so public sites work without extra imports. For a server with a certificate from your own authority, import the authority's certificate with <code>/certificate/import</code>; see <a href="../authentication-authorization-accounting/certificates">Certificates</a>. The check also verifies the host name in the URL, and it compares the certificate dates with the router's clock, so set the clock (for example with the <a href="ntp">NTP client</a>) before you rely on it. An invalid certificate fails the fetch:</p>
+<pre><code class="language-text">failure: SSL: ssl: cert not valid (after: Sun Apr 12 23:59:59 2015 &lt; now: Tue Sep 29 06:51:00 2026) - &quot;OU=PositiveSSL Wildcard, CN=*.badssl.com&quot; (6)
+</code></pre>
+<p>For servers with HTTP authentication, set <code>user</code> and <code>password</code>. Basic authentication is the default and sends the credentials with the first request; set <code>http-auth-scheme=digest</code> for digest authentication.</p>
+<p>HTTP redirects are followed automatically. <code>http-max-redirect-count</code> limits how many redirects fetch follows: with the default of 2, a chain of two redirects is followed, and a third fails the request with the redirect status, for example <code>failure: Status 302, Found (Location: "https://mikrotik.com/download")</code>.</p>
+<h3 id="send-data-to-a-server">Send data to a server</h3>
+<p>Use <code>http-method</code>, <code>http-header-field</code> and <code>http-data</code> for API endpoints:</p>
+<pre><code class="language-ros">/tool/fetch url=&quot;https://192.0.2.10/collector&quot; http-method=post \
+    http-header-field=&quot;Content-Type: application/json&quot; \
+    http-data=&quot;{\&quot;lat\&quot;:\&quot;56.12\&quot;,\&quot;lon\&quot;:\&quot;25.12\&quot;}&quot;
+</code></pre>
+<p>Without a <code>Content-Type</code> in <code>http-header-field</code>, the body is sent as <code>application/x-www-form-urlencoded</code>. Separate several header fields with commas (<code>"X-One: a,X-Two: b"</code>). With <code>http-content-encoding=gzip</code> (or <code>deflate</code>), a POST or PUT body is sent compressed with a matching <code>Content-Encoding</code> header.</p>
+<p>To send generated content, store it in a file, read the file into a variable and pass the variable as <code>http-data</code>. Keep the commands in one block, because a <code>:local</code> variable exists only inside its block, and find the file with <code>find</code>:</p>
+<pre><code class="language-ros">{
+    /export file=export.rsc
+    :local data [/file/get [find name=export.rsc] contents]
+    /tool/fetch url=&quot;https://192.0.2.10/collector&quot; http-method=put \
+        http-data=$data
+}
+</code></pre>
+<p>This works for files up to 60000 bytes, within the 64 KB limit of <code>http-data</code>. Upload larger files with FTP or SFTP instead. To call the REST API of another RouterOS device, see <a href="../developer-guides/rest-api">REST API</a>.</p>
+<h2 id="automate-common-tasks">Automate common tasks</h2>
+<h3 id="upload-a-backup-to-a-server">Upload a backup to a server</h3>
+<p>Save an encrypted backup and upload it to an SFTP server. <code>/system/backup/save</code> finishes before the next command runs. Run the commands from a <a href="scheduler">scheduler</a> script to keep a nightly copy off the router:</p>
+<pre><code class="language-ros">/system/backup/save name=nightly password=&quot;backup-file-password&quot;
+/tool/fetch url=&quot;sftp://192.168.88.2/nightly.backup&quot; upload=yes \
+    src-path=nightly.backup user=backup password=&quot;server-password&quot;
+</code></pre>
+<p>For what a backup contains and how to restore it, see <a href="../getting-started/configuration-management/backup">Backup</a>.</p>
+<h3 id="download-and-run-a-script">Download and run a script</h3>
+<p>Fetch a configuration script from your server and import it. <code>check-certificate=yes</code> makes sure that the file comes from your server; <code>/import</code> runs every command in the file, so fetch scripts only from a server you control. In one block, a failed download stops the block, so an older copy of the file is not imported:</p>
+<pre><code class="language-ros">{
+    /tool/fetch url=&quot;https://config.example.com/branch.rsc&quot; \
+        check-certificate=yes dst-path=branch.rsc
+    /import file-name=branch.rsc
+}
+</code></pre>
+<h3 id="send-a-notification-to-a-webhook">Send a notification to a webhook</h3>
+<p>Chat services, monitoring and automation tools accept JSON messages on a webhook URL; the field names depend on the service, so check its webhook documentation. <code>$[...]</code> inserts the output of a command into the message, here the router's name. The inserted text is not escaped: a quote or backslash in it breaks the JSON.</p>
+<pre><code class="language-ros">/tool/fetch url=&quot;https://hooks.example.com/notify&quot; http-method=post \
+    http-header-field=&quot;Content-Type: application/json&quot; \
+    check-certificate=yes output=none \
+    http-data=&quot;{\&quot;text\&quot;:\&quot;$[/system/identity/get name]: backup done\&quot;}&quot;
+</code></pre>
+<p>With the identity <code>branch-office-1</code>, the server receives <code>{"text":"branch-office-1: backup done"}</code>. <code>output=none</code> discards the reply.</p>
+<h2 id="use-fetch-in-scripts">Use fetch in scripts</h2>
+<p>With <code>as-value</code>, fetch returns an array instead of printing to the console. For <code>:local</code> variables, <code>{ }</code> blocks and <code>:onerror</code>, see <a href="../developer-guides/scripting/">Scripting</a>. <code>output</code> decides where the response body goes:</p>
+<ul>
+<li><code>file</code> (default) - A file, <code>dst-path</code> or the name from the URL.</li>
+<li><code>none</code> - Nowhere.</li>
+<li><code>user</code> - The <code>data</code> key, at most 64512 bytes (63 KiB).</li>
+<li><code>user-with-headers</code> - The <code>data</code> key, at most 20480 bytes (20 KiB), and the response headers in <code>http-headers</code>.</li>
+</ul>
+<p>A longer body is cut without an error: when <code>[:len ($result-&gt;"data")]</code> equals the limit, the body was probably longer.</p>
+<p>The following script disables <code>ether5</code> when a web page starts with <code>0</code>, and enables it otherwise. <code>:pick</code> takes the first character, because a text file usually ends with a newline. A failed fetch raises an error, which <code>:onerror</code> catches and logs, leaving the port as it is:</p>
+<pre><code class="language-ros">{
+    :local url &quot;http://192.0.2.10/state.txt&quot;
+    :onerror e in={
+        :local result [/tool/fetch url=$url as-value output=user]
+        :if ([:pick ($result-&gt;&quot;data&quot;) 0 1] = &quot;0&quot;) do={
+            /interface/ethernet/set [find name=ether5] disabled=yes
+        } else={
+            /interface/ethernet/set [find name=ether5] disabled=no
+        }
+    } do={:log warning &quot;state check failed: $e&quot;}
+}
+</code></pre>
+<p><code>:onerror</code> puts the error message in the first variable; for an HTTP error, the second one holds the status <code>code</code> and the returned <code>http-headers</code>:</p>
+<pre><code class="language-ros">:onerror err,attr in={
+    /tool/fetch url=http://192.168.88.2/nonexistent as-value
+} do={
+    :put $err; :put ($attr-&gt;&quot;code&quot;); :put ($attr-&gt;&quot;http-headers&quot;)
+}
+</code></pre>
+<pre><code class="language-text">failure: Status 404, Not Found (/tool/fetch; line 2)
+404
+Cache-Control: no-store;Connection: Keep-Alive;Content-Length: 99;Content-Type: text/html;Date: Tue, 29 Sep 2026 07:05:39 GMT;Expires: 0;Pragma: no-cache;X-Frame-Options: sameorigin
+</code></pre>
+<h2 id="run-fetch-in-a-vrf">Run fetch in a VRF</h2>
+<p>To make fetch use a <a href="../user-guides/routing-and-networking-protocols/vrf">VRF</a>, append the VRF name to the <code>address</code> parameter after an <code>@</code>. Both forms work:</p>
+<pre><code class="language-ros">/tool/fetch url=&quot;ftp://admin:mypassword@192.168.88.2/conf.rsc&quot; \
+    address=@vrf1 dst-path=backup.rsc
+/tool/fetch mode=ftp address=192.168.88.2@vrf1 user=admin \
+    password=mypassword src-path=conf.rsc dst-path=backup.rsc
+</code></pre>
+<p>The VRF cannot be written into the URL itself: in <code>url="http://192.168.88.2@vrf1/…"</code> everything after <code>@</code> is treated as the host name, and the request fails with a resolving error.</p>
+<h2 id="technical-details_2">Technical details</h2>
+<ul>
+<li>Fetch prints interim status lines such as <code>status: connecting</code> or <code>status: requesting</code>, and a summary with <code>status</code>, <code>code</code>, transfer sizes and <code>duration</code> when done. The sizes are shown in KiB, rounded down and at least 1 when data arrived, and the <code>as-value</code> fields <code>downloaded</code>, <code>uploaded</code> and <code>total</code> contain the same values.</li>
+<li>Every HTTP request carries <code>User-Agent: RouterOS &lt;version&gt;</code> and <code>Accept-Encoding: deflate, gzip</code>.</li>
+<li>For HTTPS on ARM64 and x86/CHR devices, <code>http-version=http2</code> is available; HTTP/2 responses present their headers with HTTP/2 pseudo headers such as <code>:status</code>.</li>
+<li>When a script combines <code>as-value</code> with <code>address=</code> and <code>src-path=</code>, fetch fails with <code>Conflicting remote paths provided in URI and parameter</code>. Use the <code>url</code> form, or drop <code>as-value</code>.</li>
+</ul>
+<p>For all properties, see <a href="../cli-reference/tool/fetch"><code>/tool/fetch</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="files">Files</h1>
+<blockquote>
+<p>The File menu manages user files on the router: creating, editing, copying and deleting files and directories, reading file contents, and viewing details of uploaded RouterOS packages.</p>
+</blockquote>
+<h1 id="files_1">Files</h1>
+<p>The <code>/file</code> menu shows all user files on the router's storage, for example uploaded packages, backups, scripts and exports. You can create files and directories, edit file contents, and copy or delete entries. For an uploaded RouterOS <code>.npk</code> package, the menu also shows package-specific information, such as the architecture, version and build time:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print detail
+0  name=my-dir type=directory last-modified=2026-09-25 12:13:27
+
+1  name=routeros-7.24.2-arm64.npk type=package size=13.3MiB
+   last-modified=2026-09-25 12:13:01 package-name=&quot;system&quot;
+   package-version=&quot;7.24.2&quot; package-build-time=2026-09-03 09:57:14
+   package-architecture=&quot;arm64&quot;
+
+2  name=skins type=directory last-modified=1970-01-01 03:00:05
+
+3  name=my-dir/test.txt type=.txt file size=5 last-modified=2026-09-25 12:13:27
+   contents=hello
+</code></pre>
+<p>Files and directories shared through <a href="../network-management/cloud/file-share">File Share</a> (Back To Home) are marked with the <code>S</code> (shared) flag and show a <code>url</code> property with the share link. File synchronization between routers is configured in the <code>/file/sync</code> menu, see <a href="../storage/rsync">Rsync</a>.</p>
+<h2 id="manage-files-in-winbox">Manage files in WinBox</h2>
+<p>Open <strong>Files</strong> in the left menu. The <strong>File</strong> tab lists file names, types, sizes, and modification times:</p>
+<ol>
+<li>Select <strong>New</strong>, then <strong>Text File</strong> or <strong>Directory</strong>, to create an entry.</li>
+<li>Select <strong>Upload...</strong> in the right panel to copy a file from your computer to the router. To save a router file on your computer, select its row and select <strong>Download...</strong>. <strong>Remove</strong> deletes the selected entry from the router.</li>
+<li>Check the storage usage at the bottom of the window before uploading large files.</li>
+</ol>
+<p><em>[gambar: WinBox Files list with file actions and storage usage]</em></p>
+<p>Uploading a file stores it on the router; it does not import a configuration script or restore a backup automatically. Follow the relevant configuration procedure when you intend to apply the file.</p>
+<h2 id="storage-details">Storage details</h2>
+<p>If the device has a directory named <strong>flash</strong> in its file list, store any files that have to survive a reboot or power cycle inside it: everything outside <code>flash</code> is kept in a RAM disk and is lost on reboot. This does not include <code>.npk</code> upgrade files, which the upgrade process applies before the RAM disk content is discarded.</p>
+<p>On multicore devices with NAND flash memory (for example, CCR series routers and RB4011), RouterOS uses a write-back cache: file changes are buffered in RAM and written to the flash media later, which can be delayed by up to 40 seconds. This reduces CPU use and flash wear. However, a sudden power loss in that window <strong>can leave empty or zero-length files</strong>, because the changes were not written to the flash yet.</p>
+<p>RouterOS compresses stored files on some devices to occupy less disk space. <code>/file</code> shows the original file size, but <a href="../cli-reference/system/resource#free-hdd-space"><code>free-hdd-space</code></a> in <code>/system/resource</code> is calculated from the compressed size, so it can show more free space than expected.</p>
+<h2 id="file-operations">File operations</h2>
+<h3 id="create-a-file-or-directory">Create a file or directory</h3>
+<p>Use the <a href="../cli-reference/file"><code>/file/add</code></a> command with <code>type=file</code> or <code>type=directory</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/add name=my-file.txt type=file
+[admin@MikroTik] &gt; /file/add name=my-dir type=directory
+</code></pre>
+<h3 id="read-file-contents">Read file contents</h3>
+<p><code>get</code> returns the <code>contents</code> property only for files up to just under 60 KiB; for larger files it returns nothing. To read larger files, use the <a href="../cli-reference/file/read"><code>/file/read</code></a> command, which returns a chunk of the file as a string:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; :put [/file/get text.txt contents]
+123456
+
+[admin@MikroTik] &gt; /file/read file=text.txt offset=2 chunk-size=3
+  data: 345
+</code></pre>
+<h3 id="head-or-tail-a-file">Head or tail a file</h3>
+<p>Use <a href="../cli-reference/file/head"><code>/file/head</code></a> and <a href="../cli-reference/file/tail"><code>/file/tail</code></a> to print the first or last <code>n</code> lines of a file (10 lines by default):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/head test.txt n=3 numbered
+ 1: 1
+ 2: 2
+ 3: 3
+</code></pre>
+<h3 id="copy-a-file-or-directory">Copy a file or directory</h3>
+<p>Use the <a href="../cli-reference/file/copy"><code>/file/copy</code></a> command. Directories are copied recursively, with all their contents:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/add name=test1.txt type=file
+[admin@MikroTik] &gt; /file/add name=dir1 type=directory
+[admin@MikroTik] &gt; /file/copy test1.txt name=dir1/test1copy.txt
+[admin@MikroTik] &gt; /file/copy dir1 name=dir2
+[admin@MikroTik] &gt; /file/print
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME                TYPE       SIZE  LAST-MODIFIED
+0 dir2                directory        2026-09-25 12:12:20
+1 dir1                directory        2026-09-25 12:12:20
+2 test1.txt           .txt file     0  2026-09-25 12:12:20
+3 skins               directory        1970-01-01 03:00:05
+4 dir1/test1copy.txt  .txt file     0  2026-09-25 12:12:20
+5 dir2/test1copy.txt  .txt file     0  2026-09-25 12:12:20
+</code></pre>
+<p>All parameters are documented in the <a href="../cli-reference/file"><code>/file</code></a> CLI reference.</p>
+<hr />
+<h1 id="identity">Identity</h1>
+<blockquote>
+<p>The system identity is the router's name, shown in the CLI prompt, in neighbor discovery, as the SNMP system name and as the DHCP client host name. Set it in the CLI, in WinBox or over SNMP.</p>
+</blockquote>
+<h1 id="identity_1">Identity</h1>
+<p>The system identity is the name of the router. The default is <code>MikroTik</code>. Give each router its own name so that you can tell them apart. The identity appears in several places, including:</p>
+<ul>
+<li>In the command-line prompt, for example <code>[admin@Riga-Office-GW] &gt;</code>, and in the title of the WinBox connection.</li>
+<li>In <a href="neighbor-discovery">neighbor discovery</a>: neighboring devices list the router under its identity, updated with the next announcement, every 30 seconds by default.</li>
+<li>As the SNMP system name (<code>sysName</code>).</li>
+<li>As the host name that the <a href="../network-management/dhcp/client">DHCP client</a> sends to the DHCP server by default.</li>
+<li>As the default SSID of interfaces of the older <code>wireless</code> package (<a href="../wireless/abgn/wireless-interface">legacy wireless</a>).</li>
+<li>In scripts, as <code>[/system/identity/get name]</code>.</li>
+</ul>
+<p>The identity can be up to 64 characters long. A longer name is refused with <code>could not change identity: too long</code>. Spaces and other characters are allowed, with quotes, for example <code>name="Riga Office GW"</code>; because the DHCP host name and DNS names do not allow spaces, a name of letters, digits and hyphens works everywhere.</p>
+<h2 id="set-the-identity">Set the identity</h2>
+<p>A name that says where the router is and what it does helps when you manage several routers, for example <code>Riga-Office-GW</code>:</p>
+<pre><code class="language-ros">/system/identity/set name=Riga-Office-GW
+/system/identity/print
+</code></pre>
+<pre><code class="language-text">  name: Riga-Office-GW
+</code></pre>
+<p>The prompt shows the new name:</p>
+<pre><code class="language-text">[admin@Riga-Office-GW] &gt;
+</code></pre>
+<h2 id="set-the-identity-in-winbox">Set the identity in WinBox</h2>
+<p>In WinBox, open <strong>System &gt; Identity</strong>, enter the router name in <strong>Identity</strong> (callout 1), and select <strong>OK</strong>. Use a name that helps you distinguish the router from other devices, such as <code>Home-Router</code>. The name also appears in WinBox's connection title.</p>
+<p><em>[gambar: WinBox Identity dialog with a callout around the Identity field]</em></p>
+<h2 id="set-the-identity-over-snmp">Set the identity over SNMP</h2>
+<p>A management system can set the identity with an SNMP set request for <code>sysName.0</code> (<code>1.3.6.1.2.1.1.5.0</code>). This needs an <a href="../diagnostics-monitoring-and-troubleshooting/snmp">SNMP</a> community with write access; the default community <code>public</code> can only read and refuses an SNMPv1 set request with <code>readOnly</code>. A community with write access can also change other settings and reboot the router, so give it a name that is hard to guess, because the name works as a password, and limit it to the address of the management system:</p>
+<pre><code class="language-ros">/snmp/community/add name=netadmin-7Qx2 addresses=192.168.88.10/32 \
+    write-access=yes
+/snmp/set enabled=yes
+</code></pre>
+<p>From the management system, for example with <code>snmpset</code> on Linux or macOS:</p>
+<pre><code class="language-bash">snmpset -v 1 -c netadmin-7Qx2 192.168.88.1 1.3.6.1.2.1.1.5.0 s Branch-GW
+</code></pre>
+<pre><code class="language-text">SNMPv2-MIB::sysName.0 = STRING: Branch-GW
+</code></pre>
+<p>SNMPv1 and SNMPv2c send the community name in clear text. Allow write access only from trusted addresses, or use SNMPv3 with authentication and encryption. The <code>public</code> community stays readable from any address unless you limit its addresses too.</p>
+<p>For the parameter, see the <a href="../cli-reference/system/identity"><code>/system/identity</code> CLI reference</a>.</p>
+<hr />
+<h1 id="ip-packing">IP Packing</h1>
+<blockquote>
+<p>IP Packing collects outgoing packets on a link into larger packets and can compress them; the other router unpacks them. Both routers need neighbor discovery on the link.</p>
+</blockquote>
+<h1 id="ip-packing_1">IP Packing</h1>
+<p>IP Packing collects the outgoing packets of an interface into larger packets (aggregation) and can also compress them. The router at the other end of the link unpacks them again. Both routers run RouterOS; packing is part of the system package. Use it on links where many small packets cost more than a few large ones.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>TCP connections that the router itself opens over a packed link fail, for example a fetch or a bandwidth test. The unpacked TCP segments that carry data arrive with an incorrect checksum and are dropped, so the connections never complete. Ping passes. Test the traffic you need on a test link before you enable packing on a production link.</p>
+</div>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><a href="neighbor-discovery">Neighbor discovery</a> runs on the interface on both routers: <code>discover-interface-list</code> in <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a> includes the interface. The default configuration discovers only on the <code>LAN</code> interface list, so a tunnel or a WAN interface needs a list that contains it. The <code>LAN</code> list also decides what the default firewall trusts, so use a separate list for discovery rather than adding such an interface to <code>LAN</code>. For example, a list that holds the <code>LAN</code> list and <code>ether1</code>:</li>
+</ul>
+<p><code>ros
+  /interface/list/add name=discover include=LAN
+  /interface/list/member/add list=discover interface=ether1
+  /ip/neighbor/discovery-settings/set discover-interface-list=discover</code></p>
+<ul>
+<li>The two routers share a layer 2 link: a cable, a bridged wireless link or an EoIP tunnel. Packed packets travel in Ethernet frames, and neighbor discovery works on layer 2.</li>
+<li>Both routers are configured symmetrically: what one router packs, the other unpacks. A router packs toward a neighbor only when that neighbor announces that it unpacks.</li>
+</ul>
+<h2 id="configure-packing">Configure packing</h2>
+<p>Router-A and Router-B are connected with a cable, on <code>ether1</code> of Router-A and <code>ether3</code> of Router-B. This example aggregates the packets that Router-A sends and leaves the packets from Router-B as they are.</p>
+<p>On Router-A:</p>
+<pre><code class="language-ros">/ip/packing/add interface=ether1 packing=simple unpacking=none
+</code></pre>
+<p>On Router-B:</p>
+<pre><code class="language-ros">/ip/packing/add interface=ether3 packing=none unpacking=simple
+</code></pre>
+<p>To pack in both directions, set <code>packing=simple unpacking=simple</code> on both routers.</p>
+<p>The default <code>aggregated-size</code> of 1500 bytes is the size that packing tries to reach before it sends a packet.</p>
+<p>In WinBox, open <strong>IP &gt; Packing</strong> and select <strong>New</strong>:</p>
+<ol>
+<li>Choose the link interface in <strong>Interface</strong>, such as <code>ether1</code> on Router-A. The screenshot shows a new rule before the interface is selected.</li>
+<li>Set <strong>Packing</strong>, <strong>Unpacking</strong>, and <strong>Aggregated Size</strong> to match the traffic direction and the settings on the other router. For Router-A in the example, use <code>simple</code>, <code>none</code>, and <code>1500</code>, then select <strong>OK</strong>.</li>
+</ol>
+<p><em>[gambar: WinBox new IP Packing rule]</em></p>
+<h2 id="check-that-packing-works">Check that packing works</h2>
+<p>Each router announces its unpacking setting through neighbor discovery. Run <code>/ip/neighbor/print detail where interface=ether1</code> on Router-A: the entry for Router-B shows <code>unpack=simple</code>, because Router-B unpacks. On Router-B, the entry for Router-A shows <code>unpack=none</code>. The values <code>none</code>, <code>simple</code>, <code>uncompress-headers</code> and <code>uncompress-all</code> correspond to the <code>unpacking</code> settings <code>none</code>, <code>simple</code>, <code>compress-headers</code> and <code>compress-all</code>.</p>
+<p>When the remote router has no neighbor entry on the interface, or its entry shows <code>unpack=none</code>, the router does not pack toward it and sends the packets as they are.</p>
+<p>In a packet capture, packed frames have the EtherType 0x9000.</p>
+<h2 id="latency">Latency</h2>
+<p>Packing holds packets back for a short time to combine them, so it adds delay. On a fast link, the ping round-trip time can rise from under a millisecond to tens of milliseconds. Take this into account for voice and other real-time traffic.</p>
+<p>For all parameters, see the CLI reference for <a href="../cli-reference/ip/packing"><code>/ip/packing</code></a> and <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a>.</p>
+<hr />
+<h1 id="neighbor-discovery">Neighbor Discovery</h1>
+<blockquote>
+<p>Neighbor discovery finds MikroTik and third-party devices on the Layer 2 network using MNDP, CDP and LLDP: the neighbor list, per-protocol settings, interface participation, LLDP TLVs and the LLDP-MED voice VLAN example.</p>
+</blockquote>
+<h1 id="neighbor-discovery_1">Neighbor Discovery</h1>
+<p>Neighbor Discovery protocols allow you to find devices compatible with MNDP (MikroTik Neighbor Discovery Protocol), CDP (Cisco Discovery Protocol), or LLDP (Link Layer Discovery Protocol) in the Layer 2 broadcast domain. They can be used to map out your network.</p>
+<p><code>/ip/neighbor</code> lists all discovered neighbors, whichever of the protocols announced them (the <code>discovered-by</code> value shows which), with the common summary fields. The read-only <a href="../cli-reference/ip/neighbor/lldp"><code>/ip/neighbor/lldp</code></a> menu shows only LLDP-discovered entries and the LLDP-specific fields, named after the LLDP standard. The read-only parameters of <code>/ip/neighbor</code> are described in its <a href="../cli-reference/ip/neighbor"><code>/ip/neighbor</code></a> CLI reference:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/neighbor/print where identity=&quot;Router-A&quot;
+Columns: INTERFACE, ADDRESS4, ADDRESS6, MAC-ADDRESS
+#  INTERFACE  ADDRESS4       ADDRESS6                   MAC-ADDRESS
+0  ether2     192.168.88.24  fe80::de2c:6eff:fee7:106a  DC:2C:6E:E7:10:6B
+   bridge
+</code></pre>
+<p>The neighbor list keeps entries while the device announces itself. A device announces its presence every 30 seconds (the default <code>discover-interval</code>); when announcements stop, the entry is dropped after it ages out. Each protocol is tracked on its own: when a neighbor stops announcing over one protocol but continues over another, <code>discovered-by</code> drops the silent protocol and the entry stays while at least one protocol is still heard. The <code>lldpRemTable</code> SNMP table contains the same LLDP-discovered entries as <code>/ip/neighbor/lldp</code>; entries discovered only by CDP or MNDP are not part of the SNMP LLDP-MIB.</p>
+<h2 id="view-and-configure-discovery-in-winbox">View and configure discovery in WinBox</h2>
+<p>Open <strong>IP &gt; Neighbors</strong> to see discovered devices and the interfaces through which they were found. Select the <strong>LLDP</strong> tab for LLDP-only entries. To configure discovery, select <strong>Discovery Settings</strong> in the right panel:</p>
+<ol>
+<li>Select the interface list in <strong>Interface</strong>. This corresponds to <code>discover-interface-list</code>; choose a list containing the interfaces that should participate in discovery.</li>
+<li>Select the required <strong>Protocol</strong> checkboxes and review <strong>Mode</strong>, which controls whether discovery transmits, receives, or does both. Select <strong>OK</strong> to save the settings.</li>
+</ol>
+<p><em>[gambar: WinBox Discovery Settings dialog with interface list, protocol, and mode controls]</em></p>
+<p>The screenshot shows an existing configuration. Choose the interface list for your network rather than copying its selection.</p>
+<h2 id="choose-which-interfaces-participate">Choose which interfaces participate</h2>
+<p>Discovery settings are configured in the <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a> menu:</p>
+<pre><code class="language-ros">/ip/neighbor/discovery-settings/print
+</code></pre>
+<p>Discovery runs on the interfaces of the <code>discover-interface-list</code> <a href="../cli-reference/interface/list">interface list</a> (<code>static</code> by default). An interface in the list both announces the router (sends discovery packets) and accepts neighbors heard on it. Removing an interface from the list disables discovery on it in both directions: the router no longer announces itself there and stops accepting neighbors heard on it. Setting the list to <code>none</code> switches discovery off altogether: announcements stop (on other devices this router's entries age out — their <code>age</code> value keeps growing until the entries disappear) and this router's own neighbor list empties. To only stop announcing but keep seeing neighbors (for example on a WAN), set <code>mode=rx-only</code>.</p>
+<p>Neighbor discovery works on individual slave interfaces. When a master interface (bonding or bridge) is included in the discovery interface list, all its slave interfaces participate automatically. The neighbor list shows both the master interface and the slave interface on which the announcement arrived (see the <code>ether2</code> + <code>bridge</code> entry in the example above). To allow neighbor discovery only on some slave interfaces, include only those slave interfaces in the list and make sure the master interface is not included:</p>
+<pre><code class="language-ros">/interface/bonding add name=bond1 slaves=ether5,ether6
+/interface/list add name=only-ether5
+/interface/list/member add interface=ether5 list=only-ether5
+/ip/neighbor/discovery-settings set discover-interface-list=only-ether5
+</code></pre>
+<h2 id="lldp-med-network-policy-vlan-example">LLDP-MED Network Policy VLAN example</h2>
+<p>This example configures a switch port for a VoIP phone that daisy-chains a PC. The phone uses tagged traffic for voice, assigned through the LLDP-MED Network Policy TLV. The PC uses untagged traffic, which is assigned to a different VLAN by the bridge port PVID.</p>
+<p>In this setup:</p>
+<ul>
+<li><strong>ether1</strong> is the upstream trunk port, carrying all VLANs tagged to a router.</li>
+<li><strong>ether2</strong> is the phone port. The VoIP phone connects directly, and the PC connects through the phone.</li>
+<li>Voice traffic uses <strong>VLAN 100</strong> (tagged), advertised through <code>lldp-med-net-policy-vlan</code>.</li>
+<li>Data traffic from the PC uses <strong>VLAN 200</strong> (untagged on the phone port), assigned by the bridge port <code>pvid</code>.</li>
+</ul>
+<p>Create the bridge and add the ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 frame-types=admit-only-vlan-tagged
+
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 frame-types=admit-only-vlan-tagged
+add bridge=bridge1 interface=ether2 pvid=200
+</code></pre>
+<p>Create the bridge VLAN table. The trunk port carries both VLANs tagged. The phone port carries the voice VLAN as tagged. The data VLAN for the PC is assigned by the bridge port <code>pvid</code>, which dynamically adds an untagged membership — no explicit <code>untagged=ether2</code> is needed:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1,ether2 vlan-ids=100
+add bridge=bridge1 tagged=ether1 vlan-ids=200
+</code></pre>
+<p>Enable LLDP-MED and set the voice VLAN. Disable CDP to avoid interference with LLDP-MED:</p>
+<pre><code class="language-ros">/ip/neighbor/discovery-settings
+set lldp-med=yes lldp-med-net-policy-vlan=100 protocol=lldp,mndp
+</code></pre>
+<p>Enable VLAN filtering on the bridge:</p>
+<pre><code class="language-ros">/interface/bridge/set bridge1 vlan-filtering=yes
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The LLDP-MED Network Policy TLV is sent only on interfaces where an LLDP-MED-capable device is discovered. It is not broadcast on interfaces without MED-capable neighbors.</p>
+</div>
+<p>For more details on bridge VLAN configuration, see <a href="../bridging-and-switching/index.md#bridge-vlan-filtering">Bridge VLAN Filtering</a>.</p>
+<h2 id="lldp">LLDP</h2>
+<p>Depending on RouterOS configuration, different type-length-values (TLVs) can be sent in the LLDP message. This includes:</p>
+<ul>
+<li>Chassis ID (MAC address).</li>
+<li>Port ID (interface name).</li>
+<li>Time To Live.</li>
+<li>System Name (system identity).</li>
+<li>System Description (platform - MikroTik, software version - RouterOS version, hardware name - RouterBoard name).</li>
+<li>Management Address (all IP addresses configured on the port).</li>
+<li>System Capabilities (enabled system capabilities, for example bridge or router).</li>
+<li>Port Description (combined interface name like "bridge/ether1" if the sending interface is part of a bridge or bond, or interface name the same as Port ID).</li>
+<li>IEEE 802.1 Port VLAN ID.</li>
+<li>IEEE 802.1 Port And Protocol VLAN ID.</li>
+<li>IEEE 802.1 VLAN Name.</li>
+<li>IEEE 802.3 MAC/PHY Configuration/Status.</li>
+<li>IEEE 802.3 Power Via MDI.</li>
+<li>IEEE 802.3 Maximum Frame Size.</li>
+<li>LLDP-MED Media Capabilities (list of MED capabilities).</li>
+<li>LLDP-MED Network Policy (assigned VLAN ID for voice traffic).</li>
+<li>LLDP-MED Extended Power via MDI.</li>
+<li>End of LLDPDU.</li>
+</ul>
+<h2 id="technical-details_3">Technical details</h2>
+<ul>
+<li>Devices announce every <code>discover-interval</code> (30s by default); on the receiving side an entry is removed when no announcement arrives in time. CDP and LLDP announcements carry a TTL of <code>(discover-interval * 4) + 1</code>.</li>
+<li>MNDP sends an IPv6 announcement alongside the IPv4 one whenever IPv6 is enabled. An interface does not need an IPv6 address of its own to send it, so a bridge or bonding slave port still announces over IPv6 when only the master has an address.</li>
+<li>The announcement is sent from the address of the top master interface (the outermost bridge or bonding), preferring a link-local address, then a global one, then the unspecified address <code>::</code>. The IPv6-Address TLV carries only valid unicast addresses of that master, and none when it has no such address. IP-in-IP (IPIP) tunnels do not send MNDP over IPv6.</li>
+<li>The announcement contents and optional TLVs are controlled by the <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a> parameters, including PoE TLVs (<code>lldp-poe-power</code>, <code>lldp-poe-in-power</code>) and DCBX (<code>lldp-dcbx</code>).</li>
+<li><code>dying-gasp</code> sends a discovery packet with TTL=0 before a graceful reboot, shutdown or upgrade so neighbors remove the entry immediately.</li>
+<li><code>add-dns-entries</code> creates dynamic DNS entries for discovered neighbors by identity; see <a href="../network-management/dns">DNS</a>.</li>
+</ul>
+<p>For all parameters and read-only values, see the <a href="../cli-reference/ip/neighbor"><code>/ip/neighbor</code></a>, <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a> and <a href="../cli-reference/ip/neighbor/lldp"><code>/ip/neighbor/lldp</code></a> CLI reference pages.</p>
+<hr />
+<h1 id="note">Note</h1>
+<blockquote>
+<p>The system note is a text that RouterOS shows to administrators at login: the router's purpose, contacts or a warning. Set it in the CLI, in WinBox or from a sys-note.txt file, and show it before the Telnet login prompt.</p>
+</blockquote>
+<h1 id="note_1">Note</h1>
+<p>The system note is a text that RouterOS shows to every administrator who logs in: in the command line right after the banner, and in WinBox in a window after login. Use it to say what the router does, whom to contact, or what not to do, for example during a maintenance window. The note is empty by default.</p>
+<h2 id="set-a-note">Set a note</h2>
+<p>Set the text with <code>note</code>. In a double-quoted string, <code>\n</code> starts a new line:</p>
+<pre><code class="language-ros">/system/note/set \
+    note=&quot;Office gateway. IT: +371 0000000\nNo reboots 08:00-18:00&quot;
+</code></pre>
+<p>At the next interactive login, for example over SSH or MAC Telnet, the note follows the banner:</p>
+<pre><code class="language-text">  MikroTik RouterOS 7.25beta5 (c) 1999-2026       https://www.mikrotik.com/
+
+Press F1 for help
+
+Office gateway. IT: +371 0000000
+No reboots 08:00-18:00
+</code></pre>
+<p>A command run over SSH without an interactive session, such as <code>ssh admin@router '/system/resource/print'</code>, does not show the note. For longer text, <code>/system/note/edit note</code> opens the note in the built-in editor. To stop showing the note without deleting it, set <code>show-at-login=no</code>.</p>
+<h2 id="configure-the-note-in-winbox">Configure the note in WinBox</h2>
+<p>Open <strong>System &gt; Note</strong>:</p>
+<ol>
+<li>Choose when the note appears with <strong>Show At Login</strong> and <strong>Show At CLI Login</strong>. <strong>Show At Login</strong> displays it after login; <strong>Show At CLI Login</strong> also displays it before the Telnet login prompt.</li>
+<li>Enter the message in <strong>Note</strong>, then select <strong>OK</strong>. For example, record the router's purpose and the maintenance contact. The text area accepts multiple lines.</li>
+</ol>
+<p><em>[gambar: WinBox System Note dialog with login display options and the Note text area]</em></p>
+<h2 id="show-the-note-before-login">Show the note before login</h2>
+<p>With <code>show-at-cli-login=yes</code>, the router also prints the note before the Telnet login prompt, here seen from another router with <code>/system/telnet 192.168.88.1</code>:</p>
+<pre><code class="language-text">Connecting to 192.168.88.1
+Connected to 192.168.88.1
+Office gateway. IT: +371 0000000
+No reboots 08:00-18:00
+Login:
+</code></pre>
+<p>This works independently of <code>show-at-login</code>. Anyone who connects to the Telnet port sees this text without logging in, so keep information meant only for administrators out of the note. Telnet is enabled by default; see <a href="services">Services</a>. SSH does not show the note before login, and MAC Telnet asks for the user name and password before it connects, so it shows the note only after login.</p>
+<h2 id="set-the-note-from-a-file">Set the note from a file</h2>
+<p>A plain text file named <code>sys-note.txt</code> in the root of the router's file storage replaces the note at the next startup, and the router then removes the file. To set the note on a new router this way, upload the file, for example over SFTP or FTP, and reboot the router.</p>
+<p>For the parameters, see the <a href="../cli-reference/system/note"><code>/system/note</code> CLI reference</a>.</p>
+<hr />
+<h1 id="ntp">NTP</h1>
+<blockquote>
+<p>RouterOS includes an NTP client and server in the main package: synchronize the router's clock with NTP servers, serve time to other devices, use symmetric key authentication, and monitor synchronization status.</p>
+</blockquote>
+<h1 id="ntp_1">NTP</h1>
+<p>RouterOS includes a Network Time Protocol (NTP, <a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC 5905</a>) client and server in the main RouterOS package. The client synchronizes the router's clock with NTP servers, and the server distributes the router's time to other devices on the network. Both are disabled by default. NTP exchanges Universal Coordinated Time (UTC); the time zone and daylight saving rules for the displayed time are configured in <a href="./clock"><code>/system/clock</code></a>.</p>
+<h2 id="synchronize-the-routers-clock">Synchronize the router's clock</h2>
+<p>Enable the client and set one or more servers:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ntp/client/set enabled=yes servers=192.168.88.1
+[admin@MikroTik] &gt; /system/ntp/client/print
+         enabled: yes
+            mode: unicast
+         servers: 192.168.88.1
+             vrf: main
+      freq-drift: 0 PPM
+          status: synchronized
+   synced-server: 192.168.88.1
+   synced-stratum: 3
+   system-offset: 13.937 ms
+</code></pre>
+<p>To configure the client in WinBox, open <strong>System &gt; NTP Client</strong>:</p>
+<ol>
+<li>Select <strong>Enabled</strong> and leave <strong>Mode</strong> at <code>unicast</code> for servers you query directly.</li>
+<li>Enter the server address in <strong>NTP Servers</strong>, for example <code>192.168.88.1</code> if that device provides NTP. Use the <strong>+</strong> control to add more servers, then select <strong>Apply</strong>.</li>
+<li>Check <strong>Status</strong>. When it reads <code>synchronized</code>, <strong>Synced Server</strong>, <strong>Synced Stratum</strong>, and <strong>System Offset</strong> show the selected source and its timing information. Select <strong>OK</strong> to close the dialog.</li>
+</ol>
+<p><em>[gambar: WinBox NTP Client dialog synchronized to 192.168.88.1]</em></p>
+<p>The <code>status</code> field shows the client state: <code>stopped</code> while the client is disabled, <code>waiting</code> while no server is usable, and <code>synchronized</code> when the clock follows <code>synced-server</code>. With several servers the client polls them all and picks the best one.</p>
+<p>Servers can be IPv4 or IPv6 addresses, or domain names (which are resolved with <a href="../network-management/dns"><code>/ip/dns</code></a>; the result appears as <code>resolved-address</code>). Servers are managed in the <a href="../cli-reference/system/ntp/client/servers"><code>/system/ntp/client/servers</code></a> list. When the DHCP client has <code>use-peer-ntp=yes</code> (the default), servers received over DHCP appear in the list as dynamic entries, which cannot be edited:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ntp/client/servers/print
+Flags: D - DYNAMIC
+0   address=192.168.88.1 min-poll=6 max-poll=10 iburst=yes auth-key=none
+
+1 D address=217.198.224.12 min-poll=6 max-poll=10 iburst=yes auth-key=none
+
+2 D address=195.244.128.12 min-poll=6 max-poll=10 iburst=yes auth-key=none
+</code></pre>
+<p>The client queries a server in intervals between <code>min-poll</code> and <code>max-poll</code>, counted as powers of 2 in seconds (default between 64 s and 1024 s). Right after a server is added, the client sends a rapid burst of queries once a second (iburst) to get an initial estimate quickly.</p>
+<p>The client works in unicast mode by default, querying each server directly. The <code>broadcast</code>, <code>multicast</code> and <code>manycast</code> modes instead get the time from servers that announce it on the local network. In manycast mode the client discovers servers by itself with multicast queries.</p>
+<h2 id="serve-time-to-other-devices">Serve time to other devices</h2>
+<p>Enable the server to answer time queries from the network:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ntp/server/set enabled=yes
+</code></pre>
+<p>In WinBox, open <strong>System &gt; NTP Server</strong>:</p>
+<ol>
+<li>Select <strong>Enabled</strong> and select <strong>OK</strong> to allow clients to query the router's time. Configure the NTP client separately so the router has a synchronized source.</li>
+<li>Review <strong>Use Local Clock</strong> and <strong>Local Clock Stratum</strong> before enabling a fallback to the router's unsynchronized clock. Leave <strong>Use Local Clock</strong> cleared when you require an external time source.</li>
+</ol>
+<p><em>[gambar: WinBox NTP Server dialog with local clock fallback settings]</em></p>
+<p>The server then distributes the router's own synchronized time. With <code>broadcast=yes</code>, the time is additionally sent to the addresses in <code>broadcast-addresses</code>; <code>multicast=yes</code> distributes it over multicast; <code>manycast=yes</code> takes part in manycast discovery.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>With <code>use-local-clock=yes</code>, the router's unsynchronized clock is used as the time reference (at <code>local-clock-stratum</code>, 5 by default) when no NTP source is available. The router's clock drifts without external synchronization because its frequency varies with power management, temperature and hardware differences, so do not serve the local clock for precise timekeeping. Prefer a network time source.</p>
+</div>
+<p>When the local clock is the only reference, a client in this state shows <code>status: using-local-clock</code> and <code>synced-server: 127.127.1.0</code>.</p>
+<h2 id="authenticate-clients-and-servers">Authenticate clients and servers</h2>
+<p>Symmetric keys configured in <a href="../cli-reference/system/ntp/key"><code>/system/ntp/key</code></a> authenticate the time exchange. Create a key and select it on the client's server entry with <code>auth-key</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ntp/key/add key-id=10 key-val=mysecret
+[admin@MikroTik] &gt; /system/ntp/client/servers/set 0 auth-key=10
+</code></pre>
+<p>The key value is sensitive: <code>print</code> and <code>export</code> never show it. A reply that fails authentication is rejected, the log shows <code>peer rejected auth (crypto NAK)</code>, and the client stays in the <code>waiting</code> state.</p>
+<h2 id="monitor-synchronization">Monitor synchronization</h2>
+<p><code>/system/ntp/monitor-peers</code> shows the client's view of its time sources and refreshes continuously:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ntp/monitor-peers
+ type=&quot;ucast-client&quot; address=192.168.88.1 refid=&quot;195.244.128.12&quot; stratum=3
+ hpoll=6 ppoll=6 root-delay=15.96 ms root-disp=65.368 ms offset=13.937 ms
+ delay=0.566 ms disp=0.123 ms jitter=0.02 ms
+</code></pre>
+<p><code>refid</code> is the source the peer itself synchronizes to. A <code>stratum</code> of 16 means the peer is not synchronized.</p>
+<p>The estimated frequency correction of the router's clock is shown as <code>freq-drift</code> in the client settings; reset it with <a href="../cli-reference/system/ntp/client/reset-freq-drift"><code>/system/ntp/client/reset-freq-drift</code></a>.</p>
+<h2 id="technical-details_4">Technical details</h2>
+<h3 id="ntp-logging">NTP logging</h3>
+<p>Add a logging rule for the <code>ntp</code> topic to see the client's decisions and packet exchanges:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/logging/add topics=ntp
+</code></pre>
+<p>Typical messages during startup and synchronization:</p>
+<pre><code class="language-text">ntp,debug tx dst:192.168.88.1
+ntp,debug rx src:192.168.88.1 dst:192.168.88.24
+ntp,debug Message offset:0.027406 delay:0.000597 disp:0.000002
+ntp,debug Resolved address: time.cloudflare.com -&gt; 162.159.200.1
+ntp,debug Checking peer (195.244.128.12). Peer is: NOT FIT, because p-&gt;leap == NOSYNC
+ntp,debug No survivors for clock sync
+ntp,debug System peer changed to: 195.244.128.12
+ntp,debug peer rejected auth (crypto NAK)
+</code></pre>
+<p>A peer <code>NOT FIT, because p-&gt;leap == NOSYNC</code> is answering but is not synchronized itself. <code>rootDist</code> rejections indicate the source is too far from the root clock.</p>
+<h3 id="client-and-server-scopes">Client and server scopes</h3>
+<p>The client and the server are configured independently; enabling one does not require the other. Both have a <code>vrf</code> setting (<code>main</code> by default) that scopes which routing table the NTP traffic uses.</p>
+<p>For all properties, see <a href="../cli-reference/system/ntp/client/"><code>/system/ntp/client</code></a>, <a href="../cli-reference/system/ntp/client/servers"><code>/system/ntp/client/servers</code></a>, <a href="../cli-reference/system/ntp/server"><code>/system/ntp/server</code></a>, <a href="../cli-reference/system/ntp/key"><code>/system/ntp/key</code></a> and <a href="../cli-reference/system/ntp/monitor-peers"><code>/system/ntp/monitor-peers</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="partitions">Partitions</h1>
+<blockquote>
+<p>RouterOS allows repartitioning NAND flash on compatible devices to enable multiple OS installations with automatic fallback, ensuring system reliability during upgrades. The feature supports up to 8 partitions,...</p>
+</blockquote>
+<h1 id="partitions_1">Partitions</h1>
+<p>Partitioning is supported on ARM, ARM64, MIPS, TILE, and PowerPC RouterBOARD devices that use NAND flash.</p>
+<p>RouterOS allows repartitioning of NAND flash, enabling:</p>
+<ul>
+<li>Separate RouterOS installations on each partition.</li>
+<li>The ability to specify primary and fallback partitions.</li>
+</ul>
+<p>If one partition fails to boot (due to a failed upgrade, configuration issue, or software error), the next partition will automatically boot, providing a fallback. This feature acts as an interactive backup, allowing you to keep a verified, working installation and perform upgrades only on a secondary partition.</p>
+<p>Once you've confirmed the new configuration is stable, you can use the "Save Config To" function to copy it to the other partitions.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Repartitioning of the NAND requires the latest bootloader version</p>
+</div>
+<h4 id="requirements-and-limits">Requirements and Limits</h4>
+<ul>
+<li>Starting from RouterOS 7.20beta2, the minimum storage size for repartitioning is 128 MiB.</li>
+<li>Minimum RouterOS partition size during repartitioning: 60 MiB.</li>
+<li>The maximum number of allowed partitions is 8.</li>
+</ul>
+<p>For devices where the Partitions menu is supposed to be hidden, but were previously repartitioned:</p>
+<ul>
+<li>
+<p>It will be possible to repartition into a single partition.</p>
+</li>
+<li>
+<p>The Partitions menu will then be hidden after reboot.</p>
+</li>
+</ul>
+<h4 id="example">Example</h4>
+<p>For a device with 128 MiB NAND that previously had 4*32 MiB partitions, where RouterOS fits within 32 MiB, the behavior after upgrading, starting from RouterOS 7.20beta2, will be as follows:</p>
+<ul>
+<li>It will continue using all 4 partitions with full partitioning options, as before repartitioning.</li>
+<li>In case of repartitioning, the only available options will be 1*128 MiB or 2*64 MiB partitions, and full partitioning features will remain available.</li>
+</ul>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /partitions/print
+Flags: A - ACTIVE; R - RUNNING
+Columns: NAME, FALLBACK-TO, VERSION, SIZE
+# NAME FALL VERSION SIZE 
+0 AR part0  next         RouterOS v7.18.2 2025-03-11 11:59:04  128MiB
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Starting from RouterOS version 7.17, you need to update the <a href="./device-mode.md">device-mode</a> to use the partitions.</p>
+</div>
+<h2 id="inspect-partitions-in-winbox">Inspect partitions in WinBox</h2>
+<p>Open <strong>Partition</strong> in the left menu:</p>
+<ol>
+<li>Check the partition name, <strong>Fallback To</strong>, and installed RouterOS version in the list. The <code>A</code> flag identifies the active boot partition, and <code>R</code> identifies the running partition. The screenshot shows one partition, <code>part0</code>, with both flags.</li>
+<li>The right panel contains <strong>Repartition</strong>, <strong>Copy To</strong>, <strong>Save Config To</strong>, and <strong>Restore Config From</strong>. These actions change storage or configuration; use the command descriptions to select the operation you intend to perform.</li>
+</ol>
+<p><em>[gambar: WinBox Partition overview with partition details and available actions]</em></p>
+<p>Viewing the list does not repartition the router. <strong>Repartition</strong> reformats storage and reboots the device, and <strong>Copy To</strong> replaces the contents of its destination. Check hardware support and device mode before planning a partition change.</p>
+<h2 id="commands">Commands</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>activate</strong> (<em>partition</em>)</td>
+<td style="text-align: left;">Assigns another partition as Active. This option is available if the "partitions" setting is enabled in device mode (since RouterOS 7.17).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>repartition</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Will reboot the router and reformat the NAND, leaving only the active partition.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>copy-to</strong> (<em>partition</em>)</td>
+<td style="text-align: left;">Clone the <strong>running</strong> OS with the config to the specified partition. Previously stored data on the partition will be erased.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>save-config-to</strong> (<em>partition</em>)</td>
+<td style="text-align: left;">Clone <strong>running-config</strong> on a specified partition. Everything else is untouched.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>restore-config-from</strong> (<em>partition</em>)</td>
+<td style="text-align: left;">Copy config from the specified partition to the <strong>running</strong> partition</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the partition</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>fallback-to</strong> (<em>etherboot | next | partition-name</em>; Default: <strong>next</strong>)</td>
+<td style="text-align: left;">What to do if an active partition fails to boot:etherboot - switch to etherbootnext - try next partitionfallback to the specified partition</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only">Read-only</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>active</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Partition is active</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>running</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Currently running partition</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>size</strong> (<em>integer[MiB]</em>)</td>
+<td style="text-align: left;">Partition size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Current RouterOS version installed on the partition</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="precision-time-protocol">Precision Time Protocol</h1>
+<blockquote>
+<p>Precision Time Protocol (PTP, IEEE 1588-2008) clock synchronization on RouterOS: supported hardware, profiles (802.1AS, AES67, G.8275.1, SMPTE 2059), ports, hardware timestamping and synchronization monitoring.</p>
+</blockquote>
+<h1 id="precision-time-protocol_1">Precision Time Protocol</h1>
+<p>The Precision Time Protocol (PTP, IEEE 1588-2008, also known as PTPv2) synchronizes clocks across a local network, which matters in telecommunications, broadcast, audio production and industrial automation. MikroTik's implementation features:</p>
+<ul>
+<li>Two-step Ordinary Clock and Boundary Clock.</li>
+<li>Hardware timestamping, which brings clock synchronization into the nanosecond range.</li>
+<li>IPv4 and Layer 2 multicast transport modes.</li>
+<li>End-to-End (E2E) and Peer-to-Peer (P2P) delay mechanisms.</li>
+<li>Profiles: 802.1AS (AVB/TSN, per IEEE 802.1AS-2020), AES67 (audio over IP), G.8275.1 (telecom frequency and phase synchronization) and SMPTE 2059 (professional broadcast).</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>PTP support is hardware dependent; see <a href="#supported-devices">supported devices</a>. Devices not listed there do not have the <code>/system/ptp</code> menu at all. The MGMT (management) port is not supported for PTP on any device; "all ports" refers to all data interfaces, excluding the MGMT port.</p>
+</div>
+<h2 id="configure-ptp">Configure PTP</h2>
+<p>Configuration has two steps: create a PTP profile in <a href="../cli-reference/system/ptp"><code>/system/ptp</code></a>, then assign the ports that participate in it in <a href="../cli-reference/system/ptp/port"><code>/system/ptp/port</code></a>.</p>
+<p>Create a profile instance (this example uses the 802.1AS profile):</p>
+<pre><code class="language-ros">/system/ptp/add name=ptp1 profile=802.1as
+</code></pre>
+<p>PTP only syncs when all clocks in the chain run the same profile, so make the profile (and with it the domain, transport and delay mode) match your grandmaster and the rest of the PTP network.</p>
+<p>Profile parameters left at <code>auto</code> take the values their profile defines (for example 802.1AS sets <code>priority1=246</code>, <code>priority2=248</code>, transport on layer 2 and P2P delay measurement — the per-profile presets are listed in the CLI reference rows). Change them manually only when the chosen standard allows it; G.8275.1, 802.1AS, SMPTE 2059 and AES67 each define their own required values.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/ptp/print
+ Flags: I - inactive, X - disabled
+ 0   name=&quot;ptp1&quot; priority1=auto priority2=auto delay-mode=auto transport=auto profile=802.1as domain=auto
+</code></pre>
+<p>Then assign the ports of the profile. Here sfp28-12 is connected to the grandmaster clock, while sfp28-1 and sfp28-2 connect to an ordinary clock (slave):</p>
+<pre><code class="language-ros">/system/ptp/port/add interface=sfp28-1 ptp=ptp1
+/system/ptp/port/add interface=sfp28-2 ptp=ptp1
+/system/ptp/port/add interface=sfp28-12 ptp=ptp1
+</code></pre>
+<p>A port can also have its role pinned instead of letting the best master clock algorithm decide: with <code>role=bmca</code> the algorithm chooses master or slave, on a known topology you can pin a port directly with <code>role=master</code> or <code>role=slave</code>. <code>ptp-mode</code> in <a href="../cli-reference/system/ptp"><code>/system/ptp</code></a> selects between ordinary-clock and transparent-clock behaviour.</p>
+<h3 id="ptp-on-vlan-ports">PTP on VLAN ports</h3>
+<p>When PTP ports are also part of VLANs on your boundary clock device, you must add a bridge interface as an untagged port in the <a href="../bridging-and-switching/user-guides/bridge-vlan-table.md">bridge VLAN table</a> for every entry that includes a PTP port. Continuing the example with sfp28-1 in VLAN 10 and sfp28-2 in VLAN 20:</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1
+/interface/bridge/port/add bridge=bridge1 interface=sfp28-1 pvid=10
+/interface/bridge/port/add bridge=bridge1 interface=sfp28-2 pvid=20
+/interface/bridge/vlan/add bridge=bridge1 vlan-ids=10 \
+    untagged=bridge1,sfp28-1
+/interface/bridge/vlan/add bridge=bridge1 vlan-ids=20 \
+    untagged=bridge1,sfp28-2
+</code></pre>
+<p>This is necessary because the bridge interface functions as a bridge port towards the CPU. Therefore, it must be included in the VLAN table along with the PTP ports, so packets can be correctly received from the physical port and forwarded to the CPU through the bridge.</p>
+<p>If PTP instead arrives tagged over a trunk port, set the tag directly on the PTP port with <code>vlan-id</code> in <a href="../cli-reference/system/ptp/port"><code>/system/ptp/port</code></a>.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>This applies to the IPv4 and L2-forwardable (01-1B-19-00-00-00) transport modes. The only exception is L2-non-forwardable (01-80-C2-00-00-0E), where the bridge does not have to be included in the bridge VLAN table.</p>
+<p>To check the default (auto) transport mode values for each profile, refer to the <a href="../cli-reference/system/ptp"><code>transport</code></a> description in the CLI reference.</p>
+</div>
+<h3 id="ptp-with-igmp-snooping">PTP with IGMP snooping</h3>
+<p>If IGMP snooping is enabled on your bridge and VLANs are configured as shown above, manually add static Multicast Database (MDB) entries for each VLAN containing PTP ports that use <strong>IPv4</strong> (224.0.1.129) as their transport mode. This ensures proper forwarding of PTP multicast traffic:</p>
+<pre><code class="language-ros">/interface/bridge/mdb/add group=224.0.1.129 bridge=bridge1 \
+    ports=bridge1 vid=10
+/interface/bridge/mdb/add group=224.0.1.129 bridge=bridge1 \
+    ports=bridge1 vid=20
+</code></pre>
+<p>Static MDB entries in a PTP setup are only required when IGMP snooping is enabled alongside VLANs.</p>
+<h2 id="monitor-synchronization_1">Monitor synchronization</h2>
+<p>Check whether the ports are up and running first:</p>
+<pre><code class="language-ros">/system/ptp/status/print
+</code></pre>
+<p>The <code>state</code>, <code>delay</code> and <code>as-capable</code> columns show where a port is stuck before synchronization settles.</p>
+<p>Then monitor the profile instance (by number or name) with <a href="../cli-reference/system/ptp/monitor"><code>/system/ptp/monitor</code></a>:</p>
+<pre><code class="language-ros">/system/ptp/monitor ptp1
+</code></pre>
+<p>An example of a synchronized clock:</p>
+<pre><code class="language-text">name: ptp1
+clock-id: 64:D1:54:FF:FE:EB:AD:C7
+priority1: 246
+priority2: 248
+i-am-gm: no
+gm-clock-id: 64:D1:54:FF:FE:EB:AE:C3
+gm-priority1: 100
+gm-priority2: 248
+master-clock-id: 64:D1:54:FF:FE:EB:AE:C3
+slave-port: ether1
+freq-drift: 2690 ppb
+offset: 3 ns
+hw-offset: -889419842 ns
+slave-port-delay: 306 ns
+</code></pre>
+<p>The values to watch: <code>i-am-gm</code>/<code>gm-clock-id</code> say who is the grandmaster, the <code>offset</code> is the time error against the master clock, <code>freq-drift</code> the long-term clock frequency correction, and <code>slave-port-delay</code> the measured one-way path delay of the slave port.</p>
+<h2 id="supported-devices">Supported devices</h2>
+<ul>
+<li><strong>CRS326-24G-2S+:</strong> Supported only on Gigabit Ethernet ports.</li>
+<li><strong>CRS328-24P-4S+:</strong> Supported only on Gigabit Ethernet ports.</li>
+<li><strong>CRS317-1G-16S+:</strong> Supported on all ports.</li>
+<li><strong>CRS326-24S+2Q+:</strong> Supported on SFP+ and QSFP+ interfaces.</li>
+<li><strong>CRS312-4C+8XG:</strong> Supported on all ports.</li>
+<li><strong>CRS318-16P-2S+:</strong> Supported only on Gigabit Ethernet ports.</li>
+<li><strong>CRS318-1Fi-15Fr-2S:</strong> Supported only on 100M Ethernet ports.</li>
+<li><strong>CCR2116-12G-4S+:</strong> Supported on all ports.</li>
+<li><strong>CCR2216-1G-12XS-2XQ:</strong> Supported on all ports.</li>
+<li><strong>CRS518-16XS-2XQ:</strong> Supported on all ports.</li>
+<li><strong>CRS504-4XQ:</strong> Supported on all ports.</li>
+<li><strong>CRS510-8XS-2XQ:</strong> Supported on all ports.</li>
+<li><strong>CRS520-4XS-16XQ:</strong> Supported on all ports.</li>
+<li><strong>CRS320-8P-8B-4S+RM:</strong> Supported only on Gigabit Ethernet ports.</li>
+<li><strong>CRS326-4C+20G+2Q+:</strong> Supported on all ports.</li>
+<li><strong>RDS2216-2XG-4S+4XS-2XQ:</strong> Supported on all ports.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Devices not listed in this section do not support Precision Time Protocol.</p>
+</div>
+<h2 id="technical-details_5">Technical details</h2>
+<p>Profiles preset the parameters whose values you left at <code>auto</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Profile</th>
+<th style="text-align: left;">priority1</th>
+<th style="text-align: left;">priority2</th>
+<th style="text-align: left;">domain</th>
+<th style="text-align: left;">transport</th>
+<th style="text-align: left;">delay-mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">default</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">ipv4</td>
+<td style="text-align: left;">e2e</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.1AS</td>
+<td style="text-align: left;">246</td>
+<td style="text-align: left;">248</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">l2-non-forwardable</td>
+<td style="text-align: left;">p2p</td>
+</tr>
+<tr>
+<td style="text-align: left;">AES67</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">ipv4</td>
+<td style="text-align: left;">e2e</td>
+</tr>
+<tr>
+<td style="text-align: left;">G.8275.1</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">24</td>
+<td style="text-align: left;">l2-non-forwardable</td>
+<td style="text-align: left;">e2e</td>
+</tr>
+<tr>
+<td style="text-align: left;">SMPTE 2059</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">127</td>
+<td style="text-align: left;">ipv4</td>
+<td style="text-align: left;">e2e</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>IPv4 transport multicasts PTP primary messages to 224.0.1.129 and peer delay messages to 224.0.0.107.</li>
+<li>L2-forwardable uses the multicast MAC 01-1B-19-00-00-00, which PTP-unaware bridges forward; L2-non-forwardable uses 01-80-C2-00-00-0E, which compliant bridges cannot forward, so PTP communication stays on the local link.</li>
+<li>Domains separate independent PTP instances on one network; allowed ranges differ per profile (0-127 for most profiles, 24-43 for G.8275.1).</li>
+</ul>
+<p>For all parameters, see the <a href="../cli-reference/system/ptp"><code>/system/ptp</code></a>, <a href="../cli-reference/system/ptp/port"><code>/system/ptp/port</code></a>, <a href="../cli-reference/system/ptp/status"><code>/system/ptp/status</code></a> and <a href="../cli-reference/system/ptp/monitor"><code>/system/ptp/monitor</code></a> CLI reference pages.</p>
+<hr />
+<h1 id="scheduler">Scheduler</h1>
+<blockquote>
+<p>The RouterOS scheduler runs commands or scripts at a set time, at an interval, at startup or on selected weekdays: nightly backups, time-of-day changes, update checks and notifications.</p>
+</blockquote>
+<h1 id="scheduler_1">Scheduler</h1>
+<p>The scheduler runs RouterOS commands, or a script from <code>/system/script</code>, at a set time, repeatedly at an interval, every time the router starts, or on selected weekdays. Use it for tasks such as nightly backups, switching interfaces or bandwidth limits by time of day, and notifications. Each entry in <code>/system/scheduler</code> holds the schedule and the commands to run in <code>on-event</code>.</p>
+<p>The scheduler is not available when the <a href="device-mode">device mode</a> is <code>home</code>, and entries cannot be created or enabled while the device is flagged.</p>
+<h2 id="run-a-script-every-day">Run a script every day</h2>
+<p>Store the commands as a script, then add an entry that runs it every day at 03:00. The following script saves a binary backup and an export of the configuration, overwriting the files from the previous night:</p>
+<pre><code class="language-ros">/system/script/add name=nightly-backup source={
+    /system/backup/save name=nightly
+    /export file=nightly
+}
+/system/scheduler/add name=nightly-backup start-time=03:00:00 interval=1d \
+    on-event=nightly-backup
+</code></pre>
+<p>After you create the <code>nightly-backup</code> script, configure its schedule in WinBox under <strong>System &gt; Scheduler &gt; New</strong>:</p>
+<ol>
+<li>Set <strong>Name</strong> to <code>nightly-backup</code>, choose the <strong>Start Date</strong>, set <strong>Start Time</strong> to <code>03:00:00</code>, and set <strong>Interval</strong> to <code>1d</code> for a daily run. Leave <strong>Days</strong> unset to allow every day.</li>
+<li>Review <strong>Policy</strong> and select the permissions the task requires. The screenshot shows the new-entry defaults; use the Permissions section to choose the appropriate permissions for your script.</li>
+<li>Enter <code>nightly-backup</code> in <strong>On Event</strong>, leave <strong>Enabled</strong> selected, and select <strong>OK</strong>. <strong>On Event</strong> can also hold commands directly.</li>
+</ol>
+<p><em>[gambar: WinBox new Scheduler entry with schedule fields, Policy permissions, and On Event commands]</em></p>
+<p>After saving, check <strong>Next Run</strong> in the Scheduler list and use <strong>Run Count</strong> to see whether the entry has run. The screenshot shows a new entry before the example values are entered.</p>
+<p>When <code>start-date</code> is not given, the entry starts on the day it is added. <code>next-run</code> shows when it runs next, and <code>run-count</code> counts the runs since the last startup:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/scheduler/print detail
+0  name=&quot;nightly-backup&quot; start-date=2026-09-25 start-time=03:00:00 interval=1d
+   on-event=nightly-backup owner=&quot;admin&quot;
+   policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+   run-count=0 next-run=2026-09-26 03:00:00
+</code></pre>
+<p>To pause an entry without removing it, disable it with <code>/system/scheduler/disable nightly-backup</code>. To encrypt the backup file, add <code>password=</code> to <code>/system/backup/save</code>. See <a href="../getting-started/configuration-management/backup">Backup</a> for restoring the files.</p>
+<h2 id="run-commands-without-a-script">Run commands without a script</h2>
+<p><code>on-event</code> can hold the commands directly. The following entries turn off all LEDs of the device at night and turn them on again in the morning:</p>
+<pre><code class="language-ros">/system/scheduler/add name=leds-off start-time=22:00:00 interval=1d \
+    on-event=&quot;/system/leds/settings/set all-leds-off=immediate&quot;
+/system/scheduler/add name=leds-on start-time=07:00:00 interval=1d \
+    on-event=&quot;/system/leds/settings/set all-leds-off=never&quot;
+</code></pre>
+<p>Short commands fit well in <code>on-event</code>. Longer tasks are easier to read and change as a script.</p>
+<h2 id="run-a-script-at-startup">Run a script at startup</h2>
+<p>An entry with <code>start-time=startup</code> runs every time the router starts. It runs early during startup, before the interfaces are up and before the DHCP client has an address, so a script that needs the network must wait for it. The following script waits until the default route is active (at most five minutes) and then sends an email:</p>
+<pre><code class="language-ros">/system/script/add name=boot-notify source={
+    :local tries 0
+    :while (([:len [/ip/route/find where dst-address=0.0.0.0/0 active]] = 0) \
+            &amp;&amp; ($tries &lt; 60)) do={
+        :delay 5s
+        :set tries ($tries + 1)
+    }
+    :local name [/system/identity/get name]
+    :local version [/system/resource/get version]
+    :local uptime [/system/resource/get uptime]
+    /tool/e-mail/send to=admin@example.com subject=($name . &quot; restarted&quot;) \
+        body=(&quot;RouterOS &quot; . $version . &quot; started, uptime &quot; . $uptime)
+}
+/system/scheduler/add name=boot-notify start-time=startup on-event=boot-notify
+</code></pre>
+<p>The email examples on this page need a working email server configuration in <code>/tool/e-mail</code>. See <a href="e-mail">E-mail</a>.</p>
+<p>With a non-zero <code>interval</code>, a <code>startup</code> entry does not run at startup itself: the first run comes one interval after startup, and the entry then runs every interval. To run a script at startup and also at regular intervals, create two entries.</p>
+<h2 id="run-on-selected-weekdays">Run on selected weekdays</h2>
+<p><code>days</code> limits an entry to selected weekdays. The following entries turn on a guest Wi-Fi interface at 08:00 and turn it off at 18:00, Monday to Friday. Over the weekend it stays off:</p>
+<pre><code class="language-ros">/system/scheduler/add name=guest-wifi-on days=mon,tue,wed,thu,fri \
+    start-time=08:00:00 on-event=&quot;/interface/enable guest-wifi&quot;
+/system/scheduler/add name=guest-wifi-off days=mon,tue,wed,thu,fri \
+    start-time=18:00:00 on-event=&quot;/interface/disable guest-wifi&quot;
+</code></pre>
+<p>On a Friday evening, the next runs are on Friday at 18:00 and on Monday at 08:00:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/scheduler/print detail where name~&quot;^guest-wifi&quot;
+3  name=&quot;guest-wifi-on&quot; start-date=2026-09-25 start-time=08:00:00
+   days=mon,tue,wed,thu,fri interval=0s on-event=/interface/enable guest-wifi
+   owner=&quot;admin&quot;
+   policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+   run-count=0 next-run=2026-09-28 08:00:00
+
+4  name=&quot;guest-wifi-off&quot; start-date=2026-09-25 start-time=18:00:00
+   days=mon,tue,wed,thu,fri interval=0s on-event=/interface/disable guest-wifi
+   owner=&quot;admin&quot;
+   policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+   run-count=0 next-run=2026-09-25 18:00:00
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>To allow or block traffic by time of day, use the <code>time</code> matcher of the <a href="../cli-reference/ip/firewall/filter/">firewall filter</a> instead of enabling and disabling rules with the scheduler, for example <code>time=08:00:00-18:00:00,mon,tue,wed,thu,fri</code>. The rule then applies by itself, without scheduler entries.</p>
+</div>
+<h2 id="how-the-schedule-is-calculated">How the schedule is calculated</h2>
+<h3 id="start-time-and-interval">Start time and interval</h3>
+<p>The first run is at <code>start-date</code> and <code>start-time</code>, which default to the moment the entry is added. After that, the entry runs every <code>interval</code>. Runs stay aligned to the start time plus whole intervals, so a start in the past sets the rhythm: <code>start-time=00:00:00 interval=1h</code> runs on every full hour, no matter when the entry was added.</p>
+<p>With <code>interval=0s</code>, the default, the entry runs once. It stays in the list with <code>run-count=1</code> and no <code>next-run</code>.</p>
+<h3 id="weekdays">Weekdays</h3>
+<p>When <code>days</code> is not set, the weekday is not considered and the interval continues across midnight: an entry with <code>start-time=00:00:00 interval=17h</code> runs at 00:00 and 17:00 on the first day and at 10:00 on the next.</p>
+<p>When <code>days</code> is set, each listed day starts again at <code>start-time</code>, and the entry repeats every <code>interval</code> until the end of that day. The next run is at <code>start-time</code> on the next listed day. With <code>interval=0s</code>, the entry runs once on each listed day. <code>days=always</code> applies these rules to every day, and <code>days=never</code> stops the entry from running.</p>
+<p>An interval of <code>1d</code> or longer is not supported together with <code>days</code>. Such an entry shows the note <code>multi-day intervals are not supported with active day scheduling</code>. For one run per day, use <code>interval=0s</code>.</p>
+<h3 id="entries-due-at-the-same-time">Entries due at the same time</h3>
+<p>Entries due at the same moment start together, in no fixed order. When tasks must run in a specific order, call them one after another from a single script.</p>
+<h3 id="reboots-and-the-clock">Reboots and the clock</h3>
+<p>A reboot resets <code>run-count</code> to 0. Schedules follow the router's local time and time zone, see <a href="clock">Clock</a>. Keep the clock synchronized, for example with <a href="ntp">NTP</a>; after a startup, the clock can differ from the real time until it is synchronized.</p>
+<h2 id="permissions">Permissions</h2>
+<p>Each entry runs its commands with the policies in <code>policy</code>. By default, these are the policies of the user who adds the entry, limited to the policies that apply to scripts. <code>owner</code> shows that user. Commands that need a policy the entry does not have fail, and the log shows <code>not enough permissions (9)</code> with the name of the entry.</p>
+<p>When <code>on-event</code> is the name of a script, the script also runs with the entry's policies. RouterOS refuses to run a script whose own policy includes rights the entry does not have. To run a script with only its own policies, use <code>/system/script/run &lt;name&gt; use-script-permissions</code> in <code>on-event</code>. See <a href="../developer-guides/scripting/#script-permissions">Script permissions</a>.</p>
+<h2 id="more-examples">More examples</h2>
+<h3 id="email-a-weekly-backup">Email a weekly backup</h3>
+<p>The following script saves an encrypted backup every Sunday at 02:00 and sends it as an email attachment:</p>
+<pre><code class="language-ros">/system/script/add name=email-backup source={
+    :local name [/system/identity/get name]
+    /system/backup/save name=weekly password=ChangeThisPassword
+    /tool/e-mail/send to=admin@example.com file=weekly.backup \
+        subject=($name . &quot; backup &quot; . [/system/clock/get date]) \
+        body=&quot;Weekly configuration backup.&quot;
+}
+/system/scheduler/add name=email-backup start-time=02:00:00 days=sun \
+    on-event=email-backup
+</code></pre>
+<p>A backup contains passwords, keys and certificates. Choose your own backup password and send the file only to a mailbox you trust.</p>
+<h3 id="get-notified-about-new-routeros-versions">Get notified about new RouterOS versions</h3>
+<p>The following script checks for a new RouterOS version every morning at 09:00. When one is available, it writes a warning to the log and sends an email. The check runs in the background, so the script waits 15 seconds before it reads the result:</p>
+<pre><code class="language-ros">/system/script/add name=update-check source={
+    /system/package/update/check-for-updates once
+    :delay 15s
+    :if ([/system/package/update/get status] = &quot;New version is available&quot;) do={
+        :local name [/system/identity/get name]
+        :local latest [/system/package/update/get latest-version]
+        :log warning (&quot;RouterOS &quot; . $latest . &quot; is available&quot;)
+        /tool/e-mail/send to=admin@example.com \
+            subject=($name . &quot;: RouterOS &quot; . $latest . &quot; is available&quot;) \
+            body=&quot;Install it with /system/package/update/install.&quot;
+    }
+}
+/system/scheduler/add name=update-check start-time=09:00:00 interval=1d \
+    on-event=update-check
+</code></pre>
+<p>The script only reports the new version; install it at a time you choose, see <a href="../getting-started/installation-and-upgrade/upgrade">Upgrade</a>.</p>
+<h3 id="change-the-guest-wi-fi-password-every-week">Change the guest Wi-Fi password every week</h3>
+<p>The following script sets a new random password for the <a href="../wireless/wifi/">WiFi</a> security profile <code>guest</code> every Monday at 06:00 and sends it by email, for example to the reception desk. The character set leaves out characters that are easy to confuse, such as <code>0</code>, <code>O</code>, <code>1</code> and <code>l</code>:</p>
+<pre><code class="language-ros">/system/script/add name=guest-password source={
+    :local chars &quot;abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789&quot;
+    :local pass [:rndstr length=12 from=$chars]
+    /interface/wifi/security/set [find name=guest] passphrase=$pass
+    /tool/e-mail/send to=reception@example.com subject=&quot;Guest Wi-Fi password&quot; \
+        body=(&quot;The guest Wi-Fi password for this week is &quot; . $pass)
+}
+/system/scheduler/add name=guest-password start-time=06:00:00 days=mon \
+    on-event=guest-password
+</code></pre>
+<p>Guests need the new password to connect after the change.</p>
+<h3 id="limit-guest-bandwidth-during-business-hours">Limit guest bandwidth during business hours</h3>
+<p>The following <a href="../firewall-and-quality-of-service/queues/">simple queue</a> limits a guest network to 50 Mbps. On working days from 08:00 to 18:00 the limit drops to 10 Mbps, so guests do not slow down the office connection:</p>
+<pre><code class="language-ros">/queue/simple/add name=guest target=10.0.20.0/24 max-limit=50M/50M
+/system/scheduler/add name=guest-limit-day days=mon,tue,wed,thu,fri \
+    start-time=08:00:00 on-event=&quot;/queue/simple/set guest max-limit=10M/10M&quot;
+/system/scheduler/add name=guest-limit-evening days=mon,tue,wed,thu,fri \
+    start-time=18:00:00 on-event=&quot;/queue/simple/set guest max-limit=50M/50M&quot;
+</code></pre>
+<h2 id="technical-details_6">Technical details</h2>
+<h3 id="log-messages">Log messages</h3>
+<p>Adding, changing and removing entries writes <code>system,info</code> messages such as <code>new script scheduled by ...</code>, <code>changed scheduled script settings by ...</code> and <code>script removed from scheduler by ...</code>. Configuration changes made by an entry name the entry, for example:</p>
+<pre><code class="language-text">system,info device changed by scheduler:guest-wifi-off/action:8 (/interface set guest-wifi disabled=yes)
+</code></pre>
+<p>A failed run writes <code>script,error</code> messages with the reason and the line of the failing command:</p>
+<pre><code class="language-text">script,error executing script email-backup
+script,error,debug (scheduler:email-backup) failure: error connecting to server (/tool/e-mail/send; line 4)
+</code></pre>
+<h3 id="the-reset-command">The reset command</h3>
+<p><code>/system/scheduler/reset</code> clears <code>on-event</code> and sets <code>interval</code> to <code>0s</code>. It does not reset <code>run-count</code>.</p>
+<p>For all properties, see <a href="../cli-reference/system/scheduler"><code>/system/scheduler</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="services">Services</h1>
+<blockquote>
+<p>The /ip/service menu lists the RouterOS management services (WinBox, SSH, Telnet, FTP, web server, API) and the ports other features and containers listen on. The page shows how to see what the router listens on,...</p>
+</blockquote>
+<h1 id="services_1">Services</h1>
+<p>The <code>/ip/service</code> menu lists the services the router offers for management and access: WinBox, SSH, Telnet, FTP, the web server, the API and the reverse proxy. Each service has a port, the addresses and the VRF it accepts clients from, and, for the TLS services, a certificate. You cannot add services, only change, disable and enable the existing ones.</p>
+<p>The same menu also shows dynamic entries: the ports that other features and containers listen on, and the connections that are open to the router's services. Use the list to see which ports are open on the router and what the firewall has to allow or block.</p>
+<p>For advice on which services to disable, how to change the SSH port and how to protect management access with the firewall, see <a href="../getting-started/securing-your-router#management-service-ports">Securing your router</a>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Service</th>
+<th style="text-align: left;">Default port</th>
+<th style="text-align: left;">Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ftp</code></td>
+<td style="text-align: left;">21</td>
+<td style="text-align: left;">FTP file transfer to and from the router's storage</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ssh</code></td>
+<td style="text-align: left;">22</td>
+<td style="text-align: left;">SSH access</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>telnet</code></td>
+<td style="text-align: left;">23</td>
+<td style="text-align: left;">Telnet access</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>www</code></td>
+<td style="text-align: left;">80</td>
+<td style="text-align: left;">The web server over HTTP: WebFig, the REST API and graphs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>www-ssl</code></td>
+<td style="text-align: left;">443</td>
+<td style="text-align: left;">The web server over HTTPS; needs a certificate, see <a href="../management-tools/webfig#enable-https">Enable HTTPS</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>winbox</code></td>
+<td style="text-align: left;">8291</td>
+<td style="text-align: left;"><a href="../management-tools/winbox">WinBox</a>, the MikroTik mobile app and The Dude</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>api</code></td>
+<td style="text-align: left;">8728</td>
+<td style="text-align: left;">The <a href="../developer-guides/api/">API</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>api-ssl</code></td>
+<td style="text-align: left;">8729</td>
+<td style="text-align: left;">The API over TLS</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reverse-proxy</code></td>
+<td style="text-align: left;">443</td>
+<td style="text-align: left;">The <a href="../network-management/proxy/reverse-proxy">reverse proxy</a>; listens only while at least one enabled rule exists</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-what-the-router-listens-on">See what the router listens on</h2>
+<p>Dynamic entries show the ports that RouterOS features and containers listen on, and the open connections to the router's services:</p>
+<pre><code class="language-ros">/ip/service/print where dynamic
+</code></pre>
+<pre><code class="language-text">Flags: D - DYNAMIC; c - CONNECTION
+Columns: NAME, PORT, PROTO, LOCAL, REMOTE
+#    NAME       PORT  PROTO  LOCAL          REMOTE
+3 Dc ssh          22  tcp    192.168.88.1   192.168.88.10:53163
+4 D  resolver     53  tcp
+5 D  resolver     53  udp
+0 D  btest      2000  tcp
+1 D  discover   5678  udp
+2 D  cloud     54103  udp
+</code></pre>
+<ul>
+<li>Entries with only the <code>D</code> flag are ports a feature listens on. <code>NAME</code> is the feature or program, for example <code>resolver</code> for the DNS server, <code>btest</code> for the <a href="../diagnostics-monitoring-and-troubleshooting/bandwidth-test">bandwidth test</a> server, <code>discover</code> for <a href="neighbor-discovery">neighbor discovery</a> and <code>cloud</code> for the local port the <a href="../network-management/cloud/communication-mikrotik-cloud-servers">MikroTik cloud</a> services use to talk to the cloud servers.</li>
+<li>Entries with the <code>c</code> flag are open connections to a service. <code>LOCAL</code> is the router's address and <code>REMOTE</code> is the client's address and port.</li>
+<li>Ports that containers listen on also show the <code>NETNS</code> and <code>CONTAINER</code> columns: the network namespace and the name of the container.</li>
+</ul>
+<p>An entry appears when a feature starts to listen. For example, the <code>resolver</code> entries on port 53 appear when you set <code>allow-remote-requests=yes</code> in <a href="../network-management/dns"><code>/ip/dns</code></a>. The router accepts connections on the ports of the dynamic entries and of the enabled services (the entries without the <code>X</code> flag in <code>/ip/service/print</code>). IP protocols without ports, such as GRE or OSPF, are not in the list; the tables at the end of this page list them. The ports where a feature waits for clients, such as <code>resolver</code> or <code>btest</code>, are the ones the firewall input chain has to allow for the clients that need them and block for everyone else; the default firewall already drops connections to them from the internet. You cannot change dynamic entries in <code>/ip/service</code>; change or disable the feature in its own menu instead.</p>
+<h2 id="limit-who-can-use-a-service">Limit who can use a service</h2>
+<p>To accept WinBox and SSH connections only from the LAN and from VPN clients:</p>
+<pre><code class="language-ros">/ip/service/set winbox,ssh available-from=192.168.88.0/24,10.8.0.0/24
+/ip/service/print proplist=name,port,available-from where !dynamic
+</code></pre>
+<pre><code class="language-text">Flags: X - DISABLED, I - INVALID
+Columns: NAME, PORT, AVAILABLE-FROM
+ #   NAME           PORT  AVAILABLE-FROM
+ 6   ftp              21
+ 7   ssh              22  192.168.88.0/24
+                          10.8.0.0/24
+ 8   telnet           23
+ 9   www              80
+10 X www-ssl         443
+11   reverse-proxy   443
+12   winbox         8291  192.168.88.0/24
+                          10.8.0.0/24
+13   api            8728
+14   api-ssl        8729
+</code></pre>
+<p><code>available-from</code> takes a list of IPv4 and IPv6 prefixes, for example <code>10.5.101.0/24,2001:db8:fade::/64</code>. An empty list means any address. A list with only IPv4 prefixes refuses all IPv6 clients; add the IPv6 prefixes that need access.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Include the address you manage the router from. After the change, the router refuses new connections from other addresses, including your own next login if it comes from outside the list.</p>
+</div>
+<p>A client from another address can still open the TCP connection, and the router then closes it without serving the client, so a port scan still finds the port open. <code>available-from</code> suits restricting access within trusted networks. To block access from the internet and other untrusted networks, drop the traffic in the firewall input chain, as described in <a href="../getting-started/securing-your-router#securing-access-to-the-device">Securing your router</a>.</p>
+<h2 id="run-management-services-in-a-vrf">Run management services in a VRF</h2>
+<p>A management VRF keeps management access apart from the networks the router serves. To make WinBox and SSH available only through a dedicated management port, <code>ether5</code>, which has the management address (for example 10.99.0.1/24):</p>
+<pre><code class="language-ros">/ip/vrf/add name=mgmt interfaces=ether5
+/ip/service/set winbox,ssh vrf=mgmt
+</code></pre>
+<p>A service listens only in its VRF. After this change, the router refuses WinBox and SSH connections to its addresses in the main routing table and serves them only through <code>ether5</code>. For more about VRFs, see <a href="../user-guides/routing-and-networking-protocols/vrf">VRF</a>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>After the change, WinBox and SSH are reachable only through the interfaces of the VRF. A session that comes in through another interface, or through <code>ether5</code> before it joins the VRF, is cut. Run both commands together, connect again through <code>ether5</code>, and keep another way in, such as MAC WinBox.</p>
+</div>
+<h2 id="manage-services-in-winbox">Manage services in WinBox</h2>
+<p>Open <strong>IP &gt; Services</strong>. The list can also show dynamic listeners and active connections; open the configurable service row, such as <code>winbox</code>, rather than a dynamic connection entry. Use <strong>Find</strong> to locate the service by name.</p>
+<ol>
+<li>Check <strong>Port</strong> in the service dialog. Changing it changes the port clients must use to connect.</li>
+<li>Use the <strong>+</strong> control beside <strong>Available From</strong> to enter the client addresses or subnets that should have access, then select <strong>OK</strong>. Include the address of your management computer before restricting the service you are connected through. An empty list does not restrict client addresses.</li>
+</ol>
+<p><em>[gambar: WinBox IP Service dialog for the winbox service]</em></p>
+<p>To turn an unused service off without changing its port, select its row in the Services list and select <strong>Disable</strong>. Select <strong>Enable</strong> to turn it on again.</p>
+<h2 id="web-server">Web server</h2>
+<p>The web server has separate settings for its parts: the home page, WebFig, graphs, the REST API, and the CRL, SCEP and ACME endpoints. The <code>-plain</code> settings control HTTP connections (the <code>www</code> service), and the <code>-secure</code> settings control HTTPS connections (the <code>www-ssl</code> service). All parts are enabled by default. For the settings, see the <a href="../cli-reference/ip/service/webserver"><code>/ip/service/webserver</code> CLI reference</a>.</p>
+<h2 id="protocols-and-ports">Protocols and ports</h2>
+<p>The following tables list the ports and IP protocols that RouterOS uses. Most ports are ones the router listens on when the feature is enabled. Some are client ports: the DHCP client receives replies on UDP port 68, and the DHCPv6 client on UDP port 546. The FTP server does not listen on TCP port 20: in active mode, its data connections come from that port. For <a href="../network-management/openflow">OpenFlow</a>, the router connects to the controller at the address and port set in <code>controllers</code> in <code>/openflow</code>, for example TCP port 6653, and does not listen on a port.</p>
+<h3 id="tcp-ports">TCP ports</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Port</th>
+<th style="text-align: left;">Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">21</td>
+<td style="text-align: left;">FTP (<code>ftp</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">22</td>
+<td style="text-align: left;">SSH (<code>ssh</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">23</td>
+<td style="text-align: left;">Telnet (<code>telnet</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">53</td>
+<td style="text-align: left;"><a href="../network-management/dns">DNS</a> server, when <code>allow-remote-requests=yes</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">80</td>
+<td style="text-align: left;">HTTP (<code>www</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">179</td>
+<td style="text-align: left;"><a href="../user-guides/routing-and-networking-protocols/unicast/bgp/">BGP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">443</td>
+<td style="text-align: left;">HTTPS (<code>www-ssl</code> service) and the <a href="../network-management/proxy/reverse-proxy">reverse proxy</a> (<code>reverse-proxy</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">646</td>
+<td style="text-align: left;"><a href="../user-guides/routing-and-networking-protocols/mpls/ldp">LDP</a> transport session</td>
+</tr>
+<tr>
+<td style="text-align: left;">1080</td>
+<td style="text-align: left;"><a href="../network-management/socks/">SOCKS</a> proxy</td>
+</tr>
+<tr>
+<td style="text-align: left;">1194</td>
+<td style="text-align: left;"><a href="../virtual-private-networks/openvpn">OpenVPN</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">1723</td>
+<td style="text-align: left;"><a href="../virtual-private-networks/pptp">PPTP</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">2000</td>
+<td style="text-align: left;"><a href="../diagnostics-monitoring-and-troubleshooting/bandwidth-test">Bandwidth test</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">2828</td>
+<td style="text-align: left;"><a href="../firewall-and-quality-of-service/upnp">UPnP</a> control, on the internal interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;">5246</td>
+<td style="text-align: left;"><a href="../wireless/wifi/capsman">CAPsMAN</a> for WiFi</td>
+</tr>
+<tr>
+<td style="text-align: left;">8080</td>
+<td style="text-align: left;"><a href="../network-management/proxy/web-proxy">Web proxy</a>, default port</td>
+</tr>
+<tr>
+<td style="text-align: left;">8291</td>
+<td style="text-align: left;"><a href="../management-tools/winbox">WinBox</a> (<code>winbox</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">8728</td>
+<td style="text-align: left;"><a href="../developer-guides/api/">API</a> (<code>api</code> service)</td>
+</tr>
+<tr>
+<td style="text-align: left;">8729</td>
+<td style="text-align: left;">API over TLS (<code>api-ssl</code> service)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="udp-ports">UDP ports</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Port</th>
+<th style="text-align: left;">Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">53</td>
+<td style="text-align: left;"><a href="../network-management/dns">DNS</a> server, when <code>allow-remote-requests=yes</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">67</td>
+<td style="text-align: left;"><a href="../network-management/dhcp/server">DHCP server</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">68</td>
+<td style="text-align: left;"><a href="../network-management/dhcp/client">DHCP client</a> (client port)</td>
+</tr>
+<tr>
+<td style="text-align: left;">69</td>
+<td style="text-align: left;"><a href="tftp">TFTP</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;"><a href="ntp">NTP</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">161</td>
+<td style="text-align: left;"><a href="../diagnostics-monitoring-and-troubleshooting/snmp">SNMP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">500</td>
+<td style="text-align: left;">IKE for <a href="../virtual-private-networks/ipsec/">IPsec</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">520</td>
+<td style="text-align: left;"><a href="../user-guides/routing-and-networking-protocols/unicast/rip">RIP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">521</td>
+<td style="text-align: left;">RIPng</td>
+</tr>
+<tr>
+<td style="text-align: left;">546</td>
+<td style="text-align: left;"><a href="../network-management/dhcp/dhcpv6-client">DHCPv6 client</a> (client port)</td>
+</tr>
+<tr>
+<td style="text-align: left;">547</td>
+<td style="text-align: left;"><a href="../network-management/dhcp/dhcpv6-server">DHCPv6 server</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">646</td>
+<td style="text-align: left;"><a href="../user-guides/routing-and-networking-protocols/mpls/ldp">LDP</a> hello messages</td>
+</tr>
+<tr>
+<td style="text-align: left;">1701</td>
+<td style="text-align: left;"><a href="../virtual-private-networks/l2tp/">L2TP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">1900</td>
+<td style="text-align: left;"><a href="../firewall-and-quality-of-service/upnp">UPnP</a> discovery (SSDP), on the internal interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;">3799</td>
+<td style="text-align: left;"><a href="../authentication-authorization-accounting/radius">RADIUS</a> incoming requests (CoA and disconnect)</td>
+</tr>
+<tr>
+<td style="text-align: left;">4500</td>
+<td style="text-align: left;">IPsec NAT traversal</td>
+</tr>
+<tr>
+<td style="text-align: left;">5246</td>
+<td style="text-align: left;">CAPsMAN control, for <a href="../wireless/wifi/capsman">WiFi</a> and for <a href="../wireless/abgn/capsman/ap-controller-capsman">legacy wireless</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">5247</td>
+<td style="text-align: left;">CAPsMAN data, for legacy wireless</td>
+</tr>
+<tr>
+<td style="text-align: left;">5350</td>
+<td style="text-align: left;"><a href="../firewall-and-quality-of-service/nat-pmp">NAT-PMP</a> announcements, which the router sends to clients at 224.0.0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;">5351</td>
+<td style="text-align: left;"><a href="../firewall-and-quality-of-service/nat-pmp">NAT-PMP</a> server</td>
+</tr>
+<tr>
+<td style="text-align: left;">5678</td>
+<td style="text-align: left;">MikroTik Neighbor Discovery Protocol (<a href="neighbor-discovery">MNDP</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">20561</td>
+<td style="text-align: left;">MAC Telnet, MAC WinBox and MAC ping (<a href="../management-tools/mac-server">MAC server</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>listen-port</code></td>
+<td style="text-align: left;"><a href="../virtual-private-networks/wireguard">WireGuard</a>: the port set on each interface</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>MAC Telnet, MAC WinBox and MAC ping work on layer 2: the packets are addressed to the router's MAC address and carry the IP addresses 0.0.0.0 and 255.255.255.255. The IP firewall does not stop them: the MAC server answers even when a filter rule drops UDP port 20561. To limit MAC access, set <code>allowed-interface-list</code> in <a href="../management-tools/mac-server"><code>/tool/mac-server</code></a>.</p>
+</div>
+<h3 id="ip-protocols">IP protocols</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Protocol</th>
+<th style="text-align: left;">Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">ICMP</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">IGMP (<a href="../user-guides/routing-and-networking-protocols/multicast/igmp-proxy">IGMP proxy</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"><a href="../virtual-private-networks/ipip">IPIP</a> tunnels</td>
+</tr>
+<tr>
+<td style="text-align: left;">41</td>
+<td style="text-align: left;">IPv6 encapsulation (<a href="../virtual-private-networks/6to4">6to4</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">46</td>
+<td style="text-align: left;">RSVP for <a href="../user-guides/routing-and-networking-protocols/mpls/traffic-eng">MPLS traffic engineering</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">47</td>
+<td style="text-align: left;">GRE: <a href="../virtual-private-networks/pptp">PPTP</a>, <a href="../virtual-private-networks/eoip">EoIP</a> and <a href="../virtual-private-networks/gre">GRE</a> tunnels</td>
+</tr>
+<tr>
+<td style="text-align: left;">50</td>
+<td style="text-align: left;">ESP for <a href="../virtual-private-networks/ipsec/">IPsec</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">51</td>
+<td style="text-align: left;">AH for IPsec</td>
+</tr>
+<tr>
+<td style="text-align: left;">58</td>
+<td style="text-align: left;">ICMPv6, including IPv6 Neighbor Discovery</td>
+</tr>
+<tr>
+<td style="text-align: left;">89</td>
+<td style="text-align: left;"><a href="../user-guides/routing-and-networking-protocols/unicast/ospf/">OSPF</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">103</td>
+<td style="text-align: left;">PIM (<a href="../user-guides/routing-and-networking-protocols/multicast/pim-sm">PIM-SM</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">112</td>
+<td style="text-align: left;"><a href="../high-availability-solutions/vrrp">VRRP</a></td>
+</tr>
+</tbody>
+</table>
+<p>For all properties, see <a href="../cli-reference/ip/service/"><code>/ip/service</code></a> and <a href="../cli-reference/ip/service/webserver"><code>/ip/service/webserver</code></a> in the CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

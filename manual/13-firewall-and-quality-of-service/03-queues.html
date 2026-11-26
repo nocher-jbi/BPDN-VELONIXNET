@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queues · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Firewall and Quality of Service</p>
+      <h1 id="queues">Queues</h1>
+<h1 id="queues_1">Queues</h1>
+<blockquote>
+<p>Overview of queues in RouterOS: rate limiting principles, committed and maximum rates, interface queues, and links to the Simple queue, Queue tree, queue type, HTB, burst and queue size pages.</p>
+</blockquote>
+<h1 id="queues_2">Queues</h1>
+<p>This section covers RouterOS queueing and bandwidth management. Use it to configure HTB, PCQ, burst behavior, <a href="./queue-size">queue sizes</a>, and queue types for traffic shaping.</p>
+<h2 id="overview">Overview</h2>
+<p>A queue is a collection of data packets that wait to be transmitted by a network device, in a pre-defined order. Queuing works almost like the queue at a bank or a supermarket, where customers are served in the order of their arrival.</p>
+<p>Queues are used to:</p>
+<ul>
+<li>Limit data rate for certain IP addresses, subnets, protocols, ports, etc.</li>
+<li>Packet prioritization.</li>
+<li>Configure traffic bursts for traffic acceleration.</li>
+<li>Apply different time-based limits.</li>
+<li>Share available traffic among users equally, or depending on the load of the channel.</li>
+</ul>
+<p>The queue implementation in RouterOS is based on the <a href="./htb-hierarchical-token-bucket">Hierarchical Token Bucket (HTB)</a>. HTB allows the creation of a hierarchical queue structure and determines relations between queues. These hierarchical structures can be attached at two different places, in the <em>input</em> and in the <em>postrouting</em> stage of the <a href="../packet-flow-in-routeros">packet flow</a>.</p>
+<p>There are two different ways to configure queues in RouterOS:</p>
+<ul>
+<li><a href="./simple-queue">Simple queue</a> (<code>/queue/simple</code>) - limits the upload and download of an address, a network or an interface with one entry.</li>
+<li><a href="./queue-tree">Queue tree</a> (<code>/queue/tree</code>) - limits traffic in one direction by packet mark, on an interface or globally. Packet marks come from <a href="../firewall/mangle"><code>/ip/firewall/mangle</code></a>.</li>
+</ul>
+<p>Queues can be configured in 8 levels. The first level is an interface queue from the <code>/queue/interface</code> menu, and the other 7 are lower-level queues that can be created in simple queues and queue trees.</p>
+<h3 id="rate-limitation-principles">Rate limitation principles</h3>
+<p>Rate limiting is used to control the rate of traffic flow sent or received on a network interface. Traffic with a rate that is less than or equal to the specified rate is sent, whereas traffic that exceeds the rate is dropped or delayed.</p>
+<p>Rate limiting can be performed in two ways:</p>
+<ol>
+<li>Discard all packets that exceed the rate limit – <strong><em>rate-limiting (dropper or shaper)</em></strong>.</li>
+<li>Delay packets that exceed the specific rate limit in the queue and transmit them when it is possible – <strong><em>rate equalizing (scheduler)</em></strong>.</li>
+</ol>
+<p>The next figure explains the difference between <em>rate limiting</em> and rate <em>equalizing</em>:</p>
+<p><em>[gambar: Two pairs of traffic graphs. Rate limiting (shaper) cuts the traffic peaks at the rate limit. Rate equalizing (scheduler) also cuts the peaks at the rate limit and sends the delayed traffic afterwards.]</em></p>
+<p>In the first case, all traffic that exceeds a specific rate is dropped. In the other case, traffic that exceeds a specific rate is delayed in the queue and transmitted later when it is possible. A packet can be delayed only while the queue is not full. If there is no more space in the queue buffer, packets are dropped. <a href="./queue-size">Queue size</a> shows the effect of the buffer size.</p>
+<p>For each queue we can define two rate limits:</p>
+<ul>
+<li><strong>CIR</strong> (Committed Information Rate) – (<strong>limit-at</strong> in RouterOS) In a worst-case scenario, the flow will get this amount of traffic rate regardless of other traffic flows. At any given time, the bandwidth should not fall below this committed rate.</li>
+<li><strong>MIR</strong> (Maximum Information Rate) – (<strong>max-limit</strong> in RouterOS) In a best-case scenario, the maximum available data rate for the flow, if there is any free part of the bandwidth.</li>
+</ul>
+<h2 id="simple-queue">Simple Queue</h2>
+<p>A simple queue limits the upload and download rate of a target: an address, a network or an interface. It needs no packet marks.</p>
+<p>See <a href="./simple-queue">Simple queue</a> for the examples: a limit for a device or a network, the order of queues, a guaranteed rate, limits by time and by destination.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A CAKE queue type can buffer more traffic in a simple queue than in an equivalent queue tree. Set <a href="./queue-types/cake#memory-limit"><code>cake-memlimit</code></a> on the CAKE queue type to bound its memory use.</p>
+</div>
+<h2 id="queue-tree">Queue Tree</h2>
+<p>A queue tree limits traffic in one direction, selected by packet mark, on an interface or globally. A queue tree with an interface as the parent also limits FastTracked traffic.</p>
+<p>See <a href="./queue-tree">Queue tree</a> for the examples: a limit for an Internet connection without mangle rules, priority for voice traffic and limits for marked traffic.</p>
+<h2 id="queue-types">Queue Types</h2>
+<p>A queue type is a named set of settings for a queuing algorithm, such as FIFO, PCQ, FQ-CoDel or CAKE. Queue types are in <code>/queue/type</code>, and simple queues, queue trees and interface queues use them.</p>
+<p>See <a href="./queue-types">Queue types</a> for the kinds, the default queue types and examples for each kind.</p>
+<h2 id="interface-queue">Interface Queue</h2>
+<p>Before sending data over an interface, it is processed by the queue. An Interface Queue is a transmit (egress) queue; it does not process packets received by that interface.</p>
+<p>For forwarded client traffic, the WAN-facing Interface Queue processes uploads, and the LAN-facing Interface Queue processes downloads. Each direction uses a separate queue instance. If traffic can leave through several LAN interfaces, configure every required transmit path or use a Simple Queue or Queue Tree that matches the traffic at a common point.</p>
+<p>The <code>/queue/interface</code> menu lists the interfaces of the router and allows changing the queue type of an interface. The list is generated automatically:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/interface/print
+Columns: INTERFACE, QUEUE, ACTIVE-QUEUE
+#  INTERFACE  QUEUE                ACTIVE-QUEUE       
+0  ether1     only-hardware-queue  only-hardware-queue
+1  ether2     only-hardware-queue  only-hardware-queue
+2  ether3     only-hardware-queue  only-hardware-queue
+3  eoip1      no-queue             no-queue           
+4  lo         no-queue             no-queue           
+</code></pre>
+<p>In this output, the Ethernet interfaces have the <code>only-hardware-queue</code> type and the virtual interfaces have <code>no-queue</code>. To change the queue type of an interface, set its <code>queue</code> property. See <a href="./queue-types/cake">CAKE</a> for an example that shapes upload with an interface queue.</p>
+<h2 id="queue-load-visualization-in-gui">Queue load visualization in GUI</h2>
+<p>In WinBox and WebFig, a green, yellow, or red icon shows the usage of each simple queue and queue tree entry, based on <code>max-limit</code>:</p>
+<ul>
+<li><em>[gambar: Green queue icon]</em> Less than 50% of <code>max-limit</code> is used.</li>
+<li><em>[gambar: Yellow queue icon]</em> 50% or more, but less than 75% of <code>max-limit</code> is used.</li>
+<li><em>[gambar: Red queue icon]</em> 75% or more of <code>max-limit</code> is used.</li>
+</ul>
+<hr />
+<h1 id="simple-queue_1">Simple queue</h1>
+<blockquote>
+<p>A simple queue in RouterOS limits the upload and download rate of a target: an address, a network or an interface. This page shows how to limit a device or a network, order queues, guarantee a rate, limit by time of...</p>
+</blockquote>
+<h1 id="simple-queue_2">Simple queue</h1>
+<p>A simple queue limits the traffic of a target in both directions with one entry. The target is an IP address, a network or an interface. Simple queues are in <code>/queue/simple</code>.</p>
+<p>Upload and download are seen from the target: upload is the traffic that the target sends, and download is the traffic that it receives. Properties with two values, such as <code>max-limit=5M/25M</code>, take the upload value first and the download value second.</p>
+<p>The router checks the simple queues in order, from the top of the list. A packet goes to the first queue whose target matches it and skips all following queues.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A simple queue must match a packet either by its source or by its destination, not by both. If both the source and the destination of a connection are inside the target, the queue counts and limits all packets of the connection as download, and the upload limit has no effect. Do not put both ends of the traffic into the target of one queue.</p>
+</div>
+<h2 id="before-you-start-fasttrack">Before you start: FastTrack</h2>
+<p>The default configuration has a FastTrack rule for established connections, and simple queues do not limit FastTracked connections. Without this step, the examples on this page do not limit established TCP and UDP connections.</p>
+<p>Disable the FastTrack rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+disable [find action=fasttrack-connection]
+</code></pre>
+<p>Check that the rule is disabled. The command counts the disabled FastTrack rules:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print count-only \
+    where action=fasttrack-connection and disabled
+1
+</code></pre>
+<p>FastTrack makes forwarding faster, so without it the router needs more processor time for the same traffic. There are two other ways:</p>
+<ul>
+<li>Leave the rule enabled and keep only the connections that the queues limit out of FastTrack. See the example in <a href="../packet-flow-in-routeros#fasttrack">FastTrack</a>.</li>
+<li>Use a <a href="./queue-tree">queue tree</a> with an interface as the parent. It limits FastTracked traffic too.</li>
+</ul>
+<h2 id="limit-one-device">Limit one device</h2>
+<p>This example limits the device 192.168.88.10 to 5 Mbps upload and 25 Mbps download:</p>
+<pre><code class="language-ros">/queue/simple
+add name=tv target=192.168.88.10/32 max-limit=5M/25M
+</code></pre>
+<p>Check that the queue counts the traffic of the device. The counters grow while the device sends and receives:</p>
+<pre><code class="language-ros">/queue/simple/print bytes where name=tv
+Columns: NAME, TARGET, BYTES, TOTAL-BYTES
+# NAME  TARGET            BYTES          TOTAL-BYTES
+0 tv    192.168.88.10/32  185000/185000            0
+</code></pre>
+<h2 id="limit-a-network">Limit a network</h2>
+<p>With a network as the target, all devices of the network share one limit. This example limits the whole LAN to 20 Mbps upload and 100 Mbps download:</p>
+<pre><code class="language-ros">/queue/simple
+add name=lan target=192.168.88.0/24 max-limit=20M/100M
+</code></pre>
+<p>Check that the queue counts the traffic of the LAN:</p>
+<pre><code class="language-ros">/queue/simple/print bytes where name=lan
+Columns: NAME, TARGET, BYTES, TOTAL-BYTES
+# NAME  TARGET           BYTES          TOTAL-BYTES
+0 lan   192.168.88.0/24  189000/189000            0
+</code></pre>
+<p>The target can also be an interface, for example <code>target=bridge</code>. The queue then limits the traffic of all devices behind this interface.</p>
+<p>To give each device of the network its own limit with one queue, or to share the rate equally between the devices, use a <a href="./queue-types/pcq">PCQ</a> queue type.</p>
+<h2 id="give-one-device-a-different-limit">Give one device a different limit</h2>
+<p>Because a packet goes to the first queue that matches, a queue for one device must be before the queue for its network. <code>place-before</code> adds a queue before another queue. This example limits the LAN and gives the server 192.168.88.10 its own, higher limit:</p>
+<pre><code class="language-ros">/queue/simple
+add name=lan target=192.168.88.0/24 max-limit=20M/100M
+add name=server target=192.168.88.10/32 max-limit=50M/50M \
+    place-before=lan
+</code></pre>
+<p>Check the order and the counters. The <code>server</code> queue is first and counts the traffic of the server, and the <code>lan</code> queue counts the traffic of the other devices:</p>
+<pre><code class="language-ros">/queue/simple/print bytes
+Columns: NAME, TARGET, BYTES, TOTAL-BYTES
+# NAME    TARGET            BYTES          TOTAL-BYTES
+0 server  192.168.88.10/32  210000/210000            0
+1 lan     192.168.88.0/24   208000/208000            0
+</code></pre>
+<h2 id="guarantee-a-rate-for-one-device">Guarantee a rate for one device</h2>
+<p><code>limit-at</code> is the rate that a queue gets when the devices together ask for more than the limit of the parent queue. <code>limit-at</code> has an effect only between queues with the same parent.</p>
+<p>In this example, the LAN has 20 Mbps upload and 100 Mbps download. The server always gets at least 5 Mbps upload and 20 Mbps download. Each child queue can use the whole rate when the other does not use it:</p>
+<pre><code class="language-ros">/queue/simple
+add name=lan target=192.168.88.0/24 max-limit=20M/100M
+add name=server parent=lan target=192.168.88.10/32 \
+    limit-at=5M/20M max-limit=20M/100M
+add name=others parent=lan target=192.168.88.0/24 \
+    limit-at=15M/80M max-limit=20M/100M
+</code></pre>
+<p>The <code>limit-at</code> values of the child queues together must not be more than the <code>max-limit</code> of the parent queue.</p>
+<p>Check that each queue counts its traffic. The parent queue counts the traffic of both child queues:</p>
+<pre><code class="language-ros">/queue/simple/print bytes
+Columns: NAME, TARGET, BYTES, TOTAL-BYTES
+# NAME    TARGET            BYTES          TOTAL-BYTES
+0 lan     192.168.88.0/24   421000/421000            0
+1 server  192.168.88.10/32  210000/210000            0
+2 others  192.168.88.0/24   211000/211000            0
+</code></pre>
+<p>See <a href="./htb-hierarchical-token-bucket">HTB</a> for how <code>limit-at</code>, <code>max-limit</code> and <code>priority</code> work between parent and child queues.</p>
+<h2 id="limit-at-certain-hours">Limit at certain hours</h2>
+<p><code>time</code> makes a queue active only in a time range and on the selected days. The router uses its own clock, so check that the time and the time zone in <code>/system/clock</code> are correct. This example limits the LAN on working days from 8:00 to 18:00:</p>
+<pre><code class="language-ros">/queue/simple
+add name=work-hours target=192.168.88.0/24 max-limit=10M/50M \
+    time=8h-18h,mon,tue,wed,thu,fri
+</code></pre>
+<p>Check the queue. This output is from inside the time range. Outside the time range, the flag <code>I</code> is in front of the name, and the queue limits no traffic:</p>
+<pre><code class="language-ros">/queue/simple/print where name=work-hours
+0  name=&quot;work-hours&quot; target=192.168.88.0/24 parent=none packet-marks=&quot;&quot;
+   priority=8/8 queue=default-small/default-small limit-at=0/0
+   max-limit=10M/50M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+   bucket-size=0.1/0.1 time=8h-18h,mon,tue,wed,thu,fri
+</code></pre>
+<h2 id="limit-the-traffic-to-one-destination">Limit the traffic to one destination</h2>
+<p><code>dst</code> limits the queue to the traffic between the target and one destination address or network. Other traffic of the target does not go to this queue. This example limits the traffic between the device 192.168.88.10 and a backup server at 203.0.113.10 to 5 Mbps:</p>
+<pre><code class="language-ros">/queue/simple
+add name=backup target=192.168.88.10/32 dst=203.0.113.10/32 \
+    max-limit=5M/5M
+</code></pre>
+<p>Check that the queue counts the traffic to the backup server:</p>
+<pre><code class="language-ros">/queue/simple/print bytes where name=backup
+Columns: NAME, TARGET, BYTES, TOTAL-BYTES
+# NAME    TARGET            BYTES          TOTAL-BYTES
+0 backup  192.168.88.10/32  215000/215000            0
+</code></pre>
+<h2 id="limit-upload-and-download-together">Limit upload and download together</h2>
+<p>The <code>total-</code> properties set one limit for upload and download together. This example limits the LAN to 50 Mbps for the sum of both directions:</p>
+<pre><code class="language-ros">/queue/simple
+add name=lan target=192.168.88.0/24 total-max-limit=50M
+</code></pre>
+<p>Check the queue. With a total limit, the <code>total-</code> counters count the traffic:</p>
+<pre><code class="language-ros">/queue/simple/print stats where name=lan
+0  name=&quot;lan&quot; target=192.168.88.0/24 rate=0bps/0bps total-rate=472.0kbps
+   packet-rate=0/0 total-packet-rate=59 queued-bytes=0/0 total-queued-bytes=0
+   queued-packets=0/0 total-queued-packets=0 bytes=0/0 total-bytes=390000
+   packets=0/0 total-packets=390 dropped=0/0 total-dropped=0
+</code></pre>
+<h2 id="more-properties">More properties</h2>
+<ul>
+<li><code>queue</code> selects the <a href="./queue-types">queue type</a> for upload and for download. A new simple queue uses <code>default-small</code>.</li>
+<li><code>burst-limit</code>, <code>burst-threshold</code> and <code>burst-time</code> allow a higher rate for a short time. See <a href="./queue-burst">Queue Burst</a>.</li>
+<li><code>packet-marks</code> limits the queue to packets that have one of the listed packet marks. Mark the packets in the <code>prerouting</code> or <code>forward</code> chain of <a href="../firewall/mangle">mangle</a>.</li>
+<li><code>priority</code> and <code>bucket-size</code> control how child queues share the rate of their parent. See <a href="./htb-hierarchical-token-bucket">HTB</a>.</li>
+</ul>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A CAKE queue type can buffer more traffic in a simple queue than in an equivalent queue tree. Set <a href="./queue-types/cake#memory-limit"><code>cake-memlimit</code></a> on the CAKE queue type to bound its memory use.</p>
+</div>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="./queue-tree">Queue tree</a> - limits by packet mark and by interface.</li>
+<li><a href="./queue-types">Queue types</a> - the queuing algorithms and their examples.</li>
+<li><a href="../../cli-reference/queue/simple"><code>/queue/simple</code> CLI reference</a> - all properties.</li>
+</ul>
+<hr />
+<h1 id="queue-tree_1">Queue tree</h1>
+<blockquote>
+<p>A queue tree in RouterOS limits traffic in one direction, selected by packet mark, on an interface or globally. This page shows how to limit an Internet connection without mangle rules, give priority to voice traffic...</p>
+</blockquote>
+<h1 id="queue-tree_2">Queue tree</h1>
+<p>A queue tree entry limits traffic in one direction. It selects packets by their packet mark, not by address. Queue trees are in <code>/queue/tree</code>.</p>
+<p>Two properties define what a queue limits:</p>
+<ul>
+<li><code>parent</code> is where the queue is attached. With an interface as the parent, the queue limits the traffic that leaves the router through this interface. With <code>parent=global</code>, the queue limits marked traffic in all directions. With another queue as the parent, the queue is a child of that queue.</li>
+<li><code>packet-mark</code> selects the packets. <code>no-mark</code> selects the packets that have no packet mark. A queue with children needs no packet mark: it gets the traffic of its children. A queue without children and without a packet mark gets no traffic.</li>
+</ul>
+<p>Packet marks come from <a href="../firewall/mangle">mangle</a> rules. Queue trees have no order: each packet goes to the queue with its packet mark.</p>
+<h2 id="limit-an-internet-connection">Limit an Internet connection</h2>
+<p>Upload leaves the router through the WAN interface, and download leaves through the LAN interface. One queue on each interface with <code>packet-mark=no-mark</code> limits all traffic, and no mangle rules are necessary. Queues with an interface as the parent also limit FastTracked traffic, so the FastTrack rule of the default configuration stays as it is. In the default configuration, the WAN interface is <code>ether1</code> and the LAN interface is <code>bridge</code>:</p>
+<pre><code class="language-ros">/queue/tree
+add name=upload parent=ether1 packet-mark=no-mark max-limit=20M
+add name=download parent=bridge packet-mark=no-mark max-limit=100M
+</code></pre>
+<p>The <code>download</code> queue limits all packets that leave through <code>bridge</code>, also the packets that the router itself sends to the LAN. It does not limit traffic that the bridge forwards between its own ports.</p>
+<p>Check that both queues count traffic:</p>
+<pre><code class="language-ros">/queue/tree/print stats
+0  name=&quot;upload&quot; parent=ether1 packet-mark=no-mark rate=244112 packet-rate=30
+   queued-bytes=0 queued-packets=0 bytes=201486 packets=203 dropped=0
+1  name=&quot;download&quot; parent=bridge packet-mark=no-mark rate=241416 packet-rate=30
+   queued-bytes=0 queued-packets=0 bytes=200814 packets=199 dropped=0
+</code></pre>
+<p>To keep the delay low while the connection is full, add a queue type such as <a href="./queue-types/codel-fq-codel">FQ-CoDel</a> or <a href="./queue-types/cake">CAKE</a> to both queues.</p>
+<h2 id="packet-marks-and-fasttrack">Packet marks and FastTrack</h2>
+<p>The default configuration has a FastTrack rule for established connections. FastTracked packets skip the mangle rules, so they get no packet mark, and they skip queues with <code>parent=global</code>. A queue tree that works with packet marks needs the connections of its traffic outside FastTrack.</p>
+<p>The following examples do this with a connection mark. They change the FastTrack rule so that it takes only connections without a connection mark, and they mark the connections that the queues handle:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find action=fasttrack-connection] connection-mark=no-mark
+</code></pre>
+<p>All other connections stay FastTracked.</p>
+<h2 id="give-priority-to-voice-traffic">Give priority to voice traffic</h2>
+<p>Child queues with different priorities share the rate of their parent. <code>priority=1</code> is the highest and <code>priority=8</code> is the lowest. When the connection is full, each child first gets its <code>limit-at</code>, and then the queue with the higher priority gets the rest first.</p>
+<p>This example gives upload priority to calls. IP phones and voice applications send their voice packets with DSCP 46. The first mangle rule marks the connections that carry such packets, which also keeps them out of FastTrack. The second rule marks the packets of these connections that leave through the WAN interface. All other packets have no packet mark and go to the <code>upload-other</code> queue:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find action=fasttrack-connection] connection-mark=no-mark
+/ip/firewall/mangle
+add chain=forward dscp=46 connection-mark=no-mark \
+    action=mark-connection new-connection-mark=voice
+add chain=postrouting out-interface-list=WAN connection-mark=voice \
+    action=mark-packet new-packet-mark=voice passthrough=no
+/queue/tree
+add name=upload parent=ether1 max-limit=20M
+add name=upload-voice parent=upload packet-mark=voice priority=1 \
+    limit-at=2M max-limit=20M
+add name=upload-other parent=upload packet-mark=no-mark priority=8 \
+    limit-at=18M max-limit=20M
+</code></pre>
+<p>Check that the voice queue counts the marked packets and the parent queue counts all upload:</p>
+<pre><code class="language-ros">/queue/tree/print stats
+0  name=&quot;upload&quot; parent=ether1 packet-mark=&quot;&quot; rate=464496 packet-rate=57
+   queued-bytes=0 queued-packets=0 bytes=436062 packets=431 dropped=0
+1  name=&quot;upload-voice&quot; parent=upload packet-mark=voice rate=239304
+   packet-rate=29 queued-bytes=0 queued-packets=0 bytes=218010 packets=215
+   dropped=0
+2  name=&quot;upload-other&quot; parent=upload packet-mark=no-mark rate=239384
+   packet-rate=29 queued-bytes=0 queued-packets=0 bytes=218052 packets=216
+   dropped=0
+</code></pre>
+<p>See <a href="./htb-hierarchical-token-bucket">HTB</a> for how <code>limit-at</code>, <code>max-limit</code> and <code>priority</code> work between parent and child queues.</p>
+<h2 id="limit-marked-traffic-in-both-directions">Limit marked traffic in both directions</h2>
+<p>With <code>parent=global</code>, a queue limits its packet mark wherever the packets go. This example limits the devices of the address list <code>limited</code> to 2 Mbps upload and 10 Mbps download. The first two mangle rules mark the connections from and to these devices, which keeps them out of FastTrack. The other two rules mark the packets of these connections by direction:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=limited address=192.168.88.10
+/ip/firewall/filter
+set [find action=fasttrack-connection] connection-mark=no-mark
+/ip/firewall/mangle
+add chain=forward src-address-list=limited connection-mark=no-mark \
+    action=mark-connection new-connection-mark=limited
+add chain=forward dst-address-list=limited connection-mark=no-mark \
+    action=mark-connection new-connection-mark=limited
+add chain=forward connection-mark=limited src-address-list=limited \
+    action=mark-packet new-packet-mark=limited-up passthrough=no
+add chain=forward connection-mark=limited dst-address-list=limited \
+    action=mark-packet new-packet-mark=limited-down passthrough=no
+/queue/tree
+add name=limited-up parent=global packet-mark=limited-up max-limit=2M
+add name=limited-down parent=global packet-mark=limited-down \
+    max-limit=10M
+</code></pre>
+<p>Check that both queues count traffic. The traffic of devices that are not in the address list does not go to these queues:</p>
+<pre><code class="language-ros">/queue/tree/print stats
+0  name=&quot;limited-up&quot; parent=global packet-mark=limited-up rate=232000
+   packet-rate=29 queued-bytes=0 queued-packets=0 bytes=222000 packets=222
+   dropped=0
+1  name=&quot;limited-down&quot; parent=global packet-mark=limited-down rate=232000
+   packet-rate=29 queued-bytes=0 queued-packets=0 bytes=222000 packets=222
+   dropped=0
+</code></pre>
+<h2 id="more-properties_1">More properties</h2>
+<ul>
+<li><code>queue</code> selects the <a href="./queue-types">queue type</a>. A new queue uses <code>default-small</code>.</li>
+<li><code>burst-limit</code>, <code>burst-threshold</code> and <code>burst-time</code> allow a higher rate for a short time. See <a href="./queue-burst">Queue Burst</a>.</li>
+<li><code>bucket-size</code> controls how much traffic a queue can send in one burst after an idle time. See <a href="./htb-hierarchical-token-bucket">HTB</a>.</li>
+</ul>
+<p>When a queue tree has an interface as its parent, <code>/queue/interface</code> shows <code>queue-tree</code> as the active queue of this interface.</p>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="./simple-queue">Simple queue</a> - limits by address, network or interface without packet marks.</li>
+<li><a href="./queue-types">Queue types</a> - the queuing algorithms and their examples.</li>
+<li><a href="../packet-flow-in-routeros">Packet flow</a> - where the queues are in the path of a packet.</li>
+<li><a href="../../cli-reference/queue/tree"><code>/queue/tree</code> CLI reference</a> - all properties.</li>
+</ul>
+<hr />
+<h1 id="htb-hierarchical-token-bucket">HTB (Hierarchical Token Bucket)</h1>
+<blockquote>
+<p>HTB (Hierarchical Token Bucket) is a queuing discipline in RouterOS for rate limiting and burst handling, using a token bucket algorithm to manage data rates with configurable capacity and limits.</p>
+</blockquote>
+<h1 id="htb-hierarchical-token-bucket_1">HTB (Hierarchical Token Bucket)</h1>
+<p>HTB (Hierarchical Token Bucket) is a classful queuing discipline for rate limiting and burst handling. RouterOS uses a modified version of HTB in <a href="./simple-queue">Simple queues</a> and <a href="./queue-tree">Queue trees</a>. This page describes HTB as RouterOS implements it: the token bucket of a queue, the two rate limits, priority, and how a queue structure shares a rate.</p>
+<h2 id="how-a-queue-passes-packets">How a queue passes packets</h2>
+<p><em>[gambar: HTB diagram with the token bucket, the packet queue and the token rate selection]</em></p>
+<h3 id="token-bucket-red-part-of-the-diagram">Token bucket (red part of the diagram)</h3>
+<p>The token bucket algorithm is based on an analogy to a bucket where tokens, represented in bytes, are added at a specific rate. The bucket itself has a specified capacity. If the bucket fills to capacity, newly arriving tokens are dropped.</p>
+<p><strong>Bucket capacity = bucket-size * max-limit</strong></p>
+<p><code>bucket-size</code> is a number from 0 to 10. The default value is <code>0.1</code>.</p>
+<p>Before a packet passes through the queue, the queue bucket is inspected to see if it contains sufficient tokens at that moment.</p>
+<p>If yes, the appropriate number of tokens is removed ("cashed in") and the packet passes through the queue.</p>
+<p>If not, the packet stays at the start of the packet queue until the appropriate amount of tokens is available.</p>
+<p>In a multi-level queue structure, tokens used in a child queue are also charged to its parent queues. In other words, child queues borrow tokens from their parent queues.</p>
+<h3 id="packet-queue-blue-part-of-the-diagram">Packet queue (blue part of the diagram)</h3>
+<p>The size of the packet queue, the sequence in which packets are added to it, and when packets are discarded are determined by:</p>
+<ul>
+<li>the queue type that the queue uses (<code>queue</code>) - see <a href="./queue-types">Queue types</a></li>
+<li>the queue size of that queue type - see <a href="./queue-size">Queue size</a></li>
+</ul>
+<h3 id="token-rate-selection-black-part-of-the-diagram">Token rate selection (black part of the diagram)</h3>
+<p>The maximal token rate at any given time is equal to the highest active value of these:</p>
+<ul>
+<li><code>limit-at</code>: guaranteed data rate of the queue.</li>
+<li><code>max-limit</code>: maximal data rate of the queue.</li>
+<li><code>burst-limit</code>: maximal data rate of the queue while the burst is active.</li>
+</ul>
+<p><code>burst-limit</code> is active only when the burst is in the allowed state, see <a href="./queue-burst">Queue Burst</a>.</p>
+<p>When <code>limit-at</code> is the highest value, extra tokens are issued to compensate for all the tokens that were not borrowed from the parent queue.</p>
+<h2 id="bucket-size-in-action">Bucket size in action</h2>
+<p>The examples in this section limit all traffic from and to one address, 192.168.88.101. The mangle rules mark its packets. <code>bridge</code> is the LAN interface and <code>ether1</code> is the WAN interface, as in the default configuration:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=mark-connection \
+    new-connection-mark=pc1_conn connection-mark=no-mark \
+    src-address=192.168.88.101
+add chain=forward action=mark-connection \
+    new-connection-mark=pc1_conn connection-mark=no-mark \
+    dst-address=192.168.88.101
+add chain=forward action=mark-packet new-packet-mark=pc1_traffic \
+    connection-mark=pc1_conn
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Mangle rules do not process <a href="../packet-flow-in-routeros#fasttrack">FastTracked</a> packets, and the default configuration FastTracks established connections. Keep the connections that the queues have to limit out of FastTrack, see <a href="./queue-tree#packet-marks-and-fasttrack">Packet marks and FastTrack</a>. This applies to all examples on this page.</p>
+</div>
+<h3 id="default-queue-bucket">Default queue bucket</h3>
+<pre><code class="language-ros">/queue/tree
+add name=download parent=bridge packet-mark=pc1_traffic max-limit=10M
+add name=upload parent=ether1 packet-mark=pc1_traffic max-limit=10M
+</code></pre>
+<p>In this case <code>bucket-size=0.1</code>, so the bucket capacity is 0.1 x 10M = 1M.</p>
+<p>If the bucket is full (that is, the client was not using the full capacity of the queue for some time), the next 1 Mb of traffic passes through the queue at an unrestricted speed. After that, the queue passes 10 Mbit/s.</p>
+<h3 id="large-queue-bucket">Large queue bucket</h3>
+<p>Set the bucket size of both queues to its maximal value:</p>
+<pre><code class="language-ros">/queue/tree
+set download,upload bucket-size=10
+</code></pre>
+<p>In this case <code>bucket-size=10</code>, so the bucket capacity is 10 x 10M = 100M.</p>
+<p>If the bucket is full, the next 100 Mb of traffic passes through the queue at an unrestricted speed, in addition to the 10 Mbit/s of new tokens. So you can have:</p>
+<ul>
+<li>20 Mbit/s transfer speed for 10 s.</li>
+<li>30 Mbit/s transfer speed for 5 s.</li>
+<li>60 Mbit/s transfer burst for 2 s.</li>
+<li>1 Gbit/s transfer burst for approximately 100 ms.</li>
+</ul>
+<p>When the bucket is empty, the rate of the queue returns to 10 Mbit/s.</p>
+<p>The bucket permits a type of burstiness of the traffic that passes through the queue. The behavior is similar to the <a href="./queue-burst">burst</a> feature, but it has no upper limit of the burst rate. A queue structure adds this limit.</p>
+<h3 id="large-child-queue-bucket-small-parent-queue-bucket">Large child queue bucket, small parent queue bucket</h3>
+<pre><code class="language-ros">/queue/tree
+remove download,upload
+add name=download_parent parent=bridge max-limit=20M
+add name=download parent=download_parent packet-mark=pc1_traffic \
+    max-limit=10M bucket-size=10
+add name=upload_parent parent=ether1 max-limit=20M
+add name=upload parent=upload_parent packet-mark=pc1_traffic \
+    max-limit=10M bucket-size=10
+</code></pre>
+<p>In this case:</p>
+<ul>
+<li>parent queue <code>bucket-size=0.1</code>, bucket capacity is 0.1 x 20M = 2M</li>
+<li>child queue <code>bucket-size=10</code>, bucket capacity is 10 x 10M = 100M</li>
+</ul>
+<p>The parent runs out of tokens much faster than the child queue. The child queue borrows tokens from the parent queue, so the whole system is restricted to the token rate of the parent queue, in this case to <code>max-limit=20M</code>. This rate is sustained until the child queue runs out of tokens. Then the child queue is restricted to its own token rate of 10 Mbit/s.</p>
+<p>In this way, the queue allows a burst at 20 Mbit/s for up to 10 seconds.</p>
+<h2 id="queue-structure">Queue structure</h2>
+<p>There are three basic steps to create an HTB structure:</p>
+<ul>
+<li><strong>Match and mark traffic</strong> – classify traffic for further use. It consists of one or more matching parameters to select packets for the specific class.</li>
+<li><strong>Create rules (policy) to mark traffic</strong> – put specific traffic classes into specific queues and define the actions that are taken for each class.</li>
+<li><strong>Attach a policy for a specific interface(-s)</strong> – append the policy to all traffic (<code>parent=global</code>), to a specific interface, or to a specific parent queue.</li>
+</ul>
+<p>HTB allows the creation of a hierarchical queue structure and determines relations between queues, like "parent-child" or "child-child".</p>
+<p>As soon as a queue has at least one child, it becomes an <strong>inner</strong> queue. All queues without children are <strong>leaf</strong> queues. Leaf queues make actual traffic consumption, inner queues are responsible only for traffic distribution. All leaf queues are treated on an equal basis.</p>
+<p>In RouterOS, the <code>parent</code> property assigns a queue as a child to another queue.</p>
+<h3 id="dual-limitation">Dual limitation</h3>
+<p>Each queue in HTB has two rate limits:</p>
+<ul>
+<li><strong>CIR</strong> (Committed Information Rate) – <code>limit-at</code> in RouterOS. The worst case scenario: the flow gets this amount of traffic no matter what (assuming the interface can actually send so much data).</li>
+<li><strong>MIR</strong> (Maximal Information Rate) – <code>max-limit</code> in RouterOS. The best case scenario: a rate that the flow can get up to if the parent of its queue has spare bandwidth.</li>
+</ul>
+<p>In other words, at first the <code>limit-at</code> (CIR) of all queues is satisfied. Only then child queues try to borrow the necessary data rate from their parents in order to reach their <code>max-limit</code> (MIR).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>CIR is assigned to the corresponding queue no matter what, even if the <code>max-limit</code> of the parent is exceeded. Example 4 on this page shows it.</p>
+</div>
+<p>That is why, to ensure the designed usage of the dual limitation feature, keep to these rules:</p>
+<ul>
+<li>The sum of the committed rates of all children is less than or equal to the amount of traffic that is available to the parent.</li>
+</ul>
+<p>CIR(parent) ≥ CIR(child1) + ... + CIR(childN)</p>
+<p>If the parent is the main parent, CIR(parent) = MIR(parent).</p>
+<ul>
+<li>The maximal rate of any child is less than or equal to the maximal rate of the parent.</li>
+</ul>
+<p>MIR(parent) ≥ MIR(child1) &amp; MIR(parent) ≥ MIR(child2) &amp; ... &amp; MIR(parent) ≥ MIR(childN)</p>
+<h3 id="priority">Priority</h3>
+<p>The <code>limit-at</code> (CIR) of all queues is given out no matter what.</p>
+<p>Priority is responsible for the distribution of the remaining traffic of the parent queue to child queues, so that they are able to reach <code>max-limit</code>.</p>
+<p>The queue with higher priority reaches its <code>max-limit</code> before the queue with lower priority. 8 is the lowest priority, and 1 is the highest.</p>
+<p>Priority only works:</p>
+<ul>
+<li>For leaf queues. Priority in an inner queue has no meaning.</li>
+<li>If <code>max-limit</code> is specified (not 0).</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<p>The examples in this section use one HTB structure and change the options of its queues. They show how HTB distributes the rate in each case.</p>
+<h3 id="structure">Structure</h3>
+<p>The HTB structure consists of five queues:</p>
+<ul>
+<li><strong>Queue01</strong> inner queue with two children - <strong>Queue02</strong> and <strong>Queue03</strong></li>
+<li><strong>Queue02</strong> inner queue with two children - <strong>Queue04</strong> and <strong>Queue05</strong></li>
+<li><strong>Queue03</strong> leaf queue</li>
+<li><strong>Queue04</strong> leaf queue</li>
+<li><strong>Queue05</strong> leaf queue</li>
+</ul>
+<p><strong>Queue03</strong>, <strong>Queue04</strong> and <strong>Queue05</strong> are clients that require 10 Mbit/s all the time. The link behind the outgoing interface is able to handle 10 Mbit/s of traffic.</p>
+<p>Remove the mangle rules and the queues of the bucket size examples before you add this structure. The mangle rules mark the packets of the three clients, and the queues are attached to the outgoing interface <code>ether1</code>:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=mark-packet new-packet-mark=client3 \
+    src-address=192.168.88.101 passthrough=no
+add chain=forward action=mark-packet new-packet-mark=client4 \
+    src-address=192.168.88.102 passthrough=no
+add chain=forward action=mark-packet new-packet-mark=client5 \
+    src-address=192.168.88.103 passthrough=no
+/queue/tree
+add name=Queue01 parent=ether1 max-limit=10M
+add name=Queue02 parent=Queue01 limit-at=4M max-limit=10M
+add name=Queue03 parent=Queue01 packet-mark=client3 \
+    limit-at=6M max-limit=10M priority=1
+add name=Queue04 parent=Queue02 packet-mark=client4 \
+    limit-at=2M max-limit=10M priority=3
+add name=Queue05 parent=Queue02 packet-mark=client5 \
+    limit-at=2M max-limit=10M priority=5
+</code></pre>
+<p>These commands create the queues of Example 1. Each next example changes the queues of the previous one.</p>
+<h3 id="example-1-usual-case">Example 1: Usual case</h3>
+<p><em>[gambar: Queue structure and rates of example 1]</em></p>
+<ul>
+<li><strong>Queue01</strong> limit-at=0Mbps max-limit=10Mbps</li>
+<li><strong>Queue02</strong> limit-at=4Mbps max-limit=10Mbps</li>
+<li><strong>Queue03</strong> limit-at=6Mbps max-limit=10Mbps priority=1</li>
+<li><strong>Queue04</strong> limit-at=2Mbps max-limit=10Mbps priority=3</li>
+<li><strong>Queue05</strong> limit-at=2Mbps max-limit=10Mbps priority=5</li>
+</ul>
+<p>Result:</p>
+<ul>
+<li><strong>Queue03</strong> receives 6 Mbit/s.</li>
+<li><strong>Queue04</strong> receives 2 Mbit/s.</li>
+<li><strong>Queue05</strong> receives 2 Mbit/s.</li>
+</ul>
+<p>By satisfying all <code>limit-at</code> values, the main queue has no throughput left to distribute.</p>
+<p>The <code>rate</code> of each queue, in bits per second, shows the distribution while the three clients send:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/tree/print stats proplist=name,rate
+0  name=&quot;Queue01&quot; rate=10004120
+
+1  name=&quot;Queue02&quot; rate=4001472
+
+2  name=&quot;Queue03&quot; rate=6002648
+
+3  name=&quot;Queue04&quot; rate=2001952
+
+4  name=&quot;Queue05&quot; rate=1999520
+</code></pre>
+<h3 id="example-2-usual-case-with-max-limit">Example 2: Usual case with max-limit</h3>
+<p><em>[gambar: Queue structure and rates of example 2]</em></p>
+<ul>
+<li><strong>Queue01</strong> limit-at=0Mbps max-limit=10Mbps</li>
+<li><strong>Queue02</strong> limit-at=4Mbps max-limit=10Mbps</li>
+<li><strong>Queue03</strong> limit-at=2Mbps max-limit=10Mbps priority=3</li>
+<li><strong>Queue04</strong> limit-at=2Mbps max-limit=10Mbps priority=1</li>
+<li><strong>Queue05</strong> limit-at=2Mbps max-limit=10Mbps priority=5</li>
+</ul>
+<pre><code class="language-ros">/queue/tree
+set Queue03 limit-at=2M priority=3
+set Queue04 priority=1
+</code></pre>
+<p>Result:</p>
+<ul>
+<li><strong>Queue03</strong> receives 2 Mbit/s.</li>
+<li><strong>Queue04</strong> receives 6 Mbit/s.</li>
+<li><strong>Queue05</strong> receives 2 Mbit/s.</li>
+</ul>
+<p>After satisfying all <code>limit-at</code> values, HTB gives the remaining throughput to the queue with the highest priority.</p>
+<h3 id="example-3-inner-queue-limit-at">Example 3: Inner queue limit-at</h3>
+<p><em>[gambar: Queue structure and rates of example 3]</em></p>
+<ul>
+<li><strong>Queue01</strong> limit-at=0Mbps max-limit=10Mbps</li>
+<li><strong>Queue02</strong> limit-at=8Mbps max-limit=10Mbps</li>
+<li><strong>Queue03</strong> limit-at=2Mbps max-limit=10Mbps priority=1</li>
+<li><strong>Queue04</strong> limit-at=2Mbps max-limit=10Mbps priority=3</li>
+<li><strong>Queue05</strong> limit-at=2Mbps max-limit=10Mbps priority=5</li>
+</ul>
+<pre><code class="language-ros">/queue/tree
+set Queue02 limit-at=8M
+set Queue03 priority=1
+set Queue04 priority=3
+</code></pre>
+<p>Result:</p>
+<ul>
+<li><strong>Queue03</strong> receives 2 Mbit/s.</li>
+<li><strong>Queue04</strong> receives 6 Mbit/s.</li>
+<li><strong>Queue05</strong> receives 2 Mbit/s.</li>
+</ul>
+<p>After satisfying all <code>limit-at</code> values, HTB gives throughput to the queue with the highest priority. But in this case, the inner queue <strong>Queue02</strong> has <code>limit-at</code> specified. By doing so, it reserves 8 Mbit/s of throughput for the queues <strong>Queue04</strong> and <strong>Queue05</strong>. Of these two, <strong>Queue04</strong> has the highest priority, which is why it gets the additional throughput.</p>
+<h3 id="example-4-leaf-queue-limit-at">Example 4: Leaf queue limit-at</h3>
+<p><em>[gambar: Queue structure and rates of example 4]</em></p>
+<ul>
+<li><strong>Queue01</strong> limit-at=0Mbps max-limit=10Mbps</li>
+<li><strong>Queue02</strong> limit-at=4Mbps max-limit=10Mbps</li>
+<li><strong>Queue03</strong> limit-at=6Mbps max-limit=10Mbps priority=1</li>
+<li><strong>Queue04</strong> limit-at=2Mbps max-limit=10Mbps priority=3</li>
+<li><strong>Queue05</strong> limit-at=12Mbps max-limit=15Mbps priority=5</li>
+</ul>
+<pre><code class="language-ros">/queue/tree
+set Queue02 limit-at=4M
+set Queue03 limit-at=6M
+set Queue05 limit-at=12M max-limit=15M
+</code></pre>
+<p>Result, as the clients get it through the 10 Mbit/s link:</p>
+<ul>
+<li><strong>Queue03</strong> receives ~3 Mbit/s.</li>
+<li><strong>Queue04</strong> receives ~1 Mbit/s.</li>
+<li><strong>Queue05</strong> receives ~6 Mbit/s.</li>
+</ul>
+<p>To satisfy all <code>limit-at</code> values, HTB is forced to allocate 20 Mbit/s: 6 Mbit/s to <strong>Queue03</strong>, 2 Mbit/s to <strong>Queue04</strong>, and 12 Mbit/s to <strong>Queue05</strong>. The queue statistics show these rates, and a rate of 20 Mbit/s for <strong>Queue01</strong>, although its <code>max-limit</code> is 10 Mbit/s. The link behind the output interface is able to handle only 10 Mbit/s, so half of this traffic is lost after the queues. As the output interface queue is usually FIFO, the throughput allocation keeps the ratio 6:2:12, or 3:1:6.</p>
+<hr />
+<h1 id="pcq-example">PCQ example</h1>
+<blockquote>
+<p>Per Connection Queue (PCQ) is a RouterOS queuing method for equalizing bandwidth among users, with examples showing how to set download/upload limits using Queue Tree and Simple Queues.</p>
+</blockquote>
+<h1 id="pcq-example_1">PCQ example</h1>
+<p>Per Connection Queue (PCQ) gives every device on a network its own speed limit with one queue, instead of one queue for each device. PCQ sorts the traffic into sub-streams with its classifier, for example one sub-stream for each destination address, and limits each sub-stream to <code>pcq-rate</code>.</p>
+<h2 id="limit-every-device-on-a-lan">Limit every device on a LAN</h2>
+<p>This example limits every device on the LAN 192.168.88.0/24 to 10 Mbit/s download and 5 Mbit/s upload.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The queues of this example do not apply to FastTracked traffic, and the default configuration FastTracks established connections. Disable the FastTrack rule first, see <a href="./simple-queue#before-you-start-fasttrack">Before you start: FastTrack</a>.</p>
+</div>
+<h3 id="step-1-add-pcq-in-queue-types">Step 1: add PCQ in Queue Types</h3>
+<p>Add one queue type for download and one for upload. <code>pcq-classifier=dst-address</code> gives every device its own sub-stream for download traffic, and <code>src-address</code> for upload traffic. <code>pcq-rate</code> is the limit for each sub-stream, so for each device, in bits per second; the <code>k</code> and <code>M</code> suffixes work:</p>
+<pre><code class="language-ros">/queue/type
+add name=PCQ_download kind=pcq pcq-rate=10M \
+    pcq-classifier=dst-address
+add name=PCQ_upload kind=pcq pcq-rate=5M pcq-classifier=src-address
+</code></pre>
+<p><code>pcq-limit</code> is not a speed: it is the queue size of each sub-stream, in KiB (<code>50KiB</code> by default).</p>
+<h3 id="step-2-deploy-the-pcq">Step 2: deploy the PCQ</h3>
+<h4 id="simple-queues-option">Simple Queues option</h4>
+<p>One simple queue for the whole LAN applies both types. <code>queue</code> takes the upload type first, then the download type:</p>
+<pre><code class="language-ros">/queue/simple
+add name=lan-pcq target=192.168.88.0/24 \
+    queue=PCQ_upload/PCQ_download
+</code></pre>
+<p><code>/queue/simple/print stats</code> shows in <code>pcq-queues</code> how many sub-streams, here devices, the queue has. In this output three devices upload at the same time. Each of them gets 5 Mbit/s, and the <code>rate</code> of the queue is the sum:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print stats
+0  name=&quot;lan-pcq&quot; target=192.168.88.0/24 rate=14.9Mbps/2.4kbps total-rate=0bps
+   packet-rate=1254/5 total-packet-rate=0 queued-bytes=150000/0
+   total-queued-bytes=0 queued-packets=100/0 total-queued-packets=0
+   bytes=38369640/26830 total-bytes=0 packets=25695/166 total-packets=0
+   dropped=24029/0 total-dropped=0 pcq-queues=3/3
+</code></pre>
+<h4 id="queue-tree-option">Queue Tree option</h4>
+<p>Use the queue tree instead of the simple queue, not together with it. If you added the simple queue, remove it first with <code>/queue/simple/remove lan-pcq</code>. Mark the packets by the interface list they arrive from. In the default configuration, the <code>LAN</code> list has the interfaces where the clients are connected, and the <code>WAN</code> list has the interface to the Internet:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=prerouting action=mark-packet \
+    new-packet-mark=client_upload in-interface-list=LAN
+add chain=prerouting action=mark-packet \
+    new-packet-mark=client_download in-interface-list=WAN
+</code></pre>
+<p>Then, add two queues, one for download and one for upload:</p>
+<pre><code class="language-ros">/queue/tree
+add name=pcq-download parent=global queue=PCQ_download \
+    packet-mark=client_download
+add name=pcq-upload parent=global queue=PCQ_upload \
+    packet-mark=client_upload
+</code></pre>
+<p><code>/queue/tree/print stats</code> shows <code>pcq-queues</code> for each queue in the same way.</p>
+<hr />
+<h1 id="queue-burst">Queue Burst</h1>
+<blockquote>
+<p>Queue Burst feature allows temporary bandwidth bursts beyond configured limits when average traffic stays below a threshold, using burst-limit and burst-time parameters to control the burst duration and size.</p>
+</blockquote>
+<h1 id="queue-burst_1">Queue Burst</h1>
+<p>Burst is a feature that allows satisfying queue requirements for additional bandwidth even if the required rate is bigger than <strong>MIR</strong> (<strong>max-limit</strong>) for a limited period of time.</p>
+<p>Burst can occur only if the average rate of the queue for the last <strong>burst-time</strong> seconds is smaller than <strong>burst-threshold</strong>. Burst will stop if the average rate of the queue for the last <strong>burst-time</strong> seconds is bigger than or equal to <strong>burst-threshold</strong>.</p>
+<p>The burst mechanism is simple - if a burst is allowed, the <strong>max-limit</strong> value is replaced by the <strong>burst-limit</strong> value. When the burst is disallowed, the <strong>max-limit</strong> value remains unchanged.</p>
+<ul>
+<li><code>burst-limit</code>: maximal upload/download data rate which can be reached while the burst is allowed.</li>
+<li><code>burst-time</code>: period of time, in seconds, over which the average data rate is calculated. This is not the time of the actual burst.</li>
+<li><code>burst-threshold</code>: the value of the burst on/off switch.</li>
+</ul>
+<p><a href="./simple-queue">Simple queues</a> and <a href="./queue-tree">queue trees</a> have these properties. The <a href="./htb-hierarchical-token-bucket#bucket-size-in-action">bucket size</a> of a queue also lets traffic pass above <code>max-limit</code> for a short time. The examples on this page also use two values that are not properties of a queue:</p>
+<ul>
+<li>average rate - every 1/16 part of the <strong>burst-time</strong>, the router calculates the average data rate of each class over the last <strong>burst-time</strong> seconds. The queue statistics do not show this value.</li>
+<li>actual rate - the actual traffic transfer rate of the queue. The queue statistics show it as <code>rate</code>.</li>
+</ul>
+<h2 id="example">Example</h2>
+<p>Values: <strong>limit-at=1M</strong>, <strong>max-limit=2M</strong>, <strong>burst-threshold=1500k</strong>, <strong>burst-limit=4M</strong></p>
+<p>A simple queue with these values and <code>burst-time=16s</code> for one client:</p>
+<pre><code class="language-ros">/queue/simple
+add name=burst target=192.168.88.101/32 limit-at=1M/1M \
+    max-limit=2M/2M burst-limit=4M/4M \
+    burst-threshold=1500k/1500k burst-time=16s/16s
+</code></pre>
+<p>Simple queues do not limit FastTracked connections, and a queue matches only the traffic that no earlier queue has matched. See <a href="./simple-queue">Simple queue</a> for both.</p>
+<p>The client will try to download two 4MB (32Mb) blocks of data, the first download will start at zero seconds, and the second download will start at the 17th second. There was no traffic during the last minute.</p>
+<h3 id="burst-time16s">Burst-time=16s</h3>
+<p><em>[gambar: Actual rate and average rate of the first download, seconds 0 to 15, with burst-time=16s]**[gambar: Actual rate and average rate of the second download, seconds 16 to 31, with burst-time=16s]</em></p>
+<p>As we can see as soon as the client requested bandwidth it was able to get 4Mbps burst for 6 seconds. This is the longest possible burst with given values <em>(longest-burst-time = burst-threshold * burst-time / burst-limit)</em>. As soon as the burst runs out, the rest of the data will be downloaded with 2Mbps. This way, a block of data was downloaded in 10 seconds - without burst, it would take 16 seconds. Burst has 7 seconds to recharge before the next download will start.</p>
+<p>Note that burst is still disallowed when the download started and it kicks in only afterward - in the middle of a download. So with this example, we proved that a burst may happen in the middle of a download. The burst was ~4 seconds long and the second block was downloaded 4 seconds faster than without burst.</p>
+<p>The average rate is calculated every 1/16 of burst time so in this case 1s.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Time</th>
+<th style="text-align: left;">average rate</th>
+<th style="text-align: left;">burst</th>
+<th style="text-align: left;">actual rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0)/16=0Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+4)/16=250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+4+4)/16=500Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+4+4+4)/16=750Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+4+4+4+4)/16=1000Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+4+4+4+4+4)/16=1250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+4+4+4+4+4+4)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is <strong>not</strong> allowed</td>
+<td style="text-align: left;"><strong>2Mbps</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+4+4+4+4+4+4+2)/16=1625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+4+4+4+4+4+4+2+2)/16=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+4+4+4+4+4+4+2+2+2)/16=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">(0+0+0+0+0+0+4+4+4+4+4+4+2+2+2+2)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;"><strong>0Mbps</strong></td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">(0+0+0+0+0+4+4+4+4+4+4+2+2+2+2+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">(0+0+0+0+4+4+4+4+4+4+2+2+2+2+0+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">(0+0+0+4+4+4+4+4+4+2+2+2+2+0+0+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">(0+0+4+4+4+4+4+4+2+2+2+2+0+0+0+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">(0+4+4+4+4+4+4+2+2+2+2+0+0+0+0+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">16</td>
+<td style="text-align: left;">(4+4+4+4+4+4+2+2+2+2+0+0+0+0+0+0)/16=2Mbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">17</td>
+<td style="text-align: left;">(4+4+4+4+4+2+2+2+2+0+0+0+0+0+0+0)/16=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">(4+4+4+4+2+2+2+2+0+0+0+0+0+0+0+2)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">19</td>
+<td style="text-align: left;">(4+4+4+2+2+2+2+0+0+0+0+0+0+0+2+2)/16=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst <strong>is</strong> allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">20</td>
+<td style="text-align: left;">(4+4+2+2+2+2+0+0+0+0+0+0+0+2+2+4)/16=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">21</td>
+<td style="text-align: left;">(4+2+2+2+2+0+0+0+0+0+0+0+2+2+4+4)/16=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">(2+2+2+2+0+0+0+0+0+0+0+2+2+4+4+4)/16=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">23</td>
+<td style="text-align: left;">(2+2+2+0+0+0+0+0+0+0+2+2+4+4+4+4)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is <strong>not</strong> allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">24</td>
+<td style="text-align: left;">(2+2+0+0+0+0+0+0+0+2+2+4+4+4+4+2)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">(2+0+0+0+0+0+0+0+2+2+4+4+4+4+2+2)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">26</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+2+2+4+4+4+4+2+2+2)/16=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">(0+0+0+0+0+0+2+2+4+4+4+4+2+2+2+2)/16=1625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">(0+0+0+0+0+2+2+4+4+4+4+2+2+2+2+2)/16=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">29</td>
+<td style="text-align: left;">(0+0+0+0+2+2+4+4+4+4+2+2+2+2+2+2)/16=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">(0+0+0+2+2+4+4+4+4+2+2+2+2+2+2+0)/16=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+<tr>
+<td style="text-align: right;">31</td>
+<td style="text-align: left;">(0+0+2+2+4+4+4+4+2+2+2+2+2+2+0+0)/16=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="burst-time8s">Burst-time=8s</h3>
+<p><em>[gambar: Actual rate and average rate of the first download, seconds 0 to 15, with burst-time=8s]**[gambar: Actual rate and average rate of the second download, seconds 16 to 31, with burst-time=8s]</em></p>
+<p>If we decrease burst-time to 8 seconds - we are able to see that in this case, bursts are only at the beginning of downloads. The average rate is calculated every 1/16th of burst time, so in this case every 0.5 seconds.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Time</th>
+<th style="text-align: left;">average rate</th>
+<th style="text-align: left;">burst</th>
+<th style="text-align: left;">actual rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0)/8=0Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+2)/8=250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+0+2+2)/8=500Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+0+2+2+2)/8=750Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+0+2+2+2+2)/8=1000Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+0+2+2+2+2+2)/8=1250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+0+2+2+2+2+2+2)/8=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is <strong>not</strong> allowed</td>
+<td style="text-align: left;"><strong>2Mbps</strong> (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+0+2+2+2+2+2+2+1)/8=1625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+2+2+2+2+2+2+1+1)/8=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+2+2+2+2+2+2+1+1+1)/8=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+2+2+2+2+2+2+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">5.5</td>
+<td style="text-align: left;">(0+0+0+0+0+2+2+2+2+2+2+1+1+1+1+1)/8=2125Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">(0+0+0+0+2+2+2+2+2+2+1+1+1+1+1+1)/8=2250Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">6.5</td>
+<td style="text-align: left;">(0+0+0+2+2+2+2+2+2+1+1+1+1+1+1+1)/8=2375Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">(0+0+2+2+2+2+2+2+1+1+1+1+1+1+1+1)/8=2500Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">7.5</td>
+<td style="text-align: left;">(0+2+2+2+2+2+2+1+1+1+1+1+1+1+1+1)/8=2625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">(2+2+2+2+2+2+1+1+1+1+1+1+1+1+1+1)/8=2750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">8.5</td>
+<td style="text-align: left;">(2+2+2+2+2+1+1+1+1+1+1+1+1+1+1+1)/8=2625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">(2+2+2+2+1+1+1+1+1+1+1+1+1+1+1+1)/8=2500Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">9.5</td>
+<td style="text-align: left;">(2+2+2+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2375Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">(2+2+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2250Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">10.5</td>
+<td style="text-align: left;">(2+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2125Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">11.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">12.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;"><strong>0Mbps</strong> (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">13.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+0)/8=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+0+0)/8=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">14.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+0+0+0)/8=1625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+0+0+0+0)/8=1500Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">15.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+0+0+0+0+0)/8=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst <strong>is</strong> allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">16</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+0+0+0+0+0+0)/8=1250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">16.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+0+0+0+0+0+0+0)/8=1125Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">17</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+0+0+0+0+0+0+0+0)/8=1000Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;"><strong>2Mbps</strong> (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">17.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+0+0+0+0+0+0+0+0+1)/8=1000Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;"><strong>4Mbps</strong> (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">(1+1+1+1+1+1+0+0+0+0+0+0+0+0+1+2)/8=1125Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">18.5</td>
+<td style="text-align: left;">(1+1+1+1+1+0+0+0+0+0+0+0+0+1+2+2)/8=1250Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">19</td>
+<td style="text-align: left;">(1+1+1+1+0+0+0+0+0+0+0+0+1+2+2+2)/8=1375Kbps</td>
+<td style="text-align: left;">average rate &lt; burst-threshold → Burst is allowed</td>
+<td style="text-align: left;">4Mbps (2Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">19.5</td>
+<td style="text-align: left;">(1+1+1+0+0+0+0+0+0+0+0+1+2+2+2+2)/8=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is <strong>not</strong> allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">20</td>
+<td style="text-align: left;">(1+1+0+0+0+0+0+0+0+0+1+2+2+2+2+1)/8=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">20.5</td>
+<td style="text-align: left;">(1+0+0+0+0+0+0+0+0+1+2+2+2+2+1+1)/8=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">21</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+0+1+2+2+2+2+1+1+1)/8=1500Kbps</td>
+<td style="text-align: left;">average rate = burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">21.5</td>
+<td style="text-align: left;">(0+0+0+0+0+0+0+1+2+2+2+2+1+1+1+1)/8=1625Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">(0+0+0+0+0+0+1+2+2+2+2+1+1+1+1+1)/8=1750Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">22.5</td>
+<td style="text-align: left;">(0+0+0+0+0+1+2+2+2+2+1+1+1+1+1+1)/8=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">23</td>
+<td style="text-align: left;">(0+0+0+0+1+2+2+2+2+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">23.5</td>
+<td style="text-align: left;">(0+0+0+1+2+2+2+2+1+1+1+1+1+1+1+1)/8=2125Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">24</td>
+<td style="text-align: left;">(0+0+1+2+2+2+2+1+1+1+1+1+1+1+1+1)/8=2250Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">24.5</td>
+<td style="text-align: left;">(0+1+2+2+2+2+1+1+1+1+1+1+1+1+1+1)/8=2375Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">(1+2+2+2+2+1+1+1+1+1+1+1+1+1+1+1)/8=2500Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">25.5</td>
+<td style="text-align: left;">(2+2+2+2+1+1+1+1+1+1+1+1+1+1+1+1)/8=2500Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">26</td>
+<td style="text-align: left;">(2+2+2+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2375Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">26.5</td>
+<td style="text-align: left;">(2+2+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2250Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">(2+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2125Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">27.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">28.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">29</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">29.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">2Mbps (1Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">30.5</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)/8=2000Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+<tr>
+<td style="text-align: right;">31</td>
+<td style="text-align: left;">(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+0)/8=1875Kbps</td>
+<td style="text-align: left;">average rate &gt; burst-threshold → Burst is not allowed</td>
+<td style="text-align: left;">0Mbps (0Mb per 0.5s)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="queue-size">Queue size</h1>
+<blockquote>
+<p>This page explains how to configure queue size limits in MikroTik RouterOS, detailing the impact of setting maximum packet counts on traffic shaping and scheduling. It includes examples comparing 100% shapers,...</p>
+</blockquote>
+<h1 id="queue-size_1">Queue size</h1>
+<p>The maximum permissible queue size could be specified as a maximum memory limit, but a lot of algorithms simplify it to a maximum number of packets, so the actual memory used varies depending on the size of the packets.</p>
+<p>The queue size is a property of the <a href="./queue-types">queue type</a>. The <code>pfifo</code>, <code>mq-pfifo</code> and <code>red</code> kinds count packets (<code>pfifo-limit</code>, <code>mq-pfifo-limit</code>, <code>red-limit</code>). The <code>bfifo</code> and <code>pcq</code> kinds count bytes (<code>bfifo-limit</code>, <code>pcq-limit</code>). The smallest value is 1 for <code>pfifo-limit</code> and <code>pcq-limit</code>, and 1000 for <code>bfifo-limit</code>.</p>
+<p>The rest of this page shows the effect of the queue size with a queue that counts packets.</p>
+<p>CAKE is different: it controls its memory use with <a href="./queue-types/cake#memory-limit"><code>cake-memlimit</code></a> on the CAKE queue type, not with the packet-count queue size settings described on this page.</p>
+<h2 id="example_1">Example</h2>
+<p>This example shows the impact of the queue size on the traffic that a queue processes.</p>
+<p>For a simplified visualization, the data is processed in steps. The number of packets received in every step is known, and dropped packets are not retransmitted.</p>
+<p><em>[gambar: Timeline of 25 steps with 1610 incoming packets]</em></p>
+<p>There are <strong>25 steps</strong> and there are a total of <strong>1610 incoming packets</strong> over this time frame.</p>
+<h3 id="100-shaper">100% Shaper</h3>
+<p>A queue is a 100% shaper when every packet that is over the allowed limits will be dropped immediately. This way all packets that are not dropped will be sent out without any delay.</p>
+<p>Apply a <strong>max-limit=100 packets per step</strong> limitation to the example:</p>
+<p><em>[gambar: 100% shaper drops packets above 100 packets per step]</em></p>
+<p>With this type of limitation, only 1250 out of 1610 packets were able to pass the queue (<strong>22,4% packet drop</strong>), but all packets arrived without delay.</p>
+<h3 id="100-scheduler">100% Scheduler</h3>
+<p>A queue is 100% Scheduler when there are no packet drops at all, all packets are queued and will be sent out at the first possible moment.</p>
+<p>In each step, the queue must send out queued packets from previous steps first and only then send out packets from this step; this way it is possible to keep the right sequence of packets.</p>
+<p>The limit is the same (<strong>100 packets per step</strong>).</p>
+<p><em>[gambar: 100% scheduler delays packets above 100 packets per step]</em></p>
+<p>There was no packet loss, but 630 <strong>(39,1%) packets had 1-step delay</strong>, and the other 170 <strong>(10,6%) packets had 2-step delay</strong>. (delay = latency)</p>
+<h3 id="default-small-queue-type">Default-small queue type</h3>
+<p>It is also possible to choose the middle way when the queue uses both of these queuing aspects (shaping and scheduling). The <code>default-small</code> queue type, which simple queues and queue trees use by default, is <code>pfifo</code> with a queue size of 10 packets.</p>
+<p><em>[gambar: Default-small queue type drops some packets and delays others]</em></p>
+<p>There were 320 <strong>(19,9%) packets dropped</strong> and 80 <strong>(5,0%) packets had 1 step delay</strong>.</p>
+<h3 id="default-queue-type">Default queue type</h3>
+<p>The <code>default</code> queue type is <code>pfifo</code> with a queue size of 50 packets.</p>
+<p><em>[gambar: Default queue type drops fewer packets and delays more of them]</em></p>
+<p>There were 190 <strong>(11.8%) packets dropped</strong> and 400 <strong>(24.8%) packets had a 1 step delay</strong>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

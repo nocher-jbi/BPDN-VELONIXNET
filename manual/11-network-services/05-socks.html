@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOCKS · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Network Services</p>
+      <h1 id="socks">SOCKS</h1>
+<h1 id="socks_1">SOCKS</h1>
+<blockquote>
+<p>The SOCKS proxy server in RouterOS: enable the server, restrict who can use it with the access list, authenticate clients with users, and monitor active proxied connections.</p>
+</blockquote>
+<h1 id="socks_2">SOCKS</h1>
+<p>SOCKS is a proxy protocol for TCP connections. A SOCKS-aware application connects to the proxy, names the destination it wants, and the proxy opens the connection and relays the data. Because the proxy makes the connection, applications that can reach the proxy can use destinations that firewall rules would otherwise block, and you control in one place which clients and destinations are allowed. SOCKS works with any TCP-based protocol, for example HTTP, FTP or SSH.</p>
+<p>RouterOS includes a SOCKS server (in <code>/ip/socks</code>, this page) and the <a href="socksify">Socksify</a> service for the opposite direction: forwarding traffic chosen by firewall rules through an upstream SOCKS server.</p>
+<h2 id="enable-the-server">Enable the server</h2>
+<p>The server is disabled by default. Set the protocol <code>version</code> and enable it:</p>
+<pre><code class="language-ros">/ip/socks/set version=5 enabled=yes
+</code></pre>
+<p>The default <code>version=4</code> accepts only SOCKS4 clients; SOCKS5 clients are refused. Choose <code>5</code> for SOCKS5 clients; password authentication also requires version 5.</p>
+<p>With these settings the server listens on TCP port 1080 on all addresses of the router. Until you add access list rules, anyone who can reach this port can use the proxy.</p>
+<h2 id="access-list">Access list</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/socks/access</code></p>
+<p>The access list controls which requests the server accepts. Rules are checked in order and the first matching rule decides. A request that matches no rule is <strong>allowed</strong>; an empty list allows everything. For a restrictive list, finish with a <code>deny</code> rule:</p>
+<pre><code class="language-ros">/ip/socks/access/add src-address=192.168.0.0/24 action=allow
+/ip/socks/access/add action=deny
+</code></pre>
+<p>Besides addresses and ports, <code>dst-address</code> accepts a domain name, which matches only clients that request the destination by name.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Secure the proxy with the access list or firewall rules. An open SOCKS proxy lets anyone route connections through the router, for example to abuse it for spam.</p>
+</div>
+<h2 id="users-and-authentication">Users and authentication</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/socks/users</code></p>
+<p>With <code>/ip/socks/set auth-method=password</code>, clients must authenticate with a username and password of a user in the list; the connection is rejected when no users exist. Authentication uses the SOCKS5 username/password method:</p>
+<pre><code class="language-ros">/ip/socks/set version=5 auth-method=password
+/ip/socks/users/add name=alice password=s3cret
+</code></pre>
+<p>New users are created enabled. Passwords are not shown in <code>print</code> output:</p>
+<pre><code class="language-ros">[admin@MikroTik] /ip/socks/users&gt; print
+Columns: NAME, ONLY-ONE
+# NAME      ONLY-ONE
+0 alice     no
+</code></pre>
+<h2 id="monitor-connections">Monitor connections</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/socks/connections</code></p>
+<p>This read-only list shows the connections currently relayed by the server, with the client address, the requested destination and the byte counters. The <code>user</code> column shows the authenticated user, if any:</p>
+<pre><code class="language-ros">[admin@MikroTik] /ip/socks/connections&gt; print detail
+0  src-address=192.168.0.2:59264 dst-address=198.51.100.8:21 type=out
+   tx=103 rx=737 user=alice
+</code></pre>
+<h2 id="application-example-ftp-through-the-socks-server">Application example: FTP through the SOCKS server</h2>
+<p>Your network 192.168.0.0/24 is masqueraded behind a router with the addresses 203.0.113.104 and 192.168.0.1, and the firewall blocks direct FTP access:</p>
+<pre><code class="language-ros">[admin@MikroTik] /ip/firewall/nat&gt; print
+0   chain=srcnat action=masquerade src-address=192.168.0.0/24
+[admin@MikroTik] /ip/firewall/filter&gt; print
+0   chain=forward action=drop protocol=tcp src-address=192.168.0.0/24
+    dst-port=21
+</code></pre>
+<p>To allow the client 192.168.0.2 to reach an FTP server at 198.51.100.8 through the proxy, enable the server and add access rules: allow the client to connect to the FTP server's port 21 and to open passive data connections to it (high ports), then deny everything else:</p>
+<pre><code class="language-ros">[admin@MikroTik] /ip/socks&gt; set enabled=yes version=5
+[admin@MikroTik] /ip/socks&gt; print
+                  enabled: yes
+                     port: 1080
+  connection-idle-timeout: 2m
+          max-connections: 200
+                      vrf: main
+                  version: 5
+              auth-method: none
+[admin@MikroTik] /ip/socks&gt; access/add src-address=192.168.0.2 dst-address=198.51.100.8 dst-port=21 action=allow
+[admin@MikroTik] /ip/socks&gt; access/add src-address=192.168.0.2 dst-address=198.51.100.8 dst-port=1024-65535 action=allow
+[admin@MikroTik] /ip/socks&gt; access/add action=deny
+[admin@MikroTik] /ip/socks&gt; access/print
+0   src-address=192.168.0.2 dst-address=198.51.100.8 dst-port=21 action=allow
+
+1   src-address=192.168.0.2 dst-address=198.51.100.8 dst-port=1024-65535 action=allow
+
+2   action=deny
+</code></pre>
+<p>While the transfer runs, the control and the passive-data connections show in the connection list described in the previous section.</p>
+<p>Configure the FTP client to use SOCKS with the router's address 192.168.0.1 and TCP port 1080.</p>
+<hr />
+<h1 id="socksify">Socksify</h1>
+<blockquote>
+<p>Socksify forwards traffic chosen by firewall NAT rules through an upstream SOCKS5 server, so applications without SOCKS support can use a SOCKS proxy. Includes a Tor proxy example.</p>
+</blockquote>
+<h1 id="socksify_1">Socksify</h1>
+<p>Socksify forwards traffic selected by firewall rules through an upstream SOCKS5 server, for applications that do not support SOCKS themselves. A destination NAT rule with <code>action=socksify</code> redirects the matching connections to the service, and the service asks the SOCKS server to connect to the connection's original destination.</p>
+<p>Multiple socksify services can be configured at once, each forwarding to its own upstream server, so different traffic classes can use different proxies.</p>
+<p>Prerequisites:</p>
+<ul>
+<li>The upstream server must speak SOCKS5. The RouterOS SOCKS server works when set to <code>version=5</code>; with the default <code>version=4</code> a SOCKS5 client is refused.</li>
+<li><code>socks5-server</code> accepts IPv4 addresses only.</li>
+<li>New records are created disabled. Changes to a record's settings apply after you disable and re-enable the record, not while it is running.</li>
+<li>The upstream credentials are visible as plain text in <code>print detail</code> output.</li>
+</ul>
+<p>The service refuses to proxy connections to LAN destinations (RFC 1918 private addresses); the log shows <code>cannot socksify LAN destination</code> under the <code>socksify</code> topic.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Select traffic for redirection carefully with the NAT rule matchers. Always exclude the router's own addresses with <code>dst-address-type=!local</code>: without it, a rule that matches too much redirects the router's own services (for example SSH or WebFig) to the proxy and cuts off management access.</p>
+</div>
+<h2 id="use-in-combination-with-a-tor-proxy">Use in combination with a Tor proxy</h2>
+<p>Socksify can forward traffic through Tor for privacy. The configuration forwards HTTP and HTTPS traffic through the Tor SOCKS5 proxy server.</p>
+<p>First create the socksify service:</p>
+<pre><code class="language-ros">/ip/socksify
+add connection-timeout=10 disabled=no name=Tor_socksify socks5-port=9050 socks5-server=&lt;TOR_SOCKS_PROXY_IP&gt;
+</code></pre>
+<p>Then configure the firewall to socksify the selected traffic and allow it to the service:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add action=accept chain=input dst-port=952 protocol=tcp src-address=&lt;SOCKS_CLIENT_IP&gt;
+/ip/firewall/nat
+add action=socksify chain=dstnat dst-address-type=!local dst-port=80,443 protocol=tcp socksify-service=Tor_socksify src-address=&lt;SOCKS_CLIENT_IP&gt;
+</code></pre>
+<p>The input accept rule is needed because the redirected connections arrive at the router itself (port 952 of the socksify service); when the input filter drops traffic from clients, the service never sees them. The <code>dst-address-type=!local</code> matcher keeps traffic to the router's own addresses out of the proxy.</p>
+<h2 id="tor-container-and-secure-dns-tutorial">Tor container and secure DNS tutorial</h2>
+<p>RouterOS can also run the Tor proxy in a container. When you use Tor for browsing the web, consider protecting your DNS requests as well.</p>
+<p>For detailed, step-by-step instructions watch the <a href="https://www.youtube.com/watch?v=ECRjxpb5IgE&amp;lc=Ugy6V6EEAwyu2UC8ZJB4AaABAg">Tor container and secure DNS tutorial video</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1384 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logs · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Diagnostics and Monitoring</p>
+      <h1 id="logs">Logs</h1>
+<h1 id="log">Log</h1>
+<blockquote>
+<p>RouterOS logs system events in topics; rules in /system/logging send them to memory, a disk, the console, a syslog server (UDP, TCP or TLS; syslog or CEF format), email or a script. Read the log with /log/print.</p>
+</blockquote>
+<h1 id="log_1">Log</h1>
+<p>RouterOS writes events to the system log: logins and login failures, configuration changes and who made them, interfaces going up and down, DHCP leases, protocol state changes and errors. Each entry has a time, one or more topics that say where it comes from and how important it is (for example <code>dhcp,info</code> or <code>system,error,critical</code>), and a message.</p>
+<p>Two menus decide what is kept and where it goes:</p>
+<ul>
+<li>Rules in <code>/system/logging</code> select entries by their topics and pass them to an action.</li>
+<li>Actions in <code>/system/logging/action</code> store the entries in memory or in files on a disk, print them on the console, send them to a syslog server or by email, or run a script.</li>
+</ul>
+<p>The default configuration has four rules:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Topics</th>
+<th style="text-align: left;">Action</th>
+<th style="text-align: left;">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>info</code></td>
+<td style="text-align: left;"><code>memory</code></td>
+<td style="text-align: left;">Kept in RAM.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>error</code></td>
+<td style="text-align: left;"><code>memory</code></td>
+<td style="text-align: left;">Kept in RAM.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>warning</code></td>
+<td style="text-align: left;"><code>memory</code></td>
+<td style="text-align: left;">Kept in RAM.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>critical</code></td>
+<td style="text-align: left;"><code>echo</code></td>
+<td style="text-align: left;">Printed on open terminals, and at the next login when no terminal is open.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>memory</code> action keeps the newest 1000 entries, and they are lost when the router reboots. Debug messages are not logged by default. To keep the log across reboots, log to a disk or to a syslog server.</p>
+<p>For a video introduction, see <a href="https://www.youtube.com/watch?v=E-QAhaWtsnU">Logging basics</a>.</p>
+<h2 id="read-the-log">Read the log</h2>
+<p><code>/log/print</code> shows the entries kept in memory, oldest first. Filter them with <code>where</code>: <code>topics~</code> matches a pattern against the topics, <code>message~</code> against the message text.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where topics~&quot;interface|dhcp&quot;
+ 2026-10-02 17:34:34 interface,info lo link up
+ 2026-10-02 17:34:42 interface,info ether2 link up (speed 1G, full duplex)
+ 2026-10-02 17:34:47 dhcp,info bridge on bridge got IP address 192.168.88.30
+</code></pre>
+<p>To watch new entries as they arrive, add <code>follow</code> (prints the existing entries first) or <code>follow-only</code> (new entries only). Press <kbd>Space</kbd> to print a separator line, and <kbd>Control</kbd>+<kbd>C</kbd> to stop. For example, to watch failed logins:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print follow-only where topics~&quot;critical&quot;
+ = = =   = = =   = = =      = = =   = = =   = = =      = = =   = = =   = = =
+2026-10-02 17:35:45 system,error,critical login failure for user admin from 192.168.88.17 via ssh
+2026-10-02 17:35:45 system,error,critical login failure for user root from 192.168.88.17 via ssh
+-- Ctrl-C to quit. Space prints separator. New entries will appear at bottom.
+</code></pre>
+<p>Login and firewall entries carry extra fields, such as the user, the service and the source address. <code>with-extra-info</code> adds them to the line:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print with-extra-info where message~&quot;login failure&quot;
+ 2026-10-02 17:35:45 system,error,critical login failure for user admin from 192.168.88.17 via ssh app=ssh duser=admin outcome=failure src=192.168.88.17
+ 2026-10-02 17:35:45 system,error,critical login failure for user root from 192.168.88.17 via ssh app=ssh duser=root outcome=failure src=192.168.88.17
+</code></pre>
+<p><code>/log/print</code> also lists the buffers of other memory actions and the newest entries of disk actions, so an entry that several actions store shows once per action. Add <code>where buffer=memory</code> to see only the default buffer.</p>
+<p>To save the printed entries to a file, add <code>file=</code>: <code>/log/print file=log-before-upgrade</code> writes <code>log-before-upgrade.txt</code>.</p>
+<h3 id="find-what-happened-at-a-certain-time">Find what happened at a certain time</h3>
+<p>Compare <code>time</code> with a date and time to see the entries of a period, for example a night:</p>
+<pre><code class="language-ros">/log/print where time&gt;&quot;2026-10-02 01:00:00&quot; and time&lt;&quot;2026-10-02 06:00:00&quot;
+</code></pre>
+<p>A lost uplink usually shows as <code>interface,info ether1 link down</code> and <code>link up</code> entries of the WAN interface, and as DHCP client or PPP entries. When the uplink stays up but the provider stops forwarding traffic, nothing is logged; use <a href="../netwatch">Netwatch</a> to log such outages. How far back the 1000 entries of the default buffer reach depends on how much the router logs. To keep more, log to a disk or a syslog server.</p>
+<h3 id="find-out-who-changed-the-configuration">Find out who changed the configuration</h3>
+<p>Each configuration change is logged with the topics <code>system,info</code>, who made it (a user and how the user was connected, or a scheduler entry), and the command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where topics~&quot;system&quot; and message~&quot; by &quot;
+ 2026-10-02 17:33:27 system,info static dns entry added by scheduler:add-nas-dns (*2 = /ip dns static add address=192.168.88.20 name=nas.lan)
+</code></pre>
+<h3 id="write-your-own-entries">Write your own entries</h3>
+<p>Scripts write to the log with <code>:log info</code>, <code>:log warning</code>, <code>:log error</code> and <code>:log debug</code>. On the command line, <code>/log/info</code>, <code>/log/warning</code>, <code>/log/error</code> and <code>/log/debug</code> do the same. These entries get the topics <code>script,info</code>, <code>script,warning</code>, and so on. See <a href="../../developer-guides/scripting/">Scripting</a>.</p>
+<h2 id="log-debug-messages-for-one-feature">Log debug messages for one feature</h2>
+<p>Many features write debug messages, which are logged only when a rule selects them. To troubleshoot one feature, log its <code>debug</code> messages into a separate memory buffer, so that they do not push the other entries out of the default buffer. For example, when a client does not get an address from the DHCP server:</p>
+<pre><code class="language-ros">/system/logging/action/add name=dhcpdebug target=memory \
+    memory-lines=2000
+/system/logging/add topics=dhcp,debug action=dhcpdebug
+</code></pre>
+<p>Read the buffer, and empty it between tests:</p>
+<pre><code class="language-ros">/log/print where buffer=dhcpdebug
+/system/logging/action/clear action=dhcpdebug
+</code></pre>
+<p>A rule matches only entries that have all its topics, so <code>topics=dhcp,debug</code> selects DHCP debug messages and nothing else. To leave out the packet dumps that some features add, exclude a topic with <code>!</code>, for example <code>topics=ntp,debug,!packet</code>.</p>
+<p>When you are done, save the buffer to a file, then remove the rule and the action. Removing the rule empties the buffer:</p>
+<pre><code class="language-ros">/log/print where buffer=dhcpdebug file=dhcp-debug
+/system/logging/remove [find action=dhcpdebug]
+/system/logging/action/remove dhcpdebug
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Debug messages can contain secrets. For example, <code>ssh,debug</code> logs the session encryption keys, and <code>ssh,debug,packet</code> the content of the sessions. Keep debug messages in a local buffer, and do not send them to a syslog server or by email.</p>
+</div>
+<h2 id="keep-the-log-across-reboots">Keep the log across reboots</h2>
+<p>The default <code>disk</code> action writes to files on the router's storage. Add a rule for each topic you want to keep:</p>
+<pre><code class="language-ros">/system/logging/add topics=info action=disk
+/system/logging/add topics=warning action=disk
+/system/logging/add topics=error action=disk
+/system/logging/add topics=critical action=disk
+</code></pre>
+<p>The action writes <code>log.0.txt</code> until it holds <code>disk-lines-per-file</code> lines (1000 by default). Then the file is renamed to <code>log.1.txt</code> and a new <code>log.0.txt</code> starts. The action keeps <code>disk-file-count</code> files (2 by default) and deletes the oldest. The files are in <code>/file</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;^log&quot;
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME       TYPE       SIZE  LAST-MODIFIED
+0 log.0.txt  .txt file  1956  2026-10-02 17:32:13
+</code></pre>
+<p>The newest entries also show in <code>/log/print</code>, under the action's name, so each entry shows twice there; add <code>where buffer=memory</code> or <code>where buffer=disk</code>. After a reboot, the entries of the current file show again under <code>buffer=disk</code>. To read an older file, print its contents, or download it from <code>/file</code>:</p>
+<pre><code class="language-ros">:put [/file/get log.1.txt contents]
+</code></pre>
+<p>To keep more history, raise both values. To write to a USB drive or another disk, put the disk's folder in front of the file name; the folder must exist:</p>
+<pre><code class="language-ros">/system/logging/action/set disk disk-file-name=usb1/log \
+    disk-lines-per-file=5000 disk-file-count=5
+</code></pre>
+<p>To limit the writes to the internal flash, log to disk only the topics you need, or use an external disk.</p>
+<h2 id="send-the-log-to-a-syslog-server">Send the log to a syslog server</h2>
+<p>The default <code>remote</code> action sends entries to a syslog server over UDP port 514. It has no server address (<code>remote=0.0.0.0</code>), and no default rule uses it. Set the server and the format, and add a rule for each topic:</p>
+<pre><code class="language-ros">/system/logging/action/set remote remote=192.0.2.10 \
+    remote-log-format=syslog
+/system/logging/add topics=info action=remote
+/system/logging/add topics=warning action=remote
+/system/logging/add topics=error action=remote
+/system/logging/add topics=critical action=remote
+</code></pre>
+<p>Use separate rules: one rule with <code>topics=info,warning,error</code> matches only entries that have all three topics, which is none. To send only logins and logouts, use <code>topics=account</code>; failed logins have the topics <code>system,error,critical</code>, so they go with <code>error</code> or <code>critical</code>.</p>
+<p>To check that the server receives entries, write one yourself:</p>
+<pre><code class="language-ros">/log/warning &quot;syslog test&quot;
+</code></pre>
+<p><code>remote-log-format</code> selects what the server receives (examples in Technical details):</p>
+<ul>
+<li><code>default</code> - The topics and the message, without the time and the host name.</li>
+<li><code>syslog</code> - BSD syslog (RFC 3164), as most syslog servers expect over UDP: a priority, the time and the router's identity (<code>/system/identity</code>) in front of the message. The facility is <code>daemon</code> and the severity comes from the topics; set <code>syslog-facility</code> and <code>syslog-severity</code> to change them. The topics are not sent; set <code>add-topics-string=yes</code> to add them in front of the message, so that the server can tell, for example, DHCP from firewall entries. RFC 5424 is not supported.</li>
+<li><code>cef</code> - Common Event Format, for security information and event management (SIEM) systems: the extra fields of login and firewall entries (user, service, addresses, interfaces) become CEF fields.</li>
+</ul>
+<p>The BSD time has no year and no time zone, so the server takes its own. Set <code>syslog-time-format=iso8601</code> (also used by <code>cef</code>) when the router and the server are in different time zones, and keep the router's clock correct with <a href="../../system-information-and-utilities/ntp">NTP</a>.</p>
+<p>Over UDP, entries are lost while the server is unreachable. With <code>remote-protocol=tcp</code> or <code>tls</code>, the router keeps up to 1000 entries in memory while the connection is down, for all remote actions together, and sends them when it is back; when the buffer is full, newer entries are dropped, and the buffer is lost at reboot. Over TCP and TLS, use <code>remote-log-format=cef</code>: CEF entries end with a delimiter (<code>cef-event-delimiter</code>), while <code>default</code> and <code>syslog</code> entries follow each other in the stream without one, so most servers cannot tell where one ends.</p>
+<p>Use <code>src-address</code> to choose the source address, and <code>vrf</code> when the server is reachable through a <a href="../../user-guides/routing-and-networking-protocols/vrf">VRF</a>.</p>
+<p>The following guides set up Elasticsearch to receive and analyze RouterOS logs:</p>
+<h3 id="send-the-log-over-tls">Send the log over TLS</h3>
+<p>To encrypt the log, use <code>remote-protocol=tls</code>. To check the server certificate, import the certificate of the CA that signed it and set <code>check-certificate=yes</code>. Without <code>check-certificate=yes</code>, the router encrypts the connection but accepts any certificate:</p>
+<pre><code class="language-ros">/certificate/import file-name=syslog-ca.pem name=syslog-ca \
+    passphrase=&quot;&quot; trusted=yes
+/system/logging/action/add name=siem target=remote remote=192.0.2.10 \
+    remote-port=6514 remote-protocol=tls remote-log-format=cef \
+    check-certificate=yes
+/system/logging/add topics=info action=siem
+/system/logging/add topics=warning action=siem
+/system/logging/add topics=error action=siem
+/system/logging/add topics=critical action=siem
+</code></pre>
+<p>When the certificate cannot be verified, the router sends nothing, retries, and logs an <code>ssld,error</code> entry that ends with <code>ssl: no trusted CA certificate found</code>.</p>
+<p><code>check-certificate=yes</code> checks that a trusted certificate signed the server certificate and that the certificate belongs to this server: the address or host name in <code>remote=</code> must be among the certificate's subject alternative names. A certificate from a trusted CA that names another server is refused, and the log shows <code>ssld,error ... ssl: name verification failed for: "..."</code>. The router does not present a client certificate.</p>
+<p>One action sends to one server address, port and protocol. A second remote action with the same <code>remote</code>, <code>remote-port</code> and <code>remote-protocol</code> is refused with <code>remote action with these connection settings already exists</code>, whatever its <code>check-certificate</code> says. To send several sets of topics to one collector, use one action and a rule for each topic.</p>
+<h2 id="email-log-messages">Email log messages</h2>
+<p>The <code>email</code> target sends one email for each entry, with the topics and the message as the subject and the text. It uses the server, port, TLS mode and sender of <code>/tool/e-mail</code>, so configure that first (see <a href="../../system-information-and-utilities/e-mail">Email</a>). For example, to get an email for every critical entry, such as a login failure, a reboot by the watchdog or a clock correction:</p>
+<pre><code class="language-ros">/system/logging/action/add name=mail target=email \
+    email-to=admin@example.com
+/system/logging/add topics=critical action=mail
+</code></pre>
+<p>To get an email for failed logins only, add a <code>regex</code> that the message must match; <code>^</code> means that the message starts with the text:</p>
+<pre><code class="language-ros">/system/logging/add topics=critical regex=&quot;^login failure&quot; action=mail
+</code></pre>
+<p><code>email-cc</code> adds more recipients. Each email sent is logged as <code>e-mail,info sent &lt;topics message&gt; to: &lt;address&gt;</code>. Choose the topics carefully: every entry sends an email, so a password-guessing attack sends hundreds. Stop such attacks with the firewall instead (see <a href="../../firewall-and-quality-of-service/user-guides/bruteforce-prevention">SSH brute-force protection</a>).</p>
+<h2 id="run-a-script-on-a-log-message">Run a script on a log message</h2>
+<p>The <code>script</code> target runs a script from <code>/system/script</code> for the entries its rule matches. The script gets the entry in two variables: <code>$topics</code> (for example <code>system,error,critical</code>) and <code>$message</code>. Entries that match while the script is still running are skipped, and entries that the script logs itself do not start it again.</p>
+<p>For example, to collect the source addresses of failed logins in an address list, for any service (SSH, WinBox, WebFig, API). An address stays in the list for a day after its last failed login:</p>
+<pre><code class="language-ros">/system/script/add name=login-failure source={
+    :local at [:find $message &quot; from &quot;]
+    :while ([:typeof [:find $message &quot; from &quot; $at]] = &quot;num&quot;) do={
+        :set at [:find $message &quot; from &quot; $at]
+    }
+    :local ip [:pick $message ($at + 6) [:find $message &quot; via &quot; $at]]
+    /ip/firewall/address-list/remove [find list=login-fail address=$ip]
+    /ip/firewall/address-list/add list=login-fail address=$ip timeout=1d
+}
+/system/logging/action/add name=loginfailure target=script \
+    script=login-failure
+/system/logging/add topics=critical regex=&quot;^login failure&quot; \
+    action=loginfailure
+</code></pre>
+<p>The rule's <code>regex</code> limits the script to entries such as <code>login failure for user admin from 192.168.88.17 via ssh</code>. The user name in the message comes from the client and can contain spaces and the word <code>from</code>, so the script takes the address after the last <code>from</code>, which the router writes itself. The list does nothing by itself: use it in a firewall rule (see <a href="../../firewall-and-quality-of-service/firewall/address-lists">Address lists</a>), and exempt your own management addresses, so that a mistyped password cannot lock you out.</p>
+<h2 id="how-rules-match-entries">How rules match entries</h2>
+<p>A rule passes an entry to its action when all of these are true:</p>
+<ul>
+<li>The entry has every topic listed in <code>topics</code>, and none of the topics listed with <code>!</code>. <code>topics=script,warning</code> matches <code>script,warning</code> entries, not every <code>script</code> entry and every <code>warning</code> entry.</li>
+<li>The message matches <code>regex</code>, when the rule has one. The regular expression also sees the entry's extra fields after the message, so <code>$</code> does not match the end of a login entry's message.</li>
+<li>The rule is enabled.</li>
+</ul>
+<p>A rule without <code>topics</code> matches every entry, debug messages included.</p>
+<p>Every matching rule passes its own copy, so one entry can go to memory, a disk and a syslog server at the same time. When two rules pass the same entry to the same action, the action stores it once.</p>
+<p><code>prefix</code> adds text in front of the message for that rule's action: <code>prefix=core1</code> stores and sends <code>core1: &lt;message&gt;</code>. Use it to tell routers apart on a shared syslog server.</p>
+<p>When you change or disable the only rule that uses a memory action, the action's buffer is emptied. Changing the action itself, or one of several rules that use it, keeps the entries.</p>
+<h2 id="topics">Topics</h2>
+<p>Each entry has one or more topics. Usually one names the feature that wrote the entry and one gives its importance, and some features add more. A login failure has the topics <code>system,error,critical</code>; SSH debug messages have <code>ssh,debug</code>, and their packet dumps <code>ssh,debug,packet</code>.</p>
+<h3 id="importance-topics">Importance topics</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Topic</th>
+<th style="text-align: left;">Entries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>critical</code></td>
+<td style="text-align: left;">Events that need attention, such as login failures, reboots by the watchdog and clock corrections. The default rule prints them on the console.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>error</code></td>
+<td style="text-align: left;">Errors.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>warning</code></td>
+<td style="text-align: left;">Warnings.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>info</code></td>
+<td style="text-align: left;">Informational entries, such as logins, configuration changes and link state changes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>debug</code></td>
+<td style="text-align: left;">Detailed messages for troubleshooting, logged only when a rule asks for them.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>packet</code></td>
+<td style="text-align: left;">Contents of a sent or received packet, decoded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>raw</code></td>
+<td style="text-align: left;">Raw contents, for example a packet as hex or the AT commands exchanged with an LTE modem.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="feature-topics">Feature topics</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Topic</th>
+<th style="text-align: left;">Entries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>account</code></td>
+<td style="text-align: left;">Logins and logouts of users.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>acme-client</code></td>
+<td style="text-align: left;">The ACME client that gets certificates.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>async</code></td>
+<td style="text-align: left;">The command channel of LTE modems.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>backup</code></td>
+<td style="text-align: left;">Backup creation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bfd</code></td>
+<td style="text-align: left;">BFD.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp</code></td>
+<td style="text-align: left;">BGP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bridge</code></td>
+<td style="text-align: left;">Bridges.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>calc</code></td>
+<td style="text-align: left;">Route calculation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>caps</code></td>
+<td style="text-align: left;">CAPsMAN and CAPs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>certificate</code></td>
+<td style="text-align: left;">Certificates.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>clock</code></td>
+<td style="text-align: left;">Clock changes, for example by NTP or IP Cloud.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>container</code></td>
+<td style="text-align: left;">Containers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ddns</code></td>
+<td style="text-align: left;">Dynamic DNS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dhcp</code></td>
+<td style="text-align: left;">DHCP clients, servers and relays.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>discover</code></td>
+<td style="text-align: left;">Neighbor discovery.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>disk</code></td>
+<td style="text-align: left;">Disks.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dns</code></td>
+<td style="text-align: left;">DNS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dot1x</code></td>
+<td style="text-align: left;">802.1X authentication.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dude</code></td>
+<td style="text-align: left;">The Dude.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>e-mail</code></td>
+<td style="text-align: left;">The email tool (<code>/tool/e-mail</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>event</code></td>
+<td style="text-align: left;">Events, for example a route installed in the routing table or a message from an LTE modem.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>evpn</code></td>
+<td style="text-align: left;">EVPN.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fetch</code></td>
+<td style="text-align: left;">The fetch tool.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>firewall</code></td>
+<td style="text-align: left;">Firewall rules with <code>action=log</code> or <code>log=yes</code>, with their <code>log-prefix</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gps</code></td>
+<td style="text-align: left;">GPS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gsm</code></td>
+<td style="text-align: left;">GSM modems and the SMS tool.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>health</code></td>
+<td style="text-align: left;">Health monitoring (voltage, temperature, fans).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hotspot</code></td>
+<td style="text-align: left;">HotSpot.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>igmp-proxy</code></td>
+<td style="text-align: left;">IGMP proxy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>interface</code></td>
+<td style="text-align: left;">Interfaces, for example link up and link down.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ipsec</code></td>
+<td style="text-align: left;">IPsec.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>iscsi</code></td>
+<td style="text-align: left;">iSCSI.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>isis</code></td>
+<td style="text-align: left;">IS-IS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>kvm</code></td>
+<td style="text-align: left;">Virtual machines (KVM).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>l2tp</code></td>
+<td style="text-align: left;">L2TP clients and servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ldp</code></td>
+<td style="text-align: left;">LDP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>lora</code></td>
+<td style="text-align: left;">LoRa.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>lte</code></td>
+<td style="text-align: left;">LTE and 5G modems.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>manager</code></td>
+<td style="text-align: left;">User Manager.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mpls</code></td>
+<td style="text-align: left;">MPLS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mqtt</code></td>
+<td style="text-align: left;">MQTT.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mvrp</code></td>
+<td style="text-align: left;">MVRP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>natpmp</code></td>
+<td style="text-align: left;">NAT-PMP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>netwatch</code></td>
+<td style="text-align: left;">Netwatch.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ntp</code></td>
+<td style="text-align: left;">The NTP client and server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf</code></td>
+<td style="text-align: left;">OSPF.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ovpn</code></td>
+<td style="text-align: left;">OpenVPN.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pim</code></td>
+<td style="text-align: left;">PIM-SM.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>poe-in</code></td>
+<td style="text-align: left;">PoE-In events, for example LLDP power negotiation when the device itself is powered via PoE.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>poe-out</code></td>
+<td style="text-align: left;">PoE output.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pon</code></td>
+<td style="text-align: left;">PON SFP modules.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ppp</code></td>
+<td style="text-align: left;">PPP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pppoe</code></td>
+<td style="text-align: left;">PPPoE clients and servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pptp</code></td>
+<td style="text-align: left;">PPTP clients and servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ptp</code></td>
+<td style="text-align: left;">Precision Time Protocol.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>queue</code></td>
+<td style="text-align: left;">Queues.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>radius</code></td>
+<td style="text-align: left;">The RADIUS client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>radvd</code></td>
+<td style="text-align: left;">IPv6 router advertisements.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rip</code></td>
+<td style="text-align: left;">RIP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>route</code></td>
+<td style="text-align: left;">Routing.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rpki</code></td>
+<td style="text-align: left;">RPKI.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rproxy</code></td>
+<td style="text-align: left;">The reverse proxy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rsvp</code></td>
+<td style="text-align: left;">RSVP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>script</code></td>
+<td style="text-align: left;">Scripts (<code>:log</code>) and the <code>/log/info</code> and related commands.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sertcp</code></td>
+<td style="text-align: left;">Serial port remote access (<code>/port/remote-access</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>smb</code></td>
+<td style="text-align: left;">The SMB server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>snmp</code></td>
+<td style="text-align: left;">SNMP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>socksify</code></td>
+<td style="text-align: left;">Socksify.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ssh</code></td>
+<td style="text-align: left;">The SSH server and client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ssld</code></td>
+<td style="text-align: left;">TLS connections of RouterOS features, for example a server certificate that cannot be verified.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sstp</code></td>
+<td style="text-align: left;">SSTP clients and servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>stp</code></td>
+<td style="text-align: left;">Spanning tree.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>system</code></td>
+<td style="text-align: left;">System messages, for example reboots and configuration changes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>tftp</code></td>
+<td style="text-align: left;">The TFTP server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>timer</code></td>
+<td style="text-align: left;">Timers, for example BGP keepalive timers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>tr069</code></td>
+<td style="text-align: left;">The TR-069 client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>update</code></td>
+<td style="text-align: left;">Package updates.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>upnp</code></td>
+<td style="text-align: left;">UPnP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ups</code></td>
+<td style="text-align: left;">UPS monitoring.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vpls</code></td>
+<td style="text-align: left;">VPLS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vrrp</code></td>
+<td style="text-align: left;">VRRP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>watchdog</code></td>
+<td style="text-align: left;">The watchdog.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>web-proxy</code></td>
+<td style="text-align: left;">The web proxy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wiliot</code></td>
+<td style="text-align: left;">Wiliot.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wireguard</code></td>
+<td style="text-align: left;">WireGuard.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wireless</code></td>
+<td style="text-align: left;">Wireless interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>zerotier</code></td>
+<td style="text-align: left;">ZeroTier.</td>
+</tr>
+</tbody>
+</table>
+<p>The router also lists the topics <code>amt</code>, <code>isdn</code>, <code>mme</code>, <code>read</code>, <code>simulator</code>, <code>state</code>, <code>store</code>, <code>telephony</code> and <code>write</code>, and <code>netinstall</code> with the <code>option</code> package.</p>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Problem</th>
+<th style="text-align: left;">Cause and fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">The syslog server receives nothing.</td>
+<td style="text-align: left;">The default <code>remote</code> action has <code>remote=0.0.0.0</code>; set the server address. Check that a rule passes entries to the action: a rule with several topics needs all of them. Check that the router reaches the server from <code>src-address</code> and in <code>vrf</code>, and that the server accepts the protocol and port.</td>
+</tr>
+<tr>
+<td style="text-align: left;">TLS logging sends nothing.</td>
+<td style="text-align: left;">Look for <code>ssld,error</code> entries. <code>no trusted CA certificate found</code> means that the CA certificate of the server is not imported or not trusted; <code>name verification failed</code> means that the certificate does not name the server in <code>remote=</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>remote action with these connection settings already exists</code></td>
+<td style="text-align: left;">Another remote action already sends to this address, port and protocol. Use one action with a rule for each topic, or change <code>remote-port</code> or <code>remote-protocol</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The server shows several entries as one.</td>
+<td style="text-align: left;">Over TCP and TLS, <code>default</code> and <code>syslog</code> entries have no delimiter; use <code>remote-log-format=cef</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Entries show several times in <code>/log/print</code>.</td>
+<td style="text-align: left;">Several actions store them; filter with <code>where buffer=memory</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The log is empty after a reboot.</td>
+<td style="text-align: left;">Memory actions do not survive a reboot; log to a disk or a syslog server.</td>
+</tr>
+<tr>
+<td style="text-align: left;">A memory buffer emptied itself.</td>
+<td style="text-align: left;">The only rule that uses it was changed or disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bad disk file name</code></td>
+<td style="text-align: left;">The folder in <code>disk-file-name</code> does not exist.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>action name can contain only letters and numbers</code></td>
+<td style="text-align: left;">Action names cannot contain <code>-</code>, <code>_</code> or other characters.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="message-formats">Message formats</h3>
+<p>The same login failure, as the server receives it in each <code>remote-log-format</code> (with <code>syslog-time-format=bsd-syslog</code> and the identity <code>MikroTik</code>):</p>
+<pre><code class="language-text">system,error,critical login failure for user guest from 192.168.88.17 via ssh
+&lt;27&gt;Nov 18 10:43:49 MikroTik login failure for user guest from 192.168.88.17 via ssh
+Nov 18 10:43:49 MikroTik CEF:0|MikroTik|CHR QEMU Standard PC (i440FX + PIIX, 1996)|7.25.1|10|system,error,critical|High|dvchost=MikroTik dvc=192.168.88.30 msg=login failure for user guest from 192.168.88.17 via ssh app=ssh duser=guest outcome=failure src=192.168.88.17
+</code></pre>
+<ul>
+<li>The <code>syslog</code> format carries no tag field; the message follows the identity.</li>
+<li>With <code>syslog-severity=auto</code>, the severity comes from the topics: <code>debug</code> 7, <code>info</code> 6, <code>warning</code> 4, <code>error</code> 3. An entry with both <code>error</code> and <code>critical</code>, as in the example, gets 3, so a server filter for severity <code>crit</code> misses login failures. The priority is the facility times 8 plus the severity: <code>daemon</code> (3) and <code>error</code> (3) give <code>&lt;27&gt;</code>.</li>
+<li>The CEF header holds the board name, the RouterOS version, an event class number, the topics and a severity (<code>Low</code> for <code>info</code> and <code>debug</code>, <code>Medium</code> for <code>warning</code>, <code>High</code> for <code>error</code>). <code>dvchost</code> is the identity, <code>dvc</code> an address of the router, <code>msg</code> the message, and the extra fields of the entry follow. Firewall entries carry the chain, the log prefix, the interfaces, the addresses and the protocol. <code>=</code> and <code>\</code> in values are escaped as <code>\=</code> and <code>\\</code>. Each CEF message ends with <code>cef-event-delimiter</code> (<code>\r\n</code> by default).</li>
+</ul>
+<h3 id="tcp-and-tls">TCP and TLS</h3>
+<ul>
+<li>UDP sends one datagram per entry. TCP and TLS keep one connection for the address, port and protocol of the action.</li>
+<li>While a TCP or TLS server is unreachable, the router keeps the entries in one buffer for all remote actions and retries the connection. The buffer is lost on reboot.</li>
+<li>While the server is unreachable, up to 1000 entries wait in memory; when the buffer is full, newer entries are dropped.</li>
+<li>CEF messages end with the delimiter; <code>default</code> and <code>syslog</code> messages follow each other in the stream without one.</li>
+<li><code>check-certificate=yes</code> checks the server certificate against the trusted certificates in <code>/certificate</code>, not the name in it. The router offers TLS 1.2.</li>
+</ul>
+<h3 id="disk-files">Disk files</h3>
+<p>Each line in the files starts with the date in its own format, <code>Oct/02/2026 16:49:36</code>, followed by the topics and the message. <code>/system/logging/action/clear</code> empties memory actions only; on a disk action, it fails with <code>cleanup not supported on this target</code>.</p>
+<p>For all parameters, see the <a href="../../cli-reference/system/logging/"><code>/system/logging</code></a> and <a href="../../cli-reference/system/logging/action/"><code>/system/logging/action</code></a> CLI reference, and <a href="../../cli-reference/log"><code>/log</code></a> for the entries.</p>
+<hr />
+<h1 id="cef-with-elasticsearch">CEF with Elasticsearch</h1>
+<blockquote>
+<p>This guide explains how to configure CEF log collection and analysis using Elasticsearch, Kibana, and Fleet Server with MikroTik RouterOS devices. It covers prerequisites, setup steps for both Elastic and RouterOS...</p>
+</blockquote>
+<h1 id="cef-with-elasticsearch_1">CEF with Elasticsearch</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Elasticsearch is a popular NoSQL database that can be used to store a wide range of data, including CEF logs. Along with Kibana you can create a powerful tool to analyze CEF logs from your RouterOS devices. This guide will rely on Elasticsearch integrations and for it to work you need to have a working Elasticsearch setup. This guide will not cover setup instructions for Elasticsearch and Kibana, but will cover the relevant steps to set up CEF log collection and analysis.</p>
+<p>There are many possible configurations that can be made with Elasticsearch, but for the sake of this guide we will use the following principle:</p>
+<ul>
+<li>A RouterOS (10.0.0.1) device sends out CEF logs to a server (10.0.0.2) running <a href="https://www.elastic.co/docs/reference/integrations/cef">CEF integration</a>.</li>
+<li>The server (10.0.0.2) running CEF integration ingests CEF logs, processes the data and sends it to a <a href="https://www.elastic.co/guide/en/fleet/current/fleet-server.html">Fleet Server</a> (10.0.0.3).</li>
+<li>The Fleet Server (10.0.0.3) stores the data in <a href="https://www.elastic.co/elasticsearch">Elasticsearch</a> (10.0.0.4).</li>
+<li><a href="https://www.elastic.co/kibana">Kibana</a> (10.0.0.5) retrieves data from Elasticsearch (10.0.0.4), analyzes it and allows you to search the data.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This guide will not use <a href="https://www.elastic.co/logstash">Logstash</a> as a part of analyzing CEF logs; it has been replaced by a Fleet Server.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>It is possible to install Elasticsearch, Kibana, Fleet Server and CEF logs integration on the same device.</p>
+</div>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/setup.html">Set up Elasticsearch</a>.<br />
+  <div class="adm adm-info" markdown="block">
+
+**INFO**
+
+  Elasticsearch is widely supported on many platforms. It is recommended to set up a cluster of Elasticsearch nodes.
+  :::
+- [Set up Kibana](https://www.elastic.co/guide/en/kibana/current/setup.html).  
+  :::info
+  Kibana can be installed on the same device on which you installed Elasticsearch, but it can also be installed on a separate device for performance reasons. While it is possible to analyze CEF logs without Kibana, it requires writing your own API requests. Kibana is very easy to use and has a wide range of features.
+  :::
+- [Set up Fleet Server](https://www.elastic.co/guide/en/fleet/current/add-fleet-server-on-prem.html).  
+  :::info
+  It is possible to set up Fleet Server on the same device on which you installed Elasticsearch and/or Kibana. It is recommended to install Fleet Server on a different device. Refer to the Elasticsearch manual for recommendations on hardware and topology requirements.
+  :::
+
+## Set up
+
+The setup instructions are divided into two parts: Elastic (configuration regarding Elasticsearch, Kibana and Fleet Server) and RouterOS (configuration that is relevant to your RouterOS device).
+
+### Elastic
+
+
+</div></li>
+</ul>
+<p>warning
+Some steps might change over time, refer to Elastic's manual to find the most up-to-date steps.</p>
+<p>:::</p>
+<ul>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/access.html">Log into your Kibana</a>.</li>
+<li>Open the <a href="https://www.elastic.co/guide/en/kibana/current/fleet.html">Fleet</a> section under the main menu.</li>
+<li>Open the "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html">Agent policies</a>" section.</li>
+<li>Press the "Create agent policy" button to <a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#create-a-policy">create a new Agent Policy</a>.</li>
+<li>Give the policy a name, for example, "CEF policy", adjust advanced settings if required, and create the policy. Or you can use the API request below:  </li>
+</ul>
+<p><code>text
+  POST kbn:/api/fleet/agent_policies
+  {
+    "name": "CEF policy",
+    "description": "",
+    "namespace": "default",
+    "monitoring_enabled": [
+      "logs",
+      "metrics"
+    ],
+    "inactivity_timeout": 1209600,
+    "is_protected": false
+  }</code></p>
+<ul>
+<li>Open your newly created policy by clicking on its name.</li>
+<li>Press the "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#add-integration">Add integration</a>" button.</li>
+<li>Search for "<a href="https://www.elastic.co/docs/reference/integrations/cef">Common Event Format (CEF)</a>" and press "Add Common Event Format (CEF)".</li>
+<li>Adjust configuration, make sure:  </li>
+<li>Under the "Collect CEF application logs (input: udp)" section set "Syslog Host" to "0.0.0.0" and keep the default listen port 9003/UDP.  </li>
+<li>Under the "Collect CEF application logs (input: tcp)" section set "Syslog Host" to "0.0.0.0".</li>
+<li>Save the integration.</li>
+<li>Press the "<a href="https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html">Add Elastic Agent to your host</a>" button.</li>
+<li>Follow the instructions on how to add Elastic Agent to your host.<br />
+  <div class="adm adm-info" markdown="block">
+
+**INFO**
+
+  Elastic's official manual recommends installing the Elastic Agent as Fleet-managed. Consider following the recommendation since managing the agents is easier when they are Fleet-managed.
+  :::
+- Go to "Stack Management" on the main menu, then open "[Ingest Pipelines](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html)".
+- Create a new Ingest Pipeline by pressing "[Create pipeline](https://www.elastic.co/guide/en/fleet/current/data-streams-pipeline-tutorial.html#data-streams-pipeline-one)" then "New pipeline".
+- Set "Name" to "logs-cef.log@custom".
+- Press "Import processors" and paste the following processors:  
+
+  ```json
+  {
+    "processors": [
+        {
+            "set": {
+            "ignore_empty_value": true,
+            "field": "host.name",
+            "copy_from": "cef.extensions.deviceHostName"
+            }
+        },
+        {
+            "set": {
+            "ignore_empty_value": true,
+            "field": "host.ip",
+            "copy_from": "cef.extensions.deviceAddress"
+            }
+        }
+    ]
+  }
+  ```
+
+  :::info
+  The "logs-cef.log@custom" pipeline is not required, but it makes searching the logs easier when you are using Elasticsearch for other types of logs too.
+  :::
+- Press "Save pipeline".
+- Make sure you have opened the 9003/UDP port on your host and elsewhere in the path from your RouterOS device (10.0.0.1).
+- Your Elastic Agent is now ready to receive CEF logs.
+
+### RouterOS
+
+1. Configure a [remote logging action](../log/#send-the-log-to-a-syslog-server) on your RouterOS device (10.0.0.1):
+
+   ```ros
+   /system/logging/action
+   add cef-event-delimiter="\n" name=cef remote=10.0.0.2 \
+       remote-log-format=cef remote-port=9003 \
+       syslog-time-format=iso8601 target=remote
+   ```
+
+   The name can be any letters-and-numbers name (for example `cef`); the router sends the logs to the `remote` address and port you set.
+
+2. Add a rule for each of the [topics](../log/#topics) you want to receive from your RouterOS device (10.0.0.1), for example:
+
+   ```ros
+   /system/logging
+   add action=cef topics=info
+   add action=cef topics=error
+   add action=cef topics=critical
+   add action=cef topics=warning
+   add action=cef topics=bridge,stp
+   ```
+
+3. You should now start to see CEF logs being ingested.
+4. Continue the guide to start using Kibana.
+
+### Using Kibana
+
+Kibana allows you to search the ingested CEF logs. To see ingested logs, do the following:
+
+1. [Log into your Kibana](https://www.elastic.co/guide/en/kibana/current/access.html).
+2. Open "Discover" from the main menu.
+3. [Add a filter](https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#explore-fields-in-your-data), and use the following parameters:  
+
+   ```text
+   Select a field: data_stream.dataset
+   Select operator: IS
+   Select a value: cef.log
+   ```
+
+4. For simplicity we recommend [searching for fields](https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#explore-fields-in-your-data) in the Discover menu and searching for "message", then adding it to the view.
+5. We also recommend searching for the "host.name" field and adding it to the view as well.
+6. Consider [saving the search](https://www.elastic.co/guide/en/kibana/current/save-open-search.html#_save_a_search) for easier access later.
+7. Done!
+
+---
+
+# Syslog with Elasticsearch
+
+&gt; This guide explains how to configure Syslog data collection and analysis using Elasticsearch, Kibana, and Fleet Server with MikroTik RouterOS devices. It covers prerequisites, setup steps for both Elastic and...
+
+# Syslog with Elasticsearch
+
+## Introduction
+
+Elasticsearch is a popular NoSQL database that can be used to store a wide range of data, including Syslog data. Alongside Kibana you can create a powerful tool to analyze Syslog data from your RouterOS devices. This guide will rely on Elasticsearch integrations and for it to work you need to have a working Elasticsearch setup. This guide will not cover setup instructions for Elasticsearch and Kibana, but will cover the relevant steps to set up Syslog data collection and analysis.
+
+There are many possible configurations that can be made with Elasticsearch, but for the sake of this guide we will use the following principle:
+
+- A RouterOS (10.0.0.1) device sends out Syslog data to a server (10.0.0.2) running [Custom UDP logs](https://www.elastic.co/docs/current/integrations/udp).
+- The server (10.0.0.2) running the Custom UDP logs integration ingests Syslog data, processes the data and sends it to a [Fleet Server](https://www.elastic.co/guide/en/fleet/current/fleet-server.html) (10.0.0.3).
+- A Fleet Server (10.0.0.3) stores the data in [Elasticsearch](https://www.elastic.co/elasticsearch) (10.0.0.4).
+- [Kibana](https://www.elastic.co/kibana) (10.0.0.5) retrieves data from Elasticsearch (10.0.0.4), analyzes it and allows you to search the data.
+
+
+</div></li>
+</ul>
+<p>info
+This guide will not use <a href="https://www.elastic.co/logstash">Logstash</a> as a part of analyzing Syslog data; it has been replaced by a Fleet Server.</p>
+<p>:::</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>It is possible to install Elasticsearch, Kibana, Fleet Server and Custom UDP logs integration on the same device.</p>
+</div>
+<h2 id="prerequisites_1">Prerequisites</h2>
+<ul>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/setup.html">Set up Elasticsearch</a>.<br />
+  <div class="adm adm-info" markdown="block">
+
+**INFO**
+
+  Elasticsearch is widely supported on many platforms. It is recommended to set up a cluster of Elasticsearch nodes.
+  :::
+- [Set up Kibana](https://www.elastic.co/guide/en/kibana/current/setup.html).  
+  :::info
+  Kibana can be installed on the same device on which you installed Elasticsearch, but it can also be installed on a separate device for performance reasons. While it is possible to analyze Syslog data without Kibana, it requires writing your own API requests, but Kibana is very easy to use and has a wide range of features.
+  :::
+- [Set up Fleet Server](https://www.elastic.co/guide/en/fleet/current/add-fleet-server-on-prem.html).  
+  :::info
+  It is possible to set up Fleet Server on the same device on which you installed Elasticsearch and/or Kibana. It is recommended to install Fleet Server on a different device. Refer to the Elasticsearch manual for recommendations on hardware and topology requirements.
+  :::
+
+## Set up
+
+The setup instructions are divided into two parts: Elastic (configuration regarding Elasticsearch, Kibana and Fleet Server) and RouterOS (configuration that is relevant to your RouterOS device).
+
+### Elastic
+
+
+</div></li>
+</ul>
+<p>warning
+Some steps might change over time. Refer to Elastic's manual to find the most up-to-date steps.</p>
+<p>:::</p>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/access.html">Log into your Kibana</a>.</li>
+<li>Open the <a href="https://www.elastic.co/guide/en/kibana/current/fleet.html">Fleet</a> section under the main menu.</li>
+<li>Open the "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html">Agent policies</a>" section.</li>
+<li>Press the "Create agent policy" button to <a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#create-a-policy">create a new Agent Policy</a>.</li>
+<li>Give the policy a name, for example, "Syslog policy", adjust advanced settings if required, create the policy. Or you can use the API request below:  </li>
+</ol>
+<p><code>text
+   POST kbn:/api/fleet/agent_policies
+   {
+     "name": "Syslog policy",
+     "description": "",
+     "namespace": "default",
+     "monitoring_enabled": [
+       "logs",
+       "metrics"
+     ],
+     "inactivity_timeout": 1209600,
+     "is_protected": false
+   }</code></p>
+<ol start="6">
+<li>Open your newly created policy by clicking on its name.</li>
+<li>Press "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#add-integration">Add integration</a>".</li>
+<li>Search for "<a href="https://www.elastic.co/docs/current/integrations/udp">Custom UDP logs</a>" and press "Add Custom UDP logs".</li>
+<li>Adjust the configuration, and make sure:<br />
+   - Set "Listen Address" to the IP address of your server that is going to run the Custom UDP logs integration , in this example the address should be "10.0.0.2".<br />
+   - Set "Listen Port" to "5514".<br />
+   - Set "Dataset name" to "routeros".<br />
+   - Set "Ingest Pipeline" to "logs-routeros@custom".<br />
+   - Set "Syslog Parsing" to "Yes".</li>
+<li>Save the integration.</li>
+<li>Press the "<a href="https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html">Add Elastic Agent to your host</a>" button.</li>
+<li>Follow the instructions on how to add Elastic Agent to your host.<br />
+    <div class="adm adm-info" markdown="1"></li>
+</ol>
+<p><strong>INFO</strong></p>
+<pre><code>The official Elastic manual recommends installing the Elastic Agent as Fleet-managed. Consider following the recommendation since managing the agents is easier when they are Fleet-managed.
+:::
+</code></pre>
+<ol start="13">
+<li>Go to "Stack Management" on the main menu, then open "<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html">Ingest Pipelines</a>".</li>
+<li>Create a new Ingest Pipeline by pressing "<a href="https://www.elastic.co/guide/en/fleet/current/data-streams-pipeline-tutorial.html#data-streams-pipeline-one">Create pipeline</a>" then "New pipeline".</li>
+<li>Set "Name" to "logs-routeros@custom".</li>
+<li>
+<p>Press "Import processors" and paste the following processors:  </p>
+<p><code>json
+{
+    "processors": [
+        {
+            "grok": {
+            "field": "message",
+            "patterns": [
+                "^first L2TP UDP packet received from %{IP:source.ip}$",
+                "^login failure for user %{USERNAME:user.name} from %{IP:source.ip} via %{DATA:service.name}$",
+                "^%{USERNAME:user.name} logged in, %{IP:client.ip} from %{IP:source.ip}$",
+                "^dhcp alert on %{DATA}: discovered unknown dhcp server, mac %{MAC:source.mac}, ip %{IP:source.ip}$",
+                "in:%{DATA} out:%{DATA}, ?(connection-state:%{DATA},|)?(src-mac %{MAC:source.mac},|) proto %{DATA:network.transport} \\(%{DATA}\\), %{IP:source.ip}:?(%{INT:source.port}|)-&gt;%{IP:destination.ip}:?(%{INT:destination.port}|), len %{INT:network.bytes}$",
+                "in:%{DATA} out:%{DATA}, ?(connection-state:%{DATA},|)?(src-mac %{MAC:source.mac},|) proto %{DATA:network.transport}, %{IP:source.ip}:?(%{INT:source.port}|)-&gt;%{IP:destination.ip}:?(%{INT:destination.port}|), len %{INT:network.bytes}$",
+                "^%{DATA:network.name} (deassigned|assigned) %{IP:client.ip} for %{MAC:client.mac} %{DATA}$",
+                "^%{DATA:user.name} logged out, %{INT:event.duration} %{INT} %{INT} %{INT} %{INT} from %{IP:client.ip}$",
+                "^user %{DATA:user.name} logged out from %{IP:source.ip} via %{DATA:service.name}$",
+                "^user %{DATA:user.name} logged in from %{IP:source.ip} via %{DATA:service.name}$",
+                "^%{DATA:network.name} client %{MAC:client.mac} declines IP address %{IP:client.ip}$",
+                "^%{DATA:network.name} link up \\(speed %{DATA}\\)$",
+                "^%{DATA:network.name} link down$",
+                "^user %{DATA:user.name} authentication failed$",
+                "^%{DATA:network.name} fcs error on link$",
+                "^phase1 negotiation failed due to time up %{IP:source.ip}\\[%{INT:source.port}\\]&lt;=&gt;%{IP:destination.ip}\\[%{INT:destination.port}\\] %{DATA}:%{DATA}$",
+                "^%{DATA:network.name} (learning|forwarding)$",
+                "^user %{DATA:user.name} is already active$",
+                "^%{GREEDYDATA}$"
+            ]
+            }
+        },
+        {
+            "lowercase": {
+            "field": "network.transport",
+            "ignore_missing": true
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.category",
+            "description": "Enrich logon events",
+            "allow_duplicates": false,
+            "value": [
+                "authentication"
+            ],
+            "if": "ctx.message =~ /(login failure for user|logged in from|logged in,)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.outcome",
+            "description": "Enrich successful login events",
+            "allow_duplicates": false,
+            "value": [
+                "success"
+            ],
+            "if": "ctx.message =~ /(logged in from|logged in,)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.outcome",
+            "description": "Enrich failed login events",
+            "allow_duplicates": false,
+            "value": [
+                "failure"
+            ],
+            "if": "ctx.message =~ /(login failure for user)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.category",
+            "description": "Enrich network events",
+            "allow_duplicates": false,
+            "value": [
+                "network"
+            ],
+            "if": "ctx.message =~ /( fcs error on link| link down| link up)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.outcome",
+            "description": "Enrich network failures",
+            "allow_duplicates": false,
+            "value": [
+                "failure"
+            ],
+            "if": "ctx.message =~ /( fcs error on link)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.category",
+            "allow_duplicates": false,
+            "value": [
+                "session"
+            ],
+            "if": "ctx.message =~ /(logged out)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "event.category",
+            "allow_duplicates": false,
+            "value": [
+                "threat"
+            ],
+            "if": "ctx.message =~ /(from address that has not seen before)/"
+            }
+        },
+        {
+            "append": {
+            "ignore_failure": true,
+            "field": "service.name",
+            "value": [
+                "l2tp"
+            ],
+            "if": "ctx.message =~ /(^L2TP\\/IPsec VPN)/"
+            }
+        },
+        {
+            "geoip": {
+            "ignore_failure": true,
+            "ignore_missing": true,
+            "field": "source.ip",
+            "target_field": "source.geo"
+            }
+        },
+        {
+            "geoip": {
+            "ignore_failure": true,
+            "ignore_missing": true,
+            "field": "destination.ip",
+            "target_field": "destination.geo"
+            }
+        },
+        {
+            "geoip": {
+            "ignore_failure": true,
+            "ignore_missing": true,
+            "field": "client.ip",
+            "target_field": "client.geo"
+            }
+        }
+    ]
+}</code></p>
+</li>
+<li>
+<p>Press "Save pipeline".</p>
+</li>
+<li>Go to "Stack Management" on the main menu, then select "Index Management" and then select "Component templates".</li>
+<li>Create a new template by pressing "Create component template".</li>
+<li>Set the "Name" to "logs-routeros@custom".</li>
+<li>
+<p>Under the "Index settings" section, paste the following:  </p>
+<p><code>json
+{
+  "index": {
+    "lifecycle": {
+      "name": "logs"
+    },
+    "default_pipeline": "logs-routeros@custom"
+  }
+}</code></p>
+<p>:::info
+Change the ILM policy to your required policy name. The "logs" policy is the default policy that might be in use for other logs.
+:::
+22. Under the "Mappings" section, press "Load JSON" and paste the following:  </p>
+<p><code>json
+{
+  "dynamic_templates": [],
+  "properties": {
+    "service": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "keyword"
+        }
+      }
+    },
+    "destination": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "long"
+        },
+        "ip": {
+          "type": "ip"
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "ip"
+        }
+      }
+    },
+    "client": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "ip"
+        },
+        "mac": {
+          "type": "keyword"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "geo": {
+          "type": "object",
+          "properties": {
+            "continent_name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "region_iso_code": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "city_name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "country_iso_code": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "country_name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "region_name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "as": {
+          "type": "object",
+          "properties": {
+            "number": {
+              "type": "long"
+            },
+            "organization": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword",
+                  "fields": {
+                    "text": {
+                      "type": "match_only_text"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "address": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "port": {
+          "type": "long"
+        },
+        "domain": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "ip": {
+          "type": "ip"
+        },
+        "mac": {
+          "type": "keyword"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "long"
+        },
+        "category": {
+          "type": "keyword"
+        },
+        "outcome": {
+          "type": "keyword"
+        }
+      }
+    },
+    "message": {
+      "type": "match_only_text"
+    },
+    "user": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "keyword"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "long"
+        },
+        "name": {
+          "type": "keyword"
+        },
+        "transport": {
+          "type": "keyword"
+        }
+      }
+    },
+    "tags": {
+      "ignore_above": 1024,
+      "type": "keyword"
+    }
+  }
+}</code></p>
+</li>
+<li>
+<p>Press "Next" and then press "Save component template".<br />
+    :::warning
+    If a component template exists with such a name, then edit the existing one instead.
+    :::</p>
+</li>
+<li>Go to "Stack Management" on the main menu, then select "Index Management" and then select "Index templates".</li>
+<li>Create a new template by pressing "Create template".</li>
+<li>Set the "Name" to "logs-routeros".</li>
+<li>Set "Index patterns" to "logs-routeros-*".</li>
+<li>
+<p>Under "Component templates" section add the following templates to your new Index template:  </p>
+<p><code>text
+logs@settings
+logs-routeros@custom
+ecs@mappings</code></p>
+</li>
+<li>
+<p>Press "Next" and then "Save template".</p>
+</li>
+<li>Make sure you have opened the 5514/UDP port on your host and elsewhere in the path from your RouterOS device (10.0.0.1).</li>
+<li>Your Elastic Agent is now ready to receive Syslog data!</li>
+</ol>
+<h3 id="routeros">RouterOS</h3>
+<ol>
+<li>Configure the <a href="../log/#send-the-log-to-a-syslog-server">remote logging action</a> on your RouterOS device (10.0.0.1):</li>
+</ol>
+<p><code>ros
+   /system/logging/action
+   set [find where name="remote"] remote-log-format=syslog \
+       remote=10.0.0.2 remote-port=5514 syslog-facility=syslog</code></p>
+<ol start="2">
+<li>Add a rule for each of the <a href="../log/#topics">topics</a> you want to receive from your RouterOS device (10.0.0.1), for example:</li>
+</ol>
+<p><code>ros
+   /system/logging
+   add action=remote topics=info
+   add action=remote topics=error
+   add action=remote topics=critical
+   add action=remote topics=warning
+   add action=remote topics=bridge,stp</code></p>
+<ol start="3">
+<li>You should now start to see Syslog data being ingested.</li>
+<li>Continue the guide to start using Kibana.</li>
+</ol>
+<h2 id="using-kibana">Using Kibana</h2>
+<p>Kibana allows you to search the ingested Syslog data. To see ingested logs, do the following:</p>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/access.html">Log into your Kibana</a>.</li>
+<li>Open "Discover" from the main menu.</li>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#explore-fields-in-your-data">Add a filter</a>, and use the following parameters:  </li>
+</ol>
+<p><code>text
+   Select a field: data_stream.dataset
+   Select operator: IS
+   Select a value: routeros</code></p>
+<ol start="4">
+<li>For simplicity we recommend <a href="https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#explore-fields-in-your-data">searching for fields</a> in the Discover menu and searching for "message", then adding it to the view.</li>
+<li>We also recommend searching for the "log.syslog.hostname" field and adding it to the view as well.</li>
+<li>Consider <a href="https://www.elastic.co/guide/en/kibana/current/save-open-search.html#_save_a_search">saving the search</a> for easier access later.</li>
+<li>Done.</li>
+</ol>
+<p></div>
+tip
+While searching for logs can be useful, you are more likely looking for a way to create <a href="https://www.elastic.co/guide/en/kibana/current/alerting-getting-started.html">alerts</a> for certain activities and create <a href="https://www.elastic.co/guide/en/kibana/current/action-types.html">connectors</a> to send alerts to e-mail, webhooks, chats and other options. Consider enabling the <a href="https://www.elastic.co/guide/en/security/current/spike-in-failed-logon-events.html">Spike in failed logon events</a> rule to alert for excessive failed login attempts. You can also create a <a href="https://www.elastic.co/guide/en/observability/current/metrics-threshold-alert.html">threshold rule</a> and set it to alert after a fixed amount of failed logins.</p>
+<p>:::</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

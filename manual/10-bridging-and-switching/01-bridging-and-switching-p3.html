@@ -1,0 +1,1430 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridging and Switching · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Bridging and Switching</p>
+      <h1 id="bridging-and-switching-part-34">Bridging and Switching (part 3/4)</h1>
+<h1 id="quality-of-service">Quality of Service</h1>
+<blockquote>
+<p>This documentation introduces Quality of Service (QoS) features in MikroTik RouterOS for devices with Marvell Prestera switch chips, detailing QoS prioritization, traffic shaping, and congestion management. It covers...</p>
+</blockquote>
+<h1 id="quality-of-service_1">Quality of Service</h1>
+<p>This document describes <strong>Quality of Service (QoS)</strong> implementation in RouterOS for devices equipped with <strong><a href="./marvell-prestera-switch-chip-features.md">Marvell Prestera switch chips</a></strong>.</p>
+<p>QoS is a collection of features in network switches that allows network administrators to prioritize traffic and allocate network resources to ensure that critical data flows smoothly with low latency.</p>
+<p>The primary function of QoS in a network switch is to manage traffic in a way that meets the specific requirements of different types of network applications. For example, voice and video data require low latency and minimal packet loss to ensure high-quality communication, while file transfers and other data applications can tolerate higher levels of latency and packet loss.</p>
+<p>QoS works by identifying the type of traffic flowing through the switch and assigning it a priority level based on its requirements. The switch then uses this information to modify packet headers and prioritize traffic flow, ensuring that higher-priority traffic receives preferential treatment over lower-priority traffic.</p>
+<p>RouterOS v7.15 or later is required to support all QoS features:</p>
+<ol>
+<li><strong>QoS Marking.</strong> QoS profile matching by ingress packet header, then egress header modification according to the assigned QoS profile.</li>
+<li><strong>QoS Enforcement.</strong> Avoid or resolve congestion based on the assigned QoS profile and traffic shaping.</li>
+<li><strong>QoS Policy.</strong> Assign QoS profiles via ACL rules.</li>
+<li>Active Queue Management: <strong>WRED</strong> (Weighted Random Early Detection), <strong>ECN</strong> notification and processing, <strong>PFC</strong> (Priority-based Flow Control).</li>
+<li>Traffic shaping.</li>
+</ol>
+<h3 id="qos-changes-in-routeros-v723">QoS Changes in RouterOS v7.23</h3>
+<p>RouterOS v7.23 introduces significant changes to Quality of Service (QoS) offloading. These changes simplify the configuration process and add support for "lossless" traffic classes. Although hardware resources are finite, active queue management using ECN and/or PFC can prevent packet loss when all connected devices support these features and are properly configured. Previous RouterOS versions already supported ECN and PFC, but v7.23 streamlines how you set them up.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Not all devices support lossless traffic. Check the QoS Device Support table.</p>
+</div>
+<h4 id="configuration-change-summary">Configuration Change Summary</h4>
+<ul>
+<li>QoS Settings: most changes were set to "auto" by default, allowing RouterOS to pick the best known settings for the setup.</li>
+<li>QoS Settings: added <code>lossless-traffic-class</code> and <code>lossless-buffers</code>, allowing explicit specification of lossless traffic and the reservation of queue resources for it. The user can leave those fields as "auto" as well.</li>
+<li>QoS Monitor: displays the shared pool usage for lossy and lossless separately.</li>
+<li>Tx Queue: removed shared pool index. RouterOS automatically selects the shared pool based on the traffic type (lossy or lossless).</li>
+<li>QoS Profile: added automapping to the specified PCP and DSCP values (enabled by default). For example, adding a QoS profile with DSCP=46 automatically applies the profile to traffic received from trusted ports.</li>
+</ul>
+<h2 id="qos-terminology">QoS Terminology</h2>
+<p>This section defines the key terms and abbreviations used throughout this documentation:</p>
+<ul>
+<li><strong>QoS</strong> - Quality of Service, a collection of features that allows network administrators to prioritize traffic and allocate network resources.</li>
+<li><strong>ACL</strong> - Access Control List, a set of switch rules used to filter network traffic based on specified criteria.</li>
+<li><strong>AQM</strong> - Active Queue Management, a congestion control mechanism that manages traffic flow by dropping or marking packets before queue overflow occurs.</li>
+<li><strong>DSCP</strong> - Differentiated Services Code Point, a 6-bit field in the IP header used to prioritize network traffic.</li>
+<li><strong>ECN</strong> - Explicit Congestion Notification, a mechanism that allows routers to signal congestion to endpoints devices without dropping packets.</li>
+<li><strong>ETS</strong> - Enhanced Transmission Selection, a traffic scheduling method that uses weighted round-robin to allocate bandwidth among multiple queues groups.</li>
+<li><strong>PCP</strong> - Priority Code Point, a 3-bit field in the VLAN header used to prioritize traffic within a VLAN.</li>
+<li><strong>PFC</strong> - Priority-based Flow Control (IEEE 802.1Qbb), a flow control mechanism that pauses traffic on specific priority queues to prevent packet loss.</li>
+<li><strong>RoCE</strong> - RDMA over Converged Ethernet, a protocol that enables remote direct memory access over Ethernet networks.</li>
+<li><strong>WRED</strong> - Weighted Random Early Detection, a congestion avoidance mechanism that randomly drops packets as a queue approaches capacity.</li>
+<li><strong>/in/eth/sw/</strong> - A CLI shortcut for <code>/interface/ethernet/switch/</code>.</li>
+</ul>
+<h2 id="qos-enhancements-in-new-generation-marvell-prestera-switch-chips">QoS Enhancements in new generation Marvell Prestera Switch Chips</h2>
+<p>MikroTik devices with new generation Marvell Prestera switch chips (e.g. CRS8xx series running the <a href="../getting-started/installation-and-upgrade/packages.md#extra-packages">switch-marvell package</a> offer a new approach in QoS enforcement. Previous models required making a tradeoff between guaranteed and shared Tx queue buffers. By increasing the shared buffer percentage, the device can absorb larger traffic bursts, but at the same time, one congested port can occupy all shared buffers, limiting the QoS capabilities of other ports. Using the new generation switch chips enables the best of both worlds by introducing <strong>Dynamic Buffers</strong>. A switch chip dynamically adjusts port and queue buffer limits based on the current congestion level. If there is no congestion within the device, a single port can absorb a large burst of traffic, preventing packet loss. When the Tx queue size increases across multiple ports, the device reduces per-port and per-queue limits, enforcing fair use of shared resources while ensuring enough buffers for non-congested queues to continue forwarding traffic. The entire process is automated, requiring zero configuration from the user.</p>
+<p>Another improvement in the new generation Marvell Prestera switch chips is eliminating the shortage of enqueued packet descriptors for storing control data. The previous generation devices had Packet Cap and Use stats. When a device received a burst of small packets, it could start tail-dropping packets due to hitting Packet Cap, even though it had enough queue buffers to store the payload. The new generation devices ensure there is always enough memory to store control data, leaving the Dynamic Buffer size as the only limiting factor. That's why there are no Packet Cap/Use stats in the new generation devices.</p>
+<p>New generation devices require QoS HW Offloading to be enabled at all times (<strong>qos-hw-offloading=yes</strong>). RouterOS ignores user requests to disable it while keeping the field for backward compatibility.</p>
+<h2 id="qos-device-support">QoS Device Support</h2>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Switch Chip</th>
+<th style="text-align: left;">Models</th>
+<th style="text-align: right;">QoS Profiles</th>
+<th style="text-align: right;">QoS Maps</th>
+<th style="text-align: right;">Tx Managers</th>
+<th style="text-align: left;">WRED</th>
+<th style="text-align: left;">ECN</th>
+<th style="text-align: left;">PFC</th>
+<th style="text-align: left;">Lossless Buffers</th>
+<th style="text-align: left;">Dynamic Buffers</th>
+<th style="text-align: left;">Port/Queue Usage Stats</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>98DX3236</strong></td>
+<td style="text-align: left;">CRS305-1G-4S+IN  CRS326-24G-2S+ (RM/IN)  CRS328-24P-4S+RM  CRS328-4C-20S-4S+RM</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX226S</strong></td>
+<td style="text-align: left;">CRS305-1G-4S+OUT (FiberBox Plus)  CRS310-1G-5S-4S+ (netFiber 9/IN)  CRS310-8G+2S+IN  CRS318-16P-2S+OUT (netPower 16P)  CRS320-8P-8B-4S+RM  CRS418-8P-8G-2S+RM  CRS418-8P-8G-2S+5axQ2axQ-RM</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX224S</strong></td>
+<td style="text-align: left;">CRS318-1Fi-15Fr-2S-OUT (netPower 15FR)</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX2528</strong></td>
+<td style="text-align: left;">CRS304-4XG-IN</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX8525</strong></td>
+<td style="text-align: left;">CCR2216-1G-12XS-2XQ  CRS518-16XS-2XQ-RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Max fill <sup>1</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX4310</strong></td>
+<td style="text-align: left;">CRS504-4XQ (IN/OUT)  CRS510-8XS-2XQ-IN  RDS2216-2XG-4S+4XS-2XQ</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Max fill <sup>1</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX8208</strong></td>
+<td style="text-align: left;">CRS309-1G-8S+IN</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX8212</strong></td>
+<td style="text-align: left;">CRS312-4C+8XG-RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX8216</strong></td>
+<td style="text-align: left;">CRS317-1G-16S+RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX8332</strong></td>
+<td style="text-align: left;">CRS326-24S+2Q+RM  CRS326-4C+20G+2Q+RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX3257</strong></td>
+<td style="text-align: left;">CRS354-48G-4S+2Q+RM  CRS354-48P-4S+2Q+RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX3255</strong></td>
+<td style="text-align: left;">CCR2116-12G-4S+</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current values <sup>2</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98CX8410</strong></td>
+<td style="text-align: left;">CRS520-4XS-16XQ-RM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Unavailable <sup>3</sup></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>98DX7335</strong></td>
+<td style="text-align: left;">CRS812-8DS-2DQ-2DDQ-RM  CRS804-4DDQ-hRM</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">✔</td>
+<td style="text-align: left;">Current values + Max fill</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<p><sup><strong>1</strong></sup> The device gathers max queue fill statistics instead of displaying the current usage values. Use the <code>reset-counters</code> command to clear those stats.<br />
+<sup><strong>2</strong></sup> Due to hardware limitations, some switch chip models may experience temporary traffic flow disruption while reading or polling QoS port/queue usage data.<br />
+<sup><strong>3</strong></sup> Usage data for individual queues on a port is unavailable; only the aggregate total usage for the entire physical port can be accessed.</p>
+<h2 id="applications-and-usage-examples">Applications and Usage Examples</h2>
+<hr />
+<h3 id="basic-configuration-example">Basic Configuration Example</h3>
+<p>This example demonstrates how to configure a single QoS level for VoIP (IP Telephony) on top of the standard Best Effort class. The configuration uses a CRS326-24G-2S+ device with the following setup:</p>
+<ul>
+<li>All ports are bridged and use <strong><a href="index.md#bridge-vlan-filtering">vlan-filtering</a></strong>;</li>
+<li>sfp-sfpplus1 serves as a VLAN trunk connected to another switch;</li>
+<li>ether1 through ether9 are dedicated ports for IP phones;</li>
+<li>ether10 through ether24 are standard ports for host connection.</li>
+</ul>
+<p>First, define a QoS profile. This profile specifies the DSCP and PCP values that will be applied to forwarded packets on egress:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/profile
+add dscp=46 name=voip pcp=5 traffic-class=5
+</code></pre>
+<p>Next, assign the VoIP QoS profile to the dedicated ports for IP phones. This applies the profile to ingress traffic on these ports. All other Ethernet ports will use the default profile (where dscp=0 and pcp=0):</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port
+set ether1 profile=voip
+set ether2 profile=voip
+set ether3 profile=voip
+set ether4 profile=voip
+set ether5 profile=voip
+set ether6 profile=voip
+set ether7 profile=voip
+set ether8 profile=voip
+set ether9 profile=voip
+</code></pre>
+<p>The trunk port receives both types of QoS traffic. To differentiate between them, enable trust-l3 and trust-l2:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port
+set sfp-sfpplus1 trust-l3=trust trust-l2=trust
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> If you are running RouterOS version 7.23 or later, the VLAN priority and IP DSCP mapping is created automatically, so this step is not required. If you are using an earlier RouterOS version, you must manually create the VLAN priority and IP DSCP mapping with the QoS profile:</p>
+</blockquote>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/map/ip
+add dscp=46 profile=voip
+
+/interface/ethernet/switch/qos/map/vlan
+add pcp=5 profile=voip
+</code></pre>
+<p>Finally, enable QoS hardware offloading for the above settings to take effect:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set switch1 qos-hw-offloading=yes
+</code></pre>
+<p>You can verify the port QoS settings using the <code>print</code> command:</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface/ethernet/switch/qos/port/print
+Column: NAME, SWITCH, PROFILE, MAP, TRUST-L2, TRUST-L3
+ # NAME          SWITCH   PROFILE  MAP      TRUST-L2  TRUST-L3  TX-MANAGER
+ 0 ether1        switch1  voip     default  ignore    ignore    default
+ 1 ether2        switch1  voip     default  ignore    ignore    default
+ 2 ether3        switch1  voip     default  ignore    ignore    default
+ 3 ether4        switch1  voip     default  ignore    ignore    default
+ 4 ether5        switch1  voip     default  ignore    ignore    default
+ 5 ether6        switch1  voip     default  ignore    ignore    default
+ 6 ether7        switch1  voip     default  ignore    ignore    default
+ 7 ether8        switch1  voip     default  ignore    ignore    default
+ 8 ether9        switch1  voip     default  ignore    ignore    default
+ 9 ether10       switch1  default  default  ignore    ignore    default
+10 ether11       switch1  default  default  ignore    ignore    default
+11 ether12       switch1  default  default  ignore    ignore    default
+12 ether13       switch1  default  default  ignore    ignore    default
+13 ether14       switch1  default  default  ignore    ignore    default
+14 ether15       switch1  default  default  ignore    ignore    default
+15 ether16       switch1  default  default  ignore    ignore    default
+16 ether17       switch1  default  default  ignore    ignore    default
+17 ether18       switch1  default  default  ignore    ignore    default
+18 ether19       switch1  default  default  ignore    ignore    default
+19 ether20       switch1  default  default  ignore    ignore    default
+20 ether21       switch1  default  default  ignore    ignore    default
+21 ether22       switch1  default  default  ignore    ignore    default
+22 ether23       switch1  default  default  ignore    ignore    default
+23 ether24       switch1  default  default  ignore    ignore    default
+24 sfp-sfpplus1  switch1  default  default  trust     ignore    default
+25 sfp-sfpplus2  switch1  default  default  ignore    ignore    default
+26 switch1-cpu   switch1   
+</code></pre>
+<p>With this configuration, incoming packets on port ether1 through ether9 are marked with a Priority Code Point (PCP) value of 5 and a Differentiated Services Code Point (DSCP) value of 46. Incoming packets on port ether10 through ether24 are marked with PCP and DSCP value of 0. When packets are received on the sfp-sfpplus1 port, any packets with a PCP value of 5 retain their PCP value of 5 and DSCP value of 46, while all other packets are marked with PCP and DSCP value of 0.</p>
+<h2 id="dante">Dante</h2>
+<p>Starting from RouterOS v7.15, all MikroTik QoS-capable devices are compatible with Dante audio networking.</p>
+<p>Dante hardware uses the following DSCP/Diffserv priority values for traffic prioritization:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dante Priority</th>
+<th style="text-align: left;">Usage</th>
+<th style="text-align: left;">DSCP Label</th>
+<th style="text-align: right;">DSCP Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">High</td>
+<td style="text-align: left;">Time-critical PTP events</td>
+<td style="text-align: left;">CS7</td>
+<td style="text-align: right;">56</td>
+</tr>
+<tr>
+<td style="text-align: left;">Medium</td>
+<td style="text-align: left;">Audio, PTP</td>
+<td style="text-align: left;">EF</td>
+<td style="text-align: right;">46</td>
+</tr>
+<tr>
+<td style="text-align: left;">None</td>
+<td style="text-align: left;">Other traffic</td>
+<td style="text-align: left;">BE</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p>This example assumes the switch is using its default configuration, which includes a default bridge interface with all Ethernet interfaces added as bridge ports. Any of these interfaces can be used for Dante.</p>
+<p>First, create QoS profiles to match Dante traffic classes. There is already a pre-existing "default" profile that corresponds to Dante's None priority.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/profile
+add name=dante-ptp dscp=56 pcp=7 traffic-class=7
+add name=dante-audio dscp=46 pcp=5 traffic-class=5
+</code></pre>
+<p>If you are running RouterOS version 7.23 or later, the IP DSCP mapping is created automatically, so this step is not required. If you are using an earlier RouterOS version, create a QoS mapping to match QoS profile based on DSCP values:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/map/ip
+add dscp=56 profile=dante-ptp
+add dscp=46 profile=dante-audio
+</code></pre>
+<p>Configure the hardware queue to enforce QoS on Dante traffic:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/tx-manager/queue
+set [find where traffic-class=7] schedule=strict-priority
+set [find where traffic-class=5] schedule=strict-priority
+</code></pre>
+<p>Dante's High and Medium priority traffic is scheduled in strict priority order. The device transmits time-critical PTP packets until queue7 is empty, then proceeds with audio (queue5). Other traffic is transmitted only when PTP and audio queues are empty.</p>
+<p>The next step is to enable trust mode for incoming Layer 3 packets (IP DSCP field):</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port
+set [find] trust-l3=keep
+</code></pre>
+<p>Finally, enable QoS hardware offloading for the above settings to take effect:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set switch1 qos-hw-offloading=yes
+</code></pre>
+<p>When using Dante in multicast mode, it is beneficial to enable IGMP snooping on the switch. This feature directs traffic only to ports with subscribed devices, preventing unnecessary flooding. Additionally, enabling an IGMP querier (if not already enabled on another device in the same LAN), adjusting query interval, and activating fast-leave can further optimize multicast performance.</p>
+<pre><code class="language-ros">/interface/bridge
+set [find name=bridge] igmp-snooping=yes multicast-querier=yes query-interval=60s
+
+/interface/bridge/port
+set [find] fast-leave=yes
+</code></pre>
+<h2 id="rdma-over-converged-ethernet-roce">RDMA over Converged Ethernet (RoCE)</h2>
+<p>RoCE enables direct memory access to remote storage systems over Ethernet networks without involving the host CPU. This significantly reduces latency and CPU overhead, making RoCE ideal for high-performance computing and data center environments. RoCE also allows a converged network where various services (such as data storage, networking, and multimedia) run over a single Ethernet infrastructure, simplifying network management and reducing the cost and complexity of maintaining separate networks.</p>
+<p>RoCE achieves this through the use of <strong>ECN</strong> and <strong>PFC</strong> mechanisms. These features help prevent network congestion and packet loss, ensuring reliable, lossless communication. See the <a href="quality-of-service.md#qos-device-support">device feature table</a> for compatible switches. While the switch can support a RoCE environment, the end hosts must also be compatible with the RoCE protocol and equipped with RDMA-capable network interface cards (NICs).</p>
+<p>There are two main versions of RoCE. RoCEv1 operates as an Ethernet link layer protocol and uses Ethertype 0x8915. RoCEv2 works over standard IP networks, using UDP destination port number 4791. ECN bits in the IP header are marked to signal network congestion, and a Congestion Notification Packet (CNP) is used to acknowledge congestion to the sender. For traffic prioritization, DSCP 26 is used for RoCEv2 traffic, while DSCP 48 is used for CNPs.</p>
+<p>The following example configures lossless RoCEv2 with PFC on four 100 Gbit/s ports. It assumes that the switch has its default configuration, with a bridge that has all Ethernet interfaces as bridge ports.</p>
+<p>The hosts take part in the configuration. Each host marks its RoCEv2 packets with DSCP 26, trusts the DSCP value of received packets, and runs PFC on priority 3. Without the marking, the packets stay in the default traffic class, and PFC does not protect them. For a host configuration with NVIDIA ConnectX adapters, see <a href="./user-guides/nvidia-dgx-spark">NVIDIA DGX Spark clusters</a>.</p>
+<p>First, create the profiles. Non-RoCE traffic stays in the existing <code>default</code> profile with traffic class 1, RoCEv2 goes to traffic class 3, and CNP to traffic class 6. The switch maps the DSCP values to these profiles by itself.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/profile
+add dscp=26 name=roce traffic-class=3
+add dscp=48 name=cnp traffic-class=6
+</code></pre>
+<p>Configure the hardware queues and the scheduler. Use ETS (<code>schedule=high-priority-group</code>) for traffic class 1 and traffic class 3 with 50% of the bandwidth each (<code>weight=1</code>), and strict priority scheduling for traffic class 6.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/tx-manager/queue
+set [find traffic-class=1] schedule=high-priority-group weight=1
+set [find traffic-class=3] schedule=high-priority-group weight=1
+set [find traffic-class=6] schedule=strict-priority
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Although using <code>schedule=low-priority-group</code> allows you to create separate ETS scheduling and bandwidth allocation for a different set of traffic-classes, it is not recommended to use this setting together with <code>lldp-dcbx=yes</code>. The reason is that the ETS Configuration/Recommendation TLVs are designed to handle a single bandwidth allocation across traffic classes, thus <code>schedule=high-priority-group</code> should be used instead.</p>
+</div>
+<p>Create a PFC profile for traffic class 3 with a pause threshold of 128 KiB and a resume threshold of 64 KiB.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/priority-flow-control
+add name=pfc-tc3 rx=yes traffic-class=3 tx=yes \
+    pause-threshold=128KiB resume-threshold=64KiB
+</code></pre>
+<p>With these thresholds, the switch pauses a port when the packets it received fill 128 KiB of the buffer, and lets the port send again when they drop 64 KiB below that. The switch pauses only the ports that send to a congested port.</p>
+<p>Set Layer3 trust mode (<code>trust-l3=keep</code>) on the switch ports of the RoCEv2 hosts. Assign the PFC profile, and set the egress rate of queue 3 to the link speed (<code>egress-rate-queue3=100.0Gbps</code>), which PFC receive uses to calculate the pause time. The example uses 100 Gbit/s QSFP28 ports. Change the port names and the rate to match your interfaces.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/port
+set qsfp28-1-1 egress-rate-queue3=100.0Gbps pfc=pfc-tc3 trust-l3=keep
+set qsfp28-2-1 egress-rate-queue3=100.0Gbps pfc=pfc-tc3 trust-l3=keep
+set qsfp28-3-1 egress-rate-queue3=100.0Gbps pfc=pfc-tc3 trust-l3=keep
+set qsfp28-4-1 egress-rate-queue3=100.0Gbps pfc=pfc-tc3 trust-l3=keep
+</code></pre>
+<p>Enable QoS hardware offloading for the settings to start working.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch
+set switch1 qos-hw-offloading=yes
+</code></pre>
+<p>Enable the LLDP Data Center Bridging Capability Exchange Protocol (DCBX) to share the QoS settings and capabilities with neighboring devices. Hosts without a DCBX agent ignore these announcements: configure their QoS by hand.</p>
+<pre><code class="language-routeros">/ip/neighbor/discovery-settings
+set lldp-dcbx=yes
+</code></pre>
+<p>Set the L2MTU for jumbo frames, and an MTU of 9000 on the hosts. RDMA then sends the same data in fewer, larger packets. A change of <code>l2mtu</code> restarts the link for a few seconds.</p>
+<pre><code class="language-routeros">/interface/ethernet
+set [find switch=switch1] l2mtu=9500
+</code></pre>
+<p>To check the configuration, print the QoS settings of the ports. A <code>;;;</code> comment line under a port names a setting that the port is missing.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/port/print
+</code></pre>
+<p>PFC frames appear only under congestion, for example when two hosts send to a third host at the full link rate. Reset the counters, run such a transfer, and read the counters:</p>
+<pre><code class="language-routeros">/interface/ethernet/reset-counters [find name~&quot;qsfp28-.-1&quot;]
+/interface/ethernet/print stats where name~&quot;qsfp28-.-1&quot;
+</code></pre>
+<p>On a working configuration, <code>tx-pause</code> grows on the ports of the sending hosts, and <code>tx-drop-queue3-packet</code> and <code>rx-fcs-error</code> stay at 0 on all ports.</p>
+<p>For complete switch and host configurations for a cluster of NVIDIA DGX Spark units, with PFC and with 802.3x flow control, see <a href="./user-guides/nvidia-dgx-spark">NVIDIA DGX Spark clusters</a>.</p>
+<h2 id="qos-marking">QoS Marking</h2>
+<hr />
+<h3 id="understanding-map-ranges">Understanding Map Ranges</h3>
+<p>To avoid defining every possible PCP and DSCP mapping individually, RouterOS allows you to specify multiple values or ranges for PCP and DSCP when creating QoS profile mappings.</p>
+<p>In this example, PCP values 0 and 2 use the default QoS profile, values 1 and 3-4 use the streaming profile, value 5 uses the voip profile, and values 6-7 use the control profile:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/map/vlan
+add pcp=1,3-4 profile=streaming
+add pcp=5 profile=voip
+add pcp=6-7 profile=control
+</code></pre>
+<p>This approach simplifies configuration by grouping related priority values together rather than creating separate mappings rules for each individual value.</p>
+<h3 id="understanding-port-profile-and-map-relation">Understanding Port, Profile, and Map relation</h3>
+<p>Each switch port has Layer2 and Layer3 trust settings that will change how ingress packets are classified into QoS profiles and what PCP and DSCP values will be used. Below are tables that describe all possible options:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>qos-trust-l2</strong></th>
+<th style="text-align: left;"><strong>qos-trust-l3</strong></th>
+<th style="text-align: left;">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;">The port is considered untrusted. Both headers are ignored, and the port's <strong>profile</strong> is forced to all ingress packets. This is the default setting.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;">Trust the Layer 3 header. Use the DSCP field from the IP header of ingress packets for QoS profile lookup (see <code>/in/eth/sw/qos/map/ip</code>). If the lookup fails (no QoS profiles are mapped to the given DSCP value), the <strong>default</strong> QoS profile is used (not the switch port's QoS profile). The switch port's <strong>profile</strong> field is used only for non-IP traffic.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;">Trust the Layer 3 header. Use the DSCP field from the IP header of ingress packets for QoS profile lookup (see <code>/in/eth/sw/qos/map/ip</code>). If the lookup fails, the <strong>default</strong> QoS profile is used. The switch port's <strong>profile</strong> field is used only for non-IP traffic. If the forwarded/routed packet is VLAN-tagged, its PCP value is set from the selected QoS profile. However, the original DSCP value of the packet is kept intact.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;">Trust the Layer 2 header, but ignore L3. If an ingress packet is VLAN-tagged, use the PCP field from the VLAN header for QoS profile lookup (see <code>/in/eth/sw/qos/map/vlan</code>). If the lookup fails (no QoS profiles are mapped to the given PCP value), the <strong>default</strong> QoS profile is used. The switch port's <strong>profile</strong> field is used only for untagged traffic.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;">Trust both headers, but Layer 3 has higher precedence. In the case of an IP packet, use the DSCP field for QoS profile lookup (see <code>/in/eth/sw/qos/map/ip</code>). If the DSCP-to-QoS lookup fails, use the <strong>default</strong> profile. If the packet is not an IP packet but is VLAN-tagged, use the PCP field from the VLAN header for QoS profile lookup (see <code>/in/eth/sw/qos/map/vlan</code>).  If the VLAN-to-QoS lookup fails, use the <strong>default</strong> QoS profile. Non-IP untagged packets use the switch port's <strong>profile</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;">The same as <strong>trust+trust</strong>, but the original DSCP value is preserved in forwarded/routed packets.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;"><strong>ignore</strong></td>
+<td style="text-align: left;">Trust the Layer 2 header but ignore L3. If an ingress packet is VLAN-tagged, use the PCP field from the VLAN header for QoS profile lookup (see <code>/in/eth/sw/qos/map/vlan</code>). If the lookup fails (no QoS profiles are mapped to the given PCP value), the <strong>default</strong> QoS profile is used. The switch port's <strong>profile</strong> field is used only for untagged traffic. If the packet is VLAN-tagged on both ingress and egress, the original PCP value is kept.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;"><strong>trust</strong></td>
+<td style="text-align: left;">Trust both headers, but Layer 3 has higher precedence. In the case of an IP packet, use the DSCP field for QoS profile lookup (see <code>/in/eth/sw/qos/map/ip</code>). If the DSCP-to-QoS lookup fails, use the <strong>default</strong> profile. If the packet is not an IP packet but is VLAN-tagged, use the PCP field from the VLAN header for QoS profile lookup (see <code>/in/eth/sw/qos/map/vlan</code>).  If the VLAN-to-QoS lookup fails, use the <strong>default</strong> QoS profile. Non-IP untagged packets use the switch port's <strong>profile</strong>. If the packet is VLAN-tagged on both ingress and egress, the original PCP value is kept. The DSCP value in forwarded/routed packets is set from the selected QoS profile.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;"><strong>keep</strong></td>
+<td style="text-align: left;">Trust both headers, but Layer 3 has higher precedence. In the case of an IP packet, use the DSCP field for QoS profile lookup (see <code>/in/eth/sw/qos/map/ip</code>). If the DSCP-to-QoS lookup fails, use the <strong>default</strong> profile. If the packet is not an IP packet but is VLAN-tagged, use the PCP field from the VLAN header for QoS profile lookup (see <code>/in/eth/sw/qos/map/vlan</code>).  If the VLAN-to-QoS lookup fails, use the <strong>default</strong> QoS profile. Non-IP untagged packets use the switch port's <strong>profile</strong>. Keep both the original PCP and/or DSCP values intact in cases of VLAN-tagged and/or IP packets, respectively.</td>
+</tr>
+</tbody>
+</table>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Port settings</strong></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">The selected QoS profile and the source for PCP / DSCP field values in forwarded/routed packets</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>qos-trust-l2</strong></td>
+<td style="text-align: left;"><strong>qos-trust-l3</strong></td>
+<td style="text-align: left;">VLAN-Tagged IP</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Untagged IP</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">VLAN-Tagged Non-IP</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Untagged Non-IP</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">QoS Profile</td>
+<td style="text-align: left;">PCP</td>
+<td style="text-align: left;">DSCP</td>
+<td style="text-align: left;">QoS Profile</td>
+<td style="text-align: left;">PCP <sup>1</sup></td>
+<td style="text-align: left;">DSCP</td>
+<td style="text-align: left;">QoS Profile</td>
+<td style="text-align: left;">PCP</td>
+<td style="text-align: left;">DSCP</td>
+<td style="text-align: left;">QoS Profile</td>
+<td style="text-align: left;">PCP <sup>1</sup></td>
+<td style="text-align: left;">DSCP</td>
+</tr>
+<tr>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/vlan</code></td>
+<td style="text-align: left;"><code>/map/vlan</code></td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;"><code>/map/ip</code></td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;"><code>/map/vlan</code></td>
+<td style="text-align: left;"><code>/map/vlan</code></td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;">ignore</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;">trust</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;">keep</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">map/ip</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">map/vlan</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">profile</td>
+<td style="text-align: left;">-</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<p><sup><strong>1</strong></sup> Applies only when ingress traffic is untagged, but the egress interface requires the frames to be VLAN-tagged.</p>
+<h3 id="qos-marking-via-switch-rules-acl">QoS Marking via Switch Rules (ACL)</h3>
+<p>Starting from <strong>RouterOS v7.15</strong>, you can assign QoS profiles to network traffic using Switch Rules (ACL). This method allows for flexible traffic classification based on various packet attributes.</p>
+<p>The following example assigns a QoS profile based on the source MAC address:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/rule
+add new-qos-profile=stream port=ether1,ether2 src-mac-address=00:01:02:00:00:00/FF:FF:FF:00:00:00 switch=switch1
+add new-qos-profile=voip port=ether1,ether2 src-mac-address=04:05:06:00:00:00/FF:FF:FF:00:00:00 switch=switch1
+</code></pre>
+<h2 id="qos-enforcement">QoS Enforcement</h2>
+<h3 id="hardware-queues">Hardware Queues</h3>
+<p>Each switch port has eight hardware transmission (Tx) queues (queue0 through queue7). Each queue corresponds to a traffic class (tc0 through tc7) defined by a <a href="../cli-reference/interface/ethernet/switch/qos/profile.md">QoS profile</a>. When a packet enters the switch, it receives a QoS profile assignment, which determines the traffic class and consequently selects the appropriate egress queue for transmission.</p>
+<p>Hardware queues have variable sizes configured by the <a href="../cli-reference/interface/ethernet/switch/qos/tx-manager/tx-manager.md">Transmission Manager</a>. Additionally, multiple ports and queues can share resources with each other through a mechanism called <em>Shared Buffers</em>. For example, a device with 25 ports has buffer memory sufficient to queue 1200 packets total. If resources are split equally, each port receives 48 exclusive buffers with a maximum of 6 packets per queue (48 divided by 8), which is typically insufficient to absorb even a short traffic burst. However, allocating 50% of buffers for sharing leaves each port with 24 exclusive buffers (3 per queue), while simultaneously allowing a single queue to grow up to 603 buffers (3 exclusive plus 600 shared).</p>
+<p>RouterOS enables enabling or disabling the shared pool for each queue individually. This capability helps prevent low-priority traffic from consuming all available hardware memory. Additionally, port buffer limits can restrict a single low-speed port from occupying the entire shared pool. For more details, see <a href="../cli-reference/interface/ethernet/switch/qos/settings.md">QoS Settings</a> and <a href="../cli-reference/interface/ethernet/switch/qos/tx-manager/tx-manager.md">Transmission Manager</a>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The default best-effort traffic class (PCP=0, DSCP=0) is traffic class 1, while the lowest priority traffic (PCP=1) uses traffic class 0.</p>
+</div>
+<h3 id="to-cpu-qos">To CPU QoS</h3>
+<p>Prestera switch chips use a separate set of transmit queues for frames destined to the CPU (the control plane). This is independent of the port QoS queues used for forwarded traffic. The switch assigns every trapped packet a CPU code and maps high-priority codes to <code>queue1</code>. Every CPU lane has one <code>queue0</code> and one <code>queue1</code>, and each packet leaves through one of them:</p>
+<ul>
+<li><code>queue0</code> carries regular data traffic sent to the CPU.</li>
+<li><code>queue1</code> is the high-priority queue and is served first.</li>
+</ul>
+<p>The separation keeps the control plane responsive when data traffic saturates the CPU. A data packet storm toward the CPU fills <code>queue0</code> and can be dropped there, while control traffic in <code>queue1</code> continues to be delivered. On boards with several CPU lanes, for example CCR2116 and CRS520, each lane has its own queue pair and RouterOS distributes traffic between the lanes. The TO_CPU counters on these boards report one value per lane.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>TO_CPU traffic uses only two priorities. <code>queue1</code> is the highest, unlike the eight port queues where <code>queue7</code> is the highest. The port QoS profile, DSCP, and PCP marking of an ingress packet do not affect which TO_CPU queue the packet uses.</p>
+</div>
+<h4 id="default-high-priority-traffic">Default High-Priority Traffic</h4>
+<p>The switch assigns the high-priority CPU queue to control traffic trapped by these traffic types:</p>
+<ul>
+<li>Spanning tree BPDUs and other reserved multicast control frames in the <code>01:80:C2:00:00:0x</code> range, including LACP, 802.1X, MVRP, LLDP, and MLAG.</li>
+<li>IPv6 ICMP and neighbor discovery.</li>
+<li>ARP broadcast and ARP replies addressed to the router.</li>
+<li>Traffic matched by a switch rule with <code>cpu-high-priority=yes</code>.</li>
+</ul>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Reserved multicast frames are sent to the CPU and prioritized only when the bridge setting <code>forward-reserved-addresses</code> is <code>no</code>, which is the default. With <code>forward-reserved-addresses=yes</code> the bridge forwards these frames instead, so they do not use the high-priority CPU queue. For the full list of reserved addresses and the protocols that use them, see <a href="./#bridge-settings">bridge settings</a>.</p>
+</div>
+<p>RouterOS also creates dynamic ACL rules with <code>cpu-high-priority=yes</code> for features that inspect packets in the control plane:</p>
+<ul>
+<li><a href="./user-guides/bridge-igmp-mld-snooping">IGMP and MLD snooping</a>.</li>
+<li><a href="./#dhcp-snooping-and-dhcp-option-82">DHCP and DHCPv6 snooping</a>.</li>
+<li><a href="./#arp-inspection-and-ip-source-guard">ARP inspection</a>.</li>
+<li><a href="./#ra-guard">RA guard</a>.</li>
+<li><a href="./user-guides/loop-protect">Loop protect</a>.</li>
+<li><a href="../management-tools/romon">RoMON</a>.</li>
+<li><a href="../system-information-and-utilities/precision-time-protocol">PTP</a>.</li>
+</ul>
+<p>All other packets sent to the CPU use <code>queue0</code>.</p>
+<h4 id="viewing-to_cpu-counters">Viewing TO_CPU Counters</h4>
+<p>The <code>switch-cpu</code> port reports per-queue counters in the <a href="../cli-reference/interface/ethernet/switch/qos/port/port.md">QoS port statistics</a>:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port/print stats where name=switch1-cpu
+</code></pre>
+<p>The fields to monitor are:</p>
+<ul>
+<li><code>tx-queue0-packet</code> and <code>tx-queue0-byte</code> - regular traffic delivered to the CPU.</li>
+<li><code>tx-queue1-packet</code> and <code>tx-queue1-byte</code> - high-priority traffic delivered to the CPU.</li>
+<li><code>tx-drop-queue0-packet</code> and <code>tx-drop-queue1-packet</code> - packets dropped in the corresponding queue.</li>
+</ul>
+<p>Queue0 counters growing while queue1 counters stay flat mean that data traffic is reaching the CPU without high-priority traffic. Queue0 drops under load are expected because the CPU cannot process every packet. Queue1 should keep delivering control traffic.</p>
+<p>On boards with several CPU lanes, the same field prints one value per lane. To monitor the changes live, use:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port/print stats proplist=name,tx-queue0-packet,tx-queue1-packet interval=1s where name~&quot;cpu&quot;
+</code></pre>
+<h4 id="prioritizing-management-access-with-acl-rules">Prioritizing Management Access with ACL Rules</h4>
+<p>A Layer 2 loop or a broadcast storm can saturate the CPU with data traffic and make the switch unreachable. Prioritize the management traffic so you can still log in, find the cause, and stop the loop. The following rules put SSH and WinBox traffic received on <code>ether1</code> into the high-priority CPU queue:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/rule/add switch=switch1 ports=ether1 protocol=tcp dst-port=22 redirect-to-cpu=yes cpu-high-priority=yes
+/interface/ethernet/switch/rule/add switch=switch1 ports=ether1 protocol=tcp dst-port=8291 redirect-to-cpu=yes cpu-high-priority=yes
+</code></pre>
+<p>Replace <code>ether1</code> with the port where management traffic enters the switch. Use <code>copy-to-cpu=yes</code> instead of <code>redirect-to-cpu=yes</code> when the packet must also be forwarded to its destination.</p>
+<p>You can use the same rule structure to prioritize dynamic routing protocol traffic, such as OSPF or BGP. <code>cpu-high-priority=yes</code> requires <code>redirect-to-cpu=yes</code> or <code>copy-to-cpu=yes</code> in the same rule, otherwise RouterOS rejects the rule.</p>
+<h2 id="hardware-resources">Hardware Resources</h2>
+<p>The switch chip has limited hardware resources (memory). Two main hardware resources are relevant to QoS operations:</p>
+<ul>
+<li><strong>Packet descriptor</strong> - Contains packet control information such as the target port, header modifications, and other metadata.</li>
+<li><strong>Data buffer</strong> - Memory chunk that stores the actual packet payload. Buffer size varies depending on the switch chip model; typically 256 bytes.</li>
+</ul>
+<p>One packet descriptor may use multiple buffers (depending on the payload size), and buffers may be shared by multiple descriptors in cases of multicast or broadcast traffic. If the hardware does not have enough free descriptors or buffers, the packet gets dropped (tail-drop).</p>
+<p>Hardware resources can be limited per destination type (multicast/unicast), per port, and per TX queue. When any of these limits are reached, no additional packets can be enqueued for transmission, and subsequent packets get dropped.</p>
+<p>Packets dropped because the multicast limit is reached are counted by the <code>multicast-packet-drop</code> field in <a href="../cli-reference/interface/ethernet/switch/qos/monitor.md">QoS Monitor</a>.</p>
+<p>RouterOS abstracts low-level hardware details, allowing resource limits to be configured either in terms of packets or as a percentage of the total amount. RouterOS automatically calculates the required hardware descriptor and buffer count based on the user-specified packet limit and port's MTU. Additionally, RouterOS includes preconfigured hardware resources, eliminating the need for manual configuration in common QoS scenarios.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Modifying any hardware resource allocation parameter at runtime causes a temporary device halt during which no packets can be enqueued or transmitted. Temporary packet loss is expected while the device is forwarding traffic.</p>
+</div>
+<h2 id="resource-saving-previous-generation-devices">Resource Saving (Previous Generation Devices)</h2>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This section applies only to devices that do <strong>not</strong> support <strong>Dynamic Buffers</strong>.</p>
+</div>
+<p>Because hardware resources cannot be reallocated at runtime, RouterOS cannot automatically release queue buffers reserved for inactive ports. These buffers remain unused. However, if you know that a specific port will never be used (for example, it stays physically disconnected), you can manually free the corresponding queue resources by assigning the built-in "offline" tx-manager with minimum resources:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/port
+set sfp-sfpplus1 tx-manager=offline
+set sfp-sfpplus2 tx-manager=offline
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Do not configure the "offline" tx-manager on the <strong>switch-cpu</strong> port.</p>
+</div>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When configuring the <code>tx-manager</code> setting for a QSFP+ or QSFP28 interface, you must apply the same configuration to all four sub-interfaces of that port. For example, if interface qsfp28-1-1 is active and linked at 100Gbps, while sub-interfaces (qsfp28-1-2, qsfp28-1-3, qsfp28-1-4) show a non-running flag, <strong>do not assign the "offline" tx-manager to those non-running sub-interfaces</strong>. Doing so will affect the 100Gbps link as well. However, if none of the four sub-interfaces are running, it is safe to assign the "offline" tx-manager setting.</p>
+</div>
+<h2 id="traffic-prioritization">Traffic Prioritization</h2>
+<p>The hardware supports two types of traffic transmission prioritization:</p>
+<ul>
+<li><strong>Strict Priority</strong> - traffic from higher queues is always transmitted first.</li>
+<li><strong>Enhanced Transmission Selection (ETS)</strong> - multiple queues participate in packet transmission scheduling at the same time using weighted round-robin.</li>
+</ul>
+<p><strong>Strict Priority</strong> queuing is straightforward. If the highest priority queue (Q7) has packets, those are transmitted first. When Q7 is empty, packets from Q6 get transmitted, and so on. The packets from the lowest priority queue (Q0) are transmitted only if all other queues are empty.</p>
+<p>The downside of strict prioritization is increased latency in lower queues while "overprioritizing" higher queues. Suppose the acceptable latency of TC5 is 20ms, TC3 - 50ms. Traffic appearing in Q5 gets immediately transmitted due to the strict priority of the queue, adding extra latency to every packet in the lower queues (Q4..Q0). A packet burst in Q5 (e.g., a start of a voice call) may temporarily "paralyze" Q3, increasing TC3 latencies over the acceptable 50ms (or even causing packet drops due to a full queue) while TC5 packets get transmitted at &lt;1ms (way below the 20ms limit). Slightly sacrificing TC5 latency by transmitting TC3 packets in between would make everybody happy. That is what <strong>ETS</strong> is for.</p>
+<p><strong>Enhanced Transmission Selection (ETS)</strong> schedules traffic for transmission from multiple queues (group members) in a weighted round-robin manner. A queue's weight sets the number of packets transmitted from the queue in each round. For example, if Q2, Q1, and Q0 are the group members, and their weights are 3, 2, and 1, respectively, the scheduler transmits 3 packets from Q2, 2 from Q1, and 1 from Q0. The actual transmission order in each round of the above example is "Q2, Q1, Q0, Q2, Q1, Q2" - for even fairer scheduling.</p>
+<p>There are two hardware groups: <code>low-priority-group</code> and <code>high-priority-group</code>. There is a strict priority ordering between the two groups: the low-priority-group transmits only when <em>all</em> queues in the high-priority-group are empty. However, it is possible to use only one group for all queues.</p>
+<p>The default (built-in) RouterOS queue setup is listed below. Q3-Q5 share the bandwidth within the high-priority group, where packets are transmitted while Q6 and Q7 are empty. Q0-Q2 are the members of the low-priority-group, where packets are transmitted while Q3-Q7 are empty.</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface/ethernet/switch/qos/tx-manager/queue&gt; print 
+Columns: TX-MANAGER, TRAFFIC-CLASS, SCHEDULE, WEIGHT, QUEUE-BUFFERS, USE-SHARED-BUFFERS
+#  TX-MANAGER  TRAFFIC-CLASS  SCHEDULE             WEIGHT  QUEUE-BUFFERS  USE-SHARED-BUFFERS
+0  default     0              low-priority-group   1       auto           no                
+1  default     1              low-priority-group   2       auto           yes                
+2  default     2              low-priority-group   3       auto           yes                
+3  default     3              high-priority-group  3       auto           yes               
+4  default     4              high-priority-group  4       auto           yes               
+5  default     5              high-priority-group  5       auto           yes               
+6  default     6              strict-priority              auto           yes               
+7  default     7              strict-priority              auto           yes 
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>It is recommended that all group members are adjacent to each other.</p>
+</div>
+<h2 id="active-queue-management-aqm">Active Queue Management (AQM)</h2>
+<h3 id="weighted-random-early-detection-wred">Weighted Random Early Detection (WRED)</h3>
+<p>WRED is a congestion control mechanism that operates on a per-queue basis. It signals congestion events to end-point devices by dropping packets before queue overflow occurs. WRED relies on rate throttling mechanisms in end-points that respond to packet loss, such as TCP/IP.</p>
+<p>WRED uses a randomized packet drop algorithm to anticipate congestion events and respond to them by throttling traffic rates before congestion actually happens. The randomness property of WRED prevents throughput collapse caused by global synchronization of TCP flows.</p>
+<p>WRED can be enabled or disabled per queue in each Tx Manager. Disable WRED for lossless traffic classes. There is also no reason to enable WRED on high-speed ports where congestion should not occur in the first place.</p>
+<p>The behavior is controlled via the WRED threshold. The WRED threshold defines the maximum number of packets or bytes that can exceed the queue's shared buffer limit (cap). Random packet drops begin when queue usage exceeds its respective capacity:</p>
+<ul>
+<li><code>queueX-packet-use &gt; queueX-shared-packet-cap</code>, or</li>
+<li><code>queueX-byte-use &gt; queueX-shared-byte-cap</code>.</li>
+</ul>
+<p>The more the usage exceeds the capacity, the higher the packet drop chance becomes, reaching 100% at <code>queueX-shared-packet-cap + wred-packet-threshold</code> (or byte equivalent).</p>
+<p>RouterOS automatically selects the actual WRED threshold values based on queue or shared pool capacities. The user can adjust the thresholds via the QoS Settings.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>WRED requires the respective Tx queue to use shared buffers (<strong>use-shared-buffers=yes</strong>).</p>
+</div>
+<p>Choosing a WRED threshold value involves a tradeoff between congestion anticipation and burst absorption. Setting a higher WRED threshold may lead to earlier traffic rate throttling and, therefore, resolve congestion. However, a high threshold causes packet drops in limited traffic bursts that could be absorbed by the queue buffers and transmitted losslessly if WRED didn't activate.</p>
+<p>For example, initiating a remote database connection usually starts with heavier traffic (a "packet burst") during the initialization phase, then the traffic rate drops to a "reasonable" level. Any packet drop during the initialization phase results in a slower database connection due to the need for retransmission. Therefore, lowering the WRED threshold or entirely disabling WRED on such traffic is recommended. The opposite case is video streaming, where early congestion detection helps select a comfortable streaming rate without losing too much bandwidth on retransmission or sacrificing quality level.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Use Switch Rules (ACL) or other QoS Marking techniques to differentiate traffic and place packets into queues with the desired WRED settings.</p>
+</div>
+<p>The following script applies WRED only to TCP/IP traffic by redirecting it to queue2. UDP and other packets remain in queue1 since their end-points typically cannot respond to early drops. Queue1 and queue2 are scheduled equally without prioritizing one queue over another:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos/profile
+add name=tcp-wred traffic-class=2 pcp=0 dscp=0
+
+# move TCP traffic to queue2
+/interface/ethernet/switch/rule
+add new-qos-profile=tcp-wred ports=ether1,ether2,ether3,ether4 protocol=tcp switch=switch1
+
+# set the same scheduling priority (weight) between queue1 and queue2
+# apply WRED only to queue2 - TCP traffic
+/interface/ethernet/switch/qos/tx-manager/queue/
+set [find where traffic-class=1] weight=2 schedule=low-priority-group use-shared-buffers=yes wred=no
+set [find where traffic-class=2] weight=2 schedule=low-priority-group use-shared-buffers=yes wred=yes
+</code></pre>
+<h2 id="explicit-congestion-notification-ecn">Explicit Congestion Notification (ECN)</h2>
+<p>Certain switch chip models support hardware-level ECN marking for IP packets, compliant with RFC 3168. This mechanism operates similarly to WRED but, instead of dropping packets during congestion, it marks them with the CE (Congestion Experienced, binary 11) flag in the ECN field. Only ECN-capable IP packets can receive this mark—those with the ECN field value set to ECT(1) or ECT(0) (binary 01 or 10). Non-ECN-capable transport packets (ECN=00) are never marked. If a packet already carries the CE mark (ECN=11), it retains this designation regardless of whether the device experiences congestion.</p>
+<p>Enable ECN marking by setting <strong>ecn=yes</strong> on the desired <a href="../cli-reference/interface/ethernet/switch/qos/tx-manager/tx-manager.md">Tx Manager Queue</a>.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>The ECN marking mechanism requires the respective Tx queue to use shared buffers (<strong>use-shared-buffers=yes</strong>).</p>
+</div>
+<p>A packet receives the CE mark when <strong>all</strong> of the following conditions are met:</p>
+<ol>
+<li>The packet is IPv4 or IPv6.</li>
+<li>The ECN field value in the IP header is either ECT(1) or ECT(0).</li>
+<li>The egress port's Tx Queue has <strong>ecn=yes</strong> enabled and uses shared buffers (<strong>use-shared-buffers=yes</strong>).</li>
+<li>Queue usage exceeds the shared buffer capacity: <code>queueX-packet-use &gt; queueX-shared-packet-cap</code> or <code>queueX-byte-use &gt; queueX-shared-byte-cap</code>.</li>
+</ol>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Since enabling ECN (ecn=yes) prevents ECN-capable packet drops, queue usage may exceed WRED thresholds if the traffic sender does not respond to congestion notification in time.</p>
+</div>
+<h2 id="priority-based-flow-control-pfc">Priority-based Flow Control (PFC)</h2>
+<p>Priority-based Flow Control (PFC) enables lossless operation for up to eight traffic classes, ensuring that congestion in one traffic class does not pause traffic in other classes. This allows loss-sensitive traffic types to coexist with loss-tolerant traffic types on the same network.</p>
+<p>PFC-capable switch chips comply with IEEE 802.1Qbb PFC standard, meaning they can generate and respond to PFC frames. When congestion occurs on an egress port, the source port transmits a PFC frame for the affected traffic class. The generated PFC frames use timer value 0xFFFF for pause (XOFF) and 0x0 for resume (XON), with the appropriate bit set in the priority enable vector. On the receiving end, the PFC frame pauses the specific priority queues on the destination port for the duration specified in the PFC frame.</p>
+<p>In RouterOS, PFC configuration is organized into profiles. Each port can be assigned to a specific PFC profile, which defines the traffic classes to enable PFC on, the pause and resume thresholds for sending XOFF and XON frames respectively, and whether the assigned ports should transmit and/or receive PFC frames.</p>
+<p>When congestion occurs on an egress port, PFC is triggered on the ingress port. Shared buffers must be used to associate the amount of ingress traffic with the packets waiting in Tx queues. For each PFC-enabled traffic class, set <strong>use-shared-buffers=yes</strong> on the corresponding Tx queue.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>RouterOS implements a 1:1 mapping between traffic classes and Tx queues. Packets with traffic class 0 are enqueued in queue0, TC1 in queue1, and so on up to TC7 in queue7. Therefore, the terms "traffic class" and "Tx queue" are used interchangeably throughout this documentation.</p>
+</div>
+<p>When selecting pause and resume thresholds, account for the delay in transmitting and processing PFC frames. For example, device A experiences congestion at time T, sends a PFC pause frame to device B, and B processes the frame and stops transmitting at time T+D. During the delta time D, device B continues sending traffic. If device A has configured the pause threshold to 100%, it has no free buffers available, and packets may drop, which is unacceptable for lossless traffic classes. Setting a lower pause threshold, such as 80%, sends a PFC pause frame while still retaining free memory to absorb traffic during the delta time D. The same principle applies to the resume threshold. Setting it to 0% keeps the device idle during the delta time, reducing overall throughput.</p>
+<p>PFC receive requires setting the egress rate for all associated queues to calculate pause time, even if it matches the wire speed. For example, if PFC runs on traffic class 3, the assigned ports require the <code>egress-rate-queue3</code> setting.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/priority-flow-control/add name=pfctc3 traffic-class=3 rx=yes
+/interface/ethernet/switch/qos/port/set sfp-sfpplus1,sfp-sfpplus2 pfc=pfctc3 egress-rate-queue3=10G
+</code></pre>
+<hr />
+<h1 id="macsec">MACsec</h1>
+<blockquote>
+<p>Configure MACsec on RouterOS with manual CAK/CKN keys, direct and bridged links, cipher selection, MTU planning, monitoring, and troubleshooting.</p>
+</blockquote>
+<h1 id="macsec_1">MACsec</h1>
+<p>Media Access Control Security (MACsec), defined by IEEE 802.1AE, protects Ethernet traffic with confidentiality, integrity and authenticity. After negotiation, MACsec protects Layer 2 payloads, including ARP, DHCP, LLDP and higher-layer protocols.</p>
+<p>RouterOS can run MACsec in software without special hardware. Hardware offload is available only on selected ports and modules; the <code>H</code> flag indicates that offload is active.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>RouterOS requires manually configured Connectivity Association Keys (CAKs) and Connectivity Association Names (CKNs). It does not provision or rotate these values automatically through dot1x. The software, CPSS and Alaska MACsec paths do not provide replay protection.</p>
+</div>
+<h2 id="secure-a-direct-link">Secure a direct link</h2>
+<p>This example creates a routed MACsec link between two routers. Each router uses <code>ether5</code> as the physical parent and a MACsec interface for IP traffic. Use a different parent if it is already your management interface, and remove that parent from any bridge first. Only one MACsec interface can exist on a parent.</p>
+<p>On Router1, create the MACsec interface without CAK or CKN to generate random values:</p>
+<pre><code class="language-ros">/interface/macsec/add name=macsec1 interface=ether5
+/ip/address/add address=192.0.2.1/24 interface=macsec1
+/interface/macsec/print show-sensitive
+</code></pre>
+<p>On Router2, create an interface with the same CAK and CKN. The following values belong to this example only; use the values generated on your own router:</p>
+<pre><code class="language-ros">/interface/macsec/add name=macsec1 interface=ether5 \
+    cak=30E8EE41D1127D738016A22475AC6459 \
+    ckn=F5032E94636D5B68F3D31A9BB17A1F689B9EC4AD0EC6EC2C6E4BEC652112FD59
+/ip/address/add address=192.0.2.2/24 interface=macsec1
+</code></pre>
+<p>After negotiation, <code>print show-sensitive</code> displays the generated values and the open status:</p>
+<pre><code class="language-text">Flags: R - RUNNING
+1  R name=&quot;macsec1&quot; mtu=1468 interface=ether5 status=&quot;open-encrypted&quot;
+     cak=30E8EE41D1127D738016A22475AC6459
+     ckn=F5032E94636D5B68F3D31A9BB17A1F689B9EC4AD0EC6EC2C6E4BEC652112FD59
+     profile=default
+</code></pre>
+<p>The CAK is sensitive. Protect configuration exports and terminal output that includes it.</p>
+<p>Check the negotiated role and cipher:</p>
+<pre><code class="language-ros">/interface/macsec/monitor [find name=macsec1] once
+</code></pre>
+<pre><code class="language-text">    key-server: yes        
+  cipher-suite: aes-gcm-128
+</code></pre>
+<p>In this example, Router1 is the key server. With equal priorities, the lower MAC address determines that role.</p>
+<p>Confirm routed connectivity:</p>
+<pre><code class="language-ros">/ping 192.0.2.2 count=3
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 192.0.2.2                                  56  64 558us     
+    1 192.0.2.2                                  56  64 407us     
+    2 192.0.2.2                                  56  64 363us     
+    sent=3 received=3 packet-loss=0% min-rtt=363us avg-rtt=442us 
+   max-rtt=558us 
+</code></pre>
+<h2 id="bridge-two-macsec-links">Bridge two MACsec links</h2>
+<p>In this topology, Host1 connects to Switch <code>ether2</code> and Host2 connects to Switch <code>ether3</code>. The switch has one independently keyed MACsec interface for each host and adds those interfaces to <code>bridge1</code>. Do not add the physical parent interfaces to the same bridge.</p>
+<p>On Host1 and Host2, create MACsec without keys to generate independent values, then use <code>print show-sensitive</code> to read them:</p>
+<pre><code class="language-ros"># Host1
+/interface/macsec/add name=macsec1 interface=ether2
+/ip/address/add address=10.255.10.10/24 interface=macsec1
+
+# Host2
+/interface/macsec/add name=macsec1 interface=ether2
+/ip/address/add address=10.255.10.20/24 interface=macsec1
+</code></pre>
+<p>Copy each host's CAK and CKN to the corresponding switch interface. These example values are not suitable for a production deployment:</p>
+<pre><code class="language-ros"># Switch: link to Host1
+/interface/macsec/add name=macsec1 interface=ether2 \
+    comment=Host1 \
+    cak=7A5DF27E34AA7CDDCE49663FEB43B12C \
+    ckn=A682055203B82FF163026274E3127DFF5EBBE5F8E1EAD9ED8BC2D3A606EC26EE
+
+# Switch: link to Host2
+/interface/macsec/add name=macsec2 interface=ether3 \
+    comment=Host2 \
+    cak=9ECB5F80D68594B80C1039F01A7A4BC7 \
+    ckn=C3CB27F1FB0AB62FEE848536A7F45C4B173FC3DC6320AF60C662DCF1A71B962C
+</code></pre>
+<p>After both links reach <code>open-encrypted</code>, add only the MACsec interfaces to the bridge:</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1 protocol-mode=none
+/interface/bridge/port/add bridge=bridge1 interface=macsec1
+/interface/bridge/port/add bridge=bridge1 interface=macsec2
+</code></pre>
+<p>Host1 can then reach Host2 through the encrypted bridge:</p>
+<pre><code class="language-ros"># Host1
+/ping 10.255.10.20 count=5
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 10.255.10.20                               56  64 981us     
+    1 10.255.10.20                               56  64 571us     
+    2 10.255.10.20                               56  64 605us     
+    3 10.255.10.20                               56  64 953us     
+    4 10.255.10.20                               56  64 855us     
+    sent=5 received=5 packet-loss=0% min-rtt=571us avg-rtt=793us 
+   max-rtt=981us 
+</code></pre>
+<h2 id="manage-keys-and-ciphers">Manage keys and ciphers</h2>
+<p>The CAK is 16 bytes (32 hexadecimal characters), and the CKN is 32 bytes (64 hexadecimal characters). If you omit either value, RouterOS generates it. Both ends need the same CAK and CKN; a mismatch leaves the link negotiating and prevents forwarding.</p>
+<p>The MACsec Key Agreement (MKA) protocol elects a key server for each point-to-point connection and maintains peer liveness. The key server generates and distributes the Secure Association Key (SAK). Packet-number exhaustion triggers SA replacement. <code>aes-gcm-xpn-128</code> extends the packet-number space and reduces exhaustion-driven replacements; it does not eliminate them.</p>
+<p>Profiles control the election and cipher suites:</p>
+<ul>
+<li><code>server-priority</code> defaults to 10. A lower numeric value wins. Equal priorities use the lowest MAC address as the key server.</li>
+<li><code>ciphers</code> must be specified for custom profiles. The built-in default profile uses <code>aes-gcm-128</code>. The other supported suite is <code>aes-gcm-xpn-128</code>; AES-GCM-256 is not supported.</li>
+<li>The key server selects the first common suite in its own profile order. Peers with no common suite cannot forward traffic. Check both ends: one side can report <code>open-encrypted</code> while the other remains <code>negotiating</code>.</li>
+</ul>
+<p>Create an XPN profile on both routers and assign it to the MACsec interface:</p>
+<pre><code class="language-ros">/interface/macsec/profile/add name=site-xpn \
+    ciphers=aes-gcm-xpn-128 server-priority=20
+/interface/macsec/set [find name=macsec1] profile=site-xpn
+</code></pre>
+<p>Use a single matching suite for a deterministic configuration. When you list multiple suites, check the selected value with <code>/interface/macsec/monitor</code>.</p>
+<h2 id="plan-mtu">Plan MTU</h2>
+<p>MACsec adds 32 bytes. The read-only L2MTU is the parent interface's L2MTU minus those 32 bytes, and it cannot be changed directly. The default MACsec MTU is 1468, which fits a 1500-byte parent MTU.</p>
+<p>To carry a 1500-byte inner IP packet, increase the physical MTU to 1532 and set the MACsec MTU to 1500 on both routers. Ensure that the physical L2MTU also has enough headroom:</p>
+<pre><code class="language-ros">/interface/ethernet/set [find default-name=ether5] mtu=1532
+/interface/macsec/set [find name=macsec1] mtu=1500
+</code></pre>
+<p>Wait for <code>open-encrypted</code> after changing MTU, then test the required packet size:</p>
+<pre><code class="language-ros">/ping 192.0.2.2 size=1500 do-not-fragment
+</code></pre>
+<p>Insufficient L2MTU can silently drop traffic even when ping or MACsec negotiation succeeds. Test application-sized packets and every bridge in the path rather than relying on negotiation status alone.</p>
+<h2 id="monitor-and-troubleshoot">Monitor and troubleshoot</h2>
+<p>Use these commands to inspect negotiation, roles and detailed counters:</p>
+<pre><code class="language-ros">/interface/macsec/print detail
+/interface/macsec/monitor [find name=macsec1] once
+/interface/macsec/print stats
+</code></pre>
+<p><code>open-encrypted</code> indicates local encrypted state, not successful peer negotiation or end-to-end forwarding. Check both peers and then work through the path:</p>
+<ol>
+<li><strong>Compare CAK and CKN.</strong> Different values prevent negotiation. Use <code>print show-sensitive</code> when reading them.</li>
+<li><strong>Compare profiles.</strong> Both peers need a common cipher suite. Check <code>cipher-suite</code> and <code>key-server</code> on both monitors.</li>
+<li><strong>Check the parent.</strong> A parent already in a bridge produces an invalid interface with <code>Interface is already a slave</code>. A second MACsec on the same parent is rejected with <code>interface already used</code>.</li>
+<li><strong>Check MTU and L2MTU.</strong> Small packets can pass while larger application traffic is dropped. Increase physical headroom or reduce the MACsec MTU.</li>
+<li><strong>Check forwarding.</strong> Test routed traffic, bridge traffic and non-IP discovery protocols separately. <code>/ip/neighbor/print</code> can help verify CDP, LLDP and MNDP through a MACsec bridge.</li>
+</ol>
+<p>The detailed statistics include aggregate Secure Channel (SC) counters and per-Secure Association (SA) values. They cover encrypted/decrypted traffic, validation failures and other error conditions defined by IEEE 802.1AE. Reset all detailed counters when starting a new measurement:</p>
+<pre><code class="language-ros">/interface/macsec/reset-counters [find name=macsec1]
+</code></pre>
+<h2 id="hardware-offload">Hardware offload</h2>
+<p>Software MACsec consumes CPU but requires no special MACsec hardware. Offload is optional and depends on the Ethernet port, pluggable module, board revision and cipher suite. XPN support is not available on every MACsec-capable port or module.</p>
+<p>The <code>H</code> flag indicates active hardware offload; its absence does not prevent software forwarding. Do not infer offload support from the device family alone or assume that offloaded forwarding is always faster.</p>
+<p>For all interface, profile, monitor and counter-reset details, see the <a href="../cli-reference/interface/macsec/">MACsec CLI reference</a>.</p>
+<hr />
+<h1 id="macvlan">MACVLAN</h1>
+<blockquote>
+<p>MACVLAN creates additional virtual interfaces with their own MAC addresses on one parent interface, for several DHCP or PPPoE sessions on a single port. The page covers parent requirements, VLAN precedence, private...</p>
+</blockquote>
+<h1 id="macvlan_1">MACVLAN</h1>
+<p>A MACVLAN interface adds a virtual interface with its own MAC address on top of an existing
+interface. It shares the parent's Layer 2 segment, and its frames are not tagged. Use it to make
+one port appear as more than one host: an ISP that assigns an address per MAC, two DHCP client
+sessions on one link, or several PPPoE client sessions, each with its own MAC. For several VLANs
+over one port, use <a href="./vlan.md">VLAN</a>; to join segments at Layer 2, use
+<a href="./index.md">bridging</a>.</p>
+<p>A MACVLAN is configured like a physical interface: assign addresses and routes, or run a DHCP
+client or a PPPoE client on it. RouterOS generates the MAC address automatically when
+<code>mac-address</code> is not set.</p>
+<h2 id="how-macvlan-works">How MACVLAN works</h2>
+<p>The MACVLAN sends and receives through its parent interface, so the remote end sees the MACVLAN's
+own MAC address. Several MACVLAN interfaces can use the same parent, each with a separate MAC
+address.</p>
+<p>A MACVLAN receives broadcast traffic, traffic addressed to its own MAC address, and a limited
+number of multicast addresses. It does not receive unicast traffic addressed to another MAC
+address on the segment. If a VLAN interface is configured on the parent, that VLAN interface
+receives the VLAN's tagged traffic first, so the MACVLAN does not receive it.</p>
+<p>The parent can be any interface with a MAC address, such as an Ethernet, VLAN or bond interface. It
+cannot be in use as an active bridge port: creating the MACVLAN then fails with <code>failed to create
+device</code>, and the system log names the busy parent:</p>
+<pre><code class="language-text">macvlan1 parent device is busy (code -16), please make sure other devices are not using the
+same parent (ether5)
+</code></pre>
+<p>The nesting order is VLAN first, then MACVLAN: create the VLAN interface on the physical parent,
+then create the MACVLAN on the VLAN interface when that segment needs another MAC address. A VLAN
+interface cannot be created on a MACVLAN; RouterOS does not offer MACVLAN interfaces as VLAN
+parents. A MACVLAN can be added to a bridge as a port, but it then works as a bridge port, and a
+DHCP client cannot run on it. For bridging and complex Layer 2 setups with VLANs, use a dedicated
+switch.</p>
+<p>MACVLAN does not support FastPath, so its traffic is processed by the CPU.</p>
+<h3 id="private-and-bridge-mode">Private and bridge mode</h3>
+<p>The <code>mode</code> property controls communication between MACVLAN interfaces on the same parent:</p>
+<ul>
+<li><code>bridge</code> - the default. MACVLAN interfaces on the same parent can communicate with each other.</li>
+<li><code>private</code> - they cannot. With either interface set to <code>private</code>, communication between them
+  stops.</li>
+</ul>
+<p>Communication between two MACVLAN interfaces requires <code>bridge</code> mode on both. With either
+interface set to <code>private</code>, communication stops. To isolate two MACVLAN interfaces that share a
+parent, set both to <code>private</code> (one is enough):</p>
+<pre><code class="language-ros">/interface/macvlan/set macvlan1 mode=private
+/interface/macvlan/set macvlan2 mode=private
+</code></pre>
+<p>The commands assume two interfaces named <code>macvlan1</code> and <code>macvlan2</code> on the same parent.</p>
+<p>The MTU defaults to 1500 and cannot be higher than the parent's MTU. To use a lower value, set
+<code>mtu</code>; if the parent's MTU is lower than 1500, set <code>mtu</code> when creating the interface, otherwise
+creation fails with <code>could not set mtu</code>.</p>
+<h2 id="two-dhcp-clients-on-one-port">Two DHCP clients on one port</h2>
+<p>This example uses ether5, which connects to an uplink that assigns one address per MAC address.
+ether5 is not part of a bridge; if it is a bridge port, remove it from the bridge first. The router
+needs two addresses, one for each MAC. Create a MACVLAN on the port and run a DHCP client on both
+interfaces:</p>
+<pre><code class="language-ros">/interface/macvlan/add interface=ether5 name=macvlan1
+/ip/dhcp-client/add interface=ether5 name=dhcp-ether5 \
+    add-default-route=no
+/ip/dhcp-client/add interface=macvlan1 name=dhcp-macvlan1 \
+    add-default-route=no
+</code></pre>
+<p>Check the interface and the leases:</p>
+<pre><code class="language-ros">/interface/macvlan/print
+Flags: R - RUNNING
+Columns: NAME, MTU, INTERFACE, MAC-ADDRESS, MODE
+#   NAME       MTU  INTERFACE  MAC-ADDRESS        MODE  
+0 R macvlan1  1500  ether5     56:97:C6:D3:58:D5  bridge
+
+/ip/dhcp-client/print where name~&quot;dhcp-&quot;
+Columns: NAME, INTERFACE, USE-PEER-DNS, ADD-DEFAULT-ROUTE, STATUS, ADDRESS
+# NAME           INTERFACE  USE-PEER-DNS  AD  STATUS  ADDRESS          
+3 dhcp-ether5    ether5     yes           no  bound   198.51.100.117/24
+4 dhcp-macvlan1  macvlan1   yes           no  bound   198.51.100.120/24
+</code></pre>
+<p>Each client is bound and uses the MAC address of its own interface: the parent's MAC for
+<code>dhcp-ether5</code> and the generated MAC for <code>dhcp-macvlan1</code>. The index numbers depend on the clients
+already configured on the router. Each lease is added as an address to its interface, so
+<code>/ip/address/print</code> lists both.</p>
+<p>The generated MAC address is stored in the configuration, so it stays the same after a reboot. Set
+<code>mac-address</code> to use a specific address, for example one the provider has registered.</p>
+<p>Both clients in the example ignore the default route. Remove <code>add-default-route=no</code> from the
+client that should provide the default route.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="the-macvlan-cannot-be-created">The MACVLAN cannot be created</h3>
+<ul>
+<li><strong>The parent is a bridge port.</strong> A MACVLAN cannot use a bridge port that is forwarding traffic.
+  The command fails with <code>failed to create device</code>, and the log says <code>parent device is busy (code
+  -16), please make sure other devices are not using the same parent (&lt;interface&gt;)</code>. Remove the port
+  from the bridge, or use another interface as the parent.</li>
+<li><strong>The parent's MTU is lower than 1500.</strong> Creation fails with <code>could not set mtu</code>. Create the
+  interface
+  with a matching <code>mtu</code>, for example <code>/interface/macvlan/add interface=ether5 name=macvlan1
+  mtu=1400</code>.</li>
+</ul>
+<h3 id="the-macvlan-runs-but-receives-no-traffic">The MACVLAN runs but receives no traffic</h3>
+<ul>
+<li><strong>VLAN on the parent.</strong> A VLAN interface on the same parent handles that VLAN's tagged traffic;
+  the MACVLAN does not receive it. If the MACVLAN must work inside that VLAN, create it on the VLAN
+  interface instead.</li>
+<li><strong>Traffic for another MAC address.</strong> The MACVLAN receives broadcast, traffic to its own MAC
+  address and limited multicast. Unicast traffic addressed to another MAC on the segment does not
+  reach it.</li>
+<li><strong>The uplink allows one MAC address.</strong> Some ISPs accept only one MAC address per port and drop
+  traffic from a second one. Check the provider's policy before adding a MACVLAN.</li>
+</ul>
+<h3 id="a-dhcp-client-does-not-obtain-a-lease">A DHCP client does not obtain a lease</h3>
+<p>A client that stays in <code>searching</code> receives no DHCP reply. Check that the client runs on the
+MACVLAN interface and that the provider accepts a second MAC address on the port.
+<code>/interface/macvlan/print</code> shows the MAC address of each MACVLAN.</p>
+<h3 id="a-dhcp-client-or-vlan-interface-does-not-work">A DHCP client or VLAN interface does not work</h3>
+<ul>
+<li><strong>DHCP client on a bridge port.</strong> If the MACVLAN was added to a bridge, the client is invalid with
+  the comment <code>DHCP client can not run on slave or passthrough interface!</code>. Remove the MACVLAN from
+  the bridge, or run the client on the parent interface instead.</li>
+<li><strong>VLAN on a MACVLAN.</strong> Not supported. Create the VLAN interface on the parent instead.</li>
+</ul>
+<h2 id="technical-details">Technical details</h2>
+<p>MACVLAN is implemented by the Linux MACVLAN driver. A parent interface can carry several MACVLAN
+interfaces; each has its own MAC address and receives only the traffic the driver passes to it.
+RouterOS exposes the <code>private</code> and <code>bridge</code> modes. In <code>bridge</code> mode the driver delivers frames
+between the MACVLAN interfaces on the same parent locally; in <code>private</code> mode it drops them.</p>
+<p>Because the interfaces share the parent's broadcast domain, a MACVLAN is not a substitute for a
+VLAN: a VLAN interface adds an 802.1Q tag and separates broadcast domains, whereas a MACVLAN adds
+a MAC address to the same segment.</p>
+<p>The menu and its arguments are described in the
+<a href="../cli-reference/interface/macvlan"><code>/interface/macvlan</code></a> CLI reference.</p>
+<hr />
+<h1 id="vxlan">VXLAN</h1>
+<blockquote>
+<p>Configure VXLAN interfaces and static VTEPs, bridge Layer 2 networks and VLANs over IPv4 or IPv6, check the forwarding database, plan MTU, and understand hardware-offload restrictions.</p>
+</blockquote>
+<h1 id="vxlan_1">VXLAN</h1>
+<p>Virtual eXtensible Local Area Network (VXLAN) carries Layer 2 frames over a routed IP network. It uses UDP and a 24-bit VXLAN Network Identifier (VNI) to distinguish overlay networks. The larger identifier space addresses the 4096-VLAN limit of IEEE 802.1Q. <a href="https://www.rfc-editor.org/rfc/rfc7348">RFC 7348</a> defines the protocol.</p>
+<p>A VXLAN Tunnel Endpoint (VTEP) encapsulates and decapsulates frames. A VXLAN interface can have multiple remote VTEPs, so it forms a one-to-many overlay rather than a point-to-point link. Configure static remote VTEPs in <code>/interface/vxlan/vteps</code>, or use <a href="../user-guides/routing-and-networking-protocols/unicast/evpn">EVPN</a> to discover VTEPs and distribute MAC reachability through BGP.</p>
+<p>RouterOS supports IPv4 and IPv6 underlays. One VXLAN interface uses one underlay address family, not a dual-stack VTEP list. The underlay routing table selects the egress interface and, when <code>local-address</code> is unset, its source address. Set <code>vtep-vrf</code> to use an underlay in another VRF; the overlay bridge can remain in <code>main</code>.</p>
+<h2 id="connect-two-layer-2-networks-with-static-vteps">Connect two Layer 2 networks with static VTEPs</h2>
+<p>This example extends an Ethernet segment between two routers. Each router has a routed underlay on <code>ether2</code> and a separate <code>bridge1</code> for the overlay. The configuration preserves the underlay's Layer 3 boundary while allowing hosts connected to the overlay bridges to communicate at Layer 2. VXLAN adds encapsulation overhead and does not provide encryption.</p>
+<p>Router1 uses <code>192.0.2.2</code> and <code>10.255.110.2</code>; Router2 uses <code>192.0.2.3</code> and <code>10.255.110.3</code>. The underlay addresses are on a connected subnet, so no additional static route is required. In a routed underlay, add routes to the remote VTEP addresses before configuring the tunnel.</p>
+<p><strong>Router1:</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1 protocol-mode=none
+/ip/address/add address=192.0.2.2/24 interface=ether2
+/ip/address/add address=10.255.110.2/24 interface=bridge1
+/interface/vxlan/add name=vxlan110 vni=110 \
+    local-address=192.0.2.2 bridge=bridge1
+/interface/vxlan/vteps/add interface=vxlan110 \
+    remote-ip=192.0.2.3
+</code></pre>
+<p><strong>Router2:</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1 protocol-mode=none
+/ip/address/add address=192.0.2.3/24 interface=ether2
+/ip/address/add address=10.255.110.3/24 interface=bridge1
+/interface/vxlan/add name=vxlan110 vni=110 \
+    local-address=192.0.2.3 bridge=bridge1
+/interface/vxlan/vteps/add interface=vxlan110 \
+    remote-ip=192.0.2.2
+</code></pre>
+<p>The <code>bridge</code> property adds the VXLAN interface to the bridge as a dynamic port. Add the Ethernet ports that face your Layer 2 hosts to the same bridge. Do not bridge those hosts only to the underlay Ethernet port: traffic between two physical underlay ports does not enter VXLAN.</p>
+<p>Both endpoints must use the same VNI and UDP port. The default destination and listening port is 4789. Permit UDP traffic between the VTEP addresses in the underlay firewall.</p>
+<p>Ping the remote overlay address to check the tunnel:</p>
+<pre><code class="language-ros">/ping 10.255.110.3 count=3
+</code></pre>
+<pre><code class="language-text">  SEQ HOST                                     SIZE TTL TIME       STATUS      
+    0 10.255.110.3                               56  64 870us     
+    1 10.255.110.3                               56  64 391us     
+    2 10.255.110.3                               56  64 588us     
+    sent=3 received=3 packet-loss=0% min-rtt=391us avg-rtt=616us 
+   max-rtt=870us 
+</code></pre>
+<p>After traffic passes, <code>/interface/vxlan/fdb/print</code> maps the remote MAC address to its VTEP:</p>
+<pre><code class="language-text">Columns: INTERFACE, REMOTE-IP, MAC-ADDRESS
+#  INTERFACE  REMOTE-IP  MAC-ADDRESS      
+0  vxlan110   192.0.2.3  56:9E:4C:61:01:68
+</code></pre>
+<h2 id="carry-vlans-over-vxlan">Carry VLANs over VXLAN</h2>
+<p>A VLAN ID and a VNI are independent identifiers. Bridge VLAN filtering determines which VLANs enter the VXLAN interface. An untagged service commonly uses a one-to-one VLAN-to-VNI mapping. A tagged VXLAN bridge port can carry multiple VLANs over one VNI.</p>
+<p>This example continues the preceding topology with untagged VLAN 10 and tagged VLAN 20 in one VNI. Router1 keeps underlay address <code>192.0.2.2/24</code> and Router2 keeps <code>192.0.2.3/24</code> on <code>ether2</code>. Add the following objects without reassigning the underlay addresses.</p>
+<p><strong>Router1:</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge-vlan protocol-mode=none \
+    pvid=10 vlan-filtering=yes
+/ip/address/add address=10.255.70.1/24 interface=bridge-vlan
+/interface/vxlan/add name=vxlan10070 vni=10070 \
+    local-address=192.0.2.2 bridge=bridge-vlan bridge-pvid=10
+/interface/vxlan/vteps/add interface=vxlan10070 \
+    remote-ip=192.0.2.3
+/interface/vlan/add name=vlan20 interface=bridge-vlan vlan-id=20
+/ip/address/add address=10.255.72.1/24 interface=vlan20
+/interface/bridge/vlan/add bridge=bridge-vlan vlan-ids=20 \
+    tagged=bridge-vlan,vxlan10070
+</code></pre>
+<p><strong>Router2:</strong></p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge-vlan protocol-mode=none \
+    pvid=10 vlan-filtering=yes
+/ip/address/add address=10.255.70.3/24 interface=bridge-vlan
+/interface/vxlan/add name=vxlan10070 vni=10070 \
+    local-address=192.0.2.3 bridge=bridge-vlan bridge-pvid=10
+/interface/vxlan/vteps/add interface=vxlan10070 \
+    remote-ip=192.0.2.2
+/interface/vlan/add name=vlan20 interface=bridge-vlan vlan-id=20
+/ip/address/add address=10.255.72.3/24 interface=vlan20
+/interface/bridge/vlan/add bridge=bridge-vlan vlan-ids=20 \
+    tagged=bridge-vlan,vxlan10070
+</code></pre>
+<p>The PVID creates the untagged VLAN 10 membership for the bridge and VXLAN port. The explicit VLAN 20 entry makes the bridge interface and VXLAN port tagged members, allowing the router's local <code>vlan20</code> interface and the remote VTEP to exchange tagged frames. See <a href="./user-guides/bridge-vlan-table">bridge VLAN configuration</a> for physical access and trunk port configuration.</p>
+<p>Check both overlay subnets:</p>
+<pre><code class="language-ros">/ping 10.255.70.3
+/ping 10.255.72.3
+</code></pre>
+<h2 id="forward-unicast-and-bum-traffic">Forward unicast and BUM traffic</h2>
+<p>The VXLAN forwarding database (FDB) associates inner source MAC addresses with remote VTEP addresses. With <code>learning=yes</code>, received packets create these mappings dynamically. Later unicast frames can be sent only to the VTEP that owns the destination MAC. Set <code>learning=no</code> to suppress this learning. Static VTEP entries remain available for flooding and are not inbound access-control rules.</p>
+<p>Broadcast, unknown-unicast and multicast (BUM) traffic needs replication:</p>
+<ul>
+<li><strong>Unicast head-end replication</strong> sends one copy to every static remote VTEP. This is the default when no multicast <code>group</code> is configured.</li>
+<li><strong>Multicast underlay</strong> sends BUM traffic to the configured multicast <code>group</code>. Set both <code>group</code> and <code>interface</code>; either property without the other is rejected.</li>
+</ul>
+<p>For example, this interface uses multicast group <code>239.255.10.30</code> on the underlay interface:</p>
+<pre><code class="language-ros">/interface/vxlan/add name=vxlan10030 vni=10030 \
+    local-address=192.0.2.2 group=239.255.10.30 \
+    interface=ether2 bridge=bridge1
+</code></pre>
+<p>Configure the same VNI, group and UDP port on the other VTEPs, with their own local addresses. Static VTEP entries are not required for multicast flooding. The router joins the group with IGMP or MLD. A routed multicast underlay also requires multicast routing, such as PIM, and sufficient <code>ttl</code>. The automatic TTL is 1 for multicast and 64 for unicast underlay packets.</p>
+<p>A VXLAN interface does not maintain a separate multicast database for each remote VTEP. When an IGMP-snooping bridge forwards a group to a VXLAN port with multiple static VTEPs, VXLAN can replicate it to all of them. Use separate VXLAN interfaces when you need independent flooding domains.</p>
+<p>The configured UDP <code>port</code> is the listening and destination port. RouterOS varies the outer source port from inner-packet fields to provide entropy for load balancing. Each VTEP must be able to reach the remote listening port. A NAT between VTEPs must maintain return mappings for the entropy-derived source ports and forward incoming traffic to the VTEP behind NAT; do not assume that the source port is also 4789.</p>
+<h2 id="check-the-overlay-and-troubleshoot-failures">Check the overlay and troubleshoot failures</h2>
+<p>Inspect the interface, static VTEPs and learned mappings after sending traffic:</p>
+<pre><code class="language-ros">/interface/vxlan/print detail
+/interface/vxlan/vteps/print
+/interface/vxlan/fdb/print
+/interface/bridge/host/print
+</code></pre>
+<p>Work through the path in order:</p>
+<ol>
+<li><strong>Check the underlay route.</strong> Ping the remote VTEP address and confirm that the route uses the intended interface and routing table. Permit the configured UDP port and its return traffic through the underlay firewall.</li>
+<li><strong>Compare the VNI, UDP port and address family.</strong> Both endpoints need the same VNI and port. Remote VTEPs opposite to the interface's <code>vteps-ip-version</code> are ignored. A VNI can be assigned to only one VXLAN interface on a router.</li>
+<li><strong>Check the overlay bridge.</strong> The VXLAN interface, not the routed underlay port, belongs in the overlay bridge. For VLAN-filtering bridges, also check PVID and tagged or untagged membership.</li>
+<li><strong>Check learning.</strong> An empty FDB is expected with <code>learning=no</code> or before traffic arrives. Static VTEP entries can still flood traffic when no FDB mapping exists.</li>
+<li><strong>Check packet sizes.</strong> Test progressively smaller inner packets with DF set. Reduce the VXLAN MTU or increase the underlay MTU if large frames disappear.</li>
+<li><strong>Capture the underlay.</strong> Compare VNI, UDP ports and inner Ethernet frames at both endpoints. A running interface and configured VTEP do not prove that packets arrive.</li>
+</ol>
+<p>Start a UDP port 4789 capture on the underlay interface:</p>
+<pre><code class="language-ros">/tool/sniffer/set filter-interface=ether2 filter-port=4789 \
+    file-name=vxlan.pcap
+/tool/sniffer/start
+</code></pre>
+<p>Generate overlay traffic, then stop the capture with <code>/tool/sniffer/stop</code>.</p>
+<h2 id="plan-mtu-and-fragmentation">Plan MTU and fragmentation</h2>
+<p>The outer IP packet is larger than the inner IP packet:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Underlay and inner tagging</th>
+<th style="text-align: right;">Added bytes</th>
+<th style="text-align: right;">Largest inner packet on a 1500-byte underlay</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">IPv4, untagged</td>
+<td style="text-align: right;">50 bytes</td>
+<td style="text-align: right;">1450 bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPv4, one 802.1Q tag</td>
+<td style="text-align: right;">54 bytes</td>
+<td style="text-align: right;">1446 bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPv6, untagged</td>
+<td style="text-align: right;">70 bytes</td>
+<td style="text-align: right;">1430 bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPv6, one 802.1Q tag</td>
+<td style="text-align: right;">74 bytes</td>
+<td style="text-align: right;">1426 bytes</td>
+</tr>
+</tbody>
+</table>
+<p>Carrying a 1500-byte untagged inner IP packet without fragmentation therefore requires an underlay IP MTU of at least 1550 bytes for IPv4 or 1570 bytes for IPv6. Add another 4 bytes for each 802.1Q tag. Increase the MTU along the entire underlay path, or reduce the VXLAN interface <code>mtu</code> to fit the existing path.</p>
+<p>Without an associated multicast <code>interface</code>, the read-only <code>l2mtu</code> is 65535. When the associated interface exposes its own L2MTU, VXLAN subtracts 50 bytes for an IPv4 underlay or 70 bytes for IPv6. Reduce the VXLAN <code>mtu</code> if the default 1500 bytes does not fit the associated interface. The L2MTU does not prove that every hop in the underlay supports the required MTU.</p>
+<p>The <code>dont-fragment</code> property controls outer-packet fragmentation:</p>
+<ul>
+<li><code>disabled</code> clears DF on an IPv4 outer packet and permits fragmentation. It also permits IPv6 outer fragmentation.</li>
+<li><code>enabled</code> sets DF on an IPv4 outer packet and prevents fragmentation. Oversized payloads are dropped instead of being fragmented. IPv6 outer packets are not fragmented either.</li>
+<li><code>inherit</code> copies the inner IPv4 DF decision to the IPv4 outer packet. Non-IP inner traffic has no outer DF flag. Inner IPv6 traffic sets outer IPv4 DF. On an IPv6 underlay, <code>inherit</code> permits fragmentation like <code>disabled</code>.</li>
+<li><code>auto</code> uses <code>enabled</code> on devices with VXLAN hardware offload and <code>inherit</code> otherwise.</li>
+</ul>
+<p>Prefer an MTU that avoids outer fragmentation. Besides adding processing overhead, fragmentation requires every fragment to reach the remote VTEP before it can decapsulate the inner frame.</p>
+<h2 id="hardware-offloading">Hardware offloading</h2>
+<p>Supported switch chips can offload VXLAN encapsulation and decapsulation when <code>hw=yes</code>. The <code>H</code> flag on VXLAN interfaces and VTEPs indicates hardware-offloaded entries. Consult the <a href="./l3-hardware-offloading#l3hw-device-support">L3HW device support matrix</a> before designing for offload; a hardware-offloaded bridge port alone does not prove that the complete VXLAN path is offloaded.</p>
+<p>The supported underlay is more restricted than software VXLAN:</p>
+<ul>
+<li>Use a standalone routed Ethernet underlay. ECMP and bond, bridge or VLAN underlay interfaces are not supported.</li>
+<li>Multicast underlay and IPv6 VTEP offload are not supported.</li>
+<li>VXLAN-VRF offload is supported on CPSS switch chips. On other switch chips, keep the underlay in <code>main</code> unless the device support matrix explicitly lists VXLAN-VRF support. The software <code>vtep-vrf</code> property does not imply hardware support.</li>
+</ul>
+<p>For the overlay, hardware supports static one-to-one untagged VLAN-to-VNI mappings and tagged VLAN-aware mappings within a VLAN-filtering bridge. The following restrictions apply:</p>
+<ul>
+<li>Routing between different VNIs is not supported.</li>
+<li>VTEPs are isolated, with no configurable horizon between them.</li>
+<li>MDB entries on VXLAN ports are not offloaded for IGMP snooping. Enabling snooping can restrict multicast forwarding between Ethernet and VXLAN.</li>
+<li>Bridged VXLAN interfaces are not supported by MLAG.</li>
+</ul>
+<h3 id="configure-static-vlan-to-vni-mappings">Configure static VLAN-to-VNI mappings</h3>
+<p>This example uses a loopback VTEP address and a routed underlay. Router1 has loopback <code>192.0.2.1/32</code>, underlay <code>198.51.100.1/30</code>, and access ports in VLANs 10 and 20. Router2 uses <code>192.0.2.2/32</code> and <code>198.51.100.2/30</code>. Both endpoints have matching VNIs and access-port VLANs. The underlay MTU accommodates large encapsulated frames and must be supported along the whole path.</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1 vlan-filtering=yes
+/interface/ethernet/set [find default-name=sfp-sfpplus1] \
+    l2mtu=9500 mtu=9500
+/interface/vxlan/add name=vxlan-10010 vni=10010 \
+    local-address=192.0.2.1 bridge=bridge1 bridge-pvid=10
+/interface/vxlan/add name=vxlan-10020 vni=10020 \
+    local-address=192.0.2.1 bridge=bridge1 bridge-pvid=20
+/interface/bridge/port/add bridge=bridge1 \
+    interface=sfp-sfpplus3 pvid=10
+/interface/bridge/port/add bridge=bridge1 \
+    interface=sfp-sfpplus4 pvid=20
+/interface/vxlan/vteps/add interface=vxlan-10010 \
+    remote-ip=192.0.2.2
+/interface/vxlan/vteps/add interface=vxlan-10020 \
+    remote-ip=192.0.2.2
+/ip/address/add address=192.0.2.1/32 interface=lo
+/ip/address/add address=198.51.100.1/30 \
+    interface=sfp-sfpplus1
+/ip/route/add dst-address=192.0.2.2/32 gateway=198.51.100.2
+/interface/ethernet/switch/set 0 l3-hw-offloading=yes
+</code></pre>
+<p>On Router2, mirror the configuration with local addresses <code>192.0.2.2</code> and <code>198.51.100.2/30</code>, remote VTEP <code>192.0.2.2</code> replaced by <code>192.0.2.1</code>, and the route to <code>192.0.2.1/32</code> through <code>198.51.100.1</code>.</p>
+<p>Static routes are shown for brevity. OSPF or BGP can distribute the loopback VTEP addresses when the underlay meets the hardware restrictions.</p>
+<p>For all interface, VTEP and FDB properties, see the <a href="../cli-reference/interface/vxlan/">VXLAN CLI reference</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

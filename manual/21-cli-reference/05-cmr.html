@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cmr · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="cmr">cmr</h1>
+<h1 id="cmr_1">cmr</h1>
+<blockquote>
+<p>Settings of the CMR server, the router that controls a fleet of CMR clients. Enable the server with enabled=yes; it then distributes software packages, discovers and tracks the devices, and evaluates the alert rules...</p>
+</blockquote>
+<hr />
+<h2 id="cmr_2">cmr</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Settings Directory</p>
+<p>Settings of the CMR server, the router that controls a fleet of CMR clients. Enable the server with <code>enabled=yes</code>; it then distributes software packages, discovers and tracks the devices, and evaluates the alert rules that monitor them. See <a href="../../management-tools/cmr">CMR</a> for an overview of the package.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>enum (yes | no)</code> — Whether CMR server is enabled or not. Default: no.</li>
+<li><strong>local-id</strong> <code>string</code> — Unique CMR specific device identifier.</li>
+<li><strong>pairing-requirement</strong> <code>enum (none | password | confirm)</code> — Defines what the remote device must do before this device accepts the pairing: - <strong>none</strong> - this device accepts pairing automatically, without additional checks - <strong>password</strong> - the remote device may approve pairing by giving the username and password of a RouterOS user on this device; CMR has no separate pairing password - <strong>confirm</strong> - pairing must be approved locally by running the <code>pair</code> command on this device; approval from the remote side is not possible</li>
+<li><strong>packages-directory</strong> <code>file</code> — Directory on the server's file system containing RouterOS packages that the server distributes to the managed devices and serves from when it matches the version an upgrade needs. The value is picked from the router's file list: directory entries are entered with a trailing slash (for example <code>cmrpkgs/</code>), plain files without one. Packages are resolved individually: a package already present here for the required version is sent directly without downloading it again, and only the missing packages are downloaded and cached. A value that does not point to an existing directory is kept but cannot be used; the <code>/cmr</code> menu then shows <code>directory does not exist, using memory</code> and packages are served from memory instead.</li>
+<li><strong>packages-cache-type</strong> <code>enum (directory | memory)</code> — Where the server stores the package files it downloads: <code>directory</code> keeps them on the server's storage, <code>memory</code> keeps them in RAM. With <code>directory</code>, the server stores them in a <code>cmrcache</code> subdirectory of <code>packages-directory</code>, which it creates in the router's file list; packages that are already present in <code>packages-directory</code> are served from there without being downloaded. When the directory is missing or unusable the server reports <code>directory does not exist, using memory</code> in the <code>/cmr</code> menu, stores the packages in RAM instead, and switches back to the directory when it becomes available again.</li>
+<li><strong>packages-cache-limit</strong> <code>num</code> — Maximum amount of package data held in the cache, in megabytes. A value larger than the available RAM or storage is accepted and the server shows an informational note; the cache then uses all the space that is available and evicts older entries when a file larger than the remaining space must be stored.</li>
+<li><strong>upgrade-check-interval</strong> <code>time</code> — How often the CMR server checks the MikroTik update servers for available versions. The minimum value is 1 minute. Default: <code>10h</code>.</li>
+<li><strong>track-topology</strong> <code>bool</code> — Enables network topology discovery. Fetches the following information from CMR clients: routes, WiFi registration table, ARP table, neighbors, DHCP state, and interface states. This information is required for full CMR functionality, for example, automatic link discovery in the <code>/cmr/layout</code> menu. Default: yes.</li>
+<li><strong>fetch-comments</strong> <code>bool</code> — Enables fetching of comments for interfaces/ports and the WiFi registration table. Default: yes.</li>
+<li><strong>controller-addresses</strong> <code>multi { array-id, address: address (flags=46D)
+ }</code> — CMR server IP addresses that are sent to the devices when the controller address cannot be discovered automatically (MNDP, or DNS: the client resolves <code>_cmr._tcp.lan</code> and <code>_cmr._tcp.</code> followed by the domain name from DHCP).</li>
+<li><strong>apptraffic-devices</strong> <code>object</code> — Select devices using labels for which to collect app traffic data. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. Default: <code>gateway</code>; <code>all</code> selects every device.</li>
+<li><strong>auto-labels</strong> <code>alt { auto-labels: enum (none | all) { none:0, all:0xffff }
+, auto-labels: ubit (version, architecture, model, board-name, identity, address, ssid)
+ }</code> — Whether to fetch labels information from the connected cmr-client devices. Can be configured to fetch only specific labels. Default: all.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>self-client-id</strong> <code>string</code> — ID that is used by CMR server to connect to itself, for it to be displayed in a device list.</li>
+</ul>
+<hr />
+<h1 id="alert">alert</h1>
+<blockquote>
+<p>An alert rule defines conditions and runs its actions on the CMR controller. Device rules select devices with labels. State alerts remain active while all configured state conditions match and run actions once when...</p>
+</blockquote>
+<hr />
+<h2 id="cmralert">cmr/alert</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>An alert rule defines conditions and runs its actions on the CMR controller. Device rules select devices with <code>labels</code>. State alerts remain active while all configured state conditions match and run actions once when they become active. They fire again only after their conditions stop matching and then match again. Event alerts run actions for each matching occurrence and never remain active or contribute to active-alert counters. A rule can contain multiple state conditions but at most one event condition. Most alerts apply per device; <code>upgrade-job-done</code> is a system event for a whole upgrade job. See <a href="../../../management-tools/cmr/#alert-rules">CMR - Alert rules</a> for conditions, actions, and alert scope.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Alert rule is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the alert rule.</li>
+<li><strong>labels</strong> <code>object</code> — Select the devices, by labels, that the alert rule applies to. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. When <code>labels</code> is not set, the rule applies to all connected devices (<code>labels=all</code>).</li>
+<li><strong>connected</strong> <code>bool</code> — State condition that matches whether the device is connected (<code>yes</code>) or disconnected (<code>no</code>). Default: no.</li>
+<li><strong>cpu-above</strong> <code>num</code> — Alert when CPU load is above the given percent value (0..100); a value equal to the threshold also fires the rule. Default: unset.</li>
+<li><strong>cpu-below</strong> <code>num</code> — Alert when CPU load is below the given percent value (0..100); it fires only for values strictly below the threshold. Default: unset.</li>
+<li><strong>hdd-above</strong> <code>num</code> — Alert when disk (HDD) load is above the given percent value (0..100); a value equal to the threshold also fires the rule. Default: unset.</li>
+<li><strong>hdd-below</strong> <code>num</code> — Alert when disk (HDD) load is below the given percent value (0..100); it fires only for values strictly below the threshold. Default: unset.</li>
+<li><strong>mem-above</strong> <code>num</code> — Alert when RAM load is above the given percent value (0..100); a value equal to the threshold also fires the rule. Default: unset.</li>
+<li><strong>mem-below</strong> <code>num</code> — Alert when RAM load is below the given percent value (0..100); it fires only for values strictly below the threshold. Default: unset.</li>
+<li><strong>health-above</strong> <code>num</code> — Alert when the health sensor named by <code>health-value</code> goes above the given value; a value equal to the threshold also fires the rule. Devices that do not report the sensor are ignored. Default: unset.</li>
+<li><strong>health-below</strong> <code>num</code> — Alert when the health sensor named by <code>health-value</code> goes below the given value; it fires only for values strictly below the threshold. Devices that do not report the sensor are ignored. Default: unset.</li>
+<li><strong>health-value</strong> <code>string</code> — Name of the health sensor to compare, matching a name from <code>/system/health/print</code>, for example <code>cpu-temperature</code>. Uses the <code>[cpu-temperature]</code> style placeholder in the action text.</li>
+<li><strong>interface-change</strong> <code>alt { change: enum (any)
+, change: ubit (running, not-running, added, removed)
+ }</code> — Alert on an interface state change: - <code>any</code> (default) - Any state change. - <code>running</code> - An interface's link comes up. - <code>not-running</code> - An interface's link goes down. - <code>added</code> - An interface is first seen. - <code>removed</code> - An interface is no longer seen. <code>running</code> and <code>not-running</code> follow the link state of the interface, not its admin state: enabling or disabling an interface with no connection does not fire, while an actual link loss or recovery does.</li>
+<li><strong>interface-type</strong> <code>alt { type: enum (any)
+, type: ubit (ethernet, wifi, bridge)
+ }</code> — Restrict <code>interface-change</code> alerts to one interface type: - <code>any</code> (default) - Interfaces of any type. - <code>ethernet</code> - Ethernet ports. - <code>wifi</code> - Wireless interfaces. - <code>bridge</code> - Bridge interfaces.</li>
+<li><strong>upgrade-available</strong> <code>bool</code> — Alert when a newer RouterOS version is available for the device. Default: no.</li>
+<li><strong>disconnected-more-than</strong> <code>time</code> — Alert when a device has been disconnected for longer than the given time. Default: unset.</li>
+<li><strong>upgrade-job-done</strong> <code>alt { cond: enum (yes)
+, cond: ubit (success, fail)
+ }</code> — Alert when an upgrade job finishes; the rule fires once for the whole job, when the last device of the job is done: - <code>yes</code> (default) - Any outcome. - <code>success</code> - The job finished successfully. - <code>fail</code> - The job failed. A job that ends without installing an upgrade is treated as a failed job, so the <code>yes</code> and <code>fail</code> variants both fire.</li>
+<li><strong>upgrade-done</strong> <code>alt { cond: enum (yes)
+, cond: ubit (success, fail)
+ }</code> — Alert when the upgrade of a device finishes; the rule fires once for every device that finished its upgrade: - <code>yes</code> (default) - Any outcome. - <code>success</code> - The upgrade finished successfully. - <code>fail</code> - The upgrade failed. When no newer version is available for a device, its upgrade still finishes as a failure (the <code>[upgrade-error]</code> is <code>no upgrade available</code>), so the <code>yes</code> and <code>fail</code> variants both fire.</li>
+<li><strong>unpaired-device-connected</strong> <code>bool</code> — Alert when a device that is not paired to the controller connects. Default: no.</li>
+<li><strong>rebooted</strong> <code>bool</code> — Event condition that fires when the device reboots, also when the reboot is part of an upgrade or comes from <code>/cmr/device/reboot</code>. Default: no.</li>
+<li><strong>log-topics</strong> <code>multi { array-id, array-id, topic: super { !
+, topic: enum
+ }
+ }</code> — Log topics to follow; prefix a topic with <code>!</code> to exclude it. Together with <code>log-regex</code>, defines a log-message event condition. CMR automatically instructs the device to forward matching log messages.</li>
+<li><strong>log-regex</strong> <code>string</code> — Match log messages against the given regular expression. Each message matching the configured topics and regular expression fires the actions without creating a persistent active alert.</li>
+<li><strong>action.log</strong> <code>string</code> — Write a message to the log when the alert fires. The message may contain placeholders such as <code>[device]</code> or <code>[cpu-usage]</code>, replaced with the values of the device that fired; an inapplicable placeholder is rendered as <code>unknown</code>.</li>
+<li><strong>action.log-topics</strong> <code>multi { array-id, topic: enum
+ }</code> — Log topics to write the message to. Default: <code>cmr,info</code>, and <code>cmr,warning</code> for a log-line condition.</li>
+<li><strong>action.log-prefix</strong> <code>string</code> — Prefix for the log message. When set, the prefix is prepended to the message without a separator; when unset the message is written as it is.</li>
+<li><strong>action.script</strong> <code>enum</code> — Run a named system script when the alert fires. The script must allow itself to run with reduced rights; otherwise the action fails with <code>executing script ... from cmr failed ... (not enough permissions)</code>. Set the script's <code>dont-require-permissions</code> to yes.</li>
+<li><strong>action.script-vars</strong> <code>multi { array-id, script-var: string
+ }</code> — List of variable names to make available to the <code>action.script</code>: each variable is filled with the value for the device that fired. For example <code>device</code>, <code>identity</code>, <code>address</code>, <code>board</code>, <code>version</code> become <code>$device</code>, <code>$identity</code>, and so on in the script. A name with a hyphen (for example <code>cpu-usage</code>) cannot be read as an ordinary script variable.</li>
+<li><strong>action.http-url</strong> <code>string</code> — HTTP webhook URL to call when the alert fires. On a failed call the alert writes <code>alert "&lt;name&gt;" HTTP action failed: &lt;reason&gt;</code> to the <code>cmr</code> topic with <code>warning</code> severity and counts the failure in <code>action-failures</code>; the other actions still run.</li>
+<li><strong>action.http-method</strong> <code>enum (get | post | put | delete | head | patch)</code> — HTTP method used for the webhook: - <code>get</code> - <code>post</code> - <code>put</code> - <code>delete</code> - <code>head</code> - <code>patch</code></li>
+<li><strong>action.http-body</strong> <code>string</code> — HTTP request body sent to the webhook. Supports the same placeholders as the log message, substituted per device (for example <code>[device]</code> and <code>[version]</code>). No <code>Content-Type</code> header is added automatically; add one with <code>action.http-headers</code> when the receiver expects it, for example <code>Content-Type: application/json</code> for a JSON body.</li>
+<li><strong>action.http-headers</strong> <code>multi { header: string
+ }</code> — Additional HTTP headers sent with the webhook, each as <code>Header: value</code>. The request also carries the controller's <code>RouterOS &lt;version&gt;</code> user-agent.</li>
+<li><strong>reset-on-disconnect</strong> <code>enum (yes | no) { yes:0, no:-1 }</code> — Clear (reset) a state alert when the device disconnects, so a reconnecting device fires the rule again if it still matches: <code>yes</code> or <code>no</code>. Default: <code>no</code> (the state is kept across a disconnect). Event alerts have no persistent state to reset.</li>
+<li><strong>severity</strong> <code>enum (critical | high | medium | low)</code> — Severity of the alert: - <code>critical</code> - <code>high</code> - <code>medium</code> (default) - <code>low</code></li>
+<li><strong>category</strong> <code>multi { array-id, category: enum
+ }</code> — Categories assigned to the alert. The category is a grouping label: the server assigns one according to the rule's conditions (for example <code>performance</code>, <code>availability</code>, <code>version</code>, <code>network</code>, or <code>logging</code>), and it can be changed to any value.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>devices</strong> <code>num</code> — Number of devices the alert rule matches (the devices selected by <code>labels</code>). When the rule covers all devices, this count includes the controller itself.</li>
+<li><strong>devices-on</strong> <code>num</code> — Number of devices with an active state alert. Event occurrences do not add to this count.</li>
+<li><strong>fired</strong> <code>num</code> — Total number of times the alert has fired.</li>
+<li><strong>action-failures</strong> <code>num</code> — Number of times an alert action has failed, for example a webhook that could not be reached.</li>
+</ul>
+<hr />
+<h1 id="show-devices">show-devices</h1>
+<blockquote>
+<p>Lists the devices on which the state alert of an alert rule is active, with a status flag for each (see the following flags). Event alerts never stay active, so they list no devices.</p>
+</blockquote>
+<hr />
+<h2 id="cmralertshow-devices">cmr/alert/show-devices</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Lists the devices on which the state alert of an alert rule is active, with a status flag for each (see the following flags). Event alerts never stay active, so they list no devices.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>p</strong> <code>remote-pending</code> — Controller requests pairing.</li>
+<li><strong>I</strong> <code>inactive</code> — Device is inactive.</li>
+<li><strong>S</strong> <code>stale</code> — No connection (stale).</li>
+<li><strong>L</strong> <code>controller</code> — The CMR server itself (self-client).</li>
+<li><strong>C</strong> <code>connected</code> — Device is connected.</li>
+<li><strong>U</strong> <code>upgrade-available</code> — A newer update is available.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>on-only</strong> <code>bool</code> — Show only the devices on which the alert rule is active.</li>
+</ul>
+<hr />
+<h1 id="test">test</h1>
+<blockquote>
+<p>Runs the actions of the alert rule immediately, as if the rule had fired, with [placeholder] values in place of the real device data. Use it to verify that the actions work without waiting for a condition to appear...</p>
+</blockquote>
+<hr />
+<h2 id="cmralerttest">cmr/alert/test</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Runs the actions of the alert rule immediately, as if the rule had fired, with <code>[placeholder]</code> values in place of the real device data. Use it to verify that the actions work without waiting for a condition to appear on a device.</p>
+<hr />
+<h1 id="client">client</h1>
+<blockquote>
+<p>For an overview of the CMR-client and its usage, see the CMR-Client documentation.</p>
+</blockquote>
+<hr />
+<h2 id="cmrclient">cmr/client</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Settings Directory</p>
+<p>For an overview of the CMR-client and its usage, see the <a href="../../../management-tools/cmr/client">CMR-Client</a> documentation.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>enum (yes | no)</code> — Whether CMR client is enabled or not. Default: no.</li>
+<li><strong>peer-id</strong> <code>string</code> — Unique CMR specific device identifier, of the CMR server.</li>
+<li><strong>local-id</strong> <code>string</code> — Unique CMR specific device identifier.</li>
+<li><strong>pairing-requirement</strong> <code>enum (none | password | confirm)</code> — Defines what the remote device must do before this device accepts the pairing: - <strong>none</strong> - this device accepts pairing automatically, without additional checks - <strong>password</strong> (default) - the remote device may approve pairing by giving the username and password of a RouterOS user on this device; CMR has no separate pairing password - <strong>confirm</strong> - pairing must be approved locally with <a href="pair"><code>/cmr/client/pair</code></a> on this device; approval from the remote side is not possible</li>
+<li><strong>controller-addresses</strong> <code>multi { array-id, address: address (flags=46Dv)
+ }</code> — Specifies the controller IP addresses to use. This setting is optional when the client can discover the controller automatically through neighbor discovery or DNS (<code>_cmr._tcp.lan</code>, or <code>_cmr._tcp.</code> followed by the domain name from DHCP), but must be configured when the controller address cannot be determined automatically.</li>
+<li><strong>vrf</strong> <code>enum</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Current CMR-client status.</li>
+<li><strong>controller-identity</strong> <code>string</code> — CMR server identity.</li>
+<li><strong>controller-address</strong> <code>address (flags=46iv)</code> — CMR server IP address.</li>
+<li><strong>pairing-status</strong> <code>multi { array-id, status: string
+ }</code> — Current pairing status.</li>
+<li><strong>saved-addresses</strong> <code>multi { array-id, address: address (flags=46v)
+ }</code> — List of CMR server's discovered IP addresses.</li>
+</ul>
+<hr />
+<h1 id="forget">forget</h1>
+<blockquote>
+<p>Forget device pairing and disconnect device from CMR server.</p>
+</blockquote>
+<hr />
+<h2 id="cmrclientforget">cmr/client/forget</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p>Forget device pairing and disconnect device from CMR server.</p>
+<hr />
+<h1 id="pair">pair</h1>
+<blockquote>
+<p>Initiate pairing process to CMR server.</p>
+</blockquote>
+<hr />
+<h2 id="cmrclientpair">cmr/client/pair</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p>Initiate pairing process to CMR server.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>username</strong> <code>string</code> — CMR server username.</li>
+<li><strong>password</strong> <code>string</code> — CMR server password.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>address (flags=46v)</code> — CMR server IP address.</li>
+<li><strong>status</strong> <code>string</code> — Pairing status.</li>
+</ul>
+<hr />
+<h1 id="push-button">push-button</h1>
+<blockquote>
+<p>Using this command device pairing can be performed using physical routerboard/reset button on the client device.</p>
+</blockquote>
+<hr />
+<h2 id="cmrclientpush-button">cmr/client/push-button</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Using this command device pairing can be performed using physical routerboard/reset button on the client device.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>multi { array-id, interface: iface_enum
+ }</code> — Select inteface or interface list on which to search for CMR server. (default value: <strong>all</strong>)</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>state</strong> <code>string</code> — State of device pairing.</li>
+<li><strong>error</strong> <code>string</code> — Error information, in case pairing is unsuccessfull.</li>
+<li><strong>peer</strong> <code>multi { array-id, mac: macAddr
+ }</code> — CMR server address.</li>
+<li><strong>peer-id</strong> <code>string</code> — CMR server ID.</li>
+</ul>
+<hr />
+<h1 id="device">device</h1>
+<blockquote>
+<p>Devices managed by this CMR server. A device appears in the list as soon as it connects to the server, with the P flag until the pairing is approved. The server itself is shown as the device with the L flag. Use the...</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevice">cmr/device</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>Devices managed by this CMR server. A device appears in the list as soon as it connects to the server, with the <strong>P</strong> flag until the pairing is approved. The server itself is shown as the device with the <strong>L</strong> flag. Use the commands in this menu to operate on the fleet, for example <code>run-script</code>, <code>upgrade</code>, <code>reboot</code>, or <code>pair</code>. See <a href="../../../management-tools/cmr">CMR</a> for how devices connect and pair.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>P</strong> <code>pending</code> — Pairing pending.</li>
+<li><strong>p</strong> <code>remote-pending</code> — Controller requests pairing.</li>
+<li><strong>I</strong> <code>inactive</code> — Device is inactive.</li>
+<li><strong>S</strong> <code>stale</code> — No connection (stale).</li>
+<li><strong>L</strong> <code>controller</code> — The CMR server itself (self-client).</li>
+<li><strong>C</strong> <code>connected</code> — Device is connected.</li>
+<li><strong>U</strong> <code>upgrade-available</code> — The upgrade channel of the device offers a different version than the installed one. The offered version can also be earlier than the installed version.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ids</strong> <code>object { ids: super { his-id: string
+, [our-id] [ /string]
+ }
+ }</code> — Identities (his-id / our-id) of the managed device.</li>
+<li><strong>pairing-requirement</strong> <code>enum (none | password | confirm)</code> — Pairing requirement applied to this device, overriding the server default: <code>none</code>, <code>password</code>, or <code>confirm</code>.</li>
+<li><strong>labels</strong> <code>multi { array-id, label: enum
+ }</code> — User labels assigned to the device (grouping/filtering).</li>
+<li><strong>port-labels</strong> <code>object { port-and-labels: super { port: string
+, [labels] :multi { array-id, label: string
+ }
+ }
+ }</code> — Labels per port. Quote the label, for example <code>port-labels=ether1:"uplink"</code>. <code>/cmr/vlan</code> rules can select ports by these labels.</li>
+<li><strong>identity</strong> <code>string</code> — System identity (editable) of the device.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>peer</strong> <code>enum</code> — The management peer this device is connected to.</li>
+<li><strong>board</strong> <code>string</code> — Board name.</li>
+<li><strong>version</strong> <code>string</code> — RouterOS version of the device.</li>
+<li><strong>minimum-version</strong> <code>string</code> — Minimum supported version.</li>
+<li><strong>allowed-versions</strong> <code>string</code> — Safe (safepkg) upgrade indicator.</li>
+<li><strong>address</strong> <code>address (flags=46)</code> — Current connection address.</li>
+<li><strong>auto-labels</strong> <code>multi { array-id, label: string
+ }</code> — Automatically assigned labels.</li>
+<li><strong>packages</strong> <code>multi { array-id, label: string
+ }</code> — Installed packages.</li>
+<li><strong>state</strong> <code>string</code> — Device state.</li>
+<li><strong>upgrade-rule</strong> <code>enum</code> — Upgrade rule covering this device. The first rule in the <a href="../upgrade"><code>/cmr/upgrade</code></a> rule list that covers the device claims it, so a <code>labels=all</code> rule placed at the top covers every device.</li>
+<li><strong>channel</strong> <code>alt</code> — Current upgrade channel/version.</li>
+<li><strong>available-version</strong> <code>string</code> — Newest available upgrade.</li>
+<li><strong>connected-time</strong> <code>time</code> — Time the device has been connected.</li>
+<li><strong>uptime</strong> <code>time</code> — Device uptime.</li>
+<li><strong>disconnected-since</strong> <code>date</code> — Time since the device disconnected.</li>
+<li><strong>alerts</strong> <code>super { on: num
+, [all] /num
+, [critical]  num
+, [high] /num
+, [medium] /num
+, [low] /num
+ }</code> — Enabled/total alert counts by severity.</li>
+<li><strong>serial</strong> <code>string</code> — Factory serial number.</li>
+</ul>
+<hr />
+<h1 id="apptraffic">apptraffic</h1>
+<blockquote>
+<p>Application traffic monitor for the selected devices.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdeviceapptraffic">cmr/device/apptraffic</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Application traffic monitor for the selected devices.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to monitor using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+</ul>
+<hr />
+<h1 id="dashboard">dashboard</h1>
+<blockquote>
+<p>Opens a live view of the selected devices: devices, resources, interfaces, curves, and AP/station data.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevicedashboard">cmr/device/dashboard</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Opens a live view of the selected devices: devices, resources, interfaces, curves, and AP/station data.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to show in the dashboard using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+</ul>
+<hr />
+<h1 id="pair_1">pair</h1>
+<blockquote>
+<p>Starts pairing with the selected devices.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevicepair">cmr/device/pair</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Starts pairing with the selected devices.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to pair using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>username</strong> <code>string</code> — Username used for pairing when the device requires it.</li>
+<li><strong>password</strong> <code>string</code> — Password used for pairing when the device requires it.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>device</strong> <code>enum</code> — Device being paired.</li>
+<li><strong>status</strong> <code>string</code> — Pairing status.</li>
+</ul>
+<hr />
+<h1 id="reboot">reboot</h1>
+<blockquote>
+<p>Reboots the selected devices. The command returns right away. When a device has restarted, the rebooted example alert rule logs rebooted, where is identity@address.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevicereboot">cmr/device/reboot</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Reboots the selected devices. The command returns right away. When a device has restarted, the <code>rebooted</code> example alert rule logs <code>&lt;device&gt; rebooted</code>, where <code>&lt;device&gt;</code> is <code>identity@address</code>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to reboot using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+</ul>
+<hr />
+<h1 id="run-script">run-script</h1>
+<blockquote>
+<p>Runs a script on the selected devices.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevicerun-script">cmr/device/run-script</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Runs a script on the selected devices.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>script</strong> <code>alt { script: string
+ }</code> — The script to run on the selected devices.</li>
+<li><strong>labels</strong> <code>object</code> — Select the devices to run the script on using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>order</strong> <code>object</code> — Execution order (by labels).</li>
+<li><strong>strategy</strong> <code>enum ()</code> — How devices are processed: <code>parallel</code> or <code>sequential</code>.</li>
+<li><strong>fail-policy</strong> <code>enum ()</code> — Behaviour if a device fails: <code>continue</code>, <code>stop</code>, or <code>continue-order</code>.</li>
+<li><strong>timeout</strong> <code>time</code> — Script execution timeout.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>device</strong> <code>enum</code> — Device the script is running on.</li>
+<li><strong>status</strong> <code>string</code> — Execution status.</li>
+<li><strong>output</strong> <code>string</code> — Script output.</li>
+</ul>
+<hr />
+<h1 id="upgrade">upgrade</h1>
+<blockquote>
+<p>Starts an upgrade (job) for the selected devices. The upgrade runs as a job in /cmr/upgrade/job, with the same job states and result counters. On the console, the command shows the job's devices and their states...</p>
+</blockquote>
+<hr />
+<h2 id="cmrdeviceupgrade">cmr/device/upgrade</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Starts an upgrade (job) for the selected devices. The upgrade runs as a job in <a href="../upgrade/job"><code>/cmr/upgrade/job</code></a>, with the same job states and result counters. On the console, the command shows the job's devices and their states until you press <kbd>Control</kbd>+<kbd>C</kbd> or the time given in <code>duration</code> ends; the job continues on the server. With <code>order</code>, the label groups are upgraded one after another; list the devices that others connect through, such as switches and gateways, last.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>L</strong> <code>controller</code> — Include the CMR server itself (self-client).</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to upgrade using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>order</strong> <code>object</code> — Execution order (by labels).</li>
+<li><strong>channel</strong> <code>alt</code> — Upgrade channel (<code>long-term</code>, <code>stable</code>, <code>testing</code>, or <code>development</code>) or a pinned version, for example <code>channel=7.24.4</code>. When not set, each device upgrades on its own upgrade channel, the <code>channel</code> value shown in <code>/cmr/device</code>.</li>
+<li><strong>schedule-time</strong> <code>super { time: date
+, [day] [ @enum (sun | mon | tue | wed | thu | fri | sat) { sun:1, mon:2, tue:3, wed:4, thu:5, fri:6, sat:7 }]
+ }</code> — When the upgrade starts: a time with an optional weekday given after <code>@</code>, for example <code>14:00:00</code> or <code>00:00:00@sat</code>. The job waits in the <code>scheduled</code> state until the next occurrence of that time.</li>
+<li><strong>strategy</strong> <code>enum (parallel | sequential)</code> — How devices are upgraded: <code>parallel</code> upgrades all covered devices at the same time; <code>sequential</code> upgrades them one after another and waits for each to finish. With <code>continue-order</code> the devices are processed per label group in the order given by <code>order</code>: in <code>parallel</code> the devices of each group are upgraded together, in <code>sequential</code> one at a time. Default: <code>parallel</code>.</li>
+<li><strong>fail-policy</strong> <code>enum (continue | stop | continue-order)</code> — Behaviour if a device fails: <code>continue</code> skips the failed device and continues with the rest; <code>stop</code> stops the whole upgrade on the first failure and does not continue with the remaining devices or with the next label group; <code>continue-order</code> skips the failed device and continues with the next label group, processing the labels one group after another in the order given by <code>order</code>. With <code>sequential</code> the rest of the failed device's group is skipped; with <code>parallel</code> only the failed device is abandoned and devices already in progress in the group finish. Default: <code>stop</code>.</li>
+<li><strong>packages</strong> <code>multi { package: string
+ }</code> — Packages to upgrade.</li>
+</ul>
+<hr />
+<h1 id="wifi-logs">wifi-logs</h1>
+<blockquote>
+<p>WiFi log monitor for the selected devices. Press c to switch to the clients view and l to return to the log entries.</p>
+</blockquote>
+<hr />
+<h2 id="cmrdevicewifi-logs">cmr/device/wifi-logs</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>WiFi log monitor for the selected devices. Press <code>c</code> to switch to the clients view and <code>l</code> to return to the log entries.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices to monitor using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>address</strong> <code>macAddr</code> — Filter by client MAC address.</li>
+<li><strong>bssid</strong> <code>macAddr</code> — Filter by BSSID.</li>
+<li><strong>time</strong> <code>time</code> — Filter by time.</li>
+<li><strong>time-start</strong> <code>date</code> — Filter logs from this time.</li>
+<li><strong>time-end</strong> <code>date</code> — Filter logs up to this time.</li>
+<li><strong>event</strong> <code>enum (connected | disconnected | failed)</code> — Filter by event: <code>connected</code>, <code>disconnected</code>, or <code>failed</code>.</li>
+</ul>
+<hr />
+<h1 id="layout">layout</h1>
+<blockquote>
+<p>Topology configuration; the topology itself can only be displayed in the GUI, not in the CLI.</p>
+</blockquote>
+<hr />
+<h2 id="cmrlayout">cmr/layout</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>Topology configuration; the topology itself can only be displayed in the GUI, not in the CLI.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the layout/topology.</li>
+<li><strong>scale</strong> <code>num</code> — Background picture scale in percents. Default: 100.</li>
+<li><strong>file</strong> <code>string</code> — Background picture selection.</li>
+</ul>
+<hr />
+<h1 id="add-devices">add-devices</h1>
+<blockquote>
+<p>This command adds multiple devices to the topology in bulk.</p>
+</blockquote>
+<hr />
+<h2 id="cmrlayoutadd-devices">cmr/layout/add-devices</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>This command adds multiple devices to the topology in bulk.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select devices that should be added to the topology using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. (default value: <strong>all</strong>)</li>
+<li><strong>devices</strong> <code>multi { array-id, device: enum
+ }</code> — Select specific devices that should be added to the topology.</li>
+</ul>
+<hr />
+<h1 id="link">link</h1>
+<blockquote>
+<p>Configuration for a specific link in a topology.</p>
+</blockquote>
+<hr />
+<h2 id="cmrlayoutlink">cmr/layout/link</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>Configuration for a specific link in a topology.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>layout</strong> <code>enum</code> — Name of the layout where the link will be displayed.</li>
+<li><strong>node1</strong> <code>enum</code> — Name of the first node in a link.</li>
+<li><strong>node2</strong> <code>enum</code> — Name of the second node in a link.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>links</strong> <code>multi { array-id, array-id, link: super { port1: object
+, [port2] --object
+ }
+ }</code> — Detailed information about the link state, such as PoE status, interface names, and traffic information. A <code>*</code> before a port name marks a direct, physical link. Example: <code>ether1(,tx=85.9KiB,rx=10.8KiB)--ether23(poe=powered-on,tx=10.9KiB,rx=86.8KiB)</code></li>
+</ul>
+<hr />
+<h1 id="node">node</h1>
+<blockquote>
+<p>Configuration for a specific node in a topology.</p>
+</blockquote>
+<hr />
+<h2 id="cmrlayoutnode">cmr/layout/node</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>Configuration for a specific node in a topology.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the node.</li>
+<li><strong>layout</strong> <code>enum</code> — Name of the layout where the node will be displayed.</li>
+<li><strong>device</strong> <code>enum</code> — Name of the device that the node will represent in the topology. Mutually exclusive with <code>target-layout</code> parameter.</li>
+<li><strong>target-layout</strong> <code>enum</code> — Name of the layout that the node will represent in the topology. Mutually exclusive with <code>device</code> parameter.</li>
+<li><strong>x</strong> <code>num</code> — X coordinate of the node in a topology. Default X value is incremented by 200 each time a new node is added, to prevent overlapping when no coordinates are specified. (default value: <strong>0+200*n</strong>)</li>
+<li><strong>y</strong> <code>num</code> — Y coordinate of the node in a topology. (default value: <strong>0</strong>)</li>
+</ul>
+<hr />
+<h1 id="rebuild-links">rebuild-links</h1>
+<blockquote>
+<p>If links between nodes in the topology were deleted or not generated initially, this command automatically generates them based on port data.</p>
+</blockquote>
+<hr />
+<h2 id="cmrlayoutrebuild-links">cmr/layout/rebuild-links</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>If links between nodes in the topology were deleted or not generated initially, this command automatically generates them based on port data.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select devices using labels for which links should be rebuilt. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. (default value: <strong>all</strong>)</li>
+<li><strong>devices</strong> <code>multi { array-id, device: enum
+ }</code> — Select specific devices for which links should be rebuilt.</li>
+</ul>
+<hr />
+<h1 id="push-button_1">push-button</h1>
+<blockquote>
+<p>Using this command device pairing can be performed using physical routerboard/reset button on the server device.</p>
+</blockquote>
+<hr />
+<h2 id="cmrpush-button">cmr/push-button</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Using this command device pairing can be performed using physical routerboard/reset button on the server device.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>multi { array-id, interface: iface_enum
+ }</code> — Select interface or interface list on which to search for CMR client. Default: all.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>state</strong> <code>string</code> — State of device pairing.</li>
+<li><strong>error</strong> <code>string</code> — Error information, in case pairing is unsuccessful.</li>
+<li><strong>peer</strong> <code>multi { array-id, mac: macAddr
+ }</code> — Peer address.</li>
+<li><strong>peer-id</strong> <code>string</code> — Peer ID.</li>
+</ul>
+<hr />
+<h1 id="upgrade_1">upgrade</h1>
+<blockquote>
+<p>An upgrade rule describes when and to which channel to upgrade selected devices (by labels).</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgrade">cmr/upgrade</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>An upgrade rule describes when and to which channel to upgrade selected devices (by labels).</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Rule is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — Rule is dynamic.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the upgrade rule.</li>
+<li><strong>labels</strong> <code>object</code> — Select the devices the rule covers using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. If omitted, the rule covers all connected devices. Default: <code>all</code>.</li>
+<li><strong>order</strong> <code>object</code> — Execution order (by labels). Required when <code>fail-policy=continue-order</code>.</li>
+<li><strong>channel</strong> <code>alt</code> — Upgrade channel: <code>long-term</code>, <code>stable</code>, <code>testing</code>, or <code>development</code>. Alternatively, pin a specific version by giving the version directly as the value, for example <code>channel=7.24.4</code>.</li>
+<li><strong>schedule-time</strong> <code>multi { array-id, array-id, time: super { time: date
+, [day] [ @enum (sun | mon | tue | wed | thu | fri | sat) { sun:1, mon:2, tue:3, wed:4, thu:5, fri:6, sat:7 }]
+ }
+ }</code> — When upgrades start: a time with an optional weekday given after <code>@</code>. For example <code>14:00:00</code> starts every day at 14:00 and <code>00:00:00@sat</code> starts every Saturday at midnight. Multiple entries are comma-separated, for example <code>00:00:00@sat,00:00:00@sun</code>.</li>
+<li><strong>strategy</strong> <code>enum ()</code> — How devices are upgraded: <code>parallel</code> upgrades all covered devices at the same time; <code>sequential</code> upgrades them one after another and waits for each to finish. With <code>continue-order</code> the devices are processed per label group in the order given by <code>order</code>: in <code>parallel</code> the devices of each group are upgraded together, in <code>sequential</code> one at a time. Default: <code>parallel</code>.</li>
+<li><strong>fail-policy</strong> <code>enum ()</code> — Behaviour if a device fails: <code>continue</code> skips the failed device and continues with the rest; <code>stop</code> stops the whole upgrade on the first failure and does not continue with the remaining devices or with the next label group; <code>continue-order</code> skips the failed device and continues with the next label group, processing the labels one group after another in the order given by <code>order</code>. With <code>sequential</code> the rest of the failed device's group is skipped; with <code>parallel</code> only the failed device is abandoned and devices already in progress in the group finish. Default: <code>stop</code>.</li>
+</ul>
+<hr />
+<h1 id="job">job</h1>
+<blockquote>
+<p>One upgrade job is one upgrade run. Jobs are created from upgrade rules, and their parameters are copied from the rule at creation and are read-only. A scheduled job resolves its device list only when it starts, so...</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradejob">cmr/upgrade/job</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>One upgrade job is one upgrade run. Jobs are created from upgrade rules, and their parameters are copied from the rule at creation and are read-only. A scheduled job resolves its device list only when it starts, so <code>show-devices</code> for a scheduled job can be empty. Remove a queued or processing job to cancel it. The job state becomes <code>cancelled</code>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Job is disabled.</li>
+<li><strong>R</strong> <code>rule</code> — Job created from an upgrade rule.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Devices the job covers, selected by labels. Empty for a job that <code>/cmr/device/upgrade</code> started for devices selected by number.</li>
+<li><strong>order</strong> <code>object</code> — Execution order of the label groups, used with <code>continue-order</code>.</li>
+<li><strong>channel</strong> <code>alt</code> — Upgrade channel or the pinned version the job installs. Empty when each device upgrades on its own upgrade channel.</li>
+<li><strong>strategy</strong> <code>enum ()</code> — How the job upgrades devices: <code>parallel</code> all at the same time, <code>sequential</code> one after another. With <code>continue-order</code> the devices are processed per label group in the order given by <code>order</code>.</li>
+<li><strong>fail-policy</strong> <code>enum ()</code> — Behaviour of the job if a device fails: <code>continue</code>, <code>stop</code>, or <code>continue-order</code>. <code>stop</code> halts the whole job on the first failure; <code>continue-order</code> continues with the next label group in <code>order</code>.</li>
+<li><strong>schedule-time</strong> <code>date</code> — When the job is scheduled to run, in the same format as the rule's <code>schedule-time</code>.</li>
+<li><strong>starts-in</strong> <code>time</code> — Time remaining until the job starts. Shown for scheduled jobs.</li>
+<li><strong>start-time</strong> <code>date</code> — When the job started running.</li>
+<li><strong>end-time</strong> <code>date</code> — When the job finished.</li>
+<li><strong>state</strong> <code>enum (scheduled | queued | waiting devices | queued (busy) | version check | processing | done | cancelled)</code> — Current job state: <code>scheduled</code> (waiting to run), <code>queued</code> (created while another job runs, starts when it finishes), <code>waiting devices</code>, <code>version check</code> (looking up the available version), <code>processing</code> (upgrading), <code>done</code> (finished), or <code>cancelled</code> (removed).</li>
+<li><strong>success</strong> <code>composite { success: num
+, total: num
+ }</code> — Upgraded/total, for example <code>3/10</code>. A <code>0/total</code> occurs when the devices are already on the target version or a covered device is unreachable when the job starts.</li>
+<li><strong>run-time</strong> <code>time</code> — How long the job took to run.</li>
+<li><strong>packages</strong> <code>multi { package: string
+ }</code> — Packages the job upgrades.</li>
+</ul>
+<hr />
+<h1 id="run-next">run-next</h1>
+<blockquote>
+<p>Runs the next scheduled upgrade job right away. For a job of an upgrade rule, the job starts as a new run, and the originally scheduled job remains scheduled. A job scheduled with /cmr/device/upgrade has no schedule...</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradejobrun-next">cmr/upgrade/job/run-next</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Runs the next scheduled upgrade job right away. For a job of an upgrade rule, the job starts as a new run, and the originally scheduled job remains scheduled. A job scheduled with <code>/cmr/device/upgrade</code> has no schedule to keep, so that job itself starts. Only one upgrade job runs at a time, so a job started while another job is already in progress is queued, not interrupted.</p>
+<hr />
+<h1 id="show-devices_1">show-devices</h1>
+<blockquote>
+<p>Shows the devices the selected job covers. A scheduled job resolves its device list only when the job starts, so the output for a job that has not started yet can be empty.</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradejobshow-devices">cmr/upgrade/job/show-devices</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Shows the devices the selected job covers. A scheduled job resolves its device list only when the job starts, so the output for a job that has not started yet can be empty.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>L</strong> <code>controller</code> — Include the CMR server itself (self-client).</li>
+</ul>
+<hr />
+<h1 id="show-devices_2">show-devices</h1>
+<blockquote>
+<p>Lists the devices the selected upgrade rule covers. A device is claimed by the first rule in the list that covers it, so a rule can list no devices when an earlier rule covers them all.</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradeshow-devices">cmr/upgrade/show-devices</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Lists the devices the selected upgrade rule covers. A device is claimed by the first rule in the list that covers it, so a rule can list no devices when an earlier rule covers them all.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>p</strong> <code>remote-pending</code> — Controller requests pairing.</li>
+<li><strong>I</strong> <code>inactive</code> — Device is inactive.</li>
+<li><strong>S</strong> <code>stale</code> — No connection (stale).</li>
+<li><strong>L</strong> <code>controller</code> — The CMR server itself (self-client).</li>
+<li><strong>C</strong> <code>connected</code> — Device is connected.</li>
+<li><strong>U</strong> <code>upgrade-available</code> — A newer update is available.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>only-upgradable</strong> <code>bool</code> — Show only the devices that can actually be upgraded.</li>
+</ul>
+<hr />
+<h1 id="trigger">trigger</h1>
+<blockquote>
+<p>Starts the job of a chosen rule right away, without waiting for the schedule-time. Only one upgrade job runs at a time; triggering another rule while a job is in progress places the new job in a queued state until...</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradetrigger">cmr/upgrade/trigger</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Starts the job of a chosen rule right away, without waiting for the schedule-time. Only one upgrade job runs at a time; triggering another rule while a job is in progress places the new job in a <a href="job#cmr-upgrade-job">queued state</a> until the current job finishes.</p>
+<p>Triggering forces an early upgrade of the rule's covered devices: the job runs immediately and upgrades each covered device that has a newer version available, without waiting for the schedule-time. Covered devices that are already up to date are skipped, so the run's counter counts only the upgraded ones. To upgrade a single device regardless of its rule, see <a href="../device/upgrade"><code>/cmr/device/upgrade</code></a>.</p>
+<hr />
+<h1 id="version-check">version-check</h1>
+<blockquote>
+<p>Lists the newest version available for each upgrade channel that is configured in an upgrade rule. Channels that no rule uses are not checked.</p>
+</blockquote>
+<hr />
+<h2 id="cmrupgradeversion-check">cmr/upgrade/version-check</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Command</p>
+<p>Lists the newest version available for each upgrade channel that is configured in an upgrade rule. Channels that no rule uses are not checked.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>channel</strong> <code>alt</code> — Channel checked.</li>
+<li><strong>version</strong> <code>string</code> — Available versions.</li>
+</ul>
+<hr />
+<h1 id="vlan">vlan</h1>
+<blockquote>
+<p>The /cmr/vlan menu creates bridge and VLAN configuration on the selected CMR clients. Each rule selects the devices with labels and the ports with port-labels (matched against the interface names of a device and...</p>
+</blockquote>
+<hr />
+<h2 id="cmrvlan">cmr/vlan</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>The <code>/cmr/vlan</code> menu creates bridge and VLAN configuration on the selected CMR clients. Each rule selects the devices with <code>labels</code> and the ports with <code>port-labels</code> (matched against the interface names of a device and against the port labels assigned in <code>/cmr/device</code>), lists the <code>vlan-ids</code>, and assigns each port a <code>role</code>. On a selected device the rule adds the selected ports and their VLAN entries to the enabled bridge of the device. If the device has no enabled bridge, the rule creates a bridge named <code>cmr-bridge</code> with VLAN filtering enabled. Removing a rule removes the ports and VLAN entries that it added. See the <a href="../../management-tools/cmr/#vlan-provisioning">VLAN provisioning</a> section of the CMR guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — VLAN provisioning rule is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the CMR clients this rule provisions. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used. If omitted, the rule applies to all connected devices.</li>
+<li><strong>port-labels</strong> <code>object</code> — Select the ports to configure on the selected devices, by interface name (for example <code>ether1</code>) or by a port label assigned to the port in <code>/cmr/device</code> (for example <code>uplink</code>). The argument is required, so a rule always names the ports it configures.</li>
+<li><strong>vlan-ids</strong> <code>multi { vlan-range: range [1 .. 4094]
+ }</code> — VLAN IDs assigned to the selected ports, as a comma-separated list or a range, for example <code>100,200</code> or <code>100-200</code>. On a trunk port every VLAN ID is tagged; on an access port only the first VLAN ID is used, as the port's PVID.</li>
+<li><strong>role</strong> <code>enum (access | trunk)</code> — Port role assigned to the selected ports: - <code>access</code> (default) - the port belongs to a single VLAN, which is set as the port's PVID, and carries untagged frames - <code>trunk</code> - the port carries multiple VLANs; frames are tagged with 802.1Q headers so the far end can tell them apart</li>
+</ul>
+<hr />
+<h1 id="wifi">wifi</h1>
+<blockquote>
+<p>A WiFi network definition replicated to the selected devices. The arguments extend the standard RouterOS /interface/wifi configuration parameters.</p>
+</blockquote>
+<hr />
+<h2 id="cmrwifi">cmr/wifi</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>A WiFi network definition replicated to the selected devices. The arguments extend the standard RouterOS <code>/interface/wifi</code> configuration parameters.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — WiFi network is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices the WiFi network is replicated to using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>vlan-id</strong> <code>num</code> — VLAN ID applied to the network: none (default) or 1-4095.</li>
+<li><strong>mlo</strong> <code>bool</code> — Enable MLO (Multi-Link Operation).</li>
+<li><strong>ssid</strong> <code>string</code> — Network SSID.</li>
+<li><strong>mode</strong> <code>enum (ap | station | station-bridge | station-pseudobridge)</code> — Network operating mode.</li>
+<li><strong>hide-ssid</strong> <code>bool</code> — Hide the SSID in beacon frames.</li>
+<li><strong>beacon-interval</strong> <code>time</code> — Beacon interval.</li>
+<li><strong>dtim-period</strong> <code>num</code> — DTIM period.</li>
+<li><strong>multicast-enhance</strong> <code>enum (disabled | enabled) { disabled:0, enabled:1 }</code> — Multicast enhancement: <code>disabled</code> or <code>enabled</code>.</li>
+<li><strong>qos-classifier</strong> <code>enum (priority | dscp-high-3-bits) { priority:0, dscp-high-3-bits:1 }</code> — QoS classifier: <code>priority</code> or <code>dscp-high-3-bits</code>.</li>
+<li><strong>station-roaming</strong> <code>bool</code> — Enable station roaming.</li>
+<li><strong>max-clients</strong> <code>num</code> — Maximum number of connected clients.</li>
+<li><strong>hw-protection-mode</strong> <code>enum (none | rts-cts | cts-to-self)</code> — Hardware protection mode: <code>none</code>, <code>rts-cts</code>, <code>cts-to-self</code>.</li>
+<li><strong>security.encryption</strong> <code>ubit (tkip, ccmp, gcmp, ccmp-256, gcmp-256)</code> — Allowed encryption ciphers.</li>
+<li><strong>security.group-encryption</strong> <code>enum (tkip | ccmp | gcmp | ccmp-256 | gcmp-256)</code> — Group encryption cipher.</li>
+<li><strong>security.group-key-update</strong> <code>time</code> — Group key update interval.</li>
+<li><strong>security.passphrase</strong> <code>string</code> — Network passphrase.</li>
+<li><strong>security.multi-passphrase-group</strong> <code>enum</code> — Multi-passphrase group.</li>
+<li><strong>security.disable-pmkid</strong> <code>bool</code> — Disable PMKID.</li>
+<li><strong>security.management-protection</strong> <code>enum (disabled | allowed | required)</code> — Management frame protection: <code>disabled</code>, <code>allowed</code>, <code>required</code>.</li>
+<li><strong>security.beacon-protection</strong> <code>enum (disabled | enabled)</code> — Beacon protection: <code>disabled</code> or <code>enabled</code>.</li>
+<li><strong>security.management-encryption</strong> <code>enum (cmac | gmac | cmac-256 | gmac-256)</code> — Management frame encryption cipher.</li>
+<li><strong>security.wps</strong> <code>enum (disable | push-button)</code> — WPS mode: <code>disable</code> or <code>push-button</code>.</li>
+<li><strong>security.dh-groups</strong> <code>ubit (19, 20, 21)</code> — SAE Diffie-Hellman groups.</li>
+<li><strong>security.sae-anti-clogging-threshold</strong> <code>num</code> — SAE anti-clogging threshold.</li>
+<li><strong>security.sae-max-failure-rate</strong> <code>num</code> — SAE maximum failure rate.</li>
+<li><strong>security.sae-pwe</strong> <code>enum (hunting-and-pecking | hash-to-element | both)</code> — SAE PWE derivation: <code>hunting-and-pecking</code>, <code>hash-to-element</code>, <code>both</code>.</li>
+<li><strong>security.owe-transition-interface</strong> <code>iface_enum { auto }</code> — OWE transition interface.</li>
+<li><strong>security.eap-methods</strong> <code>multi { array-id, method: enum (tls | ttls | peap) { tls:13, ttls:21, peap:25 }
+ }</code> — Allowed EAP methods.</li>
+<li><strong>security.eap-certificate-mode</strong> <code>enum (verify-certificate | dont-verify-certificate | no-certificates | verify-certificate-with-crl)</code> — EAP certificate verification mode.</li>
+<li><strong>security.eap-tls-certificate</strong> <code>enum</code> — EAP-TLS certificate.</li>
+<li><strong>security.eap-username</strong> <code>string</code> — EAP username.</li>
+<li><strong>security.eap-anonymous-identity</strong> <code>string</code> — EAP anonymous identity.</li>
+<li><strong>security.eap-password</strong> <code>string</code> — EAP password.</li>
+<li><strong>security.eap-accounting</strong> <code>bool</code> — Enable EAP accounting.</li>
+<li><strong>security.ft</strong> <code>bool</code> — Enable Fast Transition (802.11r).</li>
+<li><strong>security.ft-mobility-domain</strong> <code>num</code> — FT mobility domain.</li>
+<li><strong>security.ft-over-ds</strong> <code>bool</code> — FT over the distribution system.</li>
+<li><strong>security.ft-reassociation-deadline</strong> <code>time</code> — FT reassociation deadline.</li>
+<li><strong>security.ft-nas-identifier</strong> <code>string</code> — FT NAS identifier.</li>
+<li><strong>security.ft-r0-key-lifetime</strong> <code>time</code> — FT R0 key lifetime.</li>
+<li><strong>security.ft-preserve-vlanid</strong> <code>bool</code> — FT preserve VLAN ID.</li>
+<li><strong>security.connect-group</strong> <code>string</code> — Connect group.</li>
+<li><strong>security.connect-priority</strong> <code>super { connect-accept-priority: num
+, [connect-hold-priority] /num
+ }</code> — Connect priority.</li>
+<li><strong>security.authentication-types</strong> <code>ubit (wpa-psk, wpa2-psk, wpa2-psk-sha2, wpa-eap, wpa2-eap, wpa3-psk, wpa3-psk-gd, owe, wpa3-eap, wpa3-eap-192)</code> — Supported authentication types.</li>
+</ul>
+<hr />
+<h1 id="radio">radio</h1>
+<blockquote>
+<p>Radio configuration replicated to the selected devices. The arguments extend the standard RouterOS /interface/wifi radio configuration parameters.</p>
+</blockquote>
+<hr />
+<h2 id="cmrwifiradio">cmr/wifi/radio</h2>
+<p><strong>Package:</strong> cmr
+<strong>Type:</strong> Directory</p>
+<p>Radio configuration replicated to the selected devices. The arguments extend the standard RouterOS <code>/interface/wifi</code> radio configuration parameters.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Radio configuration is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>labels</strong> <code>object</code> — Select the devices the radio configuration is replicated to using labels. Supports + and - signs as AND and AND NOT operators, respectively; if no sign is provided, the OR operator is used.</li>
+<li><strong>configuration.country</strong> <code>enum</code> — Country code.</li>
+<li><strong>configuration.chains</strong> <code>ubit (0, 1, 2, 3, 4, 5, 6, 7)</code> — Radio chains to use.</li>
+<li><strong>configuration.tx-chains</strong> <code>ubit ()</code> — Transmit chains.</li>
+<li><strong>configuration.tx-power</strong> <code>num</code> — Transmit power.</li>
+<li><strong>configuration.antenna-gain</strong> <code>num</code> — Antenna gain.</li>
+<li><strong>configuration.distance</strong> <code>num</code> — Distance to the farthest connected client.</li>
+<li><strong>configuration.installation</strong> <code>enum (outdoor | indoor)</code> — Installation type: <code>outdoor</code> or <code>indoor</code>.</li>
+<li><strong>security.authentication-types</strong> <code>ubit (wpa-psk, wpa2-psk, wpa2-psk-sha2, wpa-eap, wpa2-eap, wpa3-psk, wpa3-psk-gd, owe, wpa3-eap, wpa3-eap-192)</code> — Supported authentication types.</li>
+<li><strong>channel.frequency</strong> <code>object</code> — Channel frequency.</li>
+<li><strong>channel.secondary-frequency</strong> <code>multi { array-id, secondary-frequency: alt { secondary-frequency-disable: enum (disabled)
+, secondary-frequency-num: num
+ }
+ }</code> — Secondary channel frequency.</li>
+<li><strong>channel.band</strong> <code>enum (60ghz-ad | 5ghz-a | 5ghz-n | 5ghz-ac | 5ghz-ax | 5ghz-be | 2ghz-g | 2ghz-n | 2ghz-ax | 2ghz-be | s1ghz-ah | 6ghz-ax | 6ghz-be)</code> — Operating band.</li>
+<li><strong>channel.width</strong> <code>enum (20mhz | 20/40mhz | 20/40mhz-Ce | 20/40mhz-eC | 20/40/80mhz | 20/40/80+80mhz | 20/40/80/160mhz | 20/40/80/160/320mhz | 1mhz | 1/2mhz | 1/2/4mhz | 1/2/4/8mhz | 1080mhz | 2160mhz)</code> — Channel width.</li>
+<li><strong>channel.skip-dfs-channels</strong> <code>enum (disabled | all | 10min-cac)</code> — DFS channel handling: <code>disabled</code>, <code>all</code>, <code>10min-cac</code>.</li>
+<li><strong>channel.deprioritize-unii-3-4</strong> <code>bool</code> — Deprioritize UNII-3/UNII-4 channels.</li>
+<li><strong>channel.reselect-interval</strong> <code>super { reselect-interval-min: time [1 .. 60*60*24*300]
+, [reselect-interval-max] ..time [1 .. 60*60*24*300]
+ }</code> — Channel reselection interval range.</li>
+<li><strong>channel.reselect-time</strong> <code>super { reselect-time-min: date
+, [reselect-time-max] ..date
+ }</code> — Channel reselection time range.</li>
+<li><strong>channel.preamble-puncturing</strong> <code>alt { preamble-puncturing: enum (yes | no) { yes:-1, no:0 }
+ }</code> — Preamble puncturing: <code>yes</code> or <code>no</code>.</li>
+<li><strong>channel.afc</strong> <code>bool</code> — Enable AFC (Automatic Frequency Coordination).</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Getting Started</p>
+      <h1 id="getting-started">Getting Started</h1>
+<h1 id="getting-started_1">Getting Started</h1>
+<blockquote>
+<p>Getting Started provides essential instructions for initial RouterOS setup including connection methods, admin interface access, and basic security tasks to bring a MikroTik router into service.</p>
+</blockquote>
+<h1 id="getting-started_2">Getting Started</h1>
+<p>Getting Started covers initial RouterOS setup, configuration management, installation, licensing, upgrades, backups, and first-time security tasks. Use this section to bring a router into service and maintain the base system.</p>
+<h2 id="quickstart-connect-to-your-router">Quickstart: connect to your router</h2>
+<p>If you just unboxed a MikroTik device and want to reach its admin interface:</p>
+<ol>
+<li>Connect an Ethernet cable from your computer to any port <strong>except</strong> <code>ether1</code> on the router.</li>
+<li>Plug in the power. Wait about a minute for the device to finish booting.</li>
+<li>Reach the admin interface using any of:
+   - A browser at <strong><code>http://192.168.88.1</code></strong> (WebFig)
+   - <strong><a href="https://mikrotik.com/download">WinBox</a></strong> — a desktop GUI for Windows, macOS, and Linux
+   - The <strong>MikroTik mobile app</strong> (iOS / Android)</li>
+<li>Log in as user <strong><code>admin</code></strong> with the device-specific password printed on the <strong>sticker on the router</strong> (also on the box it came in).</li>
+</ol>
+<p>You're in. When you're ready to actually configure internet access, Wi-Fi, firewall rules, and so on, follow the full <a href="./first-time-configuration.md">First Time Configuration</a> guide.</p>
+<hr />
+<h1 id="first-time-configuration">First Time Configuration</h1>
+<blockquote>
+<p>This page provides a step-by-step guide for first-time MikroTik RouterOS configuration, covering prerequisites, connection setup, and key concepts like DHCP, NAT, and firewall. It includes both WinBox graphical and...</p>
+</blockquote>
+<h1 id="first-time-configuration_1">First Time Configuration</h1>
+<h2 id="before-you-begin">Before You Begin</h2>
+<h3 id="prerequisites">Prerequisites</h3>
+<p>Before starting the configuration process, make sure you have the following:</p>
+<ul>
+<li>A MikroTik router</li>
+<li>A computer with an Ethernet port (recommended). Configuration over WiFi is also supported if the router provides a wireless access point</li>
+<li>An Ethernet cable</li>
+<li>An active internet connection from your ISP</li>
+<li>30–60 minutes of uninterrupted time</li>
+</ul>
+<h3 id="key-concepts">Key Concepts</h3>
+<ul>
+<li><strong>Default Configuration:</strong> Factory-installed settings that may need adjustment depending on your network requirements</li>
+<li><strong>Bridge:</strong> A virtual interface that combines multiple physical ports into a single network segment</li>
+<li><strong>DHCP:</strong> A protocol that automatically assigns IP addresses to devices on a network</li>
+<li><strong>NAT:</strong> Network Address Translation, allowing multiple devices to share a single public IP address</li>
+<li><strong>Firewall:</strong> A set of rules that control and filter network traffic for security purposes</li>
+</ul>
+<h3 id="choose-your-configuration-method">Choose Your Configuration Method</h3>
+<p>This guide explains how to configure RouterOS using either:</p>
+<ul>
+<li>A graphical interface with <a href="../management-tools/winbox">WinBox</a> or <a href="../management-tools/webfig">WebFig</a></li>
+<li>The command-line interface (CLI)</li>
+</ul>
+<p>Which to choose:</p>
+<ul>
+<li><strong>New users:</strong> It is recommended to follow the WinBox instructions</li>
+<li><strong>Advanced users:</strong> You may use CLI commands shown in code blocks</li>
+</ul>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>After completing each major configuration section, it is recommended to create a backup of your settings.</p>
+<p><strong>CLI Method:</strong></p>
+<pre><code>/export file=backup-step3
+</code></pre>
+<p><strong>WinBox method:</strong></p>
+<ol>
+<li>Open the <strong>Files</strong> menu</li>
+<li>Click <strong>Backup</strong></li>
+<li>Enter a descriptive name (for example: <code>after-internet-setup</code>)</li>
+</ol>
+<p>If something goes wrong, you can restore your configuration from the <strong>Files</strong> menu by selecting the backup and clicking <strong>Restore</strong>.</p>
+</div>
+<h2 id="accessing-the-router">Accessing the router</h2>
+<p>Most MikroTik routers ship with a default configuration that allows immediate access. However, some professional devices (such as the CCR series) may ship with a minimal or no default configuration. In that case, set up the network manually first — see <a href="./manual-network-setup.md">Manual Network Setup</a>.</p>
+<h3 id="step-1-physical-connection">Step 1: Physical Connection</h3>
+<ol>
+<li>Connect an Ethernet cable from your computer to any router Ethernet port <strong>except ether1</strong>.</li>
+<li>Connect the ISP cable to <strong>ether1</strong> (typically used as the WAN interface).</li>
+<li>Power on the router and wait approximately one minute for it to fully boot.</li>
+</ol>
+<pre><code>Internet ─── [ISP] ─── [ether1] MikroTik Router [ether2-ether5] ─── [Switch / Devices]
+
+                                                 │
+
+                                          [WiFi Clients]
+</code></pre>
+<h3 id="step-2-download-winbox">Step 2: Download WinBox</h3>
+<p>If you don't have WinBox yet:</p>
+<p><strong><a href="https://mt.lv/winbox">Download WinBox</a></strong> for your operating system:</p>
+<p>Available packages:</p>
+<ul>
+<li><strong>Windows:</strong> ZIP archive (contains <code>WinBox.exe</code>)</li>
+<li><strong>Linux:</strong> ZIP archive (contains a binary executable)</li>
+<li><strong>macOS:</strong> DMG package</li>
+</ul>
+<ol>
+<li>Extract or open the downloaded package.</li>
+<li>Launch WinBox:
+   - Windows: run <code>WinBox.exe</code>
+   - Linux: make the binary executable and run it
+   - macOS: open the <code>.dmg</code> and start WinBox</li>
+</ol>
+<p>No installation is required. For more details, see the <a href="../management-tools/winbox">WinBox manual</a>.</p>
+<h3 id="step-3-find-your-router-using-neighbor-discovery">Step 3: Find Your Router Using Neighbor Discovery</h3>
+<ol>
+<li>Open WinBox.</li>
+<li>In the <strong>Select from</strong> dropdown, choose <strong>Neighbors</strong>.</li>
+<li>Your router should appear in the <strong>Neighbors</strong> list.</li>
+<li>Double-click the router entry to connect:
+   - Prefer the <strong>MAC address</strong> if the IP address is not reachable or shows <code>0.0.0.0</code>.</li>
+<li>When prompted, enter the login credentials:
+   - <strong>Username:</strong> <code>admin</code>
+   - <strong>Password:</strong> leave empty, or use the password printed on the device label (if applicable)</li>
+</ol>
+<h3 id="step-4-protecting-the-router">Step 4: Protecting the Router</h3>
+<p>Once the router is accessible, secure it against unauthorized access and basic attacks. Do these first:</p>
+<ol>
+<li><strong>Set an administrator password.</strong> A blank password allows unrestricted access to the router.</li>
+<li><strong>Verify the firewall is enabled.</strong> Most MikroTik devices ship with a default firewall configuration that blocks the most common external attacks. Do not disable the existing rules; only add new ones if required.</li>
+<li><strong>Disable direct management access from the internet.</strong> This is especially important on devices without a default firewall. If remote access is required, use a secure method such as <strong>WireGuard</strong> or <strong>IPsec</strong> instead of exposing management ports directly.</li>
+</ol>
+<h3 id="user-password-management">User Password Management</h3>
+<p>Securing your MikroTik router with a strong password is essential. Use a password that meets the following criteria:</p>
+<ul>
+<li>At least 12 characters long</li>
+<li>Includes uppercase and lowercase letters, numbers, and symbols</li>
+<li>Avoids dictionary words or simple patterns</li>
+</ul>
+<p>Set the admin password using CLI:</p>
+<pre><code class="language-ros">/user set 0 password=&quot;Your_Super_Strong_Password_123!@#$%^&amp;*&quot;
+</code></pre>
+<p>Or change it interactively:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /password 
+old-password: ********
+new-password: ****************************
+confirm-new-password: ****************************
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Remember your password. If it is lost, there is no recovery option. You will need to reset the router or reinstall RouterOS.</p>
+</div>
+<p>You can also manage users in the <code>/user</code> menu:</p>
+<pre><code class="language-ros">/user/add name=myname password=mypassword group=full
+/user/remove admin
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Best practice is to create a new administrator user with a strong password, verify it works, and then disable or remove the default <strong>admin</strong> account.</p>
+</div>
+<h2 id="understanding-default-configuration">Understanding Default Configuration</h2>
+<p>When you first connect to your MikroTik router, you may see a prompt about the <a href="./configuration-management/default-configurations">default configuration</a>. Here is what you need to know:</p>
+<ul>
+<li><strong>For beginners:</strong> It is recommended to keep the default configuration, as it provides basic security and essential functionality.</li>
+<li><strong>The default setup includes:</strong> A basic firewall, a DHCP server, and default wireless security settings (if applicable).</li>
+<li><strong>You can safely customize it</strong> while keeping the default structure as a base.</li>
+</ul>
+<p><em>[gambar: Default configuration prompt]</em></p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Removing the default configuration removes all built-in security rules and services. This is only recommended for advanced users who plan to configure the router manually.</p>
+</div>
+<p>If your device has <strong>no default configuration</strong>, or you reset it to a clean state, you must set up the bridge, LAN IP address, and DHCP server manually — see <strong><a href="./manual-network-setup.md">Manual Network Setup</a></strong> before continuing.</p>
+<h2 id="configuring-the-internet-connection-wan">Configuring the Internet Connection (WAN)</h2>
+<p>To give the router internet access, you need to know which connection type your ISP uses. Check with your ISP, or use the descriptions below:</p>
+<ul>
+<li><strong>DHCP / Dynamic IP</strong> — most cable modems and some fiber connections. You plug in and get internet automatically.</li>
+<li><strong>Static IP</strong> — business connections or some residential fiber. Your ISP gave you a specific IP address, a gateway, and DNS servers.</li>
+<li><strong>PPPoE</strong> — DSL connections or some fiber providers. Your ISP gave you a username and password to connect.</li>
+</ul>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p><strong>Not sure?</strong> Start with DHCP — it works for about 80% of home connections.</p>
+</div>
+<h3 id="dhcp-dynamic-ip-most-common">DHCP / Dynamic IP (most common)</h3>
+<p>This is the easiest and most common setup for home users. Configure a DHCP client on the public interface to automatically obtain an IP address, DNS server, NTP server, and default route from your ISP.</p>
+<pre><code class="language-ros">/ip/dhcp-client/add disabled=no interface=ether1
+</code></pre>
+<p>After adding the client, verify the assigned address and confirm the status shows "bound":</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; ip dhcp-client print
+Columns: INTERFACE, USE-PEER-DNS, ADD-DEFAULT-ROUTE, STATUS, ADDRESS
+# INTERFACE  USE-PEER-DNS  ADD-DEFAULT-ROUTE  STATUS  ADDRESS        
+0 ether1     yes           yes                bound   1.2.3.100/24
+</code></pre>
+<h3 id="static-ip">Static IP</h3>
+<p>Use this if your ISP provided specific network settings that never change. Your ISP supplies three parameters:</p>
+<ul>
+<li>IP address: <strong><code>1.2.3.100/24</code></strong></li>
+<li>Gateway: <strong><code>1.2.3.1</code></strong></li>
+<li>DNS server: <strong><code>8.8.8.8</code></strong></li>
+</ul>
+<p>Add the IP address to the WAN interface, create a default route using the gateway, and set the DNS server:</p>
+<pre><code class="language-ros">/ip/address/add address=1.2.3.100/24 interface=ether1
+/ip/route/add gateway=1.2.3.1
+/ip/dns/set servers=8.8.8.8
+</code></pre>
+<h3 id="pppoe">PPPoE</h3>
+<p>Use this if your ISP gave you login credentials (common with DSL providers). PPPoE provides a dynamic IP address and can automatically configure the DNS servers and default route.</p>
+<pre><code class="language-ros">/interface/pppoe-client
+add disabled=no interface=ether1 user=me password=123 \
+  add-default-route=yes use-peer-dns=yes
+</code></pre>
+<ol>
+<li>Open the <strong>PPP</strong> window and navigate to the <strong>Interface</strong> tab.</li>
+<li>Click the <kbd><strong>New</strong></kbd> or <kbd><strong>+</strong></kbd> button to add a new interface.</li>
+<li>Select <strong>PPPoE Client</strong> from the dropdown list.</li>
+<li>
+<p>Enter a name for the connection and select <strong>ether1</strong> as the interface.</p>
+</li>
+<li>
+<p>Go to the <strong>Dial Out</strong> tab and enter your username and password provided by your ISP.</p>
+</li>
+<li>Configure any additional parameters as required by your ISP.</li>
+<li>Click <kbd><strong>OK</strong></kbd> to save the settings.</li>
+</ol>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>After configuration, the WAN interface becomes <strong>pppoe-out1</strong> instead of <strong>ether1</strong>. Use this interface for all subsequent WAN-related configuration.</p>
+</div>
+<h2 id="verify-internet-connectivity">Verify Internet Connectivity</h2>
+<p>After configuring the WAN connection, confirm that the router itself can reach the Internet. First test IP connectivity by pinging a known public IP address — Google's public DNS server at <code>8.8.8.8</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ping 8.8.8.8
+  SEQ HOST                                     SIZE TTL TIME       STATUS             
+    0 8.8.8.8                                    56  55 14ms399us 
+    1 8.8.8.8                                    56  55 18ms534us 
+    2 8.8.8.8                                    56  55 14ms384us 
+</code></pre>
+<p>Then verify that DNS resolution works by pinging a domain name:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ping google.com
+  SEQ HOST                                     SIZE TTL TIME       STATUS             
+    0 142.250.74.14                              56  55 14ms475us 
+    1 142.250.74.14                              56  55 14ms308us 
+    2 142.250.74.14                              56  55 14ms238us
+</code></pre>
+<p>If the IP ping succeeds but the domain ping fails, the connection is working but DNS is not configured correctly. If both succeed, the router's own internet connection is fully functional. If either fails, see the <a href="#troubleshooting">Troubleshooting</a> section.</p>
+<p>Local devices behind the router still need a working NAT rule before they can reach the Internet — see the next section.</p>
+<h2 id="nat-configuration">NAT Configuration</h2>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>If you kept the <strong>default configuration</strong>, a source NAT (masquerade) rule is already set up on the WAN interface, so local devices can already reach the Internet — you can skip this section. The steps below apply only if your router has <strong>no default configuration</strong> or you are building a custom setup.</p>
+</div>
+<p>For local devices to reach the Internet, the router must translate the private source addresses of their outgoing packets to its own public IP address. Private addresses are not routable over the Internet, so without this translation remote hosts have no way to reply to your local devices. This is done with a source NAT (masquerade) rule on the WAN interface:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat out-interface=ether1 action=masquerade
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>If the public interface is PPPoE, LTE, or any other type, the 'out-interface' should be set to that interface.</p>
+</div>
+<p>Alternatively, interface lists can be used for more flexible configuration.</p>
+<p>First, create an interface list named WAN and add all external interfaces to it:</p>
+<pre><code class="language-ros">/interface list add name=WAN
+/interface list member add list=WAN interface=ether1
+</code></pre>
+<p>Then use the interface list in the NAT rule:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat out-interface-list=WAN ipsec-policy=out,none action=masquerade
+</code></pre>
+<p>Another benefit of this setup is that clients behind the router are not directly reachable from the Internet by default, which helps protect them from unsolicited inbound traffic.</p>
+<h3 id="port-forwarding">Port Forwarding</h3>
+<p>Some client devices may need direct access from the internet on specific ports. For example, a client device with IP address 192.168.88.254 must be accessible via Remote Desktop Protocol (RDP).</p>
+<p>After a quick search, you can find that RDP runs on TCP port 3389. Now you can add a destination NAT rule to redirect RDP traffic to the client's PC.</p>
+<pre><code class="language-ros">/ip/firewall/nat/add chain=dstnat action=dst-nat protocol=tcp dst-port=3389 in-interface-list=WAN to-addresses=192.168.88.254 to-ports=3389
+</code></pre>
+<p><code>in-interface-list=WAN</code> limits the rule to connections that come in from the internet. Without it, the rule also catches local devices that connect to port 3389 of any server on the internet, and sends them to 192.168.88.254 instead. If you did not create the WAN list, use <code>in-interface=ether1</code>.</p>
+<p><code>dst-port</code> is the port on the router's public address and <code>to-ports</code> the port on the device, so they can differ. For example, with <code>dst-port=13389</code>, RDP clients on the internet connect to port 13389 and reach port 3389 on 192.168.88.254.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>If you have set up strict firewall rules, then the RDP protocol must be allowed in the firewall filter forward chain.</p>
+</div>
+<h2 id="setting-up-wireless-wifi">Setting up Wireless / WiFi</h2>
+<p>How you configure wireless depends on your RouterOS generation and driver:</p>
+<ul>
+<li><strong>Modern WiFi</strong> (<code>/interface wifi</code>) — RouterOS v7 devices with the new WiFi stack.</li>
+<li><strong>Legacy Wireless</strong> (<code>/interface wireless</code>) — RouterOS v6 and older v7 packages.</li>
+</ul>
+<p>This guide shows a basic secured access point (SSID + WPA2/WPA3 password). For advanced topics — Wi-Fi 6/7, MLD / multi-link, multiple radios, CAPsMAN, repeaters, and per-device-family guidance — see the <a href="../wireless/index.md">Wireless</a> section.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The examples below assume: country = <code>Latvia</code>, SSID = <code>MikroTik-12345</code>, WPA2/WPA3 enabled where supported, WPS disabled.</p>
+</div>
+<p>Create a security profile:</p>
+<pre><code class="language-ros">/interface wifi security
+add name=myProfile authentication-types=wpa2-psk,wpa3-psk \
+  passphrase=&quot;YOUR_STRONG_PASSWORD&quot;
+</code></pre>
+<p>Configure the radios:</p>
+<pre><code class="language-ros">/interface wifi
+set [ find default-name=wifi1 ] configuration.country=Latvia \
+  .mode=ap .ssid=&quot;MikroTik-12345&quot; .hide-ssid=no \
+  channel.width=20mhz disabled=no \
+  security=myProfile security.wps=disable
+
+set [ find default-name=wifi2 ] configuration.country=Latvia \
+  .mode=ap .ssid=&quot;MikroTik-12345&quot; .hide-ssid=no \
+  channel.width=20mhz disabled=no \
+  security=myProfile security.wps=disable
+</code></pre>
+<p>Create a security profile:</p>
+<pre><code class="language-ros">/interface/wireless/security-profiles
+add name=&quot;myProfile&quot; authentication-types=wpa2-psk mode=dynamic-keys \
+wpa2-pre-shared-key=&quot;YOUR_STRONG_PASSWORD&quot;
+</code></pre>
+<p>Configure the radios:</p>
+<pre><code class="language-ros">/interface wireless
+set [ find default-name=wlan1 ] band=2ghz-b/g/n channel-width=20/40mhz-Ce distance=indoors \
+  mode=ap-bridge ssid=MikroTik-12345 wireless-protocol=802.11 \
+  security-profile=myProfile frequency-mode=regulatory-domain \
+  country=latvia antenna-gain=3
+
+set [ find default-name=wlan2 ] band=5ghz-a/n/ac channel-width=20/40mhz-Ce distance=indoors \
+  mode=ap-bridge ssid=MikroTik-12345 wireless-protocol=802.11 \
+  security-profile=myProfile frequency-mode=regulatory-domain \
+  country=latvia antenna-gain=3
+</code></pre>
+<video controls width="600">
+  <source src="/videos/wireless-setup_video.mp4" type="video/mp4" />
+</video>
+
+<h3 id="add-the-wireless-interface-to-the-bridge">Add the wireless interface to the bridge</h3>
+<p>Every wireless interface that should provide LAN access must be added to the bridge. If it is not, wireless clients will not receive DHCP addresses, reach LAN devices, or access the internet — even if the WiFi connection succeeds.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>If you kept the <strong>default configuration</strong>, the wireless interfaces are typically already in the bridge, so you can skip this step. It applies mainly to manual setups, where the bridge was created as <code>bridge1</code>.</p>
+</div>
+<pre><code class="language-ros">/interface bridge port
+add interface=wifi1 bridge=bridge1
+add interface=wifi2 bridge=bridge1
+</code></pre>
+<p>For legacy wireless, use the <code>wlanN</code> interface names instead (for example <code>wlan1</code>, <code>wlan2</code>).</p>
+<h2 id="configuration-complete">Configuration Complete</h2>
+<p>At this point the router should:</p>
+<ul>
+<li>Provide Internet access to local devices</li>
+<li>Assign IP addresses automatically using DHCP</li>
+<li>Protect the device from unsolicited access from the Internet</li>
+<li>Provide wireless connectivity (if applicable)</li>
+</ul>
+<p>You can now continue with more advanced topics such as VPNs, VLANs, routing, monitoring, and network management.</p>
+<h2 id="next-secure-your-router">Next: Secure Your Router</h2>
+<p>Your router is now online. Before putting it into production, harden it against unauthorized access: set a strong password and a unique username, keep the default firewall rules, restrict management services, and disable any features you do not use.</p>
+<p>See <strong><a href="./securing-your-router.md">Securing your router</a></strong> for the complete hardening checklist, including firewall rules for the public interface, MAC-access and Neighbor Discovery restrictions, service-port hardening, and SSH strong crypto.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>RouterOS has various built-in troubleshooting tools, like ping, traceroute, torch, packet sniffer, bandwidth test, etc.</p>
+<p>We already used the ping tool in this article to <a href="#verify-internet-connectivity">verify internet connectivity</a>.</p>
+<h3 id="troubleshoot-if-ping-fails">Troubleshoot if ping fails</h3>
+<p>The problem with the ping tool is that it says only that the destination is <strong>unreachable</strong>, but no more detailed information is available. Let's review the basic mistakes.</p>
+<p>You cannot reach <a href="https://www.google.com">www.google.com</a> from your computer which is connected to a MikroTik device:</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>If you are not sure how exactly to configure your gateway device, please reach MikroTik's official <a href="https://mikrotik.com/consultants">consultants</a> for configuration support.</p>
+</div>
+<hr />
+<h1 id="manual-network-setup-no-default-configuration">Manual Network Setup (No Default Configuration)</h1>
+<blockquote>
+<p>How to manually set up a MikroTik router that has no default configuration: reset to a clean state, create a bridge, assign a LAN IP address, and configure a DHCP server using CLI or WinBox/WebFig.</p>
+</blockquote>
+<h1 id="manual-network-setup-no-default-configuration_1">Manual Network Setup (No Default Configuration)</h1>
+<p>Most MikroTik routers ship with a <a href="./configuration-management/default-configurations">default configuration</a> that already provides a bridge, a LAN IP address, a DHCP server, and a basic firewall. If you keep the default configuration, you can skip this page.</p>
+<p>Follow the steps below only if your device has <strong>no default configuration</strong>, or if you have reset it to a clean state.</p>
+<h2 id="start-from-a-clean-configuration">Start from a clean configuration</h2>
+<ol>
+<li>Connect the Internet cable to the router's <strong>ether1</strong> port.</li>
+<li>Connect your computer to any other <strong>Ethernet</strong> port.</li>
+<li>Open WinBox and locate the router using Neighbor Discovery. For detailed instructions, see the <a href="../management-tools/winbox">WinBox article</a>.</li>
+<li>Select the router's MAC address and click <strong>Connect</strong>.</li>
+</ol>
+<p>To start with a completely clean configuration, run the following command:</p>
+<pre><code class="language-ros">/system/reset-configuration no-defaults=yes skip-backup=yes
+</code></pre>
+<p>The router will reboot without any default settings, firewall rules, or services configured.</p>
+<p>Or from WinBox:</p>
+<h2 id="create-a-bridge-and-assign-an-ip-address">Create a bridge and assign an IP address</h2>
+<p>Since a MAC connection can sometimes be unreliable, the first step is to enable IP connectivity. This involves three main tasks:</p>
+<ul>
+<li>Create a bridge interface and assign bridge ports</li>
+<li>Assign an IP address to the bridge interface</li>
+<li>Configure a DHCP server</li>
+</ul>
+<p>Create a bridge interface, add the desired Ethernet port as a bridge port, and assign the IP address to the bridge:</p>
+<pre><code class="language-ros">/interface/bridge/add name=bridge1
+/interface/bridge/port/add interface=ether2 bridge=bridge1
+/ip/address/add address=192.168.88.1/24 interface=bridge1
+</code></pre>
+<ol>
+<li>
+<p>Open the <strong>Bridge</strong> window, ensuring the <strong>Bridge</strong> tab is selected.
+   - Click the <kbd><strong>New</strong></kbd> or <kbd><strong>+</strong></kbd> button to open a new dialog box. You can either enter a custom bridge name or retain the default <strong>bridge1</strong>, then click <kbd><strong>OK</strong></kbd> to proceed.</p>
+</li>
+<li>
+<p>Switch to the <strong>Ports</strong> tab and click the <kbd><strong>New</strong></kbd> or <kbd><strong>+</strong></kbd> button to open another dialog box.
+   - Select <strong>ether2</strong> as the interface and <strong>bridge1</strong> as the bridge, then click <kbd><strong>OK</strong></kbd>. Repeat this step for each additional port that you want to add to the bridge.</p>
+</li>
+</ol>
+<ul>
+<li>You may close the bridge dialog.
+3. Access the <strong>IP</strong> menu and navigate to the <strong>Address</strong> dialog.</li>
+<li>Click the <kbd><strong>New</strong></kbd> or <kbd><strong>+</strong></kbd> button to open a new dialog box.</li>
+<li>
+<p>Enter IP address <strong><code>192.168.88.1/24</code></strong> and select interface <strong>bridge1</strong> from the dropdown list.</p>
+</li>
+<li>
+<p>Click <kbd><strong>OK</strong></kbd> to confirm the settings.</p>
+</li>
+</ul>
+<h2 id="set-up-a-dhcp-server">Set up a DHCP server</h2>
+<p>To simplify and expedite this process, run the setup command. Most of the configuration options are automatically determined, so you simply need to press <kbd>Enter</kbd> to accept each value:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; ip dhcp-server/ setup [enter]
+Select interface to run DHCP server on 
+
+dhcp server interface: bridge1 [enter]
+Select network for DHCP addresses 
+
+dhcp address space: 192.168.88.0/24 [enter]
+Select gateway for given network 
+
+gateway for dhcp network: 192.168.88.1 [enter]
+Select pool of ip addresses given out by DHCP server 
+
+addresses to give out: 192.168.88.2-192.168.88.254 [enter]
+Select DNS servers 
+
+dns servers: 192.168.88.1 [enter]               
+Select lease time 
+
+lease time: 1800 [enter]
+</code></pre>
+<p>The DHCP Server Setup wizard is also available in <a href="../management-tools/winbox">WinBox</a> and <a href="../management-tools/webfig">WebFig</a>:</p>
+<ul>
+<li>Navigate to the <strong>IP → DHCP Server</strong> window, ensuring the <strong>DHCP</strong> tab is selected.</li>
+<li>
+<p>Click the <kbd><strong>DHCP Setup</strong></kbd> button to open a new dialog.</p>
+</li>
+<li>
+<p>Select <strong>bridge1</strong> as the <strong>DHCP Server Interface</strong> and click <kbd><strong>Next</strong></kbd>.</p>
+</li>
+<li>Follow the wizard to complete the setup.</li>
+</ul>
+<p>Following these steps, the connected PC should obtain a dynamic IP address automatically. You can then close WinBox and reconnect to the router using the IP address <strong><code>192.168.88.1</code></strong>.</p>
+<p>When IP connectivity is working, continue with <a href="./first-time-configuration.md#configuring-the-internet-connection-wan">Configuring the internet connection</a> and the rest of the first-time guide.</p>
+<hr />
+<h1 id="securing-your-router">Securing your router</h1>
+<blockquote>
+<p>This page provides security recommendations for MikroTik RouterOS, including upgrading RouterOS versions, changing default usernames and passwords, securing access with firewall rules and VPNs, disabling unnecessary...</p>
+</blockquote>
+<h1 id="securing-your-router_1">Securing your router</h1>
+<p>The following steps are recommendations on how to additionally protect your device with already configured <a href="../firewall-and-quality-of-service/firewall/filter.md">strong firewall rules</a>.</p>
+<h2 id="routeros-version">RouterOS Version</h2>
+<p>Start by upgrading your RouterOS version. Some older releases have had certain weaknesses or vulnerabilities that have been fixed. Keep your device up to date to ensure it is secure. To upgrade, select <strong>Check for Updates</strong> in WinBox or WebFig. It is recommended to follow announcements on our <a href="https://blog.mikrotik.com">Security Announcements Blog</a> to stay informed about any new security issues.</p>
+<h2 id="access-username">Access Username</h2>
+<p>Change the default username <strong>admin</strong> to a custom name. Using a unique username helps protect access to your router if someone gains direct physical access to the device:</p>
+<pre><code class="language-ros">/user/add name=myname password=mypassword group=full
+/user/disable admin
+</code></pre>
+<h2 id="access-password">Access password</h2>
+<p>MikroTik routers require password configuration. Use a password generator tool to create secure and non-repeating passwords. A secure password:</p>
+<ul>
+<li>Minimum 12 characters.</li>
+<li>Include numbers, symbols, capital and lowercase letters.</li>
+<li>Is not a dictionary word or a combination of dictionary words.</li>
+<li>In a quoted password, escape <code>"</code>, <code>\</code> and <code>$</code> with a backslash (<code>\$</code>). An unescaped <code>$</code> starts a variable name: the router replaces it and the name after it with the variable's value, usually nothing, and the password silently ends up shorter.</li>
+</ul>
+<pre><code class="language-ros">/user/set myname password=&quot;!={Ba3N!40TyX+GvKBz?jTLIUcx/,&quot;
+</code></pre>
+<h2 id="user-accounts-and-groups">User accounts and groups</h2>
+<p>Create one account per administrator instead of sharing a single <code>admin</code> account, and give each account a custom group with only the required policies — the built-in <code>read</code> group can reboot the router and see sensitive configuration. For key-based login, import each administrator's public SSH key; when a user has a key assigned, SSH password login is disabled for that user. See <a href="../authentication-authorization-accounting/user">User</a>.</p>
+<h2 id="securing-access-to-the-device">Securing access to the device</h2>
+<p>By default, the pre-configured firewall blocks all management access from the WAN (internet-facing) interface. <strong>This is intentional — do not remove these rules unless you fully understand the consequences.</strong></p>
+<div class="adm adm-danger">
+<p><strong>Do not expose management services to the internet</strong></p>
+<p>Network devices with management interfaces open to the internet are constantly scanned and targeted by automated attacks. Exposing WinBox, SSH, or other management services directly to the internet can lead to:</p>
+<ul>
+<li><strong>Brute-force attacks</strong> against login credentials.</li>
+<li><strong>Exploitation of known vulnerabilities</strong> in unpatched RouterOS versions.</li>
+<li><strong>Complete device compromise</strong> — attackers can intercept traffic, redirect DNS, install malware, or use the router as a proxy for further attacks.</li>
+</ul>
+<p>If you need remote access to your device, <strong>use a VPN</strong> such as <a href="../virtual-private-networks/wireguard.md">WireGuard</a> to create an encrypted tunnel. This keeps management traffic off the public internet entirely.</p>
+</div>
+<h3 id="opening-management-access-from-wan-advanced">Opening management access from WAN (advanced)</h3>
+<p>The firewall rules below are provided for situations where direct WAN access to management services is unavoidable — for example, ISP-managed infrastructure or sites without a VPN gateway. <strong>Do not apply these rules unless you have a specific requirement for direct internet-facing management.</strong></p>
+<p>These rules allow only ICMP (ping and traceroute), WinBox, and SSH from the WAN interface, and drop everything else:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;accept established,related,untracked&quot;
+add chain=input action=drop \
+    connection-state=invalid \
+    comment=&quot;drop invalid&quot;
+add chain=input action=accept \
+    in-interface=ether1 protocol=icmp \
+    comment=&quot;accept ICMP&quot;
+add chain=input action=accept \
+    in-interface=ether1 protocol=tcp dst-port=8291 \
+    comment=&quot;allow WinBox&quot;
+add chain=input action=accept \
+    in-interface=ether1 protocol=tcp dst-port=22 \
+    comment=&quot;allow SSH&quot;
+add chain=input action=drop \
+    in-interface=ether1 \
+    comment=&quot;block everything else&quot;
+</code></pre>
+<p>These rules are a complete input chain for a router without the default configuration. On a router with the default configuration, <code>add</code> appends them after the rule that drops all input from outside the LAN, and WAN connections never reach them. There, add only the accept rules for the services you need, in front of that rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    in-interface-list=WAN protocol=tcp dst-port=8291 \
+    comment=&quot;allow WinBox&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept \
+    in-interface-list=WAN protocol=tcp dst-port=22 \
+    comment=&quot;allow SSH&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the public interface is PPPoE, LTE, or another interface type, <code>in-interface</code> should be set accordingly. If you select the wrong interface, you may lose access to the device.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>Additional hardening required</strong></p>
+<p>If you open management access from WAN, you <strong>must</strong> also:</p>
+<ul>
+<li>Use strong, unique passwords (see <a href="#access-password">Access password</a>).</li>
+<li>Restrict access to specific source addresses where possible.</li>
+<li>Limit repeated SSH connections from one address, as described in <a href="../firewall-and-quality-of-service/user-guides/bruteforce-prevention">SSH brute-force protection</a>.</li>
+<li>Keep RouterOS updated to the latest stable release.</li>
+<li>Monitor logs for unauthorized connection attempts.</li>
+</ul>
+</div>
+<p>You can also limit a specific user account to certain source addresses with the <strong>Allowed Address</strong> property:</p>
+<pre><code class="language-ros">/user/set 0 address=192.168.88.0/24
+</code></pre>
+<h2 id="routeros-mac-access">RouterOS MAC-access</h2>
+<p>RouterOS includes built-in feature options that provide convenient management access to network devices. However, the following services should be disabled in production networks: <strong>MAC-Telnet, MAC-WinBox,</strong> and <strong>MAC-Ping.</strong></p>
+<pre><code class="language-ros">/tool/mac-server/set allowed-interface-list=none
+/tool/mac-server/mac-winbox/set allowed-interface-list=none
+/tool/mac-server/ping/set enabled=no
+</code></pre>
+<h2 id="neighbor-discovery">Neighbor Discovery</h2>
+<p>The MikroTik Neighbor Discovery protocol is used to discover and identify other MikroTik routers on the network. To disable Neighbor Discovery on all interfaces, use the following command:</p>
+<pre><code class="language-ros">/ip/neighbor/discovery-settings/set discover-interface-list=none
+</code></pre>
+<h2 id="bandwidth-server">Bandwidth server</h2>
+<p>The bandwidth server is used to test throughput between two MikroTik routers. Disable it in the production environment:</p>
+<pre><code class="language-ros">/tool/bandwidth-server/set enabled=no
+</code></pre>
+<h2 id="dns-cache">DNS Cache</h2>
+<p>DNS cache improves performance by storing resolved DNS query results locally on the router, reducing the time needed to resolve DNS requests from client devices to remote servers.</p>
+<p>When the router is the DNS server for your network, as in the <a href="configuration-management/default-configurations">default configurations</a> of home and office routers, keep <code>allow-remote-requests=yes</code> so that local devices can use it. The default firewall drops DNS queries from the internet. If you use your own firewall rules, drop these queries as well; see <a href="../network-management/dns#use-the-router-as-the-dns-server-for-your-network">Use the router as the DNS server for your network</a>.</p>
+<p>If the router does not need to answer DNS queries from other devices—for example, if another device on your network handles DNS—turn off remote requests. The router then resolves names only for itself, and it cannot answer DNS queries from the internet even if a firewall rule lets them through:</p>
+<pre><code class="language-ros">/ip/dns/set allow-remote-requests=no
+</code></pre>
+<h2 id="additional-services">Additional Services</h2>
+<p>RouterOS includes several services that may be enabled depending on your configuration. The following services should be disabled in production environments: caching proxy, SOCKS, UPnP, and MikroTik Cloud services.</p>
+<pre><code class="language-ros">/ip/proxy/set enabled=no
+/ip/socks/set enabled=no
+/ip/upnp/set enabled=no
+/ip/cloud/set ddns-enabled=auto update-time=no
+</code></pre>
+<p>With <code>ddns-enabled=auto</code>, the default, the router registers a DNS name with the MikroTik cloud only while Back To Home is enabled. <code>update-time=no</code> stops the router from setting its clock from the cloud.</p>
+<h2 id="management-service-ports">Management service ports</h2>
+<p>Disable the RouterOS management services you do not use, in the <code>/ip/service</code> menu:</p>
+<pre><code class="language-ros">/ip/service/disable telnet,ftp,www,api
+</code></pre>
+<p>Changing the default SSH port can reduce exposure to automated brute-force attempts:</p>
+<pre><code class="language-ros">/ip/service/set ssh port=2200
+</code></pre>
+<p>Each service can also be restricted to specific source addresses, although enforcing access control with firewall rules (above) is preferred, as it prevents the connection from reaching the service at all:</p>
+<pre><code class="language-ros">/ip/service/set winbox available-from=192.168.88.0/24
+</code></pre>
+<h2 id="more-secure-ssh-access">More Secure SSH Access</h2>
+<p>You can enable stricter SSH security settings on your router. With <code>strong-crypto=yes</code>, the SSH server stops offering the weaker algorithms: 128-bit, CBC, 3DES and <code>none</code> ciphers, the SHA-1 and MD5 MACs, and the key exchanges that use SHA-1. To apply these more secure SSH settings, use the following command:</p>
+<pre><code class="language-ros">/ip/ssh/set strong-crypto=yes
+</code></pre>
+<h2 id="router-interface">Router interface</h2>
+<h3 id="ethernetsfp-interfaces">Ethernet/SFP interfaces</h3>
+<p>It is good practice to disable all unused interfaces on your router to decrease unauthorized access to your router:</p>
+<pre><code class="language-ros">/interface/print
+/interface/set X disabled=yes
+</code></pre>
+<p>Where <strong>X</strong> is the number of the unused interface.</p>
+<h3 id="lcd">LCD</h3>
+<p>Some RouterBOARD devices include an LCD module for displaying system information. To secure the LCD, set a PIN code:</p>
+<pre><code class="language-ros">/lcd/pin/set pin-number=3659 hide-pin-number=yes
+</code></pre>
+<p>Alternatively, you can disable the LCD entirely:</p>
+<pre><code class="language-ros">/lcd/set enabled=no
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing: Statis, OSPF &amp; BGP · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="routing-statis-ospf-bgp">Routing: Statis, OSPF &amp; BGP</h1>
+<p>Ringkasan cara router saling bertukar rute.</p>
+<h2 id="1-static-route-paling-dasar">1. Static route (paling dasar)</h2>
+<pre><code>/ip/route/add dst-address=10.20.0.0/24 gateway=192.168.88.2
+/ip/route/add dst-address=0.0.0.0/0 gateway=192.168.1.1   # default
+</code></pre>
+<p>Cek: <code>/ip/route/print</code></p>
+<h2 id="2-ospf-dinamis-dalam-satu-organisasi">2. OSPF (dinamis, dalam satu organisasi)</h2>
+<p>Menyalakan instance dan menambahkan interface:</p>
+<pre><code>/routing/ospf/instance/add name=ospf1
+/routing/ospf/area/add name=backbone area-id=0.0.0.0 instance=ospf1
+/routing/ospf/interface-template/add networks=10.0.0.0/24 area=backbone
+</code></pre>
+<p>Intent: OSPF otomatis bertukar rute antar router di area yang sama.
+Cek tetangga: <code>/routing/ospf/neighbor/print</code></p>
+<h2 id="3-bgp-antar-as-internet">3. BGP (antar-AS, internet)</h2>
+<p>Menu: <code>/routing/bgp/instance</code>, <code>/routing/bgp/connection</code>, <code>/routing/bgp/session</code>.
+<code>local.role</code> wajib diisi (<code>ebgp</code>, <code>ibgp</code>, <code>ibgp-rr</code>, atau role RFC 9234).</p>
+<p>Contoh eBGP dasar:</p>
+<pre><code>/routing/bgp/instance/add name=myInstance as=65531
+/routing/bgp/connection/add name=toR2 remote.address=192.168.1.2 \
+    instance=myInstance local.role=ebgp
+</code></pre>
+<p>Cek sesi: <code>/routing/bgp/session/print</code> (flag <code>E</code> = established)</p>
+<p>Umumkan prefix sendiri (harus ada route match / IGP):</p>
+<pre><code>/ip/firewall/address-list/add list=my-nets address=103.x.x.0/24
+/routing/bgp/connection/set [find name=toR2] output.network=my-nets
+</code></pre>
+<h3 id="jebakan-bgp-faq-buku">Jebakan BGP (FAQ buku)</h3>
+<ul>
+<li>eBGP ke loopback gagal → set <code>multihop=yes</code></li>
+<li>Rute tidak di-advertise ke peer lain → cek output filter / beda instance</li>
+<li>Best path tidak jalan → hanya berlaku dalam satu instance</li>
+<li><code>listen=yes</code> jangan dibuka di link publik tanpa firewall</li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>12 Routing and Networking Protocols</em> (Unicast, OSPF, BGP, MPLS)</li>
+<li>Manual: <em>21 CLI Reference → /routing</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

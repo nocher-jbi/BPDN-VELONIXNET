@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ipv6 · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="ipv6-part-12">ipv6 (part 1/2)</h1>
+<h1 id="address">address</h1>
+<blockquote>
+<p>RouterOS directory reference for /ipv6/address.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6address">ipv6/address</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+<li><strong>G</strong> <code>global</code> — global</li>
+<li><strong>L</strong> <code>link-local</code> — link-local</li>
+<li><strong>S</strong> <code>slave</code> — Whether address belongs to an interface which is a slave port to some other master interface.</li>
+<li><strong>d</strong> <code>deprecated</code> — deprecated</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>composite { address: ip6Addr
+, netmask: [ num [ .. 128]]
+ }</code> — IPv6 address. Address can also be constructed from the pool if <code>from-pool</code> parameter is specified. For example if address is set to <code>::1/64</code> then address will be constructed as follows <code>&lt;prefix_from_pool&gt;::1/64</code></li>
+<li><strong>from-pool</strong> <code>enum</code> — Name of the pool from which prefix will be taken to construct IPv6 address taking last part of the address from address property.</li>
+<li><strong>from-pool-policy</strong> <code>enum (recommended | strict | without-acquire)</code> — Specify how to acquire prefix from pool, if <code>from-pool</code> parameter is set. - <code>recommended</code> option will use <code>address</code> as a postfix and <strong>subnet-id</strong>, if subnet-id is provided. - <code>strict</code> will use <strong>address</strong> as a strict postfix. - <code>without-acquire</code> will not allocate a prefix from a pool and will allow other services to use the exact same prefix. The <code>without-acquire</code> option should be mainly used to create SLAAC address on a router which at the same time will be a DHCPv6 server providing addresses to client from the same subnet.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Specifies the interface on which the IPv6 address is configured. You can select it from the pool of interfaces available on the router.</li>
+<li><strong>eui-64</strong> <code>bool</code> — Whether to calculate EUI-64 address and use it as last 64 bits of the IPv6 address.</li>
+<li><strong>advertise</strong> <code>bool</code> — Whether to enable stateless address configuration. The prefix of that address is automatically advertised three times to hosts using ICMPv6 protocol. The option is set by default for addresses with prefix length 64. If address is removed or changed, then old prefix will be deprecated by automatically advertising the old prefix with lifetime set to <code>0s</code> three times to hosts using ICMPv6 protocol.</li>
+<li><strong>no-dad</strong> <code>bool</code> — If enabled (yes) - disables Duplicate Address Detection (DAD) for IPv6 addresses on an interface. This can be useful in scenarios where you want to assign static IPv6 addresses to devices and avoid the delay caused by DAD.</li>
+<li><strong>auto-link-local</strong> <code>bool</code> — If you want to manually add a link‑local address to an interface, this setting lets you override the automatically generated IPv6 link‑local address.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>actual-interface</strong> <code>iface_enum</code> — Actual interface on which address is set up. For example, if address was configured on ethernet interface and ethernet interface was added to bridge, then actual interface is bridge not ethernet.</li>
+<li><strong>vrf</strong> <code>enum</code> — Indicates which VRF this IP address is associated with.</li>
+<li><strong>valid</strong> <code>alt { valid: enum (forever) { forever:-1 }
+, valid: time
+ }</code></li>
+<li><strong>preferred</strong> <code>alt { preferred: enum (forever) { forever:-1 }
+, preferred: time
+ }</code></li>
+</ul>
+<hr />
+<h1 id="dhcp-client">dhcp-client</h1>
+<blockquote>
+<p>The DHCPv6 client requests IPv6 addresses, delegated prefixes (DHCPv6-PD) or other settings from a DHCPv6 server. For an overview and configuration examples, see DHCPv6 Client. For how DHCPv6 differs from DHCP for...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-client">ipv6/dhcp-client</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCPv6 client requests IPv6 addresses, delegated prefixes (DHCPv6-PD) or other settings from a DHCPv6 server. For an overview and configuration examples, see <a href="../../../network-management/dhcp/dhcpv6-client">DHCPv6 Client</a>. For how DHCPv6 differs from DHCP for IPv4, see <a href="../../../network-management/dhcp/">DHCP</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The DHCPv6 client was created dynamically.</li>
+<li><strong>X</strong> <code>disabled</code> — The DHCPv6 client is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The DHCPv6 client configuration is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the client runs on. A received address is added to this interface as a dynamic /128 address.</li>
+<li><strong>request</strong> <code>ubit (info, address, prefix)</code> — What the client requests from the server. One client can request more than one of these: - <code>address</code> - An IPv6 address (IA_NA), which is added to the client interface as a dynamic /128 address. - <code>prefix</code> - A delegated prefix (IA_PD), which is added to the IPv6 pool set in <code>pool-name</code>. - <code>info</code> - Only other settings, without an address or prefix (Information-request). The client status is then <code>idle</code>.</li>
+<li><strong>accept-prefix-without-address</strong> <code>bool</code> — When both an address and a prefix are requested: whether to accept a reply that contains a prefix but no address. With <code>no</code>, the client keeps soliciting until a server offers both. Default: yes.</li>
+<li><strong>add-default-route</strong> <code>bool</code> — Whether to add a default route (<code>::/0</code>) through the DHCPv6 server, or through the relay if the reply came through one. DHCPv6 itself does not provide a default gateway. Default: no.</li>
+<li><strong>default-route-distance</strong> <code>num</code> — Distance of the default route the client adds. Default: 1.</li>
+<li><strong>default-route-tables</strong> <code>object { table: alt { table-distance: composite { table: alt { table-default: enum (default) { default:0xffffffff }
+, table: enum
+ }
+, distance: num [1 .. 255]
+ }
+, table: alt { table-default: enum (default) { default:0xffffffff }
+, table: enum
+ }
+ }
+ }</code> — Routing tables to add the default route to, as <code>table</code> or <code>table:distance</code> entries. <code>default</code> is the main routing table, or the VRF routing table when the client interface belongs to a VRF. Default: default.</li>
+<li><strong>check-gateway</strong> <code>enum (none | arp | ping | bfd)</code> — Gateway check set on the default route the client adds (<code>none</code>, <code>arp</code>, <code>ping</code> or <code>bfd</code>), so the route is only used while its gateway responds. Default: none.</li>
+<li><strong>use-peer-dns</strong> <code>bool</code> — Whether to accept the DNS servers advertised by the DHCPv6 server. Default: yes.</li>
+<li><strong>use-interface-duid</strong> <code>bool</code> — Whether to use a DUID generated from the MAC address of the client interface, instead of the router's DUID that the router's other DHCPv6 clients and its DHCPv6 server use. Default: no.</li>
+<li><strong>custom-duid</strong> <code>string</code> — DUID to send instead of the generated one, in hex, for example <code>0x0003000102aabbccddee</code>. Overrides <code>use-interface-duid</code>.</li>
+<li><strong>validate-server-duid</strong> <code>bool</code> — Whether to check that the DUID sent by the DHCPv6 server is correctly formed. With <code>no</code>, an incorrectly formed server DUID is accepted, but its minimum length is still checked. Default: yes.</li>
+<li><strong>rapid-commit</strong> <code>bool</code> — Whether to ask for the two-message exchange (Solicit and Reply) with the Rapid Commit option. If the server does not use it, or with <code>no</code>, the four-message exchange (Solicit, Advertise, Request, Reply) is used. Default: yes.</li>
+<li><strong>allow-reconfigure</strong> <code>bool</code> — Whether to accept Reconfigure messages from the DHCPv6 server. When enabled, the client says so in its Solicit, receives a reconfigure key, and renews immediately when the server sends a Reconfigure message. The RouterOS DHCPv6 server sends Reconfigure messages when its settings change and with the <code>send-reconfigure</code> command of the binding. Default: no.</li>
+<li><strong>dhcp-options</strong> <code>multi { array-id, option: enum
+ }</code> — Options the client sends, selected by name from <code>/ipv6/dhcp-client/option</code>. The predefined <code>fqdn</code> option sends the router's identity as the client's FQDN (option 39). Default: fqdn.</li>
+<li><strong>pool-name</strong> <code>string</code> — Name of the dynamic IPv6 pool the client creates from the received prefix, from which addresses can be assigned to other interfaces. The lifetime of the pool follows the prefix and is extended with each renewal. Applied only when a prefix is requested.</li>
+<li><strong>pool-prefix-length</strong> <code>num</code> — Prefix length the pool hands out, for example <code>64</code>. It must be equal to or longer than the received prefix. When not set, the length is chosen automatically, for example 64 for a received /56. Applied only when a prefix is requested.</li>
+<li><strong>prefix-hint</strong> <code>ip6Prefix</code> — Prefix or prefix length to suggest to the server, for example <code>::/60</code> to ask for a /60. The server does not have to follow it. <code>::/0</code> sends no hint. Default: ::/0.</li>
+<li><strong>prefix-address-lists</strong> <code>multi { array-id, prefix-address-list: string
+ }</code> — IPv6 firewall address lists to which the received prefix is added as a dynamic entry. Applied only when a prefix is requested.</li>
+<li><strong>script</strong> <code>alt { script: string
+ }</code> — Script to run when the client gets, renews or loses an address or a prefix. It runs separately for the prefix and for the address, and receives these variables: - <code>pd-valid</code> - <code>1</code> when the prefix was obtained, <code>0</code> when it was lost; empty when the run is about the address. - <code>pd-prefix</code> - The prefix, with its length. - <code>na-valid</code> - <code>1</code> when the address was obtained, <code>0</code> when it was lost; empty when the run is about the prefix. - <code>na-address</code> - The address. - <code>options</code> - Array of the options received from the server, indexed by option code.</li>
+<li><strong>custom-iapd-id</strong> <code>num</code> — Identity association identifier (IAID) to use for the prefix request (IA_PD), instead of the one derived from the client interface.</li>
+<li><strong>custom-iana-id</strong> <code>num</code> — Identity association identifier (IAID) to use for the address request (IA_NA), instead of the one derived from the client interface.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>enum (stopped | searching... | requesting... | bound | renewing... | rebinding... | stopping... | declining... | error | idle | requesting-info... | confirming...)</code> — Current state of the client: - <code>searching...</code> - Sending Solicit messages and waiting for a server. - <code>requesting...</code> - Requesting the offered address or prefix. - <code>bound</code> - The client has its address or prefix. - <code>renewing...</code> - Renewing with the server that gave the address or prefix. - <code>rebinding...</code> - The server did not answer the renewal; asking any server. - <code>requesting-info...</code> - Waiting for the reply to an Information-request (<code>request=info</code>). - <code>idle</code> - The Information-request was answered (<code>request=info</code>). - <code>confirming...</code> - Checking with a server that the address or prefix is still valid for the link. - <code>declining...</code> - Declining an address. - <code>stopping...</code> - Sending a Release message. - <code>stopped</code> - The client is disabled. - <code>error</code> - The client cannot run.</li>
+<li><strong>duid</strong> <code>string</code> — DUID the client sends.</li>
+<li><strong>dhcp-server-v6</strong> <code>ip6Addr</code> — Address the server's replies came from, usually the link-local address of the DHCPv6 server.</li>
+<li><strong>prefix</strong> <code>composite { prefix: ip6Prefix
+, expires-after: time
+ }</code> — Received prefix and the time until it expires.</li>
+<li><strong>address</strong> <code>composite { address: ip6Addr
+, expires-after: time
+ }</code> — Received address and the time until it expires.</li>
+<li><strong>reconfigure-key</strong> <code>string</code> — Key received from the DHCPv6 server to authenticate its Reconfigure messages. Set only when <code>allow-reconfigure</code> is enabled.</li>
+<li><strong>reconfigure-last-counter</strong> <code>string</code> — Replay-detection counter of the last Reconfigure message accepted from the DHCPv6 server. It increases with every Reconfigure message.</li>
+</ul>
+<hr />
+<h1 id="option">option</h1>
+<blockquote>
+<p>Options the DHCPv6 client can send to the DHCPv6 server. A client sends the options listed in its dhcp-options property. For details, see DHCPv6 Client.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-clientoption">ipv6/dhcp-client/option</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Options the DHCPv6 client can send to the DHCPv6 server. A client sends the options listed in its <code>dhcp-options</code> property. For details, see <a href="../../../network-management/dhcp/dhcpv6-client">DHCPv6 Client</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Predefined option.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option, used in the <code>dhcp-options</code> property of the client.</li>
+<li><strong>code</strong> <code>num</code> — DHCPv6 option code.</li>
+<li><strong>value</strong> <code>string</code> — Value of the option, in the same syntax as DHCP server option values. The predefined <code>fqdn</code> option uses the variables <code>$(HOSTNAME)</code> (the router's identity) and <code>$(HOSTNAME_LEN)</code> (its length): <code>0x00$(HOSTNAME_LEN)$(HOSTNAME)</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>raw-value</strong> <code>string</code> — The option value as it is sent, in hex.</li>
+</ul>
+<hr />
+<h1 id="release">release</h1>
+<blockquote>
+<p>Releases the current addresses and prefixes. The client sends a Release message to the server, then starts over and solicits again.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-clientrelease">ipv6/dhcp-client/release</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Releases the current addresses and prefixes. The client sends a Release message to the server, then starts over and solicits again.</p>
+<hr />
+<h1 id="renew">renew</h1>
+<blockquote>
+<p>Renews the current addresses and prefixes immediately, without waiting for the renewal time. If the server does not answer, the client keeps its address and prefix while it retries.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-clientrenew">ipv6/dhcp-client/renew</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Renews the current addresses and prefixes immediately, without waiting for the renewal time. If the server does not answer, the client keeps its address and prefix while it retries.</p>
+<hr />
+<h1 id="dhcp-relay">dhcp-relay</h1>
+<blockquote>
+<p>The DHCPv6 relay forwards DHCPv6 messages from clients on its interface to DHCPv6 servers, wrapped in Relay-Forward messages, and delivers the servers' Relay-Reply messages back to the clients. For an overview, see...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-relay">ipv6/dhcp-relay</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCPv6 relay forwards DHCPv6 messages from clients on its interface to DHCPv6 servers, wrapped in Relay-Forward messages, and delivers the servers' Relay-Reply messages back to the clients. For an overview, see <a href="../../../network-management/dhcp/relay">DHCP Relay</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The relay is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The relay configuration is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the relay.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface on which the relay listens for messages from clients.</li>
+<li><strong>dhcp-server</strong> <code>object { server: alt { interface-address: composite { address6: ip6Addr
+, interface: iface_enum
+ }
+, address6: ip6Addr
+ }
+ }</code> — DHCPv6 servers to forward Relay-Forward messages to. A link-local address is given with its interface, for example <code>fe80::1%ether1</code>.</li>
+<li><strong>dhcp-options</strong> <code>multi { array-id, option: enum
+ }</code> — Options (<code>/ipv6/dhcp-relay/option</code>) added to Relay-Forward messages. The Interface-ID option (18) is always added. Default: client_mac, the client link-layer address (option 79).</li>
+<li><strong>link-address</strong> <code>ip6Addr</code> — Address sent in the link-address field of Relay-Forward messages, which a server can use to identify the client's link. With <code>::</code>, no address is sent. Default: ::.</li>
+<li><strong>delay-threshold</strong> <code>alt { const: enum (none) { none:0 }
+, time: time
+ }</code> — Minimum value of the elapsed-time field a message must have to be forwarded. With <code>none</code>, all messages are forwarded. Default: none.</li>
+<li><strong>store-relayed-bindings</strong> <code>bool</code> — Whether to keep the bindings found in the servers' replies and add routes to them through the client, so traffic to delegated prefixes behind the relay is routed. The bindings are listed in <code>/ipv6/dhcp-relay/routes</code>. Default: no.</li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>Shows the counters of a DHCPv6 relay.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-relaymonitor">ipv6/dhcp-relay/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the counters of a DHCPv6 relay.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>requests</strong> <code>num</code> — Number of client messages the relay forwarded to the servers.</li>
+<li><strong>responses</strong> <code>num</code> — Number of server replies the relay delivered to clients.</li>
+</ul>
+<hr />
+<h1 id="option_1">option</h1>
+<blockquote>
+<p>Options a DHCPv6 relay can add to the Relay-Forward messages it sends. A relay adds the options listed in its dhcp-options property. For details, see DHCP Relay.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-relayoption">ipv6/dhcp-relay/option</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Options a DHCPv6 relay can add to the Relay-Forward messages it sends. A relay adds the options listed in its <code>dhcp-options</code> property. For details, see <a href="../../../network-management/dhcp/relay">DHCP Relay</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Predefined option.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option, used in the <code>dhcp-options</code> property of the relay.</li>
+<li><strong>code</strong> <code>num</code> — DHCPv6 option code.</li>
+<li><strong>value</strong> <code>string</code> — Value of the option, in the same syntax as DHCP server option values. The predefined <code>client_mac</code> option (code 79) uses <code>0x0001$(CLIENT_MAC)</code>, the link-layer type Ethernet followed by the MAC address of the client.</li>
+<li><strong>only-if-mac-available</strong> <code>bool</code> — Whether to add the option only when the message came directly from a client (not from another relay) and the client's MAC address is known.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>raw-value</strong> <code>string</code> — The option value as it is sent, in hex.</li>
+</ul>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>Resets the request and response counters of all DHCPv6 relays.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-relayreset-counters">ipv6/dhcp-relay/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the request and response counters of all DHCPv6 relays.</p>
+<hr />
+<h1 id="routes">routes</h1>
+<blockquote>
+<p>Bindings found in the servers' replies by DHCPv6 relays with store-relayed-bindings=yes. The relay adds a route to each delegated prefix through the client. For details, see DHCP Relay.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-relayroutes">ipv6/dhcp-relay/routes</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Bindings found in the servers' replies by DHCPv6 relays with <code>store-relayed-bindings=yes</code>. The relay adds a route to each delegated prefix through the client. For details, see <a href="../../../network-management/dhcp/relay">DHCP Relay</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>relay</strong> <code>enum</code> — DHCPv6 relay that saw the binding.</li>
+<li><strong>prefix</strong> <code>ip6Prefix</code> — Delegated prefix or assigned address.</li>
+<li><strong>peer-address</strong> <code>ip6Addr</code> — Address of the client, usually its link-local address, used as the gateway of the route.</li>
+<li><strong>life-time</strong> <code>time</code> — Lifetime of the binding.</li>
+<li><strong>last-seen</strong> <code>time</code> — Time since the relay last saw the binding in a reply.</li>
+</ul>
+<hr />
+<h1 id="dhcp-server">dhcp-server</h1>
+<blockquote>
+<p>The DHCPv6 server delegates IPv6 prefixes (DHCPv6-PD) and assigns IPv6 addresses to clients. Prefixes and addresses come from IPv6 pools or from static bindings (/ipv6/dhcp-server/binding). For an overview and...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-server">ipv6/dhcp-server</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The DHCPv6 server delegates IPv6 prefixes (DHCPv6-PD) and assigns IPv6 addresses to clients. Prefixes and addresses come from IPv6 pools or from static bindings (<code>/ipv6/dhcp-server/binding</code>). For an overview and configuration examples, see <a href="../../../network-management/dhcp/dhcpv6-server">DHCPv6 Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — The DHCPv6 server was created dynamically.</li>
+<li><strong>X</strong> <code>disabled</code> — The DHCPv6 server is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The DHCPv6 server configuration is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the DHCPv6 server.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the DHCPv6 server listens on.</li>
+<li><strong>prefix-pool</strong> <code>alt { prefix-pool-static: enum (static-only) { static-only:0xffffffff }
+, prefix-pool-name: enum
+ }</code> — IPv6 pool from which dynamic prefix bindings get their prefixes. With <code>static-only</code>, only static bindings are given out. Default: static-only.</li>
+<li><strong>address-pool</strong> <code>alt { address-pool-static: enum (static-only) { static-only:0xffffffff }
+, address-pool-name: enum
+ }</code> — IPv6 pool from which dynamic address bindings get their addresses. The pool prefix length must be 128. With <code>static-only</code>, only static bindings are given out. Default: static-only.</li>
+<li><strong>lease-time</strong> <code>time</code> — Lifetime of new and renewed bindings. Clients are told to renew after half of it and to rebind after 80% of it, and the preferred lifetime is 90% of it. Default: 3d.</li>
+<li><strong>rapid-commit</strong> <code>bool</code> — Whether to answer a Solicit that asks for Rapid Commit directly with a Reply (two-message exchange). With <code>no</code>, the server always answers with an Advertise first. Default: yes.</li>
+<li><strong>use-radius</strong> <code>enum (no | yes | accounting)</code> — Whether to use a RADIUS server for bindings: <code>no</code> (default), <code>yes</code> for authentication and accounting, or <code>accounting</code> for accounting only.</li>
+<li><strong>preference</strong> <code>num</code> — Preference value sent in Advertise messages. Clients prefer the server with the highest value. Default: 255.</li>
+<li><strong>binding-script</strong> <code>alt { script: string
+ }</code> — Script to run when a binding is bound and when it ends. It runs separately for each binding, and receives these variables: - <code>bindingBound</code> - <code>1</code> when the binding was bound, otherwise <code>0</code>. - <code>bindingServerName</code> - Name of the DHCPv6 server. - <code>bindingDUID</code> - DUID of the client. - <code>bindingAddress</code> - IPv6 address the client sends from, usually its link-local address. - <code>bindingPrefix</code> - The delegated prefix, or the assigned address for an address binding.</li>
+<li><strong>dns-none</strong> <code>bool</code> — Don't add DNS servers to responses</li>
+<li><strong>dhcp-option</strong> <code>multi { array-id, option: alt { option: enum
+, option-set: enum
+ }
+ }</code> — Options (<code>/ipv6/dhcp-server/option</code>) to send to clients, for example DNS servers (option 23).</li>
+<li><strong>insert-queue-before</strong> <code>enum (first | bottom) { first:0, bottom:0xffffffff }</code> — Where to place the dynamic simple queues created for bindings with a <code>rate-limit</code>: <code>first</code> (default) at the top of <code>/queue/simple</code>, <code>bottom</code> at the end, or before the named queue.</li>
+<li><strong>parent-queue</strong> <code>enum (none) { none:0 }</code> — Parent of the dynamic simple queues created for bindings with a <code>rate-limit</code>. Default: none.</li>
+<li><strong>route-distance</strong> <code>num</code> — Distance of the routes the server adds to each delegated prefix and assigned address, through the client's link-local address. Default: 1.</li>
+<li><strong>allow-dual-stack-queue</strong> <code>bool</code> — Whether a binding and a DHCP lease of the same client share one dynamic simple queue, which then contains both the IPv6 and the IPv4 address. The client is recognized by its MAC address and DUID. The DHCP server must have this setting enabled as well. Default: yes.</li>
+<li><strong>use-reconfigure</strong> <code>bool</code> — Whether to send Reconfigure messages. When enabled, clients that accept them get a reconfigure key, and the server sends a Reconfigure message by itself: to all its bindings when <code>address-pool</code>, <code>lease-time</code> or <code>dhcp-option</code> change, and to a binding when the binding's settings change, so the clients renew; and a rebind request when the server or the binding's server is removed. The <code>send-reconfigure</code> command of the binding sends one manually. Default: no.</li>
+<li><strong>address-lists</strong> <code>multi { array-id, address-list: string
+ }</code> — IPv6 firewall address lists to which the prefix or address of each binding is added. The <code>address-lists</code> setting of a binding overrides this.</li>
+<li><strong>add-dns-entries</strong> <code>bool</code> — Whether to add a dynamic DNS entry (type AAAA) for each address binding. The entry name is the FQDN the client sends (option 39) followed by <code>add-dns-entries-suffix</code>, and its TTL is the lease time. Prefix bindings get no entry. Default: no.</li>
+<li><strong>add-dns-entries-suffix</strong> <code>string</code> — Domain appended to the client name in the DNS entries created by <code>add-dns-entries</code>, for example <code>laptop.lan</code>. Default: lan.</li>
+<li><strong>ignore-ia-na-bindings</strong> <code>bool</code> — Whether to ignore address requests (IA_NA) and act as if the client's messages did not contain them, so only prefixes are handed out. Without it, a server with no address pool still answers each address request that no address is available, which can make a client that requests both keep asking. Default: no.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>duid</strong> <code>string</code> — DUID of the server. The router uses the same DUID for its DHCPv6 clients.</li>
+</ul>
+<hr />
+<h1 id="binding">binding</h1>
+<blockquote>
+<p>Bindings of the DHCPv6 servers: the prefixes and addresses given to clients. Dynamic bindings are created from the server's pools; static bindings give a client, identified by its DUID and IAID, a fixed prefix or...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-serverbinding">ipv6/dhcp-server/binding</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Bindings of the DHCPv6 servers: the prefixes and addresses given to clients. Dynamic bindings are created from the server's pools; static bindings give a client, identified by its DUID and IAID, a fixed prefix or address. For details, see <a href="../../../../network-management/dhcp/dhcpv6-server">DHCPv6 Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>invalid</code> — The binding is invalid.</li>
+<li><strong>X</strong> <code>disabled</code> — The binding is disabled.</li>
+<li><strong>R</strong> <code>radius</code> — The binding was assigned by a RADIUS server.</li>
+<li><strong>D</strong> <code>dynamic</code> — The binding is dynamic. Use <code>make-static</code> to turn it into a static binding.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { prefix: ip6Prefix
+ }</code> — Prefix or address assigned to the client.</li>
+<li><strong>duid</strong> <code>string</code> — DUID of the client, in hex, for example <code>0x00030001dc2c6ee7106a</code>. Together with <code>iaid</code>, it identifies the client request the binding answers.</li>
+<li><strong>iaid</strong> <code>num</code> — Identity association identifier (IAID) of the client request. Together with <code>duid</code>, it identifies the binding.</li>
+<li><strong>ia-type</strong> <code>enum (na | pd)</code> — Type of the binding: - <code>na</code> - An address binding (IA_NA). - <code>pd</code> - A prefix delegation binding (IA_PD).</li>
+<li><strong>server</strong> <code>enum (all)</code> — Name of the DHCPv6 server that can offer this binding, or <code>all</code> for every server.</li>
+<li><strong>life-time</strong> <code>time</code> — Lifetime of a static binding. Dynamic bindings use the <code>lease-time</code> of the server. Default: 1w.</li>
+<li><strong>prefix-pool</strong> <code>enum</code> — IPv6 pool the prefix or address of the binding comes from. For addresses, the pool prefix length is 128.</li>
+<li><strong>dhcp-option</strong> <code>multi { array-id, option: alt { option: enum
+, option-set: enum
+ }
+ }</code> — Options (<code>/ipv6/dhcp-server/option</code>) to send to this client.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Bandwidth limit for the client, in the same format as the <code>rate-limit</code> of a DHCP server lease. The server creates a dynamic simple queue for the prefix or address of the binding.</li>
+<li><strong>allow-dual-stack-queue</strong> <code>bool</code> — Whether this binding and a DHCP lease of the same client share one dynamic simple queue. Default: yes.</li>
+<li><strong>address-lists</strong> <code>multi { array-id, address-list: string
+ }</code> — IPv6 firewall address lists to which the prefix or address of the binding is added. Overrides the <code>address-lists</code> setting of the server.</li>
+<li><strong>insert-queue-before</strong> <code>enum (first | bottom) { first:0, bottom:0xffffffff }</code> — Where to place the dynamic simple queue created for this binding: <code>first</code> (default), <code>bottom</code>, or before the named queue.</li>
+<li><strong>parent-queue</strong> <code>enum (none) { none:0 }</code> — Parent of the dynamic simple queue created for this binding. Default: none.</li>
+<li><strong>queue-type</strong> <code>enum</code> — Queue type of the dynamic simple queue created for this binding.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>active-server</strong> <code>enum (none)</code> — DHCPv6 server that serves the binding.</li>
+<li><strong>status</strong> <code>enum (waiting | offered | bound)</code> — State of the binding: - <code>waiting</code> - A static binding that is not in use, or a dynamic binding that was used before. The server keeps a dynamic binding for 10 minutes so the old client can get it back; after that the prefix can be given to other clients. - <code>offered</code> - The server answered a Solicit with an Advertise, but has not received the Request. The client has 2 minutes to request the binding. - <code>bound</code> - The client uses the binding.</li>
+<li><strong>expires-after</strong> <code>time</code> — Time until the binding expires.</li>
+<li><strong>last-seen</strong> <code>alt { symbolic-names: enum (never | sometime) { never:0xffffffff, sometime:0xfffffffe }
+, time: time
+ }</code> — Time since the server last received a message from the client, or <code>never</code>.</li>
+<li><strong>client-address</strong> <code>ip6Addr</code> — IPv6 address the client sends from, usually its link-local address. The routes to the binding use it as the gateway.</li>
+<li><strong>reconfigure-key</strong> <code>string</code> — Key the server gave the client for authenticating Reconfigure messages (<code>use-reconfigure</code>).</li>
+<li><strong>reconfigure-last-sent</strong> <code>string</code> — Replay-detection counter of the last Reconfigure message sent to the client. It increases with every Reconfigure message.</li>
+<li><strong>reconfigure-status</strong> <code>string</code></li>
+<li><strong>fqdn</strong> <code>string</code> — FQDN the client sent (option 39).</li>
+</ul>
+<hr />
+<h1 id="make-static">make-static</h1>
+<blockquote>
+<p>Converts a dynamic binding into a static binding, so the client keeps its prefix or address.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-serverbindingmake-static">ipv6/dhcp-server/binding/make-static</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Converts a dynamic binding into a static binding, so the client keeps its prefix or address.</p>
+<hr />
+<h1 id="send-reconfigure">send-reconfigure</h1>
+<blockquote>
+<p>Sends a Reconfigure message to the client of the binding, which makes the client renew immediately. Requires use-reconfigure=yes on the server and a client that accepts Reconfigure messages, for example a RouterOS...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-serverbindingsend-reconfigure">ipv6/dhcp-server/binding/send-reconfigure</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sends a Reconfigure message to the client of the binding, which makes the client renew immediately. Requires <code>use-reconfigure=yes</code> on the server and a client that accepts Reconfigure messages, for example a RouterOS DHCPv6 client with <code>allow-reconfigure=yes</code>.</p>
+<hr />
+<h1 id="option_2">option</h1>
+<blockquote>
+<p>Additional options the DHCPv6 server can send, assigned with dhcp-option to a server or a binding, or grouped in option sets. For details, see DHCPv6 Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-serveroption">ipv6/dhcp-server/option</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Additional options the DHCPv6 server can send, assigned with <code>dhcp-option</code> to a server or a binding, or grouped in option sets. For details, see <a href="../../../../network-management/dhcp/dhcpv6-server">DHCPv6 Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option, used where options are assigned.</li>
+<li><strong>code</strong> <code>num</code> — DHCPv6 option code, for example 23 for DNS servers.</li>
+<li><strong>value</strong> <code>string</code> — Value of the option, in the same syntax as DHCP server option values. An IPv6 address in quotes is sent as 16 bytes, for example <code>'2001:db8::53'</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>raw-value</strong> <code>string</code> — The option value as it is sent, in hex.</li>
+</ul>
+<hr />
+<h1 id="sets">sets</h1>
+<blockquote>
+<p>Groups of DHCPv6 server options that can be assigned together. For details, see DHCPv6 Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6dhcp-serveroptionsets">ipv6/dhcp-server/option/sets</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Groups of DHCPv6 server options that can be assigned together. For details, see <a href="../../../../network-management/dhcp/dhcpv6-server">DHCPv6 Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the option set.</li>
+<li><strong>options</strong> <code>multi { array-id, option: enum
+ }</code> — Options (<code>/ipv6/dhcp-server/option</code>) in the set.</li>
+</ul>
+<hr />
+<h1 id="address-list">address-list</h1>
+<blockquote>
+<p>An IPv6 firewall address list is a named set of IPv6 addresses and prefixes that IPv6 filter, NAT, mangle and raw rules match with src-address-list and dst-address-list. Entries are added here, by the...</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewalladdress-list">ipv6/firewall/address-list</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>An IPv6 firewall address list is a named set of IPv6 addresses and prefixes that IPv6 filter, NAT, mangle and raw rules match with <code>src-address-list</code> and <code>dst-address-list</code>. Entries are added here, by the <code>add-src-to-address-list</code> and <code>add-dst-to-address-list</code> rule actions, and from DNS names in the list. These actions pass the packet on to the next rule. IPv6 lists are separate from the IPv4 lists in <a href="../../ip/firewall/address-list"><code>/ip/firewall/address-list</code></a>, even when a list has the same name. See <a href="../../../firewall-and-quality-of-service/firewall/address-lists">Address lists</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Disabled: the entry stays in the list but does not match.</li>
+<li><strong>D</strong> <code>dynamic</code> — Dynamic: the entry has a timeout or was added with <code>dynamic=yes</code>, by a firewall rule with a time or <code>none-dynamic</code>, from a resolved DNS name or by another feature (DNS, DHCP server). Dynamic entries are not saved in the configuration or in exports, and a reboot clears them.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>list</strong> <code>enum</code> — Name of the address list. A new name creates the list. Rules match the list with <code>src-address-list</code> and <code>dst-address-list</code>.</li>
+<li><strong>address</strong> <code>alt { address: ip6Prefix
+, dns-name: string
+ }</code> — An IPv6 address, a prefix or a DNS name. A prefix with host bits is stored as its network, and an address without a prefix length is stored as a /128. Ranges are not accepted (<code>is not a valid dns name</code>). For a DNS name, the router adds one dynamic entry for each AAAA record in the answer, with the name as the comment, and resolves the name again when the record expires. An address that is already in the list is refused with <code>already have such entry</code>.</li>
+<li><strong>timeout</strong> <code>time</code> — Time after which the router removes the entry. An entry with a timeout is dynamic (<code>D</code>): it is not saved in the configuration or in exports, and a reboot clears it. The maximum is <code>35w3d13h13m56s</code>. Without a timeout, the entry stays until you remove it.</li>
+<li><strong>dynamic</strong> <code>bool</code> — With <code>yes</code>, the entry is dynamic (<code>D</code>) and has no timeout: it is not saved in the configuration and a reboot clears it. Default: no.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>creation-time</strong> <code>date</code> — When the entry was created. A static entry keeps this time after a reboot; an imported entry gets the time of the import.</li>
+</ul>
+<hr />
+<h1 id="connection">connection</h1>
+<blockquote>
+<p>List of the IPv6 connections that connection tracking holds. All properties are read-only. See Connection tracking.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallconnection">ipv6/firewall/connection</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>List of the IPv6 connections that connection tracking holds. All properties are read-only. See <a href="../../../firewall-and-quality-of-service/connection-tracking">Connection tracking</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>E</strong> <code>expected</code> — The connection was expected by a connection helper (<code>/ip/firewall/service-port</code>), for example the data connection of an FTP session.</li>
+<li><strong>S</strong> <code>seen-reply</code> — The destination has replied: the connection has seen packets in both directions.</li>
+<li><strong>A</strong> <code>assured</code> — The connection is assured: it is not removed early when the connection list is full.</li>
+<li><strong>C</strong> <code>confirmed</code> — The connection is confirmed: its first packet has left the router.</li>
+<li><strong>D</strong> <code>dying</code> — The connection is being removed because its timeout has ended.</li>
+<li><strong>F</strong> <code>fasttrack</code> — The connection is FastTracked.</li>
+<li><strong>H</strong> <code>hw-offload</code> — The connection is offloaded to hardware.</li>
+<li><strong>s</strong> <code>srcnat</code> — Source NAT is applied to the connection, including masquerade.</li>
+<li><strong>d</strong> <code>dstnat</code> — Destination NAT is applied to the connection, for example a port forward.</li>
+<li><strong>h</strong> <code>uses-helper</code> — A connection helper of <code>/ip/firewall/service-port</code> handles the connection.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>protocol</strong> <code>enum ()</code> — Connection protocol.</li>
+<li><strong>src-address</strong> <code>ip6Addr</code> — Source IP address of the connection.</li>
+<li><strong>src-port</strong> <code>num</code> — Source port of the connection.</li>
+<li><strong>dst-address</strong> <code>ip6Addr</code> — Destination IP address of the connection.</li>
+<li><strong>dst-port</strong> <code>num</code> — Destination port of the connection.</li>
+<li><strong>reply-src-address</strong> <code>ip6Addr</code> — Source IP address that the reply packets have. With destination NAT, it differs from <code>dst-address</code>.</li>
+<li><strong>reply-src-port</strong> <code>num</code> — Source port that the reply packets have.</li>
+<li><strong>reply-dst-address</strong> <code>ip6Addr</code> — Destination IP address that the reply packets have. With source NAT, it differs from <code>src-address</code>.</li>
+<li><strong>reply-dst-port</strong> <code>num</code> — Destination port that the reply packets have.</li>
+<li><strong>tcp-state</strong> <code>enum (none | syn-sent | syn-recv | established | fin-wait | close-wait | last-ack | time-wait | close | listen) { none:0, syn-sent:1, syn-recv:2, established:3, fin-wait:4, close-wait:5, last-ack:6, time-wait:7, close:8, listen:9 }</code> — State of the TCP connection, for example <code>syn-sent</code>, <code>established</code> or <code>time-wait</code>. The state selects the timeout of the entry.</li>
+<li><strong>icmp-type</strong> <code>num</code> — ICMP type.</li>
+<li><strong>icmp-code</strong> <code>num</code> — ICMP code.</li>
+<li><strong>icmp-id</strong> <code>num</code> — ICMP ID.</li>
+<li><strong>gre-protocol</strong> <code>num</code> — Protocol of the payload that GRE carries.</li>
+<li><strong>gre-version</strong> <code>num</code> — Version of the GRE protocol.</li>
+<li><strong>gre-key</strong> <code>num</code> — Contents of the GRE key field.</li>
+<li><strong>connection-type</strong> <code>string</code> — Type that a connection helper has set, for example <code>ftp</code>, <code>tftp</code> or <code>pptp</code>. Empty when connection tracking cannot determine the type, for example on a related connection that a helper created.</li>
+<li><strong>timeout</strong> <code>time</code> — Time after which the router removes the connection from the list if it sees no more packets of it.</li>
+<li><strong>connection-mark</strong> <code>string</code> — Connection mark that a mangle rule has set.</li>
+<li><strong>orig-packets</strong> <code>num</code> — Number of packets sent from the source address of the connection.</li>
+<li><strong>orig-bytes</strong> <code>num</code> — Number of bytes sent from the source address of the connection.</li>
+<li><strong>orig-fasttrack-packets</strong> <code>num</code> — Number of FastTracked packets sent from the source address of the connection.</li>
+<li><strong>orig-fasttrack-bytes</strong> <code>num</code> — Number of FastTracked bytes sent from the source address of the connection.</li>
+<li><strong>repl-packets</strong> <code>num</code> — Number of packets sent from the destination address of the connection.</li>
+<li><strong>repl-bytes</strong> <code>num</code> — Number of bytes sent from the destination address of the connection.</li>
+<li><strong>repl-fasttrack-packets</strong> <code>num</code> — Number of FastTracked packets sent from the destination address of the connection.</li>
+<li><strong>repl-fasttrack-bytes</strong> <code>num</code> — Number of FastTracked bytes sent from the destination address of the connection.</li>
+<li><strong>orig-rate</strong> <code>num</code> — Current data rate from the source address of the connection.</li>
+<li><strong>repl-rate</strong> <code>num</code> — Current data rate from the destination address of the connection.</li>
+</ul>
+<hr />
+<h1 id="filter">filter</h1>
+<blockquote>
+<p>RouterOS directory reference for /ipv6/firewall/filter.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallfilter">ipv6/firewall/filter</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>chain</strong> <code>enum</code> — Specifies to which chain the rule will be added. If the input does not match the name of an already defined chain, a new chain will be created.</li>
+<li><strong>action</strong> <code>enum (accept | jump | return | log | passthrough | add-src-to-address-list | add-dst-to-address-list | drop | reject | fasttrack-connection) { accept:0, jump:1, return:2, log:3, passthrough:4, add-src-to-address-list:5, add-dst-to-address-list:6, drop:10, reject:11, fasttrack-connection:45 }</code> — Action to take if a packet is matched by the rule: <code>accept</code> - accept the packet. A packet is not passed to the next firewall rule. <code>add-dst-to-address-list</code> - add the destination address to the address list specified by the <code>address-list</code> parameter. <code>add-src-to-address-list</code> - add the source address to the address list specified by the <code>address-list</code> parameter. <code>drop</code> - drop the packet. <code>fasttrack-connection</code> - fasttrack the connection. <code>jump</code> - jump to the user-defined chain specified by the value of the <code>jump-target</code> parameter. <code>log</code> - add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. After a packet is matched it is passed to the next rule in the list, similar to <code>passthrough</code>. <code>passthrough</code> - if a packet is matched by the rule, increase the counter and go to the next rule (useful for statistics). <code>reject</code> - reject the packet and send an ICMP response. <code>return</code> - passes control back to the chain from where the jump took place.</li>
+<li><strong>jump-target</strong> <code>enum ()</code> — Name of the target chain to jump to. Applicable only if <code>action=jump</code>.</li>
+<li><strong>reject-with</strong> <code>enum (icmp-no-route | icmp-admin-prohibited | icmp-not-neighbour | icmp-address-unreachable | icmp-port-unreachable | tcp-reset | icmp-err-src-routing-header | icmp-headers-too-long) { icmp-no-route:0, icmp-admin-prohibited:1, icmp-not-neighbour:2, icmp-address-unreachable:3, icmp-port-unreachable:4, tcp-reset:6, icmp-err-src-routing-header:7, icmp-headers-too-long:8 }</code> — Specifies the <a href="https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml#icmpv6-parameters-codes-2">ICMP error</a> to be sent back if the packet is rejected. Applicable if <code>action=reject</code>. - <code>icmp-no-route</code> - sends an ICMP address no-route message. ICMP type 1, code 0 - <code>icmp-admin-prohibited</code> - sends an ICMP address prohibited message. ICMP type 1, code 1 - <code>icmp-not-neighbour</code> - sends an ICMP address not-member message. ICMP type 1, code 2 - <code>icmp-address-unreachable</code> - sends an ICMP address unreachable message. ICMP type 1, code 3 - <code>icmp-port-unreachable</code> - sends an ICMP port unreachable message. ICMP type 1, code 4 - <code>tcp-reset</code> - sends an ICMP message resetting a TCP connection. ICMP type 1, code 6 - <code>icmp-err-src-routing-header</code> - sends an ICMP Error in Source Routing Header message. ICMP type 1, code 7 - <code>icmp-headers-too-long</code> - sends an ICMP Headers too long message. ICMP type 1, code 8</li>
+<li><strong>connection-nat-state</strong> <code>super { !
+, state: ubit (srcnat, dstnat)
+ }</code> — Matches connections that are source-natted, destination-natted, or both.</li>
+<li><strong>tls-host</strong> <code>super { !
+, tls-host: string
+ }</code> — Matches HTTPS traffic based on TLS SNI hostname. Accepts GLOB syntax for wildcard matching. The matcher will not be able to match the hostname if the TLS handshake frame is fragmented into multiple TCP segments.</li>
+<li><strong>connection-state</strong> <code>super { !
+, state: ubit (invalid, established, related, new, untracked)
+ }</code> — Interprets the connection tracking analytics data for a particular packet: <code>established</code> - a packet that belongs to an existing connection. <code>invalid</code> - a packet that does not have a determined state in connection tracking (usually severe out-of-order packets, packets with wrong sequence/ack number, or in case of resource over usage on the router). An invalid packet will not participate in NAT, and will still contain the original source IP address when routed. You should drop all <code>connection-state=invalid</code> packets in the firewall filter forward and input chains. <code>new</code> - the packet has started a new connection or is otherwise associated with a connection that has not seen packets in both directions. <code>related</code> - a packet that is related to, but not part of an existing connection, such as ICMP errors or a packet that begins an FTP data connection. <code>untracked</code> - a packet that was set to bypass connection tracking in firewall RAW tables.</li>
+<li><strong>connection-limit</strong> <code>super { !
+, limit: num
+, [prefix-len] ,num [0 .. 128]
+ }</code> — Matches connections per address or address block after a given value is reached. You should use this together with <code>connection-state=new</code> and/or with <code>tcp-flags=syn</code> because the matcher is very resource-intensive.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum (icmpv6) { icmpv6:58 }
+ }</code> — Matches the particular IP protocol specified by protocol name or number.</li>
+<li><strong>src-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose source is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>dst-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose destination is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the source address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the destination address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>address-list</strong> <code>enum ()</code> — Name of the address list to be used. Applicable if the action is <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code>.</li>
+<li><strong>address-list-timeout</strong> <code>alt { address-list-timeout: enum (none-dynamic | none-static) { none-dynamic:0, none-static:0xffffffff }
+, address-list-timeout: time [ .. 21474836]
+ }</code> — How long the address stays in <code>address-list</code> after the <code>add-src-to-address-list</code> or <code>add-dst-to-address-list</code> action adds it. With a time, the rule adds a dynamic entry (<code>D</code>) that the router removes when the time ends; each new match of the rule resets the time to its full value. The maximum is <code>35w3d13h13m56s</code>. An address that is already a static entry in the list stays static. - <code>none-dynamic</code> (<code>0s</code>) - Add a dynamic entry without a timeout. It is not saved in the configuration and a reboot clears it. - <code>none-static</code> - Add a static entry. It is saved in the configuration and in exports, and stays after a reboot until you remove it.</li>
+<li><strong>src-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the source address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>dst-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the destination address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the destination address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>headers</strong> <code>super { !
+, type: ubit (hop, dst, route, frag, ah, esp, none, proto)
+, [mode] [ :enum (exact | contains) { exact:0, contains:1 }]
+ }</code> — Matches IPv6 next-header. Two types of header matching are possible controlled by the <code>mode</code> parameter: <code>contains</code> - soft matching, matches at least selected headers. <code>exact</code> - matches the exact set of selected headers.</li>
+<li><strong>tcp-flags</strong> <code>super { !,
+, flags: multi { array-id, array-id, flag: super { !
+, flag: enum (fin | syn | rst | psh | ack | urg | ece | cwr) { fin:0, syn:1, rst:2, psh:3, ack:4, urg:5, ece:6, cwr:7 }
+ }
+ }
+ }</code> — Matches the specified TCP flags: <code>ack</code> - acknowledging data. <code>cwr</code> - congestion window reduced. <code>ece</code> - ECN-echo flag (explicit congestion notification). <code>fin</code> - close connection. <code>psh</code> - push function. <code>rst</code> - reset connection. <code>syn</code> - new connection. <code>urg</code> - urgent data.</li>
+<li><strong>hop-limit</strong> <code>super { mode: enum (equal | not-equal | less-than | greater-than) { equal:0, not-equal:1, less-than:2, greater-than:3 }
+, [value] :num [0 .. 255]
+ }</code> — Matches the hop limit field in the IPv6 header.</li>
+<li><strong>connection-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular connection mark. If <code>no-mark</code> is set, the rule will match any unmarked connection.</li>
+<li><strong>connection-type</strong> <code>super { !
+, type: enum (ftp | pptp | h323 | sip | irc | quake3 | tftp) { ftp:0, pptp:1, h323:2, sip:3, irc:4, quake3:5, tftp:6 }
+ }</code> — Matches packets from related connections based on information from their connection tracking helpers. A relevant connection helper must be enabled under <code>/ip/firewall/service-port</code>.</li>
+<li><strong>connection-bytes</strong> <code>super { from: num
+, [to] -num
+ }</code> — Matches packets only if a given amount of bytes has been transferred through the particular connection. 0 means infinity, for example <code>connection-bytes=2000000-0</code> means that the rule matches if more than 2MB has been transferred through the relevant connection.</li>
+<li><strong>connection-rate</strong> <code>super { !
+, from: num
+, [to] -num
+ }</code> — Allows capturing traffic based on the present speed of the connection.</li>
+<li><strong>routing-mark</strong> <code>super { !
+, mark: enum ()
+ }</code> — Matches packets marked by the mangle facility with a particular routing mark.</li>
+<li><strong>in-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet has entered the router.</li>
+<li><strong>out-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet is leaving the router.</li>
+<li><strong>in-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-interface</code>.</li>
+<li><strong>out-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-interface</code>.</li>
+<li><strong>in-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet has entered the router if the incoming interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>out-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet leaves the router if the outgoing interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>in-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-bridge-port</code>.</li>
+<li><strong>out-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-bridge-port</code>.</li>
+<li><strong>packet-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular packet mark. If <code>no-mark</code> is set, the rule will match any unmarked packet.</li>
+<li><strong>src-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of source ports and ranges of source ports. Applicable only if the protocol is TCP or UDP.</li>
+<li><strong>dst-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of destination port numbers or port number ranges.</li>
+<li><strong>port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — Matches if any (source or destination) port matches the specified list of ports or port ranges. Applicable only if <code>protocol</code> is TCP or UDP.</li>
+<li><strong>icmp-options</strong> <code>super { !
+, type: num [0 .. 255]
+, [code] [ :range [ .. 255]]
+ }</code> — Matches ICMP type:code fields.</li>
+<li><strong>src-mac-address</strong> <code>super { !
+, address: macAddr
+ }</code> — Matches the source MAC address of the packet.</li>
+<li><strong>content</strong> <code>super { !
+, content: string
+ }</code> — Matches packets that contain the specified text.</li>
+<li><strong>ingress-priority</strong> <code>super { !
+, ingress-priority: num [0 .. 63]
+ }</code> — Matches the priority of an ingress packet. Priority may be derived from VLAN, WMM, DSCP, or MPLS EXP bit.</li>
+<li><strong>priority</strong> <code>super { !
+, priority: num [0 .. 63]
+ }</code> — Matches the packet's priority after a new priority has been set. Priority may be derived from VLAN, WMM, DSCP, MPLS EXP bit, or from the priority set by using the set-priority action.</li>
+<li><strong>dscp</strong> <code>super { !
+, dscp: num [0 .. 63]
+ }</code> — Matches the DSCP IP header field.</li>
+<li><strong>tos</strong> <code>super { !
+, tos: num [0 .. 255]
+, [mask] [ /num [0 .. 255]]
+ }</code></li>
+<li><strong>limit</strong> <code>super { !
+, count: num [1 .. 32000000000]
+, [time] [ /time [1 .. ]]
+, [burst] ,num [ .. 2000000000]
+, [mode] [ :enum (packet | bit) { packet:0, bit:1 }]
+ }</code> — Matches packets up to a limited rate (packet rate or bit rate). A rule with this matcher will match until this limit is reached. Parameters are written in the following format: <code>rate[/time],burst:mode</code>. - <code>rate</code> - packet or bit count per time interval to match. - <code>time</code> - specifies the time interval in which the packet or bit rate cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets or bits to match: this number gets recharged every 10ms so burst should be at least 1/100 of a rate per second. - <code>mode</code> - packet or bit mode.</li>
+<li><strong>dst-limit</strong> <code>super { count: num
+, [time] [ /time]
+, [burst] ,num
+, [mode] ,enum (dst-address | dst-address-and-port | src-address | src-and-dst-addresses | addresses-and-dst-port) { dst-address:1, dst-address-and-port:3, src-address:4, src-and-dst-addresses:5, addresses-and-dst-port:7 }
+, [expire] [ /time]
+ }</code> — Matches packets until a given rate is exceeded. Rate is defined as packets per time interval. As opposed to the <code>limit</code> matcher, every flow has its own limit. Flow is defined by a mode parameter. Parameters are written in the following format: <code>rate[/time],burst,mode[/expire]</code>. - <code>rate</code> - packet count per time interval per-flow to match. - <code>time</code> - specifies the time interval in which the packet count rate per flow cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets per flow to match: this number gets recharged by one every time/rate, up to this number. - <code>mode</code> - specifies what unique fields define flow (src-address, dst-address, src-and-dst-address, dst-address-and-port, addresses-and-dst-port). - <code>expire</code> - specifies interval after which flow with no packets will be allowed to be deleted (optional).</li>
+<li><strong>time</strong> <code>super { !
+, start: time [0 .. 86400]
+, [end] -time [0 .. 86400]
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Creates a filter based on the packets' arrival time and date or, for locally generated packets, departure time and date. The matcher takes into account the time and timezone configured on the router.</li>
+<li><strong>random</strong> <code>super { percent: num [1 .. 99]
+ }</code> — Matches packets randomly with a given probability.</li>
+<li><strong>nth</strong> <code>super { !
+, every: num [1 .. ]
+, [packet] [ ,num [1 .. ]]
+ }</code> — Matches every nth packet: <code>nth=2,1</code> will match every first packet of 2, hence, 50% of all the traffic matched by the rule.</li>
+<li><strong>tcp-mss</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Matches the TCP MSS value of an IP packet.</li>
+<li><strong>per-connection-classifier</strong> <code>super { !
+, values-to-hash: enum (src-address | dst-address | both-addresses | src-port | src-address-and-port | dst-port | dst-address-and-port | both-ports | both-addresses-and-ports) { src-address:1, dst-address:2, both-addresses:3, src-port:4, src-address-and-port:5, dst-port:8, dst-address-and-port:10, both-ports:12, both-addresses-and-ports:15 }
+, [denominator] :num [1 .. ]
+, [remainder] /num [0 .. ]
+ }</code> — PCC matcher allows dividing traffic into equal streams with the ability to keep packets with a specific set of options in one particular stream.</li>
+<li><strong>packet-size</strong> <code>super { !
+, min: num [ .. 65535]
+, [max] -num [ .. 65535]
+ }</code> — Matches packets of specified size or size range in bytes.</li>
+<li><strong>log</strong> <code>bool</code> — Add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. Allows logging of packets even if the action is not <code>log</code>, useful for debugging the firewall.</li>
+<li><strong>log-prefix</strong> <code>string</code> — Adds the specified text at the beginning of every log message. Applicable if <code>action=log</code> or <code>log=yes</code> is configured.</li>
+<li><strong>ipsec-policy</strong> <code>super { direction: enum (in | out) { in:0, out:1 }
+, [policy] ,enum (none | ipsec) { none:0, ipsec:1 }
+ }</code> — Matches the policy used by IPsec. Value is written in the following format: <code>direction, policy</code>. - <code>in</code> - valid in the PREROUTING, INPUT, and FORWARD chains. - <code>out</code> - valid in the POSTROUTING, OUTPUT, and FORWARD chains. - <code>ipsec</code> - matches if the packet is subject to IPsec processing. - <code>none</code> - matches packets that are not subject to IPsec processing.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all">reset-counters-all</h1>
+<blockquote>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallfilterreset-counters-all">ipv6/firewall/filter/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallfilterreset-counters">ipv6/firewall/filter/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="mangle">mangle</h1>
+<blockquote>
+<p>RouterOS directory reference for /ipv6/firewall/mangle.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallmangle">ipv6/firewall/mangle</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>chain</strong> <code>enum</code> — Specifies to which chain the rule will be added. If the input does not match the name of an already defined chain, a new chain will be created.</li>
+<li><strong>action</strong> <code>enum (accept | jump | return | log | passthrough | add-src-to-address-list | add-dst-to-address-list | sniff-tzsp | sniff-pc | drop | mark-packet | mark-connection | mark-routing | change-mss | change-dscp | set-priority | change-hop-limit | snpt | dnpt) { accept:0, jump:1, return:2, log:3, passthrough:4, add-src-to-address-list:5, add-dst-to-address-list:6, sniff-tzsp:7, sniff-pc:8, drop:10, mark-packet:30, mark-connection:31, mark-routing:36, change-mss:32, change-dscp:33, set-priority:37, change-hop-limit:38, snpt:43, dnpt:44 }</code> — Action to take if a packet is matched by the rule: - <code>accept</code> - accept the packet. A packet is not passed to the next firewall rule. - <code>add-dst-to-address-list</code> - add the destination address to the address list specified by the <code>address-list</code> parameter. - <code>add-src-to-address-list</code> - add the source address to the address list specified by the <code>address-list</code> parameter. - <code>change-dscp</code> - change the DSCP value of the packet. - <code>change-hop-limit</code> - change the hop limit value of the packet. - <code>change-mss</code> - change the MSS value of the packet. - <code>dnpt</code> - perform destination IPv6 network prefix translation. - <code>drop</code> - drop the packet. - <code>jump</code> - jump to the user-defined chain specified by the value of the <code>jump-target</code> parameter. - <code>log</code> - add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. After a packet is matched it is passed to the next rule in the list, similar to <code>passthrough</code>. - <code>mark-connection</code> - mark the connection with the specified <code>new-connection-mark</code>. - <code>mark-packet</code> - mark the packet with the specified <code>new-packet-mark</code>. - <code>mark-routing</code> - mark the packet for routing with the specified <code>new-routing-mark</code>. - <code>passthrough</code> - if a packet is matched by the rule, increase the counter and go to the next rule (useful for statistics). - <code>return</code> - passes control back to the chain from where the jump took place. - <code>set-priority</code> - set the priority of the packet. - <code>sniff-pc</code> - sniff the packet and send it to the specified Packet Capturer target. - <code>sniff-tzsp</code> - sniff the packet and send it to the specified TZSP target. - <code>snpt</code> - perform source IPv6 network prefix translation.</li>
+<li><strong>src-prefix</strong> <code>ip6Prefix</code> — Source IPv6 prefix for SNPT/DNPT actions.</li>
+<li><strong>dst-prefix</strong> <code>ip6Prefix</code> — Destination IPv6 prefix for SNPT/DNPT actions.</li>
+<li><strong>jump-target</strong> <code>enum ()</code> — Name of the target chain to jump to. Applicable only if <code>action=jump</code>.</li>
+<li><strong>new-packet-mark</strong> <code>enum ()</code> — Sets the new packet mark value.</li>
+<li><strong>new-connection-mark</strong> <code>enum ()</code> — Sets the new connection mark value.</li>
+<li><strong>new-routing-mark</strong> <code>enum ()</code> — Sets the new routing mark value.</li>
+<li><strong>new-mss</strong> <code>alt { mss-action: enum (clamp-to-pmtu) { clamp-to-pmtu:65535 }
+, mss-value: num [40 .. 65534]
+ }</code> — Sets the new MSS value.</li>
+<li><strong>new-dscp</strong> <code>num</code> — Sets the new DSCP value.</li>
+<li><strong>new-priority</strong> <code>alt { new-priority: enum (from-dscp | from-ingress | from-dscp-high-3-bits) { from-dscp:65536, from-ingress:65537, from-dscp-high-3-bits:65538 }
+, new-priority: num [0 .. 63]
+ }</code> — Sets the new priority value.</li>
+<li><strong>new-hop-limit</strong> <code>super { mode: enum (set | increment | decrement) { set:0, increment:1, decrement:2 }
+, [value] :num [0 .. 255]
+ }</code> — Sets the new hop limit value.</li>
+<li><strong>passthrough</strong> <code>bool</code> — Whether to let the packet pass through to the next rule.</li>
+<li><strong>sniff-target</strong> <code>ipAddr</code> — IP address to send the sniffed packet to.</li>
+<li><strong>sniff-target-port</strong> <code>num</code> — Port to send the sniffed packet to.</li>
+<li><strong>sniff-id</strong> <code>num</code> — ID of the sniffing session.</li>
+<li><strong>connection-nat-state</strong> <code>super { !
+, state: ubit (srcnat, dstnat)
+ }</code> — Matches connections that are source-natted, destination-natted, or both.</li>
+<li><strong>tls-host</strong> <code>super { !
+, tls-host: string
+ }</code> — Matches HTTPS traffic based on TLS SNI hostname. Accepts GLOB syntax for wildcard matching. The matcher will not be able to match the hostname if the TLS handshake frame is fragmented into multiple TCP segments.</li>
+<li><strong>connection-state</strong> <code>super { !
+, state: ubit (invalid, established, related, new, untracked)
+ }</code> — Interprets the connection tracking analytics data for a particular packet: <code>established</code> - a packet that belongs to an existing connection. <code>invalid</code> - a packet that does not have a determined state in connection tracking (usually severe out-of-order packets, packets with wrong sequence/ack number, or in case of resource over usage on the router). An invalid packet will not participate in NAT, and will still contain the original source IP address when routed. You should drop all <code>connection-state=invalid</code> packets in the firewall filter forward and input chains. <code>new</code> - the packet has started a new connection or is otherwise associated with a connection that has not seen packets in both directions. <code>related</code> - a packet that is related to, but not part of an existing connection, such as ICMP errors or a packet that begins an FTP data connection. <code>untracked</code> - a packet that was set to bypass connection tracking in firewall RAW tables.</li>
+<li><strong>connection-limit</strong> <code>super { !
+, limit: num
+, [prefix-len] ,num [0 .. 128]
+ }</code> — Matches connections per address or address block after a given value is reached. You should use this together with <code>connection-state=new</code> and/or with <code>tcp-flags=syn</code> because the matcher is very resource-intensive.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum (icmpv6) { icmpv6:58 }
+ }</code> — Matches the particular IP protocol specified by protocol name or number.</li>
+<li><strong>src-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose source is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>dst-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose destination is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the source address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the destination address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>address-list</strong> <code>enum ()</code> — Name of the address list to be used. Applicable if the action is <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code>.</li>
+<li><strong>address-list-timeout</strong> <code>alt { address-list-timeout: enum (none-dynamic | none-static) { none-dynamic:0, none-static:0xffffffff }
+, address-list-timeout: time [ .. 21474836]
+ }</code> — How long the address stays in <code>address-list</code> after the <code>add-src-to-address-list</code> or <code>add-dst-to-address-list</code> action adds it. With a time, the rule adds a dynamic entry (<code>D</code>) that the router removes when the time ends; each new match of the rule resets the time to its full value. The maximum is <code>35w3d13h13m56s</code>. An address that is already a static entry in the list stays static. - <code>none-dynamic</code> (<code>0s</code>) - Add a dynamic entry without a timeout. It is not saved in the configuration and a reboot clears it. - <code>none-static</code> - Add a static entry. It is saved in the configuration and in exports, and stays after a reboot until you remove it.</li>
+<li><strong>src-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the source address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>dst-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the destination address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the destination address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>headers</strong> <code>super { !
+, type: ubit (hop, dst, route, frag, ah, esp, none, proto)
+, [mode] [ :enum (exact | contains) { exact:0, contains:1 }]
+ }</code> — Matches IPv6 next-header. Two types of header matching are possible controlled by the <code>mode</code> parameter: <code>contains</code> - soft matching, matches at least selected headers. <code>exact</code> - matches the exact set of selected headers.</li>
+<li><strong>tcp-flags</strong> <code>super { !,
+, flags: multi { array-id, array-id, flag: super { !
+, flag: enum (fin | syn | rst | psh | ack | urg | ece | cwr) { fin:0, syn:1, rst:2, psh:3, ack:4, urg:5, ece:6, cwr:7 }
+ }
+ }
+ }</code> — Matches the specified TCP flags: <code>ack</code> - acknowledging data. <code>cwr</code> - congestion window reduced. <code>ece</code> - ECN-echo flag (explicit congestion notification). <code>fin</code> - close connection. <code>psh</code> - push function. <code>rst</code> - reset connection. <code>syn</code> - new connection. <code>urg</code> - urgent data.</li>
+<li><strong>hop-limit</strong> <code>super { mode: enum (equal | not-equal | less-than | greater-than) { equal:0, not-equal:1, less-than:2, greater-than:3 }
+, [value] :num [0 .. 255]
+ }</code> — Matches the hop limit field in the IPv6 header.</li>
+<li><strong>connection-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular connection mark. If <code>no-mark</code> is set, the rule will match any unmarked connection.</li>
+<li><strong>connection-type</strong> <code>super { !
+, type: enum (ftp | pptp | h323 | sip | irc | quake3 | tftp) { ftp:0, pptp:1, h323:2, sip:3, irc:4, quake3:5, tftp:6 }
+ }</code> — Matches packets from related connections based on information from their connection tracking helpers. A relevant connection helper must be enabled under <code>/ip/firewall/service-port</code>.</li>
+<li><strong>connection-bytes</strong> <code>super { from: num
+, [to] -num
+ }</code> — Matches packets only if a given amount of bytes has been transferred through the particular connection. 0 means infinity, for example <code>connection-bytes=2000000-0</code> means that the rule matches if more than 2MB has been transferred through the relevant connection.</li>
+<li><strong>connection-rate</strong> <code>super { !
+, from: num
+, [to] -num
+ }</code> — Allows capturing traffic based on the present speed of the connection.</li>
+<li><strong>routing-mark</strong> <code>super { !
+, mark: enum ()
+ }</code> — Matches packets marked by the mangle facility with a particular routing mark.</li>
+<li><strong>in-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet has entered the router.</li>
+<li><strong>out-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet is leaving the router.</li>
+<li><strong>in-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-interface</code>.</li>
+<li><strong>out-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-interface</code>.</li>
+<li><strong>in-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet has entered the router if the incoming interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>out-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet leaves the router if the outgoing interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>in-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-bridge-port</code>.</li>
+<li><strong>out-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-bridge-port</code>.</li>
+<li><strong>packet-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular packet mark. If <code>no-mark</code> is set, the rule will match any unmarked packet.</li>
+<li><strong>src-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of source ports and ranges of source ports. Applicable only if the protocol is TCP or UDP.</li>
+<li><strong>dst-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of destination port numbers or port number ranges.</li>
+<li><strong>port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — Matches if any (source or destination) port matches the specified list of ports or port ranges. Applicable only if <code>protocol</code> is TCP or UDP.</li>
+<li><strong>icmp-options</strong> <code>super { !
+, type: num [0 .. 255]
+, [code] [ :range [ .. 255]]
+ }</code> — Matches ICMP type:code fields.</li>
+<li><strong>src-mac-address</strong> <code>super { !
+, address: macAddr
+ }</code> — Matches the source MAC address of the packet.</li>
+<li><strong>content</strong> <code>super { !
+, content: string
+ }</code> — Matches packets that contain the specified text.</li>
+<li><strong>ingress-priority</strong> <code>super { !
+, ingress-priority: num [0 .. 63]
+ }</code> — Matches the priority of an ingress packet. Priority may be derived from VLAN, WMM, DSCP, or MPLS EXP bit.</li>
+<li><strong>priority</strong> <code>super { !
+, priority: num [0 .. 63]
+ }</code> — Matches the packet's priority after a new priority has been set. Priority may be derived from VLAN, WMM, DSCP, MPLS EXP bit, or from the priority set by using the set-priority action.</li>
+<li><strong>dscp</strong> <code>super { !
+, dscp: num [0 .. 63]
+ }</code> — Matches the DSCP IP header field.</li>
+<li><strong>tos</strong> <code>super { !
+, tos: num [0 .. 255]
+, [mask] [ /num [0 .. 255]]
+ }</code></li>
+<li><strong>limit</strong> <code>super { !
+, count: num [1 .. 32000000000]
+, [time] [ /time [1 .. ]]
+, [burst] ,num [ .. 2000000000]
+, [mode] [ :enum (packet | bit) { packet:0, bit:1 }]
+ }</code> — Matches packets up to a limited rate (packet rate or bit rate). A rule with this matcher will match until this limit is reached. Parameters are written in the following format: <code>rate[/time],burst:mode</code>. - <code>rate</code> - packet or bit count per time interval to match. - <code>time</code> - specifies the time interval in which the packet or bit rate cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets or bits to match: this number gets recharged every 10ms so burst should be at least 1/100 of a rate per second. - <code>mode</code> - packet or bit mode.</li>
+<li><strong>dst-limit</strong> <code>super { count: num
+, [time] [ /time]
+, [burst] ,num
+, [mode] ,enum (dst-address | dst-address-and-port | src-address | src-and-dst-addresses | addresses-and-dst-port) { dst-address:1, dst-address-and-port:3, src-address:4, src-and-dst-addresses:5, addresses-and-dst-port:7 }
+, [expire] [ /time]
+ }</code> — Matches packets until a given rate is exceeded. Rate is defined as packets per time interval. As opposed to the <code>limit</code> matcher, every flow has its own limit. Flow is defined by a mode parameter. Parameters are written in the following format: <code>rate[/time],burst,mode[/expire]</code>. - <code>rate</code> - packet count per time interval per-flow to match. - <code>time</code> - specifies the time interval in which the packet count rate per flow cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets per flow to match: this number gets recharged by one every time/rate, up to this number. - <code>mode</code> - specifies what unique fields define flow (src-address, dst-address, src-and-dst-address, dst-address-and-port, addresses-and-dst-port). - <code>expire</code> - specifies interval after which flow with no packets will be allowed to be deleted (optional).</li>
+<li><strong>time</strong> <code>super { !
+, start: time [0 .. 86400]
+, [end] -time [0 .. 86400]
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Creates a filter based on the packets' arrival time and date or, for locally generated packets, departure time and date. The matcher takes into account the time and timezone configured on the router.</li>
+<li><strong>random</strong> <code>super { percent: num [1 .. 99]
+ }</code> — Matches packets randomly with a given probability.</li>
+<li><strong>nth</strong> <code>super { !
+, every: num [1 .. ]
+, [packet] [ ,num [1 .. ]]
+ }</code> — Matches every nth packet: <code>nth=2,1</code> will match every first packet of 2, hence, 50% of all the traffic matched by the rule.</li>
+<li><strong>tcp-mss</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Matches the TCP MSS value of an IP packet.</li>
+<li><strong>per-connection-classifier</strong> <code>super { !
+, values-to-hash: enum (src-address | dst-address | both-addresses | src-port | src-address-and-port | dst-port | dst-address-and-port | both-ports | both-addresses-and-ports) { src-address:1, dst-address:2, both-addresses:3, src-port:4, src-address-and-port:5, dst-port:8, dst-address-and-port:10, both-ports:12, both-addresses-and-ports:15 }
+, [denominator] :num [1 .. ]
+, [remainder] /num [0 .. ]
+ }</code> — PCC matcher allows dividing traffic into equal streams with the ability to keep packets with a specific set of options in one particular stream.</li>
+<li><strong>packet-size</strong> <code>super { !
+, min: num [ .. 65535]
+, [max] -num [ .. 65535]
+ }</code> — Matches packets of specified size or size range in bytes.</li>
+<li><strong>log</strong> <code>bool</code> — Add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. Allows logging of packets even if the action is not <code>log</code>, useful for debugging the firewall.</li>
+<li><strong>log-prefix</strong> <code>string</code> — Adds the specified text at the beginning of every log message. Applicable if <code>action=log</code> or <code>log=yes</code> is configured.</li>
+<li><strong>ipsec-policy</strong> <code>super { direction: enum (in | out) { in:0, out:1 }
+, [policy] ,enum (none | ipsec) { none:0, ipsec:1 }
+ }</code> — Matches the policy used by IPsec. Value is written in the following format: <code>direction, policy</code>. - <code>in</code> - valid in the PREROUTING, INPUT, and FORWARD chains. - <code>out</code> - valid in the POSTROUTING, OUTPUT, and FORWARD chains. - <code>ipsec</code> - matches if the packet is subject to IPsec processing. - <code>none</code> - matches packets that are not subject to IPsec processing.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_1">reset-counters-all</h1>
+<blockquote>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallmanglereset-counters-all">ipv6/firewall/mangle/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="reset-counters_2">reset-counters</h1>
+<blockquote>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallmanglereset-counters">ipv6/firewall/mangle/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="nat">nat</h1>
+<blockquote>
+<p>RouterOS directory reference for /ipv6/firewall/nat.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallnat">ipv6/firewall/nat</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>static</strong> <code>switch</code> — Switch of <code>print</code>: list only the static rules, which are the rules that were added to the configuration.</li>
+<li><strong>dynamic</strong> <code>switch</code> — Switch of <code>print</code>: list only the dynamic rules, which are the rules that the router adds itself.</li>
+<li><strong>chain</strong> <code>enum</code> — Specifies to which chain the rule will be added. If the input does not match the name of an already defined chain, a new chain will be created.</li>
+<li><strong>action</strong> <code>enum (accept | jump | return | log | passthrough | add-src-to-address-list | add-dst-to-address-list | src-nat | masquerade | dst-nat | redirect | netmap) { accept:0, jump:1, return:2, log:3, passthrough:4, add-src-to-address-list:5, add-dst-to-address-list:6, src-nat:20, masquerade:21, dst-nat:22, redirect:23, netmap:25 }</code> — Action to take if a packet is matched by the rule: <code>accept</code> - accept the packet. A packet is not passed to the next firewall rule. <code>add-dst-to-address-list</code> - add the destination address to the address list specified by the <code>address-list</code> parameter. <code>add-src-to-address-list</code> - add the source address to the address list specified by the <code>address-list</code> parameter. <code>dst-nat</code> - perform destination NAT. <code>jump</code> - jump to the user-defined chain specified by the value of the <code>jump-target</code> parameter. <code>log</code> - add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. After a packet is matched it is passed to the next rule in the list, similar to <code>passthrough</code>. <code>masquerade</code> - masquerade the source address. <code>netmap</code> - create a static 1:1 NAT mapping. <code>passthrough</code> - if a packet is matched by the rule, increase the counter and go to the next rule (useful for statistics). <code>redirect</code> - redirect the packet to the router. <code>return</code> - passes control back to the chain from where the jump took place. <code>src-nat</code> - perform source NAT.</li>
+<li><strong>jump-target</strong> <code>enum ()</code> — Name of the target chain to jump to. Applicable only if <code>action=jump</code>.</li>
+<li><strong>to-address</strong> <code>super { address: ip6Prefix
+ }</code> — IPv6 address to translate to.</li>
+<li><strong>to-ports</strong> <code>super { min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Port or port range to translate to.</li>
+<li><strong>connection-state</strong> <code>super { !
+, state: ubit (invalid, established, related, new, untracked)
+ }</code> — Interprets the connection tracking analytics data for a particular packet: <code>established</code> - a packet that belongs to an existing connection. <code>invalid</code> - a packet that does not have a determined state in connection tracking (usually severe out-of-order packets, packets with wrong sequence/ack number, or in case of resource over usage on the router). An invalid packet will not participate in NAT, and will still contain the original source IP address when routed. You should drop all <code>connection-state=invalid</code> packets in the firewall filter forward and input chains. <code>new</code> - the packet has started a new connection or is otherwise associated with a connection that has not seen packets in both directions. <code>related</code> - a packet that is related to, but not part of an existing connection, such as ICMP errors or a packet that begins an FTP data connection. <code>untracked</code> - a packet that was set to bypass connection tracking in firewall RAW tables.</li>
+<li><strong>connection-limit</strong> <code>super { !
+, limit: num
+, [prefix-len] ,num [0 .. 128]
+ }</code> — Matches connections per address or address block after a given value is reached. You should use this together with <code>connection-state=new</code> and/or with <code>tcp-flags=syn</code> because the matcher is very resource-intensive.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum (icmpv6) { icmpv6:58 }
+ }</code> — Matches the particular IP protocol specified by protocol name or number.</li>
+<li><strong>src-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose source is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>dst-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose destination is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the source address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the destination address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>address-list</strong> <code>enum ()</code> — Name of the address list to be used. Applicable if the action is <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code>.</li>
+<li><strong>address-list-timeout</strong> <code>alt { address-list-timeout: enum (none-dynamic | none-static) { none-dynamic:0, none-static:0xffffffff }
+, address-list-timeout: time [ .. 21474836]
+ }</code> — How long the address stays in <code>address-list</code> after the <code>add-src-to-address-list</code> or <code>add-dst-to-address-list</code> action adds it. With a time, the rule adds a dynamic entry (<code>D</code>) that the router removes when the time ends; each new match of the rule resets the time to its full value. The maximum is <code>35w3d13h13m56s</code>. An address that is already a static entry in the list stays static. - <code>none-dynamic</code> (<code>0s</code>) - Add a dynamic entry without a timeout. It is not saved in the configuration and a reboot clears it. - <code>none-static</code> - Add a static entry. It is saved in the configuration and in exports, and stays after a reboot until you remove it.</li>
+<li><strong>src-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the source address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>dst-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the destination address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the destination address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>headers</strong> <code>super { !
+, type: ubit (hop, dst, route, frag, ah, esp, none, proto)
+, [mode] [ :enum (exact | contains) { exact:0, contains:1 }]
+ }</code> — Matches IPv6 next-header. Two types of header matching are possible controlled by the <code>mode</code> parameter: <code>contains</code> - soft matching, matches at least selected headers. <code>exact</code> - matches the exact set of selected headers.</li>
+<li><strong>tcp-flags</strong> <code>super { !,
+, flags: multi { array-id, array-id, flag: super { !
+, flag: enum (fin | syn | rst | psh | ack | urg | ece | cwr) { fin:0, syn:1, rst:2, psh:3, ack:4, urg:5, ece:6, cwr:7 }
+ }
+ }
+ }</code> — Matches the specified TCP flags: <code>ack</code> - acknowledging data. <code>cwr</code> - congestion window reduced. <code>ece</code> - ECN-echo flag (explicit congestion notification). <code>fin</code> - close connection. <code>psh</code> - push function. <code>rst</code> - reset connection. <code>syn</code> - new connection. <code>urg</code> - urgent data.</li>
+<li><strong>hop-limit</strong> <code>super { mode: enum (equal | not-equal | less-than | greater-than) { equal:0, not-equal:1, less-than:2, greater-than:3 }
+, [value] :num [0 .. 255]
+ }</code> — Matches the hop limit field in the IPv6 header.</li>
+<li><strong>connection-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular connection mark. If <code>no-mark</code> is set, the rule will match any unmarked connection.</li>
+<li><strong>connection-type</strong> <code>super { !
+, type: enum (ftp | pptp | h323 | sip | irc | quake3 | tftp) { ftp:0, pptp:1, h323:2, sip:3, irc:4, quake3:5, tftp:6 }
+ }</code> — Matches packets from related connections based on information from their connection tracking helpers. A relevant connection helper must be enabled under <code>/ip/firewall/service-port</code>.</li>
+<li><strong>connection-bytes</strong> <code>super { from: num
+, [to] -num
+ }</code> — Matches packets only if a given amount of bytes has been transferred through the particular connection. 0 means infinity, for example <code>connection-bytes=2000000-0</code> means that the rule matches if more than 2MB has been transferred through the relevant connection.</li>
+<li><strong>connection-rate</strong> <code>super { !
+, from: num
+, [to] -num
+ }</code> — Allows capturing traffic based on the present speed of the connection.</li>
+<li><strong>routing-mark</strong> <code>super { !
+, mark: enum ()
+ }</code> — Matches packets marked by the mangle facility with a particular routing mark.</li>
+<li><strong>in-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet has entered the router.</li>
+<li><strong>out-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet is leaving the router.</li>
+<li><strong>in-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-interface</code>.</li>
+<li><strong>out-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-interface</code>.</li>
+<li><strong>in-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet has entered the router if the incoming interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>out-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet leaves the router if the outgoing interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>in-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-bridge-port</code>.</li>
+<li><strong>out-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-bridge-port</code>.</li>
+<li><strong>packet-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular packet mark. If <code>no-mark</code> is set, the rule will match any unmarked packet.</li>
+<li><strong>src-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of source ports and ranges of source ports. Applicable only if the protocol is TCP or UDP.</li>
+<li><strong>dst-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of destination port numbers or port number ranges.</li>
+<li><strong>port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — Matches if any (source or destination) port matches the specified list of ports or port ranges. Applicable only if <code>protocol</code> is TCP or UDP.</li>
+<li><strong>icmp-options</strong> <code>super { !
+, type: num [0 .. 255]
+, [code] [ :range [ .. 255]]
+ }</code> — Matches ICMP type:code fields.</li>
+<li><strong>src-mac-address</strong> <code>super { !
+, address: macAddr
+ }</code> — Matches the source MAC address of the packet.</li>
+<li><strong>content</strong> <code>super { !
+, content: string
+ }</code> — Matches packets that contain the specified text.</li>
+<li><strong>ingress-priority</strong> <code>super { !
+, ingress-priority: num [0 .. 63]
+ }</code> — Matches the priority of an ingress packet. Priority may be derived from VLAN, WMM, DSCP, or MPLS EXP bit.</li>
+<li><strong>priority</strong> <code>super { !
+, priority: num [0 .. 63]
+ }</code> — Matches the packet's priority after a new priority has been set. Priority may be derived from VLAN, WMM, DSCP, MPLS EXP bit, or from the priority set by using the set-priority action.</li>
+<li><strong>dscp</strong> <code>super { !
+, dscp: num [0 .. 63]
+ }</code> — Matches the DSCP IP header field.</li>
+<li><strong>tos</strong> <code>super { !
+, tos: num [0 .. 255]
+, [mask] [ /num [0 .. 255]]
+ }</code></li>
+<li><strong>limit</strong> <code>super { !
+, count: num [1 .. 32000000000]
+, [time] [ /time [1 .. ]]
+, [burst] ,num [ .. 2000000000]
+, [mode] [ :enum (packet | bit) { packet:0, bit:1 }]
+ }</code> — Matches packets up to a limited rate (packet rate or bit rate). A rule with this matcher will match until this limit is reached. Parameters are written in the following format: <code>rate[/time],burst:mode</code>. - <code>rate</code> - packet or bit count per time interval to match. - <code>time</code> - specifies the time interval in which the packet or bit rate cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets or bits to match: this number gets recharged every 10ms so burst should be at least 1/100 of a rate per second. - <code>mode</code> - packet or bit mode.</li>
+<li><strong>dst-limit</strong> <code>super { count: num
+, [time] [ /time]
+, [burst] ,num
+, [mode] ,enum (dst-address | dst-address-and-port | src-address | src-and-dst-addresses | addresses-and-dst-port) { dst-address:1, dst-address-and-port:3, src-address:4, src-and-dst-addresses:5, addresses-and-dst-port:7 }
+, [expire] [ /time]
+ }</code> — Matches packets until a given rate is exceeded. Rate is defined as packets per time interval. As opposed to the <code>limit</code> matcher, every flow has its own limit. Flow is defined by a mode parameter. Parameters are written in the following format: <code>rate[/time],burst,mode[/expire]</code>. - <code>rate</code> - packet count per time interval per-flow to match. - <code>time</code> - specifies the time interval in which the packet count rate per flow cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets per flow to match: this number gets recharged by one every time/rate, up to this number. - <code>mode</code> - specifies what unique fields define flow (src-address, dst-address, src-and-dst-address, dst-address-and-port, addresses-and-dst-port). - <code>expire</code> - specifies interval after which flow with no packets will be allowed to be deleted (optional).</li>
+<li><strong>time</strong> <code>super { !
+, start: time [0 .. 86400]
+, [end] -time [0 .. 86400]
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Creates a filter based on the packets' arrival time and date or, for locally generated packets, departure time and date. The matcher takes into account the time and timezone configured on the router.</li>
+<li><strong>random</strong> <code>super { percent: num [1 .. 99]
+ }</code> — Matches packets randomly with a given probability.</li>
+<li><strong>nth</strong> <code>super { !
+, every: num [1 .. ]
+, [packet] [ ,num [1 .. ]]
+ }</code> — Matches every nth packet: <code>nth=2,1</code> will match every first packet of 2, hence, 50% of all the traffic matched by the rule.</li>
+<li><strong>tcp-mss</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Matches the TCP MSS value of an IP packet.</li>
+<li><strong>per-connection-classifier</strong> <code>super { !
+, values-to-hash: enum (src-address | dst-address | both-addresses | src-port | src-address-and-port | dst-port | dst-address-and-port | both-ports | both-addresses-and-ports) { src-address:1, dst-address:2, both-addresses:3, src-port:4, src-address-and-port:5, dst-port:8, dst-address-and-port:10, both-ports:12, both-addresses-and-ports:15 }
+, [denominator] :num [1 .. ]
+, [remainder] /num [0 .. ]
+ }</code> — PCC matcher allows dividing traffic into equal streams with the ability to keep packets with a specific set of options in one particular stream.</li>
+<li><strong>packet-size</strong> <code>super { !
+, min: num [ .. 65535]
+, [max] -num [ .. 65535]
+ }</code> — Matches packets of specified size or size range in bytes.</li>
+<li><strong>log</strong> <code>bool</code> — Add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. Allows logging of packets even if the action is not <code>log</code>, useful for debugging the firewall.</li>
+<li><strong>log-prefix</strong> <code>string</code> — Adds the specified text at the beginning of every log message. Applicable if <code>action=log</code> or <code>log=yes</code> is configured.</li>
+<li><strong>ipsec-policy</strong> <code>super { direction: enum (in | out) { in:0, out:1 }
+, [policy] ,enum (none | ipsec) { none:0, ipsec:1 }
+ }</code> — Matches the policy used by IPsec. Value is written in the following format: <code>direction, policy</code>. - <code>in</code> - valid in the PREROUTING, INPUT, and FORWARD chains. - <code>out</code> - valid in the POSTROUTING, OUTPUT, and FORWARD chains. - <code>ipsec</code> - matches if the packet is subject to IPsec processing. - <code>none</code> - matches packets that are not subject to IPsec processing.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_2">reset-counters-all</h1>
+<blockquote>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallnatreset-counters-all">ipv6/firewall/nat/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="reset-counters_3">reset-counters</h1>
+<blockquote>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallnatreset-counters">ipv6/firewall/nat/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="raw">raw</h1>
+<blockquote>
+<p>RouterOS directory reference for /ipv6/firewall/raw.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallraw">ipv6/firewall/raw</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>chain</strong> <code>enum</code> — Specifies to which chain the rule will be added. If the input does not match the name of an already defined chain, a new chain will be created.</li>
+<li><strong>action</strong> <code>enum (accept | jump | return | log | passthrough | add-src-to-address-list | add-dst-to-address-list | drop | notrack) { accept:0, jump:1, return:2, log:3, passthrough:4, add-src-to-address-list:5, add-dst-to-address-list:6, drop:10, notrack:42 }</code> — Action to take if a packet is matched by the rule: - <code>accept</code> - accept the packet. The packet is not passed to the next RAW rule and goes on to connection tracking. - <code>add-dst-to-address-list</code> - add the destination address to the address list specified by the <code>address-list</code> parameter. - <code>add-src-to-address-list</code> - add the source address to the address list specified by the <code>address-list</code> parameter. - <code>jump</code> - jump to the user-defined chain specified by the value of the <code>jump-target</code> parameter. - <code>log</code> - add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. After a packet is matched it is passed to the next rule in the list, similar to <code>passthrough</code>. - <code>passthrough</code> - if a packet is matched by the rule, increase the counter and go to the next rule. - <code>return</code> - passes control back to the chain from where the jump took place. - <code>drop</code> - drop the packet. - <code>notrack</code> - do not send the packet to connection tracking. The packet goes on to the next RAW rule and has the connection state <code>untracked</code> in the mangle and filter rules.</li>
+<li><strong>jump-target</strong> <code>enum ()</code> — Name of the target chain to jump to. Applicable only if <code>action=jump</code>.</li>
+<li><strong>tls-host</strong> <code>super { !
+, tls-host: string
+ }</code> — Matches HTTPS traffic based on TLS SNI hostname. Accepts GLOB syntax for wildcard matching. The matcher will not be able to match the hostname if the TLS handshake frame is fragmented into multiple TCP segments.</li>
+<li><strong>in-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet has entered the router. Not valid in the output chain.</li>
+<li><strong>out-interface</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Interface the packet is leaving the router. Not valid in the prerouting chain.</li>
+<li><strong>in-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-interface</code>.</li>
+<li><strong>out-interface-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-interface</code>.</li>
+<li><strong>in-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet has entered the router if the incoming interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>out-bridge-port</strong> <code>super { !
+, interface: iface_enum
+ }</code> — Actual interface the packet leaves the router if the outgoing interface is a bridge. Works only if <code>use-ip-firewall</code> is enabled in bridge settings.</li>
+<li><strong>in-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>in-bridge-port</code>.</li>
+<li><strong>out-bridge-port-list</strong> <code>super { !
+, interface-list: enum
+ }</code> — Set of interfaces defined in interface list. Works the same as <code>out-bridge-port</code>.</li>
+<li><strong>packet-mark</strong> <code>super { !
+, mark: enum
+ }</code> — Matches packets marked by the mangle facility with a particular packet mark. If <code>no-mark</code> is set, the rule will match any unmarked packet.</li>
+<li><strong>src-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of source ports and ranges of source ports. Applicable only if the protocol is TCP or UDP.</li>
+<li><strong>dst-port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — List of destination port numbers or port number ranges.</li>
+<li><strong>port</strong> <code>super { !
+, port: multi { range: range [ .. 65535]
+ }
+ }</code> — Matches if any (source or destination) port matches the specified list of ports or port ranges. Applicable only if <code>protocol</code> is TCP or UDP.</li>
+<li><strong>icmp-options</strong> <code>super { !
+, type: num [0 .. 255]
+, [code] [ :range [ .. 255]]
+ }</code> — Matches ICMP type:code fields.</li>
+<li><strong>src-mac-address</strong> <code>super { !
+, address: macAddr
+ }</code> — Matches the source MAC address of the packet.</li>
+<li><strong>content</strong> <code>super { !
+, content: string
+ }</code> — Matches packets that contain the specified text.</li>
+<li><strong>ingress-priority</strong> <code>super { !
+, ingress-priority: num [0 .. 63]
+ }</code> — Matches the priority of an ingress packet. Priority may be derived from VLAN, WMM, DSCP, or MPLS EXP bit.</li>
+<li><strong>priority</strong> <code>super { !
+, priority: num [0 .. 63]
+ }</code> — Matches the packet's priority after a new priority has been set. Priority may be derived from VLAN, WMM, DSCP, MPLS EXP bit, or from the priority set by using the set-priority action.</li>
+<li><strong>dscp</strong> <code>super { !
+, dscp: num [0 .. 63]
+ }</code> — Matches the DSCP IP header field.</li>
+<li><strong>tos</strong> <code>super { !
+, tos: num [0 .. 255]
+, [mask] [ /num [0 .. 255]]
+ }</code> — Matches the Traffic Class field of the IPv6 header. An optional mask selects the bits to compare, in the format <code>value/mask</code>.</li>
+<li><strong>limit</strong> <code>super { !
+, count: num [1 .. 32000000000]
+, [time] [ /time [1 .. ]]
+, [burst] ,num [ .. 2000000000]
+, [mode] [ :enum (packet | bit) { packet:0, bit:1 }]
+ }</code> — Matches packets up to a limited rate (packet rate or bit rate). A rule with this matcher will match until this limit is reached. Parameters are written in the following format: <code>rate[/time],burst:mode</code>. - <code>rate</code> - packet or bit count per time interval to match. - <code>time</code> - specifies the time interval in which the packet or bit rate cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets or bits to match: this number gets recharged every 10ms so burst should be at least 1/100 of a rate per second. - <code>mode</code> - packet or bit mode.</li>
+<li><strong>dst-limit</strong> <code>super { count: num
+, [time] [ /time]
+, [burst] ,num
+, [mode] ,enum (dst-address | dst-address-and-port | src-address | src-and-dst-addresses | addresses-and-dst-port) { dst-address:1, dst-address-and-port:3, src-address:4, src-and-dst-addresses:5, addresses-and-dst-port:7 }
+, [expire] [ /time]
+ }</code> — Matches packets until a given rate is exceeded. Rate is defined as packets per time interval. As opposed to the <code>limit</code> matcher, every flow has its own limit. Flow is defined by a mode parameter. Parameters are written in the following format: <code>rate[/time],burst,mode[/expire]</code>. - <code>rate</code> - packet count per time interval per-flow to match. - <code>time</code> - specifies the time interval in which the packet count rate per flow cannot be exceeded (optional, 1s will be used if not specified). - <code>burst</code> - initial number of packets per flow to match: this number gets recharged by one every time/rate, up to this number. - <code>mode</code> - specifies what unique fields define flow (src-address, dst-address, src-and-dst-address, dst-address-and-port, addresses-and-dst-port). - <code>expire</code> - specifies interval after which flow with no packets will be allowed to be deleted (optional).</li>
+<li><strong>time</strong> <code>super { !
+, start: time [0 .. 86400]
+, [end] -time [0 .. 86400]
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Creates a filter based on the packets' arrival time and date or, for locally generated packets, departure time and date. The matcher takes into account the time and timezone configured on the router.</li>
+<li><strong>random</strong> <code>super { percent: num [1 .. 99]
+ }</code> — Matches packets randomly with a given probability.</li>
+<li><strong>nth</strong> <code>super { !
+, every: num [1 .. ]
+, [packet] [ ,num [1 .. ]]
+ }</code> — Matches every nth packet: <code>nth=2,1</code> will match every first packet of 2, hence, 50% of all the traffic matched by the rule.</li>
+<li><strong>tcp-mss</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Matches the TCP MSS value of an IP packet.</li>
+<li><strong>per-connection-classifier</strong> <code>super { !
+, values-to-hash: enum (src-address | dst-address | both-addresses | src-port | src-address-and-port | dst-port | dst-address-and-port | both-ports | both-addresses-and-ports) { src-address:1, dst-address:2, both-addresses:3, src-port:4, src-address-and-port:5, dst-port:8, dst-address-and-port:10, both-ports:12, both-addresses-and-ports:15 }
+, [denominator] :num [1 .. ]
+, [remainder] /num [0 .. ]
+ }</code> — PCC matcher allows dividing traffic into equal streams with the ability to keep packets with a specific set of options in one particular stream.</li>
+<li><strong>packet-size</strong> <code>super { !
+, min: num [ .. 65535]
+, [max] -num [ .. 65535]
+ }</code> — Matches packets of specified size or size range in bytes.</li>
+<li><strong>log</strong> <code>bool</code> — Add a message to the system log containing the following data: in-interface, out-interface, src-mac, protocol, src-ip:port-&gt;dst-ip:port, and length of the packet. Allows logging of packets even if the action is not <code>log</code>, useful for debugging the firewall.</li>
+<li><strong>log-prefix</strong> <code>string</code> — Adds the specified text at the beginning of every log message. Applicable if <code>action=log</code> or <code>log=yes</code> is configured.</li>
+<li><strong>ipsec-policy</strong> <code>super { direction: enum (in | out) { in:0, out:1 }
+, [policy] ,enum (none | ipsec) { none:0, ipsec:1 }
+ }</code> — Matches the policy used by IPsec. Value is written in the following format: <code>direction, policy</code>. - <code>in</code> - valid in the prerouting chain. - <code>out</code> - valid in the output chain. - <code>ipsec</code> - matches if the packet is subject to IPsec processing. - <code>none</code> - matches packets that are not subject to IPsec processing.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum (icmpv6) { icmpv6:58 }
+ }</code> — Matches the particular IP protocol specified by protocol name or number.</li>
+<li><strong>src-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose source is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>dst-address</strong> <code>super { !
+, address: ip6Prefix
+ }</code> — Matches packets whose destination is equal to the specified IP or falls into the specified IP range.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the source address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Matches the destination address of a packet against a user-defined address list. Supports only one list.</li>
+<li><strong>address-list</strong> <code>enum ()</code> — Name of the address list to be used. Applicable if the action is <code>add-dst-to-address-list</code> or <code>add-src-to-address-list</code>.</li>
+<li><strong>address-list-timeout</strong> <code>alt { address-list-timeout: enum (none-dynamic | none-static) { none-dynamic:0, none-static:0xffffffff }
+, address-list-timeout: time [ .. 21474836]
+ }</code> — How long the address stays in <code>address-list</code> after the <code>add-src-to-address-list</code> or <code>add-dst-to-address-list</code> action adds it. With a time, the rule adds a dynamic entry (<code>D</code>) that the router removes when the time ends; each new match of the rule resets the time to its full value. The maximum is <code>35w3d13h13m56s</code>. An address that is already a static entry in the list stays static. - <code>none-dynamic</code> (<code>0s</code>) - Add a dynamic entry without a timeout. It is not saved in the configuration and a reboot clears it. - <code>none-static</code> - Add a static entry. It is saved in the configuration and in exports, and stays after a reboot until you remove it.</li>
+<li><strong>src-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the source address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>dst-address-type</strong> <code>super { !
+, type: ubit (unicast, local, anycast, multicast, unreachable)
+ }</code> — Matches the destination address type: <code>unicast</code> - an IP address used for point-to-point transmission. <code>local</code> - the destination address is assigned to one of the router's interfaces. <code>anycast</code> - a packet sent to the nearest node in a group. <code>multicast</code> - a packet is forwarded to a defined group of devices. <code>unreachable</code> - the address is unreachable.</li>
+<li><strong>headers</strong> <code>super { !
+, type: ubit (hop, dst, route, frag, ah, esp, none, proto)
+, [mode] [ :enum (exact | contains) { exact:0, contains:1 }]
+ }</code> — Matches IPv6 next-header. Two types of header matching are possible controlled by the <code>mode</code> parameter: <code>contains</code> - soft matching, matches at least selected headers. <code>exact</code> - matches the exact set of selected headers.</li>
+<li><strong>tcp-flags</strong> <code>super { !,
+, flags: multi { array-id, array-id, flag: super { !
+, flag: enum (fin | syn | rst | psh | ack | urg | ece | cwr) { fin:0, syn:1, rst:2, psh:3, ack:4, urg:5, ece:6, cwr:7 }
+ }
+ }
+ }</code> — Matches the specified TCP flags: <code>ack</code> - acknowledging data. <code>cwr</code> - congestion window reduced. <code>ece</code> - ECN-echo flag (explicit congestion notification). <code>fin</code> - close connection. <code>psh</code> - push function. <code>rst</code> - reset connection. <code>syn</code> - new connection. <code>urg</code> - urgent data.</li>
+<li><strong>hop-limit</strong> <code>super { mode: enum (equal | not-equal | less-than | greater-than) { equal:0, not-equal:1, less-than:2, greater-than:3 }
+, [value] :num [0 .. 255]
+ }</code> — Matches the hop limit field in the IPv6 header.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_3">reset-counters-all</h1>
+<blockquote>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallrawreset-counters-all">ipv6/firewall/raw/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of all rules of this table back to zero. The counters of the other firewall tables do not change. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+<h1 id="reset-counters_4">reset-counters</h1>
+<blockquote>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See Common Firewall Matchers and Actions.</p>
+</blockquote>
+<hr />
+<h2 id="ipv6firewallrawreset-counters">ipv6/firewall/raw/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the packet and byte counters of the selected rules of this table back to zero. See <a href="../../../../firewall-and-quality-of-service/firewall/common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

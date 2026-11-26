@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guides / BG77 modem AT commands · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Mobile Networking</p>
+      <h1 id="user-guides-bg77-modem-at-commands">User Guides / BG77 modem AT commands</h1>
+<h1 id="bg77-modem-at-commands">BG77 modem AT commands</h1>
+<blockquote>
+<p>This short guide will help you understand how to troubleshoot issues/problems with the CAT-M/NB-IoT connection. A lot of information about the connection can be obtained using modem "AT" commands. By definition, "AT"...</p>
+</blockquote>
+<h1 id="_1"></h1>
+<h1 id="overview">Overview</h1>
+<p>This short guide will help you understand how to troubleshoot issues/problems with the CAT-M/NB-IoT connection. A lot of information about the connection can be obtained using modem "AT" commands. By definition, "AT" means 'attention'. Each command string is prefixed with "AT", and a number of discrete commands can be concatenated after the "AT".</p>
+<p>Please check the examples below to better understand how to initiate those commands and what information can be obtained using them.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Mobile network is managed by the ISP. If there are any issues with the connection, we advise contacting ISP beforehand and making sure that they support/allow the connection or the setting in the first place. If you decide to change the configuration with AT commands (without consulting with the ISP), you can do it at your own risk.</p>
+</div>
+<h2 id="initiating-at-commands">Initiating AT Commands</h2>
+<h3 id="option-a">Option A</h3>
+<p>To send the command, you must use the CLI.</p>
+<p>Open the terminal and type in the following:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; system serial-terminal port=modem channel=2
+</code></pre>
+<p>Pay attention to the port and channel used. Select the port and channel that is used by the PPP-OUT interface. In our example, the port is "modem" and the data channel is "2".</p>
+<p>Once the command is initiated it should show the following output where you can now type in the AT commands:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; system serial-terminal port=modem channel=2
+
+[Ctrl-A is the prefix key]
+
+at+cpin?
++CPIN: READY
+
+OK 
+</code></pre>
+<p>In the example above, AT command "at+cpin?" is used and the answer "+CPIN: READY" is received.</p>
+<h3 id="option-b">Option B</h3>
+<p>The second way to send AT commands is through the ppp-client interface:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; interface ppp-client at-chat input=&quot;AT+CPIN\?&quot;
+number: 0
+  output: +CPIN: READY
+</code></pre>
+<p>You can get the same result as with <strong>Option A</strong>.</p>
+<h2 id="at-commands">AT Commands</h2>
+<h3 id="at">at</h3>
+<p>Simple <strong><em>at</em></strong> command checks communication between the module (device) and application.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]
+
+at
+
+OK 
+</code></pre>
+<p>When "OK" is returned, it means the module successfully responded.</p>
+<h3 id="atcpin">at+cpin?</h3>
+<p>This command is used to check the status of the SIM card.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]
+
+at+cpin?
++CPIN: READY
+
+OK 
+</code></pre>
+<p>Status "+CPIN: READY" means that the SIM card is installed properly.</p>
+<p>If the SIM PIN is used, you should get the answer "+CPIN: SIM PIN" → in this case, you can unlock it via the command <strong><em>at+cpin="xxxx"</em></strong>, where <strong><em>xxxx</em></strong> is the pin code.</p>
+<p>If you get the response "+CME ERROR: SIM not inserted" → double-check that the SIM card is properly installed in the SIM slot.</p>
+<h3 id="atcfun">at+cfun?</h3>
+<p>The "CFUN" command is used to check the functional mode. There could be different responses to this command.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]   
+
+at+cfun?
++CFUN: 1
+
+OK
+</code></pre>
+<p>When the status is "+CFUN: 1" it means that the device is set to full functionality. It is suggested to use this mode.</p>
+<p>Among many other responses, for example, you can get "+CFUN: 4" which means that the device is set to flight mode where Tx, Rx, LTE, and GNSS services, are disabled.</p>
+<p>You can manually set the mode to full functionality with the command <strong><em>at+cfun=1</em></strong>.</p>
+<h3 id="atcops">at+cops?</h3>
+<p>The <strong>at+cops?</strong> command is used to check the current network connection.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]      
+
+at+cops?
++cops: 0,0,&quot;LMT&quot;,8
+
+OK
+</code></pre>
+<p>Using the example above as the reference, we can see that we got the response "0,0,"LMT",8".</p>
+<p>The first value in the response dictates whether the "automatic" or "manual" mode is used. When ISP connection is set to be "automatic" the value will show "0". When ISP connection is set to be "manual" the value will show "1".</p>
+<p>The second value in the response represents ISP's name format. If it is "0", it means the ISP name is in "long format alphanumeric". If it is "1", it means the ISP name is in "short format alphanumeric".</p>
+<p>The third part of the response is the ISP name itself.</p>
+<p>The fourth part of the response represents the technology used. "8" stands for eMTC (CAT-M) and "9" for NB-IoT.</p>
+<h3 id="atcops_1">at+cops=?</h3>
+<p>The <strong>at+cops=?</strong> is used to get the list of all available ISPs. This command can take some time (up ~ 1 min) to display the results.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]      
+
+at+cops=?
++cops: (1,&quot;LMT&quot;,&quot;LMT&quot;,&quot;24701&quot;,9),(2,&quot;LMT&quot;,&quot;LMT&quot;,&quot;24701&quot;,8),,(0,1,2,3,4),(0,1,2)
+
+OK
+</code></pre>
+<p>You can manually set up the ISP that you wish to connect to via the command <strong><em>at+cops=mode,format,"provider"</em></strong>, where <strong><em>mode</em></strong> is the mode used (0→ automatic network selection; 1→ manual network selection), <strong>format</strong> is the ISP name format (0→ long alphanumeric format; 1→ short alphanumeric format; 2→ numeric format), and "<strong><em>provider</em></strong>" is the ISP name (in the format that was selected). For example, to manually select the network from the list, use the command <strong><em>at+cops=1,1,"LMT"</em></strong>.</p>
+<p>To select ISP automatically, use the command <strong><em>at+cops=0</em></strong>.</p>
+<h3 id="atcreg">at+creg?</h3>
+<p><strong><em>at+creg?</em></strong> command is used to check the network's registration status.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]              
+
+at+creg?
++CREG: 0,1
+
+OK
+</code></pre>
+<p>The first value shows whether the network registration unsolicited result code is enabled or disabled (0→ disabled, 1→ enabled; 2→ enabled + location information). The second value shows circuit mode registration status (0→ not registered/the device is not searching for an operator to register to; 1→ registered/home network; 2→ not registered, but trying to search for an operator to register to; 3→ registration was denied; 4→ unknown; 5→ registered and roaming).</p>
+<p>If you have more than 2 values returned, it means that network registration and location information unsolicited result code is enabled. The second value will show a two-byte location area code in hexadecimal format, the third value will show four-byte GERANE/E-UTRAN cell ID in hexadecimal format and the last value will show access technology of the serving cell ("8" for CAT-M and "9" for NB-IoT).</p>
+<h3 id="atcsq">at+csq</h3>
+<p>The <strong><em>at+csq</em></strong> command returns received signal strength indication (RSSI) and channel bit error (BER) values. This command will return proper values only when the registration in the network is complete.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]           
+
+at+csq
++csq: 25,99
+
+OK
+</code></pre>
+<p>The first value is RSSI (dBm):</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>RSSI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>-113 dBm or less</td>
+</tr>
+<tr>
+<td>1</td>
+<td>-111 dBm</td>
+</tr>
+<tr>
+<td>2-30</td>
+<td>-109 to -53 dBm</td>
+</tr>
+<tr>
+<td>31</td>
+<td>-51 dBm or greater</td>
+</tr>
+<tr>
+<td>99</td>
+<td>not know/not detectable (network not found)</td>
+</tr>
+</tbody>
+</table>
+<p>The second value is BER (%):</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>BER</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>&lt; 0,2 %</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0,2 % &lt; 0,4 %</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0,4 % &lt; 0,8 %</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0,8 % &lt; 1,6 %</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1,6 % &lt; 3,2 %</td>
+</tr>
+<tr>
+<td>5</td>
+<td>3,2 % &lt; 6,4 %</td>
+</tr>
+<tr>
+<td>6</td>
+<td>6,4 % &lt; 12,8 %</td>
+</tr>
+<tr>
+<td>7</td>
+<td>12,8 % &lt;</td>
+</tr>
+<tr>
+<td>99</td>
+<td>not known/not detectable</td>
+</tr>
+</tbody>
+</table>
+<p>As per the example/output "<strong><em>+csq: 25,99</em></strong>", the result translates to RSSI~63 dBm and BER parameter not detectable.</p>
+<h3 id="atqnwinfo">at+qnwinfo</h3>
+<p>The command returns information about access technology, ISP and band selected. This command will return proper information only when the registration in the network is complete.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]              
+
+at+qnwinfo
++QNWINFO: &quot;eMTC&quot;,&quot;24701&quot;,&quot;LTE BAND 20&quot;,6300
+
+OK
+</code></pre>
+<p>As per the example above, you can see that the current module uses "eMTC" (CAT-M), ISP is "24701" (numeric format, which stands for "LMT"), LTE Band 20, and channel ID "6300".</p>
+<h3 id="atqcsq">at+qcsq</h3>
+<p>The command <strong>at+qcsq</strong> returns information about the signal strength of the current ISP connection and the technology used.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]                 
+
+at+qcsq
++QCSQ: &quot;eMTC&quot;,-62,-87,111,-12
+
+OK
+</code></pre>
+<p>The first parameter returned is "eMTC" which shows the technology used by the module (CAT-M). If the network can not be determined (is uncertain) →  "NOSERVICE" will be returned.</p>
+<p>The rest of the parameters show the signal strength of the connection.</p>
+<p>When the technology is recognized as "NBIoT" or "eMTC" (CAT-M):</p>
+<ul>
+<li>the first numeric value displays received signal strength (LTE RSSI);</li>
+<li>the second value displays the reference signal received power (LTE RSRP);</li>
+<li>the third value displays the signal to interference plus noise ratio (LTE SINR) →  the value is displayed as the logarithmical value of SINR and the value is 1/5th of a dB (result can be in between 0-250 range, which translates to -20 dB to +30 dB range);</li>
+<li>the fourth value displays the reference signal received quality (LTE RSRQ).
+As per the example above, RSSI=-62 dBm, RSRP=-87 dBm, SINR=111(111/5-20)~2 dB, RSRQ=-12 dB.</li>
+</ul>
+<h3 id="atqcfgiotopmode">at+qcfg="iotopmode"?</h3>
+<p>The command is used to check which technology is used to connect to ISP. It is possible for the modem to work only in CAT-M mode, only in NB-IoT mode, or in both.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]   
+
+at+qcfg=&quot;iotopmode&quot;?
++QCFG: &quot;iotopmode&quot;,2
+
+OK
+</code></pre>
+<p>You can lock the SIM card to work only in the specific mode with the command <strong><em>at+qcfg="iotopmode"</em></strong><em>,</em><strong><em>mode</em></strong>,<strong><em>effect</em></strong>, where*** mode*** is the mode (0→ only CAT-M; 1→ only NB-IoT; 2→ both), and <strong><em>effect</em></strong> is when to take effect (0→ to take effect after reboot; 1→ to take effect immediately).</p>
+<p>To speed up network searching, it is suggested to execute the command <strong><em>at+cfun=0</em></strong> (to turn off the radio) and then use the described command. After that, execute <strong><em>at+cfun=1,1</em></strong> (to turn on the radio back and reset the module to take effect).</p>
+<h3 id="atqcfgband">at+qcfg="band"?</h3>
+<p>This command is used to check which bands/frequencies are currently accepted.</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]   
+
+at+qcfg=&quot;band&quot;?
++QCFG: &quot;band&quot;,0x0,0x100002000000000f0e189f,0x10004200000000090e189f
+
+OK
+</code></pre>
+<p>The first value in the "qcfg" response shows a hexadecimal value that specifies the <strong>GSM frequency band</strong>. This value is not relevant for the Quectel BG77 module. This value can be ignored.</p>
+<p>The second hexadecimal value specifies <strong>CAT-M frequency bands</strong> (which is 0x100002000000000f0e189f). If it is set to 0,  it means not to change the frequency band. If, for example, it is 0x15, it means → 0x01(LTE Band 1)+0x04(LTE Band 3)+0x10(LTE Band 5).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Band</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>0x1</td>
+<td>LTE Band 1</td>
+</tr>
+<tr>
+<td>0x2</td>
+<td>LTE Band 2</td>
+</tr>
+<tr>
+<td>0x4</td>
+<td>LTE Band 3</td>
+</tr>
+<tr>
+<td>0x8</td>
+<td>LTE Band 4</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>LTE Band 5</td>
+</tr>
+<tr>
+<td>0x80</td>
+<td>LTE Band 8</td>
+</tr>
+<tr>
+<td>0x800</td>
+<td>LTE Band 12</td>
+</tr>
+<tr>
+<td>0x1000</td>
+<td>LTE Band 13</td>
+</tr>
+<tr>
+<td>0x20000</td>
+<td>LTE Band 18</td>
+</tr>
+<tr>
+<td>0x40000</td>
+<td>LTE Band 19</td>
+</tr>
+<tr>
+<td>0x80000</td>
+<td>LTE Band 20</td>
+</tr>
+<tr>
+<td>0x1000000</td>
+<td>LTE Band 25</td>
+</tr>
+<tr>
+<td>0x2000000</td>
+<td>LTE Band 26</td>
+</tr>
+<tr>
+<td>0x4000000</td>
+<td>LTE Band 27</td>
+</tr>
+<tr>
+<td>0x8000000</td>
+<td>LTE Band 28</td>
+</tr>
+<tr>
+<td>0x20000000000000000</td>
+<td>LTE Band 66</td>
+</tr>
+<tr>
+<td>0x1000000000000000000000</td>
+<td>LTE Band 85</td>
+</tr>
+<tr>
+<td>0x100002000000000F0E189F</td>
+<td>All of the supported bands mentioned above</td>
+</tr>
+</tbody>
+</table>
+<p>The last hexadecimal value specifies <strong>NB-IoT frequency bands</strong> (which is 0x10004200000000090e189f). If it is set to 0,  it means not to change the frequency band. If, for example, it is 0x15, it means → 0x01(LTE Band 1)+0x04(LTE Band 3)+0x10(LTE Band 5).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Band</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>0x1</td>
+<td>LTE Band 1</td>
+</tr>
+<tr>
+<td>0x2</td>
+<td>LTE Band 2</td>
+</tr>
+<tr>
+<td>0x4</td>
+<td>LTE Band 3</td>
+</tr>
+<tr>
+<td>0x8</td>
+<td>LTE Band 4</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>LTE Band 5</td>
+</tr>
+<tr>
+<td>0x80</td>
+<td>LTE Band 8</td>
+</tr>
+<tr>
+<td>0x800</td>
+<td>LTE Band 12</td>
+</tr>
+<tr>
+<td>0x1000</td>
+<td>LTE Band 13</td>
+</tr>
+<tr>
+<td>0x20000</td>
+<td>LTE Band 18</td>
+</tr>
+<tr>
+<td>0x40000</td>
+<td>LTE Band 19</td>
+</tr>
+<tr>
+<td>0x80000</td>
+<td>LTE Band 20</td>
+</tr>
+<tr>
+<td>0x1000000</td>
+<td>LTE Band 25</td>
+</tr>
+<tr>
+<td>0x8000000</td>
+<td>LTE Band 28</td>
+</tr>
+<tr>
+<td>0x20000000000000000</td>
+<td>LTE Band 66</td>
+</tr>
+<tr>
+<td>0x400000000000000000</td>
+<td>LTE Band 71</td>
+</tr>
+<tr>
+<td>0x1000000000000000000000</td>
+<td>LTE Band 85</td>
+</tr>
+<tr>
+<td>0x10004200000000090E189F</td>
+<td>All of the supported bands mentioned above</td>
+</tr>
+</tbody>
+</table>
+<p>You can change the band with the command <strong><em>at+qcfg="band",GSM_band,CAT_M_band,NB_IoT_band,effect</em></strong>, where <strong><em>GSM_band</em></strong> is GSM frequency band (can be left 0x0), <strong><em>CAT_M_band</em></strong> is the CAT-M frequency band, <strong><em>NB_IoT_band</em></strong> is the NB-IoT band and <strong><em>effect</em></strong> is whether to take effect immediately (1) or to take effect after module reboots (0).</p>
+<p>To setup module the way so that all bands are supported, use the command:</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]     
+
+at+qcfg=&quot;band&quot;,0x0,0x100002000000000f0e189f,0x10004200000000090e189f,1
+
+OK
+</code></pre>
+<p>To speed up network searching, it is suggested to execute the command <strong><em>at+cfun=0</em></strong> (to turn off the radio) and then use the described command. After that, execute <strong><em>at+cfun=1,1</em></strong> (to turn on the radio back and reset the module to take effect).</p>
+<h3 id="atqgpscfgpriority0-1">at+qgpscfg="priority",(0-1)</h3>
+<p>It is important to understand that data transfer over CAT-M/NB-IoT and GNSS can not work simultaneously (WWAN and GNSS Rx chains in the BG77 module share certain hardware blocks, meaning the module does not support concurrent operation of WWAN and GNSS.). That is why the <strong><em>at+qgpscfg="priority",(0-1)</em></strong> command was introduced.</p>
+<p>It is possible to change the priority with the commands:</p>
+<pre><code class="language-ros">[Ctrl-A is the prefix key]    
+
+at+qgpscfg=&quot;priority&quot;,0
+
+OK
+
+at+qgpscfg=&quot;priority&quot;,1
+
+OK
+</code></pre>
+<p><strong><em>at+qgpscfg="priority",0</em></strong> command sets the <strong>highest priority for GNSS</strong>.</p>
+<p><strong><em>at+qgpscfg="priority",1</em></strong> command sets the <strong>highest priority for LTE (WWAN)</strong>.</p>
+<p>When the device is in the <strong>LTE (WWAN) priority mode</strong>, the GNSS positioning request can successfully go through only when the RRC is released (Radio Resource Control protocol has many functions, but mainly is responsible for connection establishment and its release function) and LTE (WWAN) enters an idle sleep mode. Both LTE (WWAN) and GNSS can co-exist in <strong>LTE (WWAN) priority mode</strong> only under the condition that eDRX is supported and not blocked by the ISP. If the network connection gets established (RRC is in the connected state) and the data begins flowing to the server → GNSS will be deferred until the data transmission is over and RCC is released. In case the eDRX is supported and the module enters this mode (data transmission is over) → GNSS coordinates will be sent. Once the data begins flowing to the server again, GNSS will be deferred until the device enters eDRX mode again.</p>
+<p>When the device is in the <strong>GNSS priority mode</strong>, the GNSS positioning request succeeds in all WWAN states. If the device is in the RCC-connected state → it will release the RCC connection and initiates the GNSS session. After that, if there is WWAN data to be sent → RCC connection will be initiated again.</p>
+<hr />
+<h1 id="wwan-and-gnss-priority-automatization">WWAN and GNSS priority automatization</h1>
+<blockquote>
+<p>Cellular connection and GNSS can not work simultaneously (WWAN and GNSS Rx chains in the BG77 module share certain hardware blocks, meaning the module does not support concurrent operation of WWAN and GNSS.). That is...</p>
+</blockquote>
+<h1 id="overview_1">Overview</h1>
+<p>Cellular connection and GNSS can not work simultaneously (WWAN and GNSS Rx chains in the BG77 module share certain hardware blocks, meaning the module does not support concurrent operation of WWAN and GNSS.). That is why the <strong><em>at+qgpscfg="priority",(0-1)</em></strong> command was introduced. With the help of the command, you can manually change the priority for one or the other.</p>
+<p><strong><em>at+qgpscfg="priority",0</em></strong> command sets the <strong>highest priority for GNSS</strong>.</p>
+<p><strong><em>at+qgpscfg="priority",1</em></strong> command sets the <strong>highest priority for LTE (WWAN)</strong>.</p>
+<p>In real-life applications, it is not very convenient to change the priority by hand and this is why, to automatically change the priority, we advise using the methods shown below.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Starting with the 7.1rc3 firmware release, it is possible to check when is the last time that the device got NMEA data (GPS data). This information can be used for troubleshooting purposes. You can check this parameter in CLI with the command "system gps monitor once". "data-age" parameter is the one that demonstrates when was the last time that the device received an NMEA message.</p>
+</div>
+<h2 id="automatic-switch-to-gnss-when-no-outgoing-traffic-is-detected">Automatic switch to GNSS when no outgoing traffic is detected</h2>
+<p>Automation can be achieved using ppp profile "<strong>on-down</strong>" script, "<strong>idle-timeout</strong>" features and PPP interface "<strong>dial on demand</strong>" setting.</p>
+<p>When implemented, BG77 modem will use cellular data when there is internet traffic present (during this time GNSS coordinates are not received), and will automatically enable GPS reception when there is no internet traffic detected.</p>
+<p><strong>Idle-timeout</strong> parameter specifies the amount of time after which the link will be terminated if there is no activity present.</p>
+<p><strong>On-down</strong> script field allows you to configure a script that will be run every time the PPP interface goes down (including after <strong>idle-timeout</strong> inactivity). The script will set modem's priority to GNSS reception.</p>
+<p><strong>Dial-on-demand</strong> will make sure that PPP interface tries to establish the connection only when there is outgoing traffic present (additionally, the modem will automatically set WWAN/cellular connection priority). This will make sure that after <strong>idle-timeout</strong> occurs, the connection is not automatically reestablished unless outgoing packets are detected.</p>
+<p>By combining the three features, you can achieve the scenario, where:</p>
+<ul>
+<li>If you have outgoing traffic, PPP interface is going to be up (because of the "<strong>dial on demand</strong>") and the priority will be set to the cellular connection. PPP interface's modem initialization AT command (that is configured under PPP interface's <code>modem-init="AT+QGPSCFG="priority",1"</code> setting) for WWAN priority is sent. During this time, GPS coordinates will not be received.</li>
+<li>If no traffic is detected after "<strong>idle-timeout</strong>" inactivity window, the PPP interface will go down and, because of the "<strong>dial on demand</strong>" setting, it will not establish the connection until outgoing packets are detected. This is where "<strong>on-down</strong>" script is run that switches WWAN priority to GNSS priority.
+In order to implement it, simply add a new PPP profile:</li>
+</ul>
+<pre><code class="language-ros">/ppp profile add idle-timeout=30s name=BG77 on-down=&quot;/interface ppp-client at-chat [find where modem-init=\&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,1\&quot;] input=\&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,0\&quot;&quot;
+</code></pre>
+<p>The example above, creates a new profile with the name "BG77", sets <strong>idle-timeout</strong> to 30 seconds, and enables the <strong>on-down</strong> script that will send GNSS priority AT command.</p>
+<p>After that, make sure to apply this newly created profile onto the PPP interface:</p>
+<pre><code class="language-ros">/interface ppp-client set profile=BG77 0
+</code></pre>
+<p>And confirm that it was applied (<code>profile=BG77</code>):</p>
+<pre><code class="language-ros">/interface ppp-client print
+Flags: X - disabled; R - running 
+0 R name=&quot;ppp-out1&quot; max-mtu=1500 max-mru=1500 mrru=disabled port=modem data-channel=2 info-channel=2 
+apn=&quot;internet&quot; pin=&quot;&quot; user=&quot;&quot; password=&quot;&quot; profile=BG77 phone=&quot;&quot; dial-command=&quot;ATDT&quot; 
+modem-init=&quot;AT+QGPSCFG=&quot;priority&quot;,1&quot; null-modem=no dial-on-demand=yes add-default-route=yes 
+default-route-distance=1 use-peer-dns=yes keepalive-timeout=30 allow=pap,chap,mschap1,mschap2 
+</code></pre>
+<h2 id="switch-to-gnss-using-scripts-and-scheduler">Switch to GNSS using scripts and scheduler</h2>
+<p>The script below should be configured with a scheduler. The scheduler will make sure that the script is initiated each <strong><em>x</em></strong> hours/minutes (whenever you need it).</p>
+<pre><code>:global lat
+:global lon
+:global spd
+:global alt
+/interface ppp-client set ppp-out1 disabled=yes
+log info (&quot;disabling WWAN to get GPS coordinates&quot;)
+/interface ppp-client at-chat ppp-out1 input=&quot;AT+QGPSCFG=\&quot;priority\&quot;,0&quot;
+log info (&quot;enabling priority for GPS&quot;)
+###the time in the delay below is the time that the device will wait for to get the coordinate fix
+delay 32000ms
+log info (&quot;reading GPS coordinates&quot;)
+/system gps monitor once do={
+:set $lat $(&quot;latitude&quot;)
+:set $lon $(&quot;longitude&quot;)
+:set $spd $(&quot;speed&quot;)
+:set $alt $(&quot;altitude&quot;)
+}
+:set $spd [:pick $spd 0 [find $spd &quot; km&quot;]]
+:set $alt [:pick $alt 0 [find $alt &quot;m&quot;]]
+if ($lat != &quot;none&quot;) do={\
+log info (&quot;enabling priority back to WWAN&quot;)
+/interface ppp-client at-chat ppp-out1 input=&quot;AT+QGPSCFG=\&quot;priority\&quot;,1&quot;
+log info (&quot;enabling WWAN&quot;)
+/interface ppp-client set ppp-out1 disabled=no
+delay 1000ms
+###if dial on demand is enabled
+###/ping 1.1.1.1 count=1
+#the delay below waits for 5 seconds for the ppp connection to get established - this time can differ based on the signal strength
+delay 5000ms
+log info (&quot;posting coordinates via fetch&quot;)
+/tool fetch http-method=post output=user http-header-field=&quot;content-type:application/json&quot; http-data=&quot;[\
+{\
+                \&quot;payload\&quot;:{\
+                             \&quot;lat\&quot;:$lat,\
+                              \&quot;lng\&quot;:$lon,\
+                               \&quot;speed\&quot;:$spd,\
+                                \&quot;altitude\&quot;:$alt\
+                                    }\
+    }\
+]&quot; url=&quot;https://change-this-URL-accordingly&quot;}\
+else={
+log info (&quot;could not read GPS coordinates...enabling back WWAN&quot;)
+/interface ppp-client at-chat ppp-out1 input=&quot;AT+QGPSCFG=\&quot;priority\&quot;,1&quot;
+/interface ppp-client set ppp-out1 disabled=no
+delay 1000ms
+###if dial on demand is enabled
+###/ping 1.1.1.1 count=1
+}
+</code></pre>
+<p>If "dial on demand" is enabled, uncomment (remove "###" for) ping lines "/ping 1.1.1.1 count=1" in the script because without outgoing traffic →  ppp interface will not establish the connection.</p>
+<p>What this script is going to do is it going to disable ppp interface, send the GNSS priority command and wait for 32 seconds until the device gets the coordinates (it is the time/period that is suggested for the Quectel modem to get the coordinate fix). You can alter this time based on your preference and signal strength. Each individual case might be unique. After a 32-second delay, if the coordinates were successfully received (if latitude does not equal "none" but equals any other value), the script will send a WWAN priority command, enable back the ppp interface, and use "/tool fetch" to post the coordinates to the configured HTTP server. If the coordinates were not received after a 32-second delay (if latitude is going to be "none"), the script is going to send WWAN priority command and enable back the ppp interface without posting any results.</p>
+<p>Do not forget to alter the "/tool fetch" part of the script accordingly to your HTTP server configuration/requirement.</p>
+<p>You can also use MQTT instead of HTTP post. In order to do that, change the "/tool fetch" part of the configuration from:</p>
+<pre><code>/tool fetch http-method=post output=user http-header-field=&quot;content-type:application/json&quot; http-data=&quot;[\
+{\
+                \&quot;payload\&quot;:{\
+                             \&quot;lat\&quot;:$lat,\
+                              \&quot;lng\&quot;:$lon,\
+                               \&quot;speed\&quot;:$spd,\
+                                \&quot;altitude\&quot;:$alt\
+                                    }\
+    }\
+]&quot; url=&quot;https://change-this-URL-accordingly&quot;}\
+</code></pre>
+<p>To MQTT:</p>
+<pre><code>/iot mqtt publish broker=&quot;AWS&quot; topic=&quot;my/test/topic&quot; message=&quot;{\
+                                 \&quot;lat\&quot;:$lat,\
+                                  \&quot;lng\&quot;:$lon,\
+                                   \&quot;speed\&quot;:$spd,\
+                                    \&quot;altitude\&quot;:$alt \                                
+  }&quot;}\
+</code></pre>
+<p>Alter the broker, topic, and message as you see fit. You can find more information on how to configure MQTT following the link.</p>
+<p>For example, if the MQTT server/broker is AWS, the posted result would look like this:</p>
+<h2 id="switch-to-gnss-when-no-outgoing-traffic-is-detected-using-scripts-and-scheduler">Switch to GNSS when no outgoing traffic is detected using scripts and scheduler</h2>
+<p>The 1st script is used to check whether there is any traffic and to switch the priority back and forth based on that.</p>
+<p>The 2nd script can be used to enable WWAN priority and to publish the GPS coordinates to the server of your choice. You can use any supported protocol, like HTTPS post (fetch) or MQTT to post the coordinates.</p>
+<h3 id="1st-script">1st script</h3>
+<p>This script below will automatically create a scheduler:</p>
+<pre><code>/system scheduler
+add name=&quot;GPS/WWAN enabler&quot; on-event=&quot;:delay 30s\r\
+    \n\r\
+    \n:local pppName ppp-out1\r\
+    \n:local pppModemInitInit \&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,1\&quot;\r\
+    \n:local gpsCmd \&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,0\&quot;\r\
+    \n:local idleCount 5\r\
+    \n\r\
+    \n\r\
+    \n:local pppStats\r\
+    \n:local pppStatsPrev\r\
+    \n:local pppStatsReset\r\
+    \n:local idleCounter\r\
+    \n\r\
+    \n:while (true) do={\r\
+    \n\r\
+    \n:if ( \\\r\
+    \n  [/interface ppp-client get \$pppName running] \\\r\
+    \n  &amp;&amp; [/system gps get enabled] \\\r\
+    \n  &amp;&amp; [/interface ppp-client get \$pppName dial-on-demand] \\\r\
+    \n  &amp;&amp; \$pppModemInitInit=[/interface ppp-client get \$pppName modem-init]\
+    \_) \\\r\
+    \n  do={\r\
+    \n    :set pppStats [:toarray ([/interface print stats as-value where name\
+    =ppp-out1]-&gt;0)] \r\
+    \n    :if ( \\\r\
+    \n      \$pppStats-&gt;\&quot;rx-packet\&quot;=\$pppStatsPrev-&gt;\&quot;rx-packet\&quot; \\\r\
+    \n      &amp;&amp; \$pppStats-&gt;\&quot;tx-packet\&quot;=\$pppStatsPrev-&gt;\&quot;tx-packet\&quot; ) \\\r\
+    \n      do={\r\
+    \n        :set idleCounter (\$idleCounter+1)\r\
+    \n:put (\&quot;debug: idle \&quot;.\$idleCounter)\r\
+    \n        :if ( \\\r\
+    \n          \$idleCounter&gt;=\$idleCount \\\r\
+    \n          &amp;&amp; \$pppStats-&gt;\&quot;rx-packet\&quot;!=\$pppStatsReset-&gt;\&quot;rx-packet\&quot; \
+    \\\r\
+    \n          &amp;&amp; \$pppStats-&gt;\&quot;tx-packet\&quot;!=\$pppStatsReset-&gt;\&quot;tx-packet\&quot; )\
+    \_\\\r\
+    \n          do={\r\
+    \n            :set pppStatsReset \$pppStats\r\
+    \n            :set idleCounter 0\r\
+    \n            :log info (\$pppName.\&quot; idling - reseting dial-on-demand, pr\
+    ioritizing GPS\&quot;)\r\
+    \n            /interface ppp-client set \$pppName disabled=yes\r\
+    \n            :do { /interface ppp-client at-chat \$pppName input=\$gpsCmd\
+    \_} \\\r\
+    \n                on-error={\r\
+    \n:put (\&quot;debug: GPS at-chat error\&quot;)                \r\
+    \n                  :set idleCounter 0\r\
+    \n                  :set pppStatsReset ({})\r\
+    \n                  }\r\
+    \n            /interface ppp-client set \$pppName disabled=no\r\
+    \n            }\r\
+    \n          :delay 1s\r\
+    \n        } \\\r\
+    \n      else={\r\
+    \n:put (\&quot;debug: no idle\&quot;)      \r\
+    \n        :set idleCounter 0\r\
+    \n        :set pppStatsPrev \$pppStats\r\
+    \n        :delay 1s \r\
+    \n        }\r\
+    \n    } \\\r\
+    \n  else={\r\
+    \n:put (\&quot;debug: unsupported config\&quot;)\r\
+    \n    :set idleCounter 0\r\
+    \n    :set pppStatsReset ({})\r\
+    \n    :delay 1s\r\
+    \n    }\r\
+    \n}&quot; policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-time=startup
+</code></pre>
+<p>Copy all the lines above and paste them into a new script. Run the script and you will create a "scheduler". You can check the "scheduler" under System&gt;Scheduler&gt;"GPS/WWAN enabler".</p>
+<p>The raw script looks like this:</p>
+<pre><code>:local pppName ppp-out1
+:local pppModemInitInit &quot;AT+QGPSCFG=\&quot;priority\&quot;,1&quot;
+:local gpsCmd &quot;AT+QGPSCFG=\&quot;priority\&quot;,0&quot;
+:local idleCount 5
+:local pppStats
+:local pppStatsPrev
+:local pppStatsReset
+:local idleCounter
+:while (true) do={
+:if ( \
+  [/interface ppp-client get $pppName running] \
+  &amp;&amp; [/system gps get enabled] \
+  &amp;&amp; [/interface ppp-client get $pppName dial-on-demand] \
+  &amp;&amp; $pppModemInitInit=[/interface ppp-client get $pppName modem-init] ) \
+  do={
+    :set pppStats [:toarray ([/interface print stats as-value where name=ppp-out1]-&gt;0)] 
+    :if ( \
+      $pppStats-&gt;&quot;rx-packet&quot;=$pppStatsPrev-&gt;&quot;rx-packet&quot; \
+      &amp;&amp; $pppStats-&gt;&quot;tx-packet&quot;=$pppStatsPrev-&gt;&quot;tx-packet&quot; ) \
+      do={
+        :set idleCounter ($idleCounter+1)
+:put (&quot;debug: idle &quot;.$idleCounter)
+        :if ( \
+          $idleCounter&gt;=$idleCount \
+          &amp;&amp; $pppStats-&gt;&quot;rx-packet&quot;!=$pppStatsReset-&gt;&quot;rx-packet&quot; \
+          &amp;&amp; $pppStats-&gt;&quot;tx-packet&quot;!=$pppStatsReset-&gt;&quot;tx-packet&quot; ) \
+          do={
+            :set pppStatsReset $pppStats
+            :set idleCounter 0
+            :log info ($pppName.&quot; idling - reseting dial-on-demand, prioritizing GPS&quot;)
+            /interface ppp-client set $pppName disabled=yes
+            :do { /interface ppp-client at-chat $pppName input=$gpsCmd } \
+                on-error={
+:put (&quot;debug: GPS at-chat error&quot;)                
+                  :set idleCounter 0
+                  :set pppStatsReset ({})
+                  }
+            /interface ppp-client set $pppName disabled=no
+            }
+          :delay 1s
+        } \
+      else={
+:put (&quot;debug: no idle&quot;)      
+        :set idleCounter 0
+        :set pppStatsPrev $pppStats
+        :delay 1s 
+        }
+    } \
+  else={
+:put (&quot;debug: unsupported config&quot;)
+    :set idleCounter 0
+    :set pppStatsReset ({})
+    :delay 1s
+    }
+}
+</code></pre>
+<p>In order for the script to work, a few conditions must be met.</p>
+<p>The first condition is that both ppp interface (Interfaces&gt;Interface) and GPS (System&gt;GPS) must be enabled and work simultaneously. You may need to disable ppp before enabling GPS because they both use the same serial port. When both GPS and ppp are enabled, make sure that the second condition is met.</p>
+<p>The second condition is that AT command "<strong><em>AT+QGPSCFG="priority",1</em></strong>" is configured for the ppp interface under the "Modem Init" field:</p>
+<p>What this is going to do, is send a WWAN priority command whenever ppp connection gets successfully established.</p>
+<p>Lastly, the third condition, is that "dial on demand" is enabled for the ppp interface:</p>
+<p>This is required because otherwise, when "dial on demand" is disabled → ppp interface will automatically send the AT command with a WWAN priority setting (attempt to establish the connection), whenever the port is enabled back on. When "dial on demand" is enabled → after the interface gets enabled back on, ppp connection will not be established and the AT command for WWAN priority will not be sent until outgoing packets are detected.</p>
+<p>When all 3 conditions are met → the script is going to do the following:</p>
+<p>The script is going to compare "counters" to figure out whether there is traffic present or not (based on Tx packets and Rx packets for the ppp interface). If there is no traffic, the "counter" goes up, and when it reaches the "idleCount", ppp interface is disabled, enabled back on, and the GNS priority command is sent. During this time, if there is still no outgoing traffic present, GPS coordinates should be updated (under System&gt;GPS). As soon as any traffic is detected, the "counter" is reset and the WWAN priority command is sent by establishing ppp connection.</p>
+<p>Once all 3 conditions are met and the scheduler is ready, reboot the device for the script to take action.</p>
+<h3 id="2nd-script">2nd script</h3>
+<p>The second script is used to collect GPS coordinates and send them further to the server.</p>
+<pre><code>:global lat
+:global lon
+:global spd
+:global alt
+/system gps monitor once do={
+:set $lat $(&quot;latitude&quot;)
+:set $lon $(&quot;longitude&quot;)
+:set $spd $(&quot;speed&quot;)
+:set $alt $(&quot;altitude&quot;)
+}
+:set $spd [:pick $spd 0 [find $spd &quot; km&quot;]]
+:set $alt [:pick $alt 0 [find $alt &quot;m&quot;]]
+:if ($lat != &quot;none&quot;) do={
+/ping 1.1.1.1 count=1
+:delay 3000ms;
+/tool fetch http-method=post output=user http-header-field=&quot;content-type:application/json&quot; http-data=&quot;[\
+{\
+                \&quot;payload\&quot;:{\
+                             \&quot;lat\&quot;:$lat,\
+                              \&quot;lng\&quot;:$lon,\
+                               \&quot;speed\&quot;:$spd,\
+                                \&quot;altitude\&quot;:$alt\
+                                    }\
+    }\
+]&quot; url=&quot;https://change-this-URL&quot;}\
+else={log info (&quot;could not read GPS coordinates&quot;)}
+</code></pre>
+<p>The script is going to "read" GPS coordinates, and if latitude could be "read" successfully (if latitude does not equal "none" but equals any other value), ping "1.1.1.1" once (to generate outgoing traffic), wait for 3 seconds for the ppp connection to get established and initiate "/tool fetch" (HTTP post). Otherwise, if latitude could not be determined (when the script was initiated), nothing will happen (you will see a log message that the device could not read GPS coordinates).</p>
+<p>You can change the "delay" line in the script to the actual time that it takes your device to successfully establish a ppp (CAT-M/NB-IoT) connection with the ISP.</p>
+<p>You can set up a scheduler to run the script whenever you like.</p>
+<p>The "/tool fetch" part of the script should be configured accordingly to your server settings.</p>
+<p>You can also use MQTT instead of HTTP post. If you wish to do that, change the "/tool fetch" part, from:</p>
+<pre><code>/tool fetch http-method=post output=user http-header-field=&quot;content-type:application/json&quot; http-data=&quot;[\
+{\
+                \&quot;payload\&quot;:{\
+                             \&quot;lat\&quot;:$lat,\
+                              \&quot;lng\&quot;:$lon,\
+                               \&quot;speed\&quot;:$spd,\
+                                \&quot;altitude\&quot;:$alt\
+                                    }\
+    }\
+]&quot; url=&quot;https://change-this-URL-accordingly&quot;}\
+</code></pre>
+<p>To:</p>
+<pre><code>/iot mqtt publish broker=&quot;AWS&quot; topic=&quot;my/test/topic&quot; message=&quot;&amp;#123;\
+                                 \&quot;lat\&quot;:$lat,\
+                                  \&quot;lng\&quot;:$lon,\
+                                   \&quot;speed\&quot;:$spd,\
+                                    \&quot;altitude\&quot;:$alt \                                  
+  }&quot;}\
+</code></pre>
+<p>Do not forget to alter the broker, topic, and message as you see fit. You can find more information on how to configure MQTT following the link.</p>
+<p>For example, if the MQTT server is AWS, the result would look like this:</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

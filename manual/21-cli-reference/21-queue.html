@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>queue · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="queue">queue</h1>
+<h1 id="interface">interface</h1>
+<blockquote>
+<p>RouterOS directory reference for /queue/interface.</p>
+</blockquote>
+<hr />
+<h2 id="queueinterface">queue/interface</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>queue</strong> <code>enum (no-queue) { no-queue:0 }</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code></li>
+<li><strong>default-queue</strong> <code>enum (no-queue) { no-queue:0 }</code></li>
+<li><strong>active-queue</strong> <code>enum (no-queue | queue-tree) { no-queue:0, queue-tree:0xfffffff9 }</code></li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /queue/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="queuemonitor">queue/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>queued-packets</strong> <code>num</code></li>
+<li><strong>queued-bytes</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="simple">simple</h1>
+<blockquote>
+<p>Simple queues: rate limits for the upload and download of a target address, network or interface. See the Simple queue guide.</p>
+</blockquote>
+<hr />
+<h2 id="queuesimple">queue/simple</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Simple queues: rate limits for the upload and download of a target address, network or interface. See the <a href="../../../firewall-and-quality-of-service/queues/simple-queue">Simple queue</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The queue is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The queue is not in use, for example outside its <code>time</code> range or when its queue type does not exist.</li>
+<li><strong>D</strong> <code>dynamic</code> — The queue was created by another RouterOS service, not by the user.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the queue.</li>
+<li><strong>target</strong> <code>object { target: alt { target-interface: iface_enum
+, target-address: alt { ip-address: ipPrefix
+, ipv6-address: ip6Prefix
+ }
+ }
+ }</code> — Addresses, networks or interfaces whose traffic the queue limits. Upload is the traffic that the target sends, download is the traffic that it receives. A simple queue must match a packet either by source or by destination: if both ends of a connection are inside the target, all its packets count as download.</li>
+<li><strong>dst</strong> <code>alt { ip-address: ipPrefix
+, ipv6-address: ip6Prefix
+, interface: iface_enum
+ }</code> — Destination address, network or interface. The queue takes only the traffic between the target and this destination.</li>
+<li><strong>parent</strong> <code>enum (none) { none:0 }</code> — Parent simple queue, or <code>none</code>. Child queues share the rate of their parent. Default: <code>none</code>.</li>
+<li><strong>packet-marks</strong> <code>multi { array-id, packet-mark: enum
+ }</code> — Packet marks that the queue takes. Empty means that the queue does not check packet marks. Default: empty.</li>
+<li><strong>priority</strong> <code>composite { upload-priority: num [1 .. 8]
+, download-priority: num [1 .. 8]
+ }</code> — Priority of a child queue for upload and download, from <code>1</code> (highest) to <code>8</code> (lowest). Default: <code>8/8</code>.</li>
+<li><strong>queue</strong> <code>composite { upload-queue: enum
+, download-queue: enum
+ }</code> — Queue type for upload and download. Default: <code>default-small/default-small</code>.</li>
+<li><strong>limit-at</strong> <code>composite { upload-limit-at: num
+, download-limit-at: num
+ }</code> — Rate that the queue gets when the queues of the same parent together ask for more than the parent allows. See <a href="../../../firewall-and-quality-of-service/queues/htb-hierarchical-token-bucket">HTB</a>. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>max-limit</strong> <code>composite { upload-max-limit: num
+, download-max-limit: num
+ }</code> — Highest rate that the queue allows. <code>0</code> means no limit. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-limit</strong> <code>composite { upload-burst-limit: num
+, download-burst-limit: num
+ }</code> — Highest rate that the queue allows while burst is active. See <a href="../../../firewall-and-quality-of-service/queues/queue-burst">Queue Burst</a>. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-threshold</strong> <code>composite { upload-threshold: num
+, download-threshold: num
+ }</code> — Average rate up to which burst is allowed. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-time</strong> <code>composite { upload-burst-time: time
+, download-burst-time: time
+ }</code> — Time over which the average rate for burst is calculated. Default: <code>0s</code>.</li>
+<li><strong>bucket-size</strong> <code>composite { upload-bucket-size: num [ .. 10000]
+, download-bucket-size: num [ .. 10000]
+ }</code> — Size of the HTB token bucket as a multiple of <code>max-limit</code>. See <a href="../../../firewall-and-quality-of-service/queues/htb-hierarchical-token-bucket">HTB</a>. Default: <code>0.1</code>.</li>
+<li><strong>total-priority</strong> <code>num</code> — Priority for the limit of upload and download together. Default: not set.</li>
+<li><strong>total-queue</strong> <code>enum</code> — Queue type for the limit of upload and download together. Default: not set.</li>
+<li><strong>total-limit-at</strong> <code>num</code> — <code>limit-at</code> for upload and download together. Default: not set.</li>
+<li><strong>total-max-limit</strong> <code>num</code> — Highest rate for upload and download together. Default: not set.</li>
+<li><strong>total-burst-limit</strong> <code>num</code> — <code>burst-limit</code> for upload and download together. Default: not set.</li>
+<li><strong>total-burst-threshold</strong> <code>num</code> — <code>burst-threshold</code> for upload and download together. Default: not set.</li>
+<li><strong>total-burst-time</strong> <code>time</code> — <code>burst-time</code> for upload and download together. Default: not set.</li>
+<li><strong>total-bucket-size</strong> <code>num</code> — <code>bucket-size</code> for upload and download together. Default: not set.</li>
+<li><strong>time</strong> <code>super { !
+, start: time
+, [end] -time
+, [day] ,ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Time range and days in which the queue is active. Outside this time the queue has the <code>I</code> flag and limits no traffic. Default: not set, always active.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>bytes</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of bytes that passed the queue.</li>
+<li><strong>total-bytes</strong> <code>num</code> — Number of bytes counted by the limit of upload and download together.</li>
+<li><strong>packets</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of packets that passed the queue.</li>
+<li><strong>total-packets</strong> <code>num</code> — Number of packets counted by the limit of upload and download together.</li>
+<li><strong>dropped</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of packets that the queue dropped.</li>
+<li><strong>total-dropped</strong> <code>num</code> — Number of packets dropped by the limit of upload and download together.</li>
+<li><strong>rate</strong> <code>composite { upload: num
+, download: num
+ }</code> — Average rate of the traffic that passes the queue, in bits per second, for upload and download.</li>
+<li><strong>total-rate</strong> <code>num</code> — Average rate counted by the limit of upload and download together, in bits per second.</li>
+<li><strong>packet-rate</strong> <code>composite { upload: num
+, download: num
+ }</code> — Average rate of the traffic that passes the queue, in packets per second.</li>
+<li><strong>total-packet-rate</strong> <code>num</code> — Average rate counted by the limit of upload and download together, in packets per second.</li>
+<li><strong>queued-packets</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of packets that wait in the queue.</li>
+<li><strong>total-queued-packets</strong> <code>num</code> — Number of packets that wait in the queue for upload and download together.</li>
+<li><strong>queued-bytes</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of bytes that wait in the queue.</li>
+<li><strong>total-queued-bytes</strong> <code>num</code> — Number of bytes that wait in the queue for upload and download together.</li>
+<li><strong>pcq-queues</strong> <code>composite { upload: num
+, download: num
+ }</code> — Number of PCQ sub-streams, when the queue type is a PCQ type.</li>
+<li><strong>total-pcq-queues</strong> <code>num</code> — Number of PCQ sub-streams of the queue for upload and download together.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all">reset-counters-all</h1>
+<blockquote>
+<p>RouterOS command reference for /queue/simple/reset-counters-all.</p>
+</blockquote>
+<hr />
+<h2 id="queuesimplereset-counters-all">queue/simple/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>RouterOS command reference for /queue/simple/reset-counters.</p>
+</blockquote>
+<hr />
+<h2 id="queuesimplereset-counters">queue/simple/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="tree">tree</h1>
+<blockquote>
+<p>Queue tree: rate limits for traffic in one direction, selected by packet mark, on an interface or globally. See the Queue tree guide.</p>
+</blockquote>
+<hr />
+<h2 id="queuetree">queue/tree</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Queue tree: rate limits for traffic in one direction, selected by packet mark, on an interface or globally. See the <a href="../../../firewall-and-quality-of-service/queues/queue-tree">Queue tree</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The queue is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The queue is invalid and not in use.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the queue.</li>
+<li><strong>parent</strong> <code>enum (global) { global:0xfffff4 }</code> — Where the queue is attached: an interface, <code>global</code>, or another queue tree entry.</li>
+<li><strong>packet-mark</strong> <code>multi { array-id, packet-mark: enum
+ }</code> — Packet mark that the queue takes. <code>no-mark</code> takes the packets that have no packet mark. Leave it empty on a queue that has child queues. Default: empty.</li>
+<li><strong>limit-at</strong> <code>num</code> — Rate that the queue gets when the queues of the same parent together ask for more than the parent allows. See <a href="../../../firewall-and-quality-of-service/queues/htb-hierarchical-token-bucket">HTB</a>. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>queue</strong> <code>enum</code> — Queue type. Default: <code>default-small</code>.</li>
+<li><strong>priority</strong> <code>num</code> — Priority of a child queue, from <code>1</code> (highest) to <code>8</code> (lowest). Default: <code>8</code>.</li>
+<li><strong>max-limit</strong> <code>num</code> — Highest rate that the queue allows. <code>0</code> means no limit. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-limit</strong> <code>num</code> — Highest rate that the queue allows while burst is active. See <a href="../../../firewall-and-quality-of-service/queues/queue-burst">Queue Burst</a>. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-threshold</strong> <code>num</code> — Average rate up to which burst is allowed. Default: <code>0</code>. The value is in bits per second; the suffixes <code>k</code> and <code>M</code> are accepted.</li>
+<li><strong>burst-time</strong> <code>time</code> — Time over which the average rate for burst is calculated. Default: <code>0s</code>.</li>
+<li><strong>bucket-size</strong> <code>num</code> — Size of the HTB token bucket as a multiple of <code>max-limit</code>. See <a href="../../../firewall-and-quality-of-service/queues/htb-hierarchical-token-bucket">HTB</a>. Default: <code>0.1</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>bytes</strong> <code>num</code> — Number of bytes that passed the queue.</li>
+<li><strong>packets</strong> <code>num</code> — Number of packets that passed the queue.</li>
+<li><strong>dropped</strong> <code>num</code> — Number of packets that the queue dropped.</li>
+<li><strong>rate</strong> <code>num</code> — Average rate of the traffic that passes the queue, in bits per second.</li>
+<li><strong>packet-rate</strong> <code>num</code> — Average rate of the traffic that passes the queue, in packets per second.</li>
+<li><strong>queued-packets</strong> <code>num</code> — Number of packets that wait in the queue.</li>
+<li><strong>queued-bytes</strong> <code>num</code> — Number of bytes that wait in the queue.</li>
+<li><strong>pcq-queues</strong> <code>num</code> — Number of PCQ sub-streams, when the queue type is a PCQ type.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_1">reset-counters-all</h1>
+<blockquote>
+<p>RouterOS command reference for /queue/tree/reset-counters-all.</p>
+</blockquote>
+<hr />
+<h2 id="queuetreereset-counters-all">queue/tree/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>RouterOS command reference for /queue/tree/reset-counters.</p>
+</blockquote>
+<hr />
+<h2 id="queuetreereset-counters">queue/tree/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="type">type</h1>
+<blockquote>
+<p>Queue types: named sets of settings for a queuing algorithm. Simple queues, queue trees and interface queues use them. See the Queue types guide.</p>
+</blockquote>
+<hr />
+<h2 id="queuetype">queue/type</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Queue types: named sets of settings for a queuing algorithm. Simple queues, queue trees and interface queues use them. See the <a href="../../firewall-and-quality-of-service/queues/queue-types">Queue types</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Default queue type. Its settings can be changed, but it cannot be removed.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the queue type.</li>
+<li><strong>kind</strong> <code>enum (bfifo | pfifo | red | sfq | pcq | mq-pfifo | none | codel | fq-codel | cake) { bfifo:1, pfifo:2, red:3, sfq:4, pcq:5, mq-pfifo:6, none:7, codel:8, fq-codel:9, cake:10 }</code> — Queuing algorithm of the type. <code>none</code> means no software queue. See <a href="../../firewall-and-quality-of-service/queues/queue-types">Queue types</a> for a description of each kind.</li>
+<li><strong>bfifo-limit</strong> <code>num</code> — Queue size in bytes. Default: <code>15000</code>.</li>
+<li><strong>pfifo-limit</strong> <code>num</code> — Queue size in packets. Default: <code>50</code>.</li>
+<li><strong>red-limit</strong> <code>num</code> — Hard limit of the queue, in packets. Default: <code>60</code>.</li>
+<li><strong>red-min-threshold</strong> <code>num</code> — Average queue size, in packets, at which RED starts to drop packets at random. Default: <code>10</code>.</li>
+<li><strong>red-max-threshold</strong> <code>num</code> — Average queue size, in packets, at which RED drops every new packet. Default: <code>50</code>.</li>
+<li><strong>red-burst</strong> <code>num</code> — Number of packets that RED accepts in a burst before the average queue size follows. Default: <code>20</code>.</li>
+<li><strong>red-avg-packet</strong> <code>num</code> — Average packet size in bytes that RED uses to calculate the average queue size. Default: <code>1000</code>.</li>
+<li><strong>sfq-perturb</strong> <code>num</code> — Time in seconds after which SFQ changes how it sorts packets into flows. Default: <code>5</code>.</li>
+<li><strong>sfq-allot</strong> <code>num</code> — Number of bytes that a flow sends in one turn. Default: <code>1514</code>.</li>
+<li><strong>pcq-rate</strong> <code>num</code> — Rate limit of each sub-stream, in bits per second. <code>0</code> means no limit for a sub-stream: every active sub-stream sends the same number of packets. Default: <code>0</code>.</li>
+<li><strong>pcq-limit</strong> <code>num</code> — Queue size of one sub-stream, in KiB. Default: <code>50KiB</code>.</li>
+<li><strong>pcq-classifier</strong> <code>ubit (src-address, dst-address, src-port, dst-port)</code> — What one sub-stream is. Select one or several values. Default: empty, all traffic is one sub-stream.</li>
+<li><strong>pcq-total-limit</strong> <code>num</code> — Queue size of all sub-streams together, in KiB. Default: <code>2000KiB</code>.</li>
+<li><strong>pcq-burst-rate</strong> <code>num</code> — Rate that a sub-stream can reach while burst is allowed. See <a href="../../firewall-and-quality-of-service/queues/queue-burst">Queue Burst</a>. Default: <code>0</code>.</li>
+<li><strong>pcq-burst-threshold</strong> <code>num</code> — Average rate of a sub-stream up to which burst is allowed. Default: <code>0</code>.</li>
+<li><strong>pcq-burst-time</strong> <code>time</code> — Time over which the average rate of a sub-stream is calculated. Default: <code>10s</code>.</li>
+<li><strong>pcq-src-address-mask</strong> <code>num</code> — Prefix length of the IPv4 network that is one sub-stream when the classifier has <code>src-address</code>. Default: <code>32</code>.</li>
+<li><strong>pcq-dst-address-mask</strong> <code>num</code> — Prefix length of the IPv4 network that is one sub-stream when the classifier has <code>dst-address</code>. Default: <code>32</code>.</li>
+<li><strong>pcq-src-address6-mask</strong> <code>num</code> — Prefix length of the IPv6 network that is one sub-stream when the classifier has <code>src-address</code>. Default: <code>128</code>.</li>
+<li><strong>pcq-dst-address6-mask</strong> <code>num</code> — Prefix length of the IPv6 network that is one sub-stream when the classifier has <code>dst-address</code>. Default: <code>128</code>.</li>
+<li><strong>mq-pfifo-limit</strong> <code>num</code> — Size of each queue in packets. Default: <code>50</code>.</li>
+<li><strong>codel-limit</strong> <code>num</code> — Hard limit of the queue, in packets. Default: <code>1000</code>.</li>
+<li><strong>codel-interval</strong> <code>time</code> — Time over which CoDel checks the waiting time of packets. Set it to about the round-trip time of the connections. Default: <code>100ms</code>.</li>
+<li><strong>codel-target</strong> <code>time</code> — Waiting time of packets that the queue accepts. Default: <code>5ms</code>.</li>
+<li><strong>codel-ecn</strong> <code>bool</code> — Whether CoDel marks packets of ECN-capable connections instead of dropping them. Default: <code>no</code>.</li>
+<li><strong>codel-ce-threshold</strong> <code>time</code> — Waiting time from which CoDel marks packets of ECN-capable connections. Default: not set.</li>
+<li><strong>fq-codel-limit</strong> <code>num</code> — Hard limit of all flow queues together, in packets. Default: <code>10240</code>.</li>
+<li><strong>fq-codel-interval</strong> <code>time</code> — Time over which CoDel checks the waiting time of packets. Set it to about the round-trip time of the connections. Default: <code>100ms</code>.</li>
+<li><strong>fq-codel-target</strong> <code>time</code> — Waiting time of packets that the queue accepts. Default: <code>5ms</code>.</li>
+<li><strong>fq-codel-ecn</strong> <code>bool</code> — Whether FQ-CoDel marks packets of ECN-capable connections instead of dropping them. Default: <code>yes</code>.</li>
+<li><strong>fq-codel-ce-threshold</strong> <code>time</code> — Waiting time from which FQ-CoDel marks packets of ECN-capable connections. Default: not set.</li>
+<li><strong>fq-codel-flows</strong> <code>num</code> — Number of flow queues into which FQ-CoDel sorts packets. Default: <code>1024</code>.</li>
+<li><strong>fq-codel-memlimit</strong> <code>num</code> — Memory limit for the packets in all flow queues together. Default: <code>32.0MiB</code>.</li>
+<li><strong>fq-codel-quantum</strong> <code>num</code> — Number of bytes that a flow sends in one turn. Default: <code>1514</code>.</li>
+<li><strong>cake-bandwidth</strong> <code>num</code> — Rate of the shaper that is built into CAKE. <code>0</code> means no shaping by CAKE: use it when HTB sets the rate. Default: <code>0</code>. See <a href="../../firewall-and-quality-of-service/queues/queue-types/cake">CAKE</a>.</li>
+<li><strong>cake-autorate-ingress</strong> <code>bool</code> — Whether CAKE estimates the link capacity from the arriving packets and adjusts its shaper. Default: not set.</li>
+<li><strong>cake-overhead</strong> <code>num</code> — Bytes that CAKE adds to the size of each packet for the overhead of the link, from <code>-64</code> to <code>256</code>. Default: <code>0</code>.</li>
+<li><strong>cake-mpu</strong> <code>num</code> — Smallest packet size on the link, in bytes, from <code>0</code> to <code>256</code>. Smaller packets are counted with this size. Default: not set.</li>
+<li><strong>cake-atm</strong> <code>enum (none | atm | ptm) { none:0, atm:1, ptm:2 }</code> — Framing compensation: <code>atm</code> for ATM cells, <code>ptm</code> for PTM encoding, <code>none</code>. Default: not set.</li>
+<li><strong>cake-overhead-scheme</strong> <code>multi { cake-overhead-scheme: enum (raw | conservative | ipoa-vcmux | ipoa-llcsnap | bridged-vcmux | bridged-llcsnap | pppoa-vcmux | pppoa-llc | pppoe-vcmux | pppoe-llcsnap | pppoe-ptm | bridged-ptm | via-ethernet | ethernet | ether-vlan | docsis) { raw:1, conservative:2, ipoa-vcmux:3, ipoa-llcsnap:4, bridged-vcmux:5, bridged-llcsnap:6, pppoa-vcmux:7, pppoa-llc:8, pppoe-vcmux:9, pppoe-llcsnap:10, pppoe-ptm:11, bridged-ptm:12, via-ethernet:13, ethernet:14, ether-vlan:15, docsis:16 }
+ }</code> — Preset for <code>cake-overhead</code>, <code>cake-mpu</code> and <code>cake-atm</code> that matches a link technology. Default: empty. See <a href="../../firewall-and-quality-of-service/queues/queue-types/cake">CAKE</a>.</li>
+<li><strong>cake-rtt</strong> <code>time</code> — Round-trip time that CAKE uses to tune its queue management. Default: <code>100ms</code>.</li>
+<li><strong>cake-rtt-scheme</strong> <code>enum (none | datacentre | lan | metro | regional | internet | oceanic | satellite | interplanetary) { none:0, datacentre:1, lan:2, metro:3, regional:4, internet:5, oceanic:6, satellite:7, interplanetary:8 }</code> — Preset for <code>cake-rtt</code>. Default: not set. See <a href="../../firewall-and-quality-of-service/queues/queue-types/cake">CAKE</a>.</li>
+<li><strong>cake-diffserv</strong> <code>enum (diffserv3 | diffserv4 | diffserv8 | besteffort | precedence) { diffserv3:0, diffserv4:1, diffserv8:2, besteffort:3, precedence:4 }</code> — How CAKE sorts packets into priority classes by their DSCP value. <code>besteffort</code> uses one class. Default: <code>diffserv3</code>. See <a href="../../firewall-and-quality-of-service/queues/queue-types/cake">CAKE</a>.</li>
+<li><strong>cake-flowmode</strong> <code>enum (flowblind | srchost | dsthost | hosts | flows | dual-srchost | dual-dsthost | triple-isolate) { flowblind:0, srchost:1, dsthost:2, hosts:3, flows:4, dual-srchost:5, dual-dsthost:6, triple-isolate:7 }</code> — How CAKE separates traffic into queues: by flow, by source or destination host, or by both. Default: <code>triple-isolate</code>. See <a href="../../firewall-and-quality-of-service/queues/queue-types/cake">CAKE</a>.</li>
+<li><strong>cake-nat</strong> <code>bool</code> — Whether CAKE looks up the addresses before NAT, so that it separates the hosts behind a router that translates addresses. Default: <code>no</code>.</li>
+<li><strong>cake-wash</strong> <code>bool</code> — Whether CAKE clears the DSCP value of the packets after it has used it. Default: <code>no</code>.</li>
+<li><strong>cake-ack-filter</strong> <code>enum (none | filter | aggressive) { none:0, filter:1, aggressive:2 }</code> — Whether CAKE removes redundant TCP acknowledgments: <code>none</code>, <code>filter</code> or <code>aggressive</code>. Default: <code>none</code>.</li>
+<li><strong>cake-memlimit</strong> <code>num</code> — Memory limit for the packets that CAKE holds in its queues. Default: not set.</li>
+</ul>
+<hr />
+<h1 id="quit">quit</h1>
+<blockquote>
+<p>RouterOS command reference for /quit.</p>
+</blockquote>
+<hr />
+<h2 id="quit_1">quit</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

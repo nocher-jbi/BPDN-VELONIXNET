@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HotSpot - Captive portal · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">AAA and User Management</p>
+      <h1 id="hotspot-captive-portal-part-22">HotSpot - Captive portal (part 2/2)</h1>
+<h1 id="user-manager">User Manager</h1>
+<blockquote>
+<p>User Manager is the RADIUS server of RouterOS: add routers and users, send RADIUS attributes, limit speed, traffic and time with profiles, limit simultaneous sessions, use one-time passwords, create vouchers and...</p>
+</blockquote>
+<h1 id="user-manager_1">User Manager</h1>
+<p>User Manager is a RADIUS server that runs on RouterOS. It keeps one user database for many routers, and each router asks it to authenticate users with the <a href="radius">RADIUS</a> client. DHCP, <a href="dot1x">Dot1X</a>, HotSpot, IPsec, <a href="ppp-aaa">PPP</a>, wireless and the router login can use it.</p>
+<ul>
+<li>User Manager is a separate <a href="../getting-started/installation-and-upgrade/packages">package</a>, <code>user-manager</code>. It is available for all architectures except SMIPS. The database is stored on the router, so check the free space of a device with a small disk.</li>
+<li>The authentication methods are PAP, CHAP, MS-CHAP, MS-CHAPv2, EAP-TLS, EAP-TTLS and EAP-PEAP.</li>
+<li>The license level limits the number of active sessions: see the tables for <a href="../getting-started/routeros-licensing/mikrotik-hardware/">MikroTik devices</a> and for <a href="../getting-started/routeros-licensing/x86/">x86 and CHR</a>. Two sessions of one user count as two.</li>
+<li>User Manager follows <a href="https://tools.ietf.org/html/rfc2865">RFC 2865</a> and <a href="https://tools.ietf.org/html/rfc3579">RFC 3579</a>.</li>
+</ul>
+<p><em>[gambar: PPPoE, DHCP and VPN servers, wireless access points, 802.1X switches and HotSpot routers send RADIUS requests to User Manager]</em></p>
+<p>The examples use two routers. User Manager runs on the router 172.31.30.195. The router 172.31.30.25 is an L2TP server and sends its users to User Manager. A router that asks a RADIUS server is called a NAS (network access server).</p>
+<h2 id="add-a-router-and-a-user">Add a router and a user</h2>
+<p>On the User Manager router, enable User Manager, add the NAS with a shared secret, and add a user:</p>
+<pre><code class="language-ros">/user-manager/set enabled=yes
+/user-manager/router/add name=vpn-server address=172.31.30.25 \
+    shared-secret=Radius-Secret-1
+/user-manager/user/add name=alice password=Alice-Pass-1
+</code></pre>
+<p>On the NAS, add User Manager as the RADIUS server with the same secret and let PPP use RADIUS:</p>
+<pre><code class="language-ros">/radius/add address=172.31.30.195 secret=Radius-Secret-1 service=ppp
+/radius/incoming/set accept=yes
+/ppp/aaa/set use-radius=yes interim-update=1m
+</code></pre>
+<ul>
+<li><code>/radius/incoming/set accept=yes</code> lets User Manager disconnect a session. User Manager needs it to enforce limits and to close sessions.</li>
+<li><code>interim-update</code> makes the NAS send the counters of a session every minute. User Manager checks the limits when it receives the counters.</li>
+<li>User Manager listens on UDP ports 1812 (authentication) and 1813 (accounting). The firewall of the User Manager router must accept them from the NAS, and the firewall of the NAS must accept UDP port 3799 from User Manager.</li>
+</ul>
+<p>When alice connects to the L2TP server, the session appears in User Manager:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user-manager/session/print detail
+Flags: A - ACTIVE
+0  A user=alice acct-session-id=&quot;81100080&quot; nas-port-type=virtual
+     nas-ip-address=172.31.30.25 nas-identifier=&quot;cmr-remote&quot;
+     calling-station-id=&quot;172.31.30.195&quot; user-address=10.0.0.99 status=start
+     started=2026-11-19 13:25:28 uptime=0s download=0 upload=0
+     last-accounting-packet=2026-11-19 13:25:28
+</code></pre>
+<p>Sessions are listed only when the NAS sends accounting. <code>/user-manager/router/monitor</code> counts the requests of a router:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user-manager/router/monitor [find] once
+      broken-requests: 0
+     unknown-requests: 0
+      access-requests: 1
+      access-failures: 0
+  accounting-requests: 2
+  accounting-failures: 0
+       disconnect-ack: 0
+       disconnect-nak: 0
+              coa-ack: 0
+              coa-nak: 0
+      sent-from-cache: 0
+</code></pre>
+<p>User Manager can also serve the router it runs on. Add a router entry and a <code>/radius</code> entry with the address 127.0.0.1. The L2TP/IPsec example near the end of this page is a complete configuration of this kind.</p>
+<p>The connection to a NAS can be encrypted with RadSec: see <a href="radius">RADIUS</a>.</p>
+<h2 id="send-radius-attributes-to-the-nas">Send RADIUS attributes to the NAS</h2>
+<p>User Manager adds the attributes of a user to the Access-Accept message. The NAS applies them to the session. This user always gets the address 10.0.0.5:</p>
+<pre><code class="language-ros">/user-manager/user/set [find name=alice] \
+    attributes=Framed-IP-Address:10.0.0.5
+</code></pre>
+<p>A user with a fixed address can have one session only, so keep <code>shared-users=1</code>.</p>
+<p><code>/user-manager/user/monitor</code> shows the attributes that the user gets:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user-manager/user/monitor [find name=alice] once
+         total-uptime: 31s                                             
+       total-download: 469                                             
+         total-upload: 1901                                            
+      active-sessions: 1                                               
+  active-sub-sessions: 1                                               
+   attributes-details: Framed-IP-Address:10.0.0.5:ip-address:0x0A000005
+</code></pre>
+<p>Several attributes are separated with commas:</p>
+<pre><code class="language-ros">/user-manager/user/set [find name=alice] \
+    attributes=Mikrotik-Address-List:vpn-users,Acct-Interim-Interval:120
+</code></pre>
+<p><code>/user-manager/attribute</code> has the attributes that User Manager knows, and the list of predefined attributes is at the end of this page. To send another attribute, add it with its number first:</p>
+<pre><code class="language-ros">/user-manager/attribute/add name=Reply-Message type-id=18 \
+    value-type=string
+</code></pre>
+<p><a href="radius">RADIUS</a> explains what RouterOS does with each attribute.</p>
+<h2 id="group-users">Group users</h2>
+<p>A group gives the same attributes to many users and sets the authentication methods that its users can use. This group gives its users addresses from the pool <code>branch-pool</code>, which must exist on the NAS:</p>
+<pre><code class="language-ros">/user-manager/user/group/add name=branch outer-auths=mschap2,chap \
+    attributes=Framed-Pool:branch-pool
+/user-manager/user/set [find name=alice] group=branch
+</code></pre>
+<ul>
+<li>A new group has no authentication methods. Set <code>outer-auths</code>, or the users of the group cannot log in.</li>
+<li><code>outer-auths</code> are the methods of the request itself: <code>pap</code>, <code>chap</code>, <code>mschap1</code>, <code>mschap2</code>, <code>eap-tls</code>, <code>eap-ttls</code>, <code>eap-peap</code>, <code>eap-mschap2</code>.</li>
+<li><code>inner-auths</code> are the methods inside an EAP-TTLS or EAP-PEAP tunnel: <code>ttls-pap</code>, <code>ttls-chap</code>, <code>ttls-mschap1</code>, <code>ttls-mschap2</code>, <code>peap-mschap2</code>.</li>
+<li>There are two built-in groups. <code>default</code> allows all methods and is the group of a new user. <code>default-anonymous</code> allows EAP-TTLS and EAP-PEAP without inner methods.</li>
+</ul>
+<p>For the EAP methods, set a server certificate from the <a href="certificates">certificate</a> store in <code>certificate</code> of <code>/user-manager</code>.</p>
+<h2 id="limit-speed-traffic-and-time-with-profiles">Limit speed, traffic and time with profiles</h2>
+<p>Without profiles, a user needs only a name and a password. With <code>use-profiles=yes</code>, each user must have a valid profile, and the profile sets the limits. The setting applies to all users: give a profile to the users that exist, including accounts for the router login, before you turn it on.</p>
+<p>The parts are:</p>
+<ul>
+<li>A limitation (<code>/user-manager/limitation</code>) is a set of limits: speed, traffic, time.</li>
+<li>A profile (<code>/user-manager/profile</code>) is a plan for users. It has a validity time and can have a price.</li>
+<li>A profile limitation (<code>/user-manager/profile-limitation</code>) connects a limitation to a profile for the given days and time of day.</li>
+<li>A user profile (<code>/user-manager/user-profile</code>) gives a profile to a user.</li>
+</ul>
+<p>This example gives alice a 30-day plan with 5 Mbps upload and 10 Mbps download:</p>
+<pre><code class="language-ros">/user-manager/set use-profiles=yes
+/user-manager/limitation/add name=10M rate-limit-rx=5M \
+    rate-limit-tx=10M
+/user-manager/profile/add name=home name-for-users=&quot;Home 10M&quot; \
+    validity=30d
+/user-manager/profile-limitation/add profile=home limitation=10M
+/user-manager/user-profile/add user=alice profile=home
+</code></pre>
+<p>The <code>rx</code> values limit what the NAS receives from the user (upload), and the <code>tx</code> values limit what it sends to the user (download). User Manager sends the speed in the Mikrotik-Rate-Limit attribute, and at the next login the NAS creates a queue for the user:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print
+Flags: D - DYNAMIC
+0 D name=&quot;&lt;l2tp-alice&gt;&quot; target=&lt;l2tp-alice&gt; parent=none packet-marks=&quot;&quot;
+    priority=8/8 queue=default-small/default-small limit-at=5M/10M
+    max-limit=5M/10M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+    bucket-size=0.1/0.1
+</code></pre>
+<p>The user profile shows the state of the plan and when it ends:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user-manager/user-profile/print detail
+0  user=alice profile=home state=running-active end-time=2026-12-19 13:29:46
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">State</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>waiting</code></td>
+<td style="text-align: left;">The profile has <code>starts-when=first-auth</code> and the user has not logged in yet.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>running-active</code></td>
+<td style="text-align: left;">The profile that the user has now.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>running</code></td>
+<td style="text-align: left;">A valid profile that is not in use: the user has another profile, or the limits of this one are reached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>used</code></td>
+<td style="text-align: left;">The validity time is over. The profile cannot be used again.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The IPsec service of RouterOS does not apply rate limits.</p>
+</div>
+<h3 id="traffic-and-time-limits">Traffic and time limits</h3>
+<p><code>download-limit</code>, <code>upload-limit</code>, <code>transfer-limit</code> (download and upload together) and <code>uptime-limit</code> set how much a user can use:</p>
+<pre><code class="language-ros">/user-manager/limitation/set [find name=10M] transfer-limit=5M \
+    uptime-limit=10h
+</code></pre>
+<ul>
+<li>The limits count all sessions of the user together, not each session.</li>
+<li>User Manager checks the limits when the NAS sends the counters of a session. The NAS must send accounting with interim updates, and it must accept disconnect requests (<code>/radius/incoming/set accept=yes</code>).</li>
+<li>When a limit is reached, User Manager disconnects the session. The session has <code>terminate-cause=um-limits-reached</code>, and the next logins are refused.</li>
+<li><code>reset-counters-interval</code> clears the counters of the users every hour, day, week or month, counted from <code>reset-counters-start-time</code>.</li>
+</ul>
+<h3 id="validity">Validity</h3>
+<p><code>validity</code> is how long a user can use a profile. With <code>starts-when=assigned</code> the time starts when the profile is given to the user. With <code>starts-when=first-auth</code> it starts at the first login:</p>
+<pre><code class="language-ros">/user-manager/limitation/add name=1M rate-limit-rx=1M \
+    rate-limit-tx=1M
+/user-manager/profile/add name=trial validity=1d \
+    starts-when=first-auth
+/user-manager/profile-limitation/add profile=trial limitation=1M
+</code></pre>
+<p>When the validity time is over, User Manager disconnects the session and the state of the user profile changes to <code>used</code>.</p>
+<h3 id="several-profiles-and-limitations">Several profiles and limitations</h3>
+<ul>
+<li>A user can have several profiles, and uses one at a time. When the profile is over, or its limits are reached, the user gets the next one. <code>/user-manager/user-profile/activate-user-profile</code> makes a profile the active one at once.</li>
+<li>To slow a user down after a traffic limit and not cut the user off, give the user two profiles: the first with the limit, the second with a lower speed and no limit. When the limit is reached the session is disconnected, and the next login uses the second profile.</li>
+<li>A profile can have several limitations for different days and hours. This gives the full speed during the day and a lower speed at night:</li>
+</ul>
+<pre><code class="language-ros">/user-manager/profile-limitation/set [find profile=home] \
+    from-time=6h till-time=23h59m59s
+/user-manager/profile-limitation/add profile=home limitation=1M \
+    from-time=0s till-time=6h
+</code></pre>
+<ul>
+<li>At a time that no limitation of the profile covers, the user cannot log in.</li>
+<li>When several limitations of a profile cover the same time, the user must comply with all of them. For example, one limitation can set a traffic limit for a day and another for a month.</li>
+</ul>
+<h2 id="limit-simultaneous-sessions">Limit simultaneous sessions</h2>
+<p><code>shared-users</code> of a user sets how many sessions the user can have at the same time. The default is 1.</p>
+<pre><code class="language-ros">/user-manager/user/set [find name=alice] shared-users=2
+</code></pre>
+<p>When the user is at the limit and logs in again, User Manager refuses the new login and disconnects the oldest session of the user. The next attempt of the new device is then accepted. The NAS must accept disconnect requests for this.</p>
+<p><code>override-shared-users</code> of a profile replaces the value of the user while the user has this profile.</p>
+<h2 id="restrict-where-a-user-connects-from">Restrict where a user connects from</h2>
+<p><code>caller-id</code> of a user is compared with the Calling-Station-Id attribute of the request. For an L2TP user this is the address that the user connects from, for a PPPoE user and some other services it is a MAC address. A login from another address is refused.</p>
+<pre><code class="language-ros">/user-manager/user/set [find name=alice] caller-id=192.0.2.20
+</code></pre>
+<h2 id="use-one-time-passwords">Use one-time passwords</h2>
+<p>With <code>otp-secret</code>, a user must add a time-based one-time password (TOTP) to the password. The code has six digits and changes every 30 seconds.</p>
+<pre><code class="language-ros">/user-manager/user/add name=bob password=Bob-Pass-1 \
+    otp-secret=JBSWY3DPEHPK3PXP
+</code></pre>
+<ul>
+<li><code>otp-secret</code> is the key in Base32 format, as authenticator applications such as Google Authenticator use it. Enter the same key in the application.</li>
+<li>The user types the password and the code together. When the application shows 620872, bob logs in with <code>Bob-Pass-1620872</code>.</li>
+<li>The password alone is refused, and a code works for one login only.</li>
+<li>The codes depend on the time. Set the <a href="../system-information-and-utilities/clock">clock</a> of the User Manager router correctly, for example with an NTP client.</li>
+</ul>
+<p><em>[gambar: A code generator shows the code 620872 for a key]</em></p>
+<h3 id="log-in-to-the-router-with-a-one-time-password">Log in to the router with a one-time password</h3>
+<p>This gives the router login a second factor. The example runs User Manager on the same router, so the address is 127.0.0.1.</p>
+<p>Add the router to User Manager and add a user. The Mikrotik-Group attribute sets the <a href="user">user group</a> of the login:</p>
+<pre><code class="language-ros">/user-manager/set enabled=yes
+/user-manager/router/add name=local address=127.0.0.1 \
+    shared-secret=Radius-Secret-2
+/user-manager/user/add name=carol password=Carol-Pass-1 \
+    otp-secret=JBSWY3DPEHPK3PXP attributes=Mikrotik-Group:full
+</code></pre>
+<p>Let the router login use RADIUS:</p>
+<pre><code class="language-ros">/radius/add address=127.0.0.1 secret=Radius-Secret-2 service=login
+/user/aaa/set use-radius=yes
+</code></pre>
+<ul>
+<li>The router checks its local users first. It asks RADIUS only for a name that is not a local user.</li>
+<li>Without the Mikrotik-Group attribute, the user gets the group in <code>default-group</code> of <code>/user/aaa</code>.</li>
+<li>A local account logs in without a code. Keep one local administrator account with a strong password: it is the way in when User Manager does not answer or the clock is wrong.</li>
+</ul>
+<p>Add the key to an authenticator application. To log in, type the password and the code that the application shows:</p>
+<p><em>[gambar: An authenticator application shows the code and the time until it changes]</em></p>
+<h2 id="create-many-users-at-once">Create many users at once</h2>
+<p><code>add-batch-users</code> creates users with random names and passwords. This creates three users with six lowercase letters as the name and a password of eight letters and digits, and gives them a profile:</p>
+<pre><code class="language-ros">/user-manager/user/add-batch-users number-of-users=3 \
+    username-length=6 username-characters=lowercase \
+    password-length=8 \
+    password-characters=lowercase,numbers,uppercase \
+    profile=trial comment=guests
+</code></pre>
+<p><code>username-prefix</code> starts all the names with the same text.</p>
+<h2 id="export-and-print-user-credentials">Export and print user credentials</h2>
+<p><code>generate-voucher</code> writes the names and passwords of users to a file from a template. The templates are in the folder <code>um5files/PRIVATE/TEMPLATES/vouchers</code> of the router:</p>
+<ul>
+<li><code>printable_vouchers.html</code> makes a page of cards to print.</li>
+<li><code>export.csv</code> and <code>export.xml</code> make a list for another program.</li>
+</ul>
+<pre><code class="language-ros">/user-manager/user/generate-voucher \
+    voucher-template=printable_vouchers.html [find comment=guests]
+/user-manager/user/generate-voucher voucher-template=export.csv \
+    [find]
+</code></pre>
+<p>The files are written to <code>um5files/PRIVATE/GENERATED/vouchers</code> with <code>gen_</code> before the name of the template. The CSV file has one line for each user:</p>
+<pre><code class="language-text">Login,Password
+&quot;alice&quot;,&quot;Alice-Pass-1&quot;
+&quot;rriieu&quot;,&quot;s3W4t9kt&quot;
+&quot;ysdlre&quot;,&quot;syCVSvKO&quot;
+&quot;vqbnad&quot;,&quot;OGs4Ca7C&quot;
+</code></pre>
+<p>By default, a printable card looks like this:</p>
+<p><em>[gambar: A printable voucher with the user name and the password]</em></p>
+<p>The files can be copied from the router as any other <a href="../system-information-and-utilities/files">file</a>, or opened in a web browser at <code>/um/PRIVATE/GENERATED/vouchers/</code>. The web server refuses the <code>PRIVATE</code> folder until a name and a password are set:</p>
+<pre><code class="language-ros">/user-manager/advanced/set web-private-username=report \
+    web-private-password=Report-Pass-1
+</code></pre>
+<p>The templates can be changed. They can use these variables:</p>
+<ul>
+<li><code>$(username)</code> - the name of the user.</li>
+<li><code>$(password)</code> - the password of the user.</li>
+<li><code>$(userprofname)</code> - the profile that the user has now.</li>
+<li><code>$(userprofendtime)</code> - the time when the profile ends, if it has an end.</li>
+</ul>
+<h2 id="generate-a-usage-report">Generate a usage report</h2>
+<p><code>generate-report</code> writes the sessions to a file, for example for billing. The template <code>report_default.html</code> is in <code>um5files/PRIVATE/TEMPLATES/reports</code>:</p>
+<pre><code class="language-ros">/user-manager/generate-report report-template=report_default.html \
+    columns=username,uptime,download,upload
+</code></pre>
+<p>The report is written to <code>um5files/PRIVATE/GENERATED/reports/gen_report_default.html</code>. In a web browser it is at <code>/um/PRIVATE/GENERATED/reports/gen_report_default.html</code>.</p>
+<p><em>[gambar: A usage report with the user name, uptime, download and upload columns]</em></p>
+<h2 id="see-and-close-sessions">See and close sessions</h2>
+<p><code>/user-manager/session</code> has the active and the finished sessions with their counters. <code>status</code> shows which accounting messages were received:</p>
+<ul>
+<li><code>start</code>, <code>interim</code>, <code>stop</code> - the accounting messages of the session.</li>
+<li><code>close-acked</code> - the session is closed. A closed session can also have <code>expired</code>.</li>
+</ul>
+<p><code>terminate-cause</code> shows why a session ended: for example <code>user-request</code> when the user disconnected and <code>um-limits-reached</code> when User Manager closed the session.</p>
+<p>To disconnect a user, close the session. The NAS must accept disconnect requests:</p>
+<pre><code class="language-ros">/user-manager/session/close-session [find user=alice active]
+</code></pre>
+<p><code>/user-manager/user/monitor</code> shows the totals of a user, and <code>/user-manager/router/reset-counters</code> clears the counters of a router.</p>
+<h2 id="web-page-for-users">Web page for users</h2>
+<p>Each user can open a web page to see the statistics of the account and the profiles. The page is at <code>/um/</code> of the User Manager router, for example <code>http://172.31.30.195/um/</code>. It uses the <code>www</code> and <code>www-ssl</code> <a href="../system-information-and-utilities/services">services</a> of the router.</p>
+<p>The page can be changed. Its files are in the folder <code>um5files</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">File</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>css/login.css</strong></td>
+<td style="text-align: left;">Style sheet of the login page.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>css/user.css</strong></td>
+<td style="text-align: left;">Style sheet of the page of the user.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>img/PayPal_mark_37x23.gif</strong></td>
+<td style="text-align: left;">PayPal logo.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>img/ajax-loader.gif</strong></td>
+<td style="text-align: left;">Image that is shown while a page loads.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>img/mikrotik_logo.png</strong></td>
+<td style="text-align: left;">MikroTik logo that is shown on all pages.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>js/generic.js</strong></td>
+<td style="text-align: left;">JavaScript file of all pages.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>js/login.js</strong></td>
+<td style="text-align: left;">JavaScript file of the login page.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>js/user.js</strong></td>
+<td style="text-align: left;">JavaScript file of the page of the user.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>user/login_dynamic.html</strong></td>
+<td style="text-align: left;">Layout of the login page.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>user/user_dynamic.html</strong></td>
+<td style="text-align: left;">Layout of the page of the user.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sell-profiles">Sell profiles</h3>
+<p>Users can buy a profile on the web page and pay with PayPal. Set the PayPal API account in <code>/user-manager/advanced</code> (<code>paypal-allow</code>, <code>paypal-user</code>, <code>paypal-password</code>, <code>paypal-signature</code>, <code>paypal-currency</code>) and give the profile a <code>price</code>.</p>
+<p>A profile with a price has the button <strong>Buy this Profile</strong>:</p>
+<p><em>[gambar: The profile list with the Buy this Profile button]</em></p>
+<p>The user selects the payment service and continues on the PayPal page:</p>
+<p><em>[gambar: The payment service selection]</em></p>
+<p>When the payment is completed, User Manager asks PayPal to approve it. After the approval the profile is given to the user.</p>
+<p><em>[gambar: The purchased profile in the list of the user]</em></p>
+<p><code>/user-manager/payment</code> lists the payments. Only a payment with the status <code>approved</code> is complete. <code>paypal-use-sandbox=yes</code> uses the test environment of PayPal.</p>
+<h2 id="back-up-and-move-the-database">Back up and move the database</h2>
+<p>User Manager keeps its users, profiles, routers, sessions and payments in its own database, in the folder set with <code>db-path</code> of <code>/user-manager/database</code>.</p>
+<ul>
+<li>The system <a href="../getting-started/configuration-management/backup">backup</a> and <code>/export</code> of the router do not include the database.</li>
+<li><code>enabled</code> and <code>db-path</code> are part of the router configuration, not of the database. A configuration reset changes them.</li>
+<li>Save the database before and after large changes.</li>
+</ul>
+<pre><code class="language-ros">/user-manager/database/save name=um-backup
+</code></pre>
+<p>This writes the file <code>um-backup.umb</code>. <code>overwrite=yes</code> replaces a file that exists. To restore, also on another router, copy the file to the router and load it:</p>
+<pre><code class="language-ros">/user-manager/database/load name=um-backup
+</code></pre>
+<p><code>load</code> replaces the database with the saved one. <code>/user-manager/database/optimize-db</code> compacts the database file.</p>
+<p>On a new router, install the <code>user-manager</code> package and set <code>enabled=yes</code> as well: these are not in the saved file. If the address of the User Manager router changes, change it in the <code>/radius</code> entry of each NAS.</p>
+<h3 id="migrate-from-routeros-v6">Migrate from RouterOS v6</h3>
+<p>After an upgrade from RouterOS v6, User Manager starts with a new, empty database. To convert the old one, the folder of the old User Manager (<code>user-manager</code>) with all its files must be on the router. The folder can be renamed or copied to another router.</p>
+<pre><code class="language-ros">/user-manager/database/migrate-legacy-db \
+    database-path=user-manager
+</code></pre>
+<p>The command converts the users, profiles, user profiles, limitations, profile limitations, user counters, routers and sessions. <code>overwrite=yes</code> replaces the current database.</p>
+<h2 id="l2tpipsec-server-with-user-manager-on-the-same-router">L2TP/IPsec server with User Manager on the same router</h2>
+<p>In this example one router is the L2TP/IPsec server and runs User Manager for its users.</p>
+<p><em>[gambar: Two clients connect over the internet to the router with L2TP/IPsec tunnels]</em></p>
+<p>Enable User Manager, add the router itself as a NAS, and add a user:</p>
+<pre><code class="language-ros">/user-manager/set enabled=yes
+/user-manager/router/add name=local address=127.0.0.1 \
+    shared-secret=Radius-Secret-2
+/user-manager/user/add name=user1 password=Example-pass-1
+</code></pre>
+<p>Add the RADIUS client with the same secret and let PPP use it:</p>
+<pre><code class="language-ros">/radius/add address=127.0.0.1 secret=Radius-Secret-2 service=ppp
+/radius/incoming/set accept=yes
+/ppp/aaa/set use-radius=yes interim-update=1m
+</code></pre>
+<p>Add a pool for the users, set the addresses in the PPP profile, and enable the L2TP server with IPsec:</p>
+<pre><code class="language-ros">/ip/pool/add name=vpn-pool ranges=192.168.99.2-192.168.99.100
+/ppp/profile/set default-encryption local-address=192.168.99.1 \
+    remote-address=vpn-pool
+/interface/l2tp-server/server/set enabled=yes use-ipsec=required \
+    ipsec-secret=Example-ipsec-secret-1
+</code></pre>
+<p>The users of an L2TP/IPsec server are PPP users, so the service of the RADIUS client is <code>ppp</code>.</p>
+<h2 id="find-why-a-login-is-refused">Find why a login is refused</h2>
+<p>User Manager writes the reason to the log when the <code>manager</code> topic is logged:</p>
+<pre><code class="language-ros">/system/logging/add topics=manager action=memory
+</code></pre>
+<p>The log of the User Manager router then has a line for each refused request, for example <code>rejected for user: &lt;alice&gt; no valid profile for this user</code>. Read it with <code>/log/print where topics~"manager"</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reason in the log</th>
+<th style="text-align: left;">What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Username or Password wrong.</code></td>
+<td style="text-align: left;">The name and the password. A user with <code>otp-secret</code> must add the current code to the password.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>OTP already used</code></td>
+<td style="text-align: left;">The code of a one-time password works for one login. Wait for the next code.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>no valid profile for this user</code></td>
+<td style="text-align: left;"><code>use-profiles=yes</code> is set and the user has no profile, or the validity of the profile is over.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Uptime limit reached</code>, <code>Transfer limit reached</code></td>
+<td style="text-align: left;">The user reached a limit of the limitation. Give the user another profile, or wait for the counters to be cleared.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>simultaneous user session limit reached</code></td>
+<td style="text-align: left;">The user has <code>shared-users</code> sessions. User Manager disconnects the oldest one, and the next attempt is accepted.</td>
+</tr>
+</tbody>
+</table>
+<p>A login is also refused when the method of the request is not in <code>outer-auths</code> of the group of the user, and at a time that no limitation of the profile covers.</p>
+<h2 id="predefined-attributes">Predefined attributes</h2>
+<p>These attributes exist in <code>/user-manager/attribute</code> after the installation. Vendor 14988 is MikroTik. <a href="radius">RADIUS</a> explains the attributes.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Vendor ID</th>
+<th style="text-align: right;">Type ID</th>
+<th style="text-align: left;">Value type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Framed-IP-Address</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">ip-address</td>
+</tr>
+<tr>
+<td style="text-align: left;">Framed-IP-Netmask</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">ip-address</td>
+</tr>
+<tr>
+<td style="text-align: left;">Session-Timeout</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Idle-Timeout</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Tunnel-Type</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">64</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Tunnel-Medium-Type</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">65</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Tunnel-Private-Group-ID</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">81</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Acct-Interim-Interval</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Framed-Pool</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">88</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Framed-IPv6-Prefix</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">97</td>
+<td style="text-align: left;">ip6-prefix</td>
+</tr>
+<tr>
+<td style="text-align: left;">Framed-IPv6-Pool</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Delegated-IPv6-Prefix</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">123</td>
+<td style="text-align: left;">ip6-prefix</td>
+</tr>
+<tr>
+<td style="text-align: left;">Framed-IPv6-Address</td>
+<td style="text-align: left;">0 (standard)</td>
+<td style="text-align: right;">168</td>
+<td style="text-align: left;">ip-address</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Recv-Limit</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Xmit-Limit</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Group</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Forward</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Skip-Dot1x</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Enc-Algo</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Enc-Key</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Rate-Limit</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Realm</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Host-IP</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">ip-address</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Mark-Id</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Advertise-URL</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Advertise-Interval</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Recv-Limit-Gigawords</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Xmit-Limit-Gigawords</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-PSK</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Total-Limit</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Total-Limit-Gigawords</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Address-List</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-MPKey</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Comment</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Delegated-IPv6-Pool</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-DHCP-Option-Set</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-DHCP-Option-Param-STR1</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-DHCP-Option-Param-STR2</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-VLANID</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-VLANIDtype</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">uint32</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Minsignal</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Wireless-Maxsignal</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: left;">string</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mikrotik-Switching-Filter</td>
+<td style="text-align: left;">14988</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">string</td>
+</tr>
+</tbody>
+</table>
+<p>All predefined attributes are sent in Access-Accept messages. <code>packet-types</code> of an attribute can add Access-Challenge.</p>
+<p>Values of Tunnel-Type (<a href="https://tools.ietf.org/html/rfc2868">RFC 2868</a>):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Value</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Point-to-Point Tunneling Protocol (PPTP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">Layer Two Forwarding (L2F)</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Layer Two Tunneling Protocol (L2TP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">Ascend Tunnel Management Protocol (ATMP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">Virtual Tunneling Protocol (VTP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">IP Authentication Header in the Tunnel-mode (AH)</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">IP-in-IP Encapsulation (IP-IP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">Minimal IP-in-IP Encapsulation (MIN-IP-IP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">IP Encapsulating Security Payload in the Tunnel-mode (ESP)</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">Generic Route Encapsulation (GRE)</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">Bay Dial Virtual Services (DVS)</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">IP-in-IP Tunneling</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">Virtual LAN</td>
+</tr>
+</tbody>
+</table>
+<p>Values of Tunnel-Medium-Type:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Value</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">IPv4 (IP version 4)</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">IPv6 (IP version 6)</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">NSAP</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">HDLC (8-bit multidrop)</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">BBN 1822</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">802 (includes all 802 media plus Ethernet "canonical format")</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">E.163 (POTS)</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">E.164 (SMDS, Frame Relay, ATM)</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">F.69 (Telex)</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">X.121 (X.25, Frame Relay)</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">IPX</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">Appletalk</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">Decnet IV</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">Banyan Vines</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">E.164 with NSAP format subaddress</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../cli-reference/user-manager/"><code>/user-manager</code></a>, <a href="../cli-reference/user-manager/user/"><code>/user-manager/user</code></a>, <a href="../cli-reference/user-manager/user/group"><code>/user-manager/user/group</code></a>, <a href="../cli-reference/user-manager/router/"><code>/user-manager/router</code></a>, <a href="../cli-reference/user-manager/session/"><code>/user-manager/session</code></a></li>
+<li><a href="../cli-reference/user-manager/limitation"><code>/user-manager/limitation</code></a>, <a href="../cli-reference/user-manager/profile"><code>/user-manager/profile</code></a>, <a href="../cli-reference/user-manager/profile-limitation"><code>/user-manager/profile-limitation</code></a>, <a href="../cli-reference/user-manager/user-profile/"><code>/user-manager/user-profile</code></a></li>
+<li><a href="../cli-reference/user-manager/attribute"><code>/user-manager/attribute</code></a>, <a href="../cli-reference/user-manager/database/"><code>/user-manager/database</code></a>, <a href="../cli-reference/user-manager/advanced"><code>/user-manager/advanced</code></a>, <a href="../cli-reference/user-manager/payment"><code>/user-manager/payment</code></a></li>
+<li><a href="radius">RADIUS</a></li>
+<li><a href="ppp-aaa">PPP AAA</a></li>
+<li><a href="dot1x">Dot1X</a></li>
+<li><a href="../wireless/user-guides/enterprise-wireless-security-user">Enterprise wireless security with User Manager</a></li>
+</ul>
+<hr />
+<h1 id="user">User</h1>
+<blockquote>
+<p>RouterOS user management: local user database, user groups and policies, password complexity and expiry, session inactivity handling, SSH key authentication, and RADIUS authentication and accounting for management...</p>
+</blockquote>
+<h1 id="user_1">User</h1>
+<p>The router user facility in <code>/user</code> manages the accounts that access the router with management tools: WinBox, WebFig, the console over SSH or Telnet, the API and the REST API. RouterOS authenticates users against the local user database or a RADIUS server. Each user belongs to exactly one user group, and the group's policies define what the user can do on the router. For hardening recommendations (per-administrator accounts, key login, service restrictions), see <a href="../getting-started/securing-your-router">Securing your router</a>.</p>
+<h2 id="create-a-user">Create a user</h2>
+<p>The default configuration has one user, <code>admin</code>, in the <code>full</code> group. Create a group with the policies the users need, then add the users:</p>
+<pre><code class="language-ros">/user/group/add name=managers policy=ssh,read,write,password
+/user/add name=john group=managers password=&quot;StrongPass123!&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user/group/print where name=managers
+4  name=&quot;managers&quot;
+   policy=ssh,read,write,password,!local,!telnet,!ftp,!reboot,!policy,!test,
+      !winbox,!web,!sniff,!sensitive,!api,!romon,!rest-api skin=default
+</code></pre>
+<p>Policies that are not listed are revoked from the group. Passwords accept any characters, including spaces and UTF-8. When you add a user, the password argument is mandatory; an explicitly empty password (<code>password=""</code>) allows logging in with a blank password.</p>
+<p>Set <code>address</code> to an IP prefix to allow the user to log in only from matching source addresses:</p>
+<pre><code class="language-ros">/user/set john address=192.168.88.0/24
+</code></pre>
+<p>User names accept letters, digits and the characters <code>_</code> <code>.</code> <code>#</code> <code>-</code> <code>@</code>, must end with a letter or a digit, and cannot start with <code>.</code> or <code>-</code>.</p>
+<p>For all user properties, see <a href="../cli-reference/user/"><code>/user</code></a> in the CLI reference.</p>
+<h2 id="change-a-password">Change a password</h2>
+<p>Users change their own password with the <code>/password</code> command, in interactive mode or in one line:</p>
+<pre><code class="language-ros">/password old-password=StrongPass123! new-password=NewStrongPass456 confirm-new-password=NewStrongPass456
+</code></pre>
+<p>The user's group must include the <code>password</code> policy, otherwise the command fails with "not enough permissions".</p>
+<p>An administrator changes another user's password with <code>/user/set</code>:</p>
+<pre><code class="language-ros">/user/set john password=&quot;NewStrongPass456&quot;
+</code></pre>
+<p>To force a user to set a new password at the next login, expire the current password:</p>
+<pre><code class="language-ros">/user/expire-password john
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user/print where name=john
+Flags: E - EXPIRED
+Columns: NAME, GROUP, ADDRESS, INACTIVITY-POLICY
+#   NAME  GROUP     ADDRESS          INACTIVITY-POLICY
+2 E john  managers  192.168.88.0/24  none
+</code></pre>
+<p>At the next interactive login the router asks the user for a new password; a new password set by an administrator also clears the <code>E</code> flag.</p>
+<p>Require stronger passwords with the complexity settings in <a href="../cli-reference/user/settings"><code>/user/settings</code></a>: <code>minimum-password-length</code> and <code>minimum-categories</code> (how many of the groups digits, lowercase letters, uppercase letters and symbols the password must contain).</p>
+<h2 id="user-groups">User groups</h2>
+<p>Groups assign access rights to users. The full list of policies and what each one grants is in <a href="../cli-reference/user/group"><code>/user/group</code></a>.</p>
+<p>RouterOS has three default groups which cannot be deleted:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user/group/print
+0  name=&quot;read&quot;
+   policy=local,telnet,ssh,reboot,read,test,winbox,password,web,sniff,
+      sensitive,api,romon,rest-api,!ftp,!write,!policy skin=default
+
+1  name=&quot;write&quot;
+   policy=local,telnet,ssh,reboot,read,write,test,winbox,password,web,sniff,
+      sensitive,api,romon,rest-api,!ftp,!policy skin=default
+
+2  name=&quot;full&quot;
+   policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,
+      web,sniff,sensitive,api,romon,rest-api
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Even the <code>read</code> group includes the <code>reboot</code> and <code>sensitive</code> policies. Do not give it to untrusted users; create a custom group with only the policies they need instead.</p>
+</div>
+<p>The exclamation mark <code>!</code> in front of a policy revokes it from the group.</p>
+<h3 id="create-a-read-only-user">Create a read-only user</h3>
+<p>To let someone look at the configuration without changing anything, create a group with the <code>read</code> policy and the policies for the tools the user logs in with, then add the user to it:</p>
+<pre><code class="language-ros">/user/group/add name=readonly policy=read,winbox,web,ssh
+/user/add name=viewer group=readonly password=&quot;StrongPass123!&quot;
+</code></pre>
+<p>The user can see the configuration in WinBox, WebFig and over SSH. Changing the configuration, rebooting, running tools such as ping and torch, and changing their own password with <code>/password</code> fail with <code>not enough permissions</code>. Without the <code>sensitive</code> policy, the user cannot see passwords: <code>/export show-sensitive</code> shows them as <code>*****</code>.</p>
+<h2 id="lock-or-close-inactive-sessions">Lock or close inactive sessions</h2>
+<p>Set <code>inactivity-timeout</code> (range 1 minute to 24 hours) and <code>inactivity-policy</code> on a user to handle idle console sessions:</p>
+<ul>
+<li><code>logout</code> closes the idle session with the message "<code>&lt;name&gt;</code> was logged out due to inactivity".</li>
+<li><code>lockscreen</code> locks the session and asks for the user's password to resume it; <kbd>Control</kbd>+<kbd>D</kbd> closes the locked session.</li>
+</ul>
+<h2 id="ssh-keys">SSH keys</h2>
+<p>The <code>/user/ssh-keys</code> menu stores public SSH keys assigned to users, and <code>/user/ssh-keys/private</code> stores the private keys that identify the router itself when it connects to other devices with SSH, for example with <code>/system/ssh</code> or <code>/tool/fetch</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When a user has an SSH key assigned, SSH no longer accepts password authentication for that user. See the <a href="../management-tools/ssh">SSH</a> page for the supported configurations.</p>
+</div>
+<p>Upload the key file to the router and import it for a user:</p>
+<pre><code class="language-ros">/user/ssh-keys/import public-key-file=mykey.pub user=john info=&quot;john laptop&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user/ssh-keys/print where user=john
+Columns: USER, KEY-TYPE, BITS, INFO
+#  USER  KEY-TYPE  BITS  INFO
+1  john  ed25519    256  john laptop
+</code></pre>
+<p>Public key import accepts OpenSSH one-line, PKCS#1 PEM (<code>BEGIN RSA PUBLIC KEY</code>) and PKCS#8/SPKI PEM (<code>BEGIN PUBLIC KEY</code>) files. You can also paste an OpenSSH-format key directly with <code>/user/ssh-keys/add key="ssh-ed25519 AAAA..." user=john</code>; a comment at the end of the key string becomes the key's <code>info</code>.</p>
+<p>Private key import accepts PKCS#1 PEM (<code>BEGIN RSA PRIVATE KEY</code>) and PKCS#8 files, plain (<code>BEGIN PRIVATE KEY</code>) and encrypted (<code>BEGIN ENCRYPTED PRIVATE KEY</code>, requires the <code>passphrase</code> argument):</p>
+<pre><code class="language-ros">/user/ssh-keys/private/import private-key-file=routerkey.pem user=john passphrase=keypass
+</code></pre>
+<p>OpenSSH-format private keys (<code>BEGIN OPENSSH PRIVATE KEY</code>) are not accepted. For all properties, see <a href="../cli-reference/user/ssh-keys/"><code>/user/ssh-keys</code></a> and <a href="../cli-reference/user/ssh-keys/private/"><code>/user/ssh-keys/private</code></a> in the CLI reference.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>RSA keys with a weak public exponent (7 or lower) continue to work, but are flagged with the comment <code>key uses insecure RSA public exponent!</code> in the print output of <code>/user/ssh-keys</code> and <code>/user/ssh-keys/private</code>. Replace such a key pair with a stronger one.</p>
+</div>
+<h2 id="radius-authentication">RADIUS authentication</h2>
+<p>Router user remote AAA authenticates management logins against a RADIUS server and sends it accounting records. Configure the RADIUS client first: add a <a href="../cli-reference/radius/"><code>/radius</code></a> entry with <code>service=login</code>, then enable <a href="../cli-reference/user/aaa"><code>/user/aaa</code></a>. For the RADIUS server, any RouterOS with the <a href="user-manager">User Manager</a> package works:</p>
+<pre><code class="language-ros"># on the RADIUS server
+/user-manager/set enabled=yes
+/user-manager/router/add name=main address=192.168.88.24 shared-secret=radiusSecret
+/user-manager/user/add name=john-remote password=JohnPass456
+
+# on the router the users log in to
+/radius/add service=login address=192.168.88.36 secret=radiusSecret
+/user/aaa/set use-radius=yes
+</code></pre>
+<p>User Manager allows one concurrent login per user by default (<code>shared-users</code>); a second login with the same name is refused while the first session is active.</p>
+<p>RADIUS is consulted only for user names that do not exist in the local user database; a local user with the same name always takes precedence. RADIUS-authenticated users get <code>default-group</code> (<code>read</code> by default), unless the server sends a <code>Mikrotik-Group</code> attribute naming a different local group (in User Manager, set it on the user with <code>attributes="Mikrotik-Group:full"</code>). Groups listed in <code>exclude-groups</code> are never accepted from the server and the user gets <code>default-group</code> instead.</p>
+<p>Active RADIUS-authenticated sessions show the <code>R</code> (radius) flag in <code>/user/active/print</code>.</p>
+<h2 id="monitor-active-sessions">Monitor active sessions</h2>
+<p><code>/user/active/print</code> shows the connected management sessions:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /user/active/print
+Flags: R - RADIUS
+Columns: WHEN, NAME, ADDRESS, VIA
+#   WHEN                 NAME         ADDRESS        VIA
+0 R 2026-09-25 09:32:20  john-remote  192.168.88.17  ssh
+</code></pre>
+<p>Close a session with <code>/user/active/remove</code>:</p>
+<pre><code class="language-ros">/user/active/remove [find name=john-remote]
+</code></pre>
+<p>For the session properties, including the <code>M</code> (by-romon) flag and the full <code>via</code> list, see <a href="../cli-reference/user/active"><code>/user/active</code></a>.</p>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="expired-password-flow">Expired password flow</h3>
+<p><code>/user/expire-password</code> sets the <code>E</code> flag on the user. At the next interactive login the router prints "Change your password (Ctrl-C to skip)", then asks for "new password" and "repeat new password"; a mismatch prints "New passwords do not match!" and the prompt repeats. Pressing <kbd>Control</kbd>+<kbd>C</kbd> skips the change. Non-interactive sessions (command execution over SSH) are not prompted. Setting a new password for the user clears the flag.</p>
+<h3 id="radius-authentication-and-accounting">RADIUS authentication and accounting</h3>
+<ul>
+<li>Password logins forwarded to RADIUS are authenticated with MS-CHAPv2 (the Access-Request carries <code>MS-CHAP-Challenge</code> and <code>MS-CHAP2-Response</code>).</li>
+<li>With <code>accounting=yes</code> the router sends an Accounting-Request (Start) at login and (Stop) at logout; <code>interim-update</code> sets the interval for Interim-Update messages while a session is active. Management session accounting carries no bandwidth counters.</li>
+<li>The <code>radius</code> log topic shows the exact attributes exchanged: <code>/system/logging/add topics=radius</code>.</li>
+</ul>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="../cli-reference/user/"><code>/user</code></a>, <a href="../cli-reference/user/settings"><code>/user/settings</code></a>, <a href="../cli-reference/user/group"><code>/user/group</code></a>, <a href="../cli-reference/user/active"><code>/user/active</code></a>, <a href="../cli-reference/user/aaa"><code>/user/aaa</code></a>, <a href="../cli-reference/user/ssh-keys/"><code>/user/ssh-keys</code></a> in the CLI reference</li>
+<li><a href="radius">RADIUS client</a></li>
+<li><a href="user-manager">User Manager</a></li>
+<li><a href="../management-tools/ssh">SSH</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

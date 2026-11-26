@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostics and Monitoring · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Diagnostics and Monitoring</p>
+      <h1 id="diagnostics-and-monitoring-part-22">Diagnostics and Monitoring (part 2/2)</h1>
+<h1 id="graphing">Graphing</h1>
+<blockquote>
+<p>RouterOS graphing: record CPU, memory and disk usage and interface and simple queue traffic over time, view the daily, weekly, monthly and yearly graphs on the router's /graphs/ web page or in WinBox, choose who can...</p>
+</blockquote>
+<h1 id="graphing_1">Graphing</h1>
+<p>Graphing records how the router is used over time and draws graphs of it:</p>
+<ul>
+<li>CPU, memory and disk usage.</li>
+<li>Traffic through an interface.</li>
+<li>Traffic through a simple queue.</li>
+</ul>
+<p>You see the graphs in a web browser on the router's <code>/graphs/</code> page, or in WinBox. Nothing is graphed until you add a rule for it: the router has no graphing rules by default. For a walk-through, watch the <a href="https://youtu.be/FTQEnDZVHNc">graphing video on the MikroTik YouTube channel</a>.</p>
+<h2 id="graph-an-interface-and-the-routers-resources">Graph an interface and the router's resources</h2>
+<p>To graph the internet traffic on <code>ether1</code> (the WAN port of the default configuration) and the CPU, memory and disk usage, and show them only to your own computer at 192.168.88.10, add an interface rule and a resource rule:</p>
+<pre><code class="language-ros">/tool/graphing/interface/add interface=ether1 \
+    allow-address=192.168.88.10/32
+/tool/graphing/resource/add allow-address=192.168.88.10/32
+</code></pre>
+<p>To create the same rules in WinBox:</p>
+<ol>
+<li>Open <strong>Tools &gt; Graphing</strong> and select <strong>Interface Rules</strong>.</li>
+<li>Select <strong>New</strong>, set <strong>Interface</strong> to <code>ether1</code>, and enter <code>192.168.88.10/32</code> in <strong>Allow Address</strong>. Leave <strong>Enabled</strong> and <strong>Store on Disk</strong> selected, then select <strong>OK</strong>.</li>
+<li>Select <strong>Resource Rules</strong> and <strong>New</strong>. Enter the same <strong>Allow Address</strong>, leave <strong>Enabled</strong> and <strong>Store on Disk</strong> selected, and select <strong>OK</strong>. This rule collects CPU, memory and disk usage together.</li>
+</ol>
+<p><em>[gambar: WinBox Interface Graphing Rule dialog with ether1 selected, Allow Address set to 192.168.88.10/32, and Enabled and Store on Disk selected]</em></p>
+<p>Open <code>http://192.168.88.1/graphs/</code> in a web browser on that computer. The page lists the graphs your address can see: CPU usage, Memory usage, Disk usage and <code>ether1</code>. Each graph page has four graphs:</p>
+<ul>
+<li>Daily graph - 5-minute averages.</li>
+<li>Weekly graph - 30-minute averages.</li>
+<li>Monthly graph - 2-hour averages.</li>
+<li>Yearly graph - 1-day averages.</li>
+</ul>
+<p>The first values appear within a few minutes, when the first 5-minute average is complete. Under each graph, the page shows the maximum, average and current value. Traffic graphs are in bits per second, with separate values for incoming (<code>In</code>, received on the interface) and outgoing (<code>Out</code>, sent) traffic. Every value is an average over the graph's interval, so a short burst shows lower than its peak.</p>
+<p><em>[gambar: Memory usage graphs in a web browser: daily, weekly, monthly and yearly graphs of the used memory, each with its maximum, average and current value]</em></p>
+<p>To graph every interface, add a rule with <code>interface=all</code>.</p>
+<h2 id="graph-simple-queues">Graph simple queues</h2>
+<p>If you limit each customer with a <a href="../firewall-and-quality-of-service/queues/simple-queue">simple queue</a>, you can graph every queue and let each customer see the graph of their own queue. For example, with these customer queues:</p>
+<pre><code class="language-ros">/queue/simple/add name=customer-12 target=192.168.88.12/32 \
+    max-limit=20M/20M
+/queue/simple/add name=customer-13 target=192.168.88.13/32 \
+    max-limit=50M/50M
+</code></pre>
+<p>Graph all simple queues and let the operator's computer, 192.168.88.10, see every graph:</p>
+<pre><code class="language-ros">/tool/graphing/queue/add simple-queue=all allow-address=192.168.88.10/32
+</code></pre>
+<p>In WinBox, open <strong>Tools &gt; Graphing &gt; Queue Rules</strong> and select <strong>New</strong>. Set <strong>Simple Queue</strong> to <code>all</code> and <strong>Allow Address</strong> to <code>192.168.88.10/32</code>. Leave <strong>Enabled</strong>, <strong>Store on Disk</strong>, and <strong>Allow Target</strong> selected, then select <strong>OK</strong>. To graph one queue, select its name in <strong>Simple Queue</strong> instead.</p>
+<p><em>[gambar: WinBox Queue Graphing Rule dialog with all simple queues selected, Allow Address set to 192.168.88.10/32, and Allow Target selected]</em></p>
+<p><code>simple-queue=all</code> also graphs the queues you add later and the dynamic queues of PPP users. With <code>allow-target=yes</code> (default), every address in a queue's <code>target</code> also sees that queue's graph. The customer at 192.168.88.12 opens <code>http://192.168.88.1/graphs/</code> and finds the <code>customer-12</code> graph there, but not the graphs of the other customers. In a queue graph, <code>In</code> is the traffic to the target (the customer's download) and <code>Out</code> the traffic from it (upload), each also as a share of the queue's <code>max-limit</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>With <code>allow-target=yes</code>, a queue with a wide target shows its graph to everyone in it: a parent queue with the target 192.168.88.0/24 to the whole subnet, and a queue whose target is 0.0.0.0/0 or an interface to every client that reaches the router's web server. The dynamic queues of PPPoE and other PPP users have their interface as the target. Another rule for the same queue with <code>allow-target=no</code> does not hide the graph, because a client sees a graph when any rule allows it. When such queues exist, set <code>allow-target=no</code> on the <code>simple-queue=all</code> rule, and add a rule with <code>allow-target=yes</code> for each customer queue that should be visible to its customer.</p>
+</div>
+<h2 id="graph-pppoe-users">Graph PPPoE users</h2>
+<p><code>interface=all</code> graphs the dynamic interface of each PPPoE user, such as <code>&lt;pppoe-customer-12&gt;</code> for the user <code>customer-12</code>, while the user is connected, and the index lists it again after the user reconnects. A rule for one dynamic interface does not survive a reconnect: the interface gets a new ID, and the rule shows an unknown interface such as <code>*F00000</code>. To graph one user permanently, create a static PPPoE server binding for the user, with <code>service</code> set to the <code>service-name</code> of your PPPoE server, and graph the binding:</p>
+<pre><code class="language-ros">/interface/pppoe-server/add name=pppoe-customer-12 user=customer-12 \
+    service=isp
+/tool/graphing/interface/add interface=pppoe-customer-12 \
+    allow-address=192.168.88.10/32
+</code></pre>
+<h2 id="control-who-can-see-the-graphs">Control who can see the graphs</h2>
+<p>The graph pages need no login. A client sees a graph when its address is in the <code>allow-address</code> of a rule for that graph. The default <code>allow-address=0.0.0.0/0</code> allows every IPv4 address, so always set it to the addresses that need the graphs. A change of <code>allow-address</code> applies immediately:</p>
+<pre><code class="language-ros">/tool/graphing/interface/set [find] allow-address=192.168.88.10/32
+</code></pre>
+<ul>
+<li>Access is per graph type: an interface rule opens the graphs of its interfaces, a resource rule the CPU, memory and disk graphs, and a queue rule the graphs of its queues.</li>
+<li>To allow several address ranges, add a rule for each range. You can add several rules for the same interface, queue or the resources, each with its own <code>allow-address</code>.</li>
+<li>The <code>/graphs/</code> page lists only the graphs your address can see. A graph page you are not allowed to see shows <code>ERROR: NO ACCESS!</code>; a graph that does not exist shows <code>ERROR: INVALID ID!</code>.</li>
+<li>A disabled rule does not show its graphs.</li>
+<li>The <code>interface</code> or <code>simple-queue</code> of a rule cannot be changed: remove the rule and add a new one.</li>
+</ul>
+<p>The graphs are served by the router's web server, on HTTP by the <code>www</code> service and on HTTPS by <code>www-ssl</code>, which needs a certificate. The firewall of the default configuration drops connections to the router from the internet, so the graphs are reachable only from the LAN. To limit which addresses can reach the web server at all (WebFig and the REST API included), set <code>available-from</code> of these services in <a href="../system-information-and-utilities/services">Services</a>.</p>
+<p>To show the graphs to customers without the WebFig login page, turn off WebFig in <a href="../cli-reference/ip/service/webserver"><code>/ip/service/webserver</code></a> and manage the router with WinBox or SSH:</p>
+<pre><code class="language-ros">/ip/service/webserver/set webfig-plain=no webfig-secure=no
+</code></pre>
+<p>To turn off the graph pages and keep the rest of the web server:</p>
+<pre><code class="language-ros">/ip/service/webserver/set graphs-plain=no graphs-secure=no
+</code></pre>
+<h2 id="keep-the-graphs-across-reboots">Keep the graphs across reboots</h2>
+<p>With <code>store-on-disk=yes</code> (default), the router writes the collected data to its built-in storage, where its files are, and the graphs survive a reboot. With <code>store-on-disk=no</code>, the data stays in RAM, and the graph starts empty after a reboot. The router cannot write graph data to a USB or SD disk.</p>
+<p><code>store-every</code> sets how often the router writes the collected data: every 5 minutes (default), every hour or once a day. A reboot from RouterOS keeps the data collected since the last write. The setting applies to all rules:</p>
+<pre><code class="language-ros">/tool/graphing/set store-every=hour
+</code></pre>
+<p>In WinBox, open <strong>Tools &gt; Graphing</strong>, select <strong>Interface Rules</strong>, and select <strong>Graphing Settings</strong> in the right panel. Choose the write interval in <strong>Store Every</strong> and select <strong>OK</strong>. <strong>Page Refresh</strong> controls how often the browser reloads the web graph pages; it does not change the data collection interval. The screenshot shows the default values.</p>
+<p><em>[gambar: WinBox Graphing Settings dialog showing Store Every set to 5 min and Page Refresh set to 00:05:00]</em></p>
+<p>To change whether a rule keeps its data across reboots, open the rule in <strong>Interface Rules</strong>, <strong>Queue Rules</strong>, or <strong>Resource Rules</strong>, change <strong>Store on Disk</strong>, and select <strong>OK</strong>.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>On a device with a small flash storage, every rule with <code>store-on-disk=yes</code> adds data and writes to the flash. Set <code>store-on-disk=no</code> on the rules whose graphs you do not need after a reboot, for example a rule with <code>interface=all</code>.</p>
+</div>
+<h2 id="graphs-in-winbox">Graphs in WinBox</h2>
+<p>WinBox shows the same graphs. Open <strong>Tools &gt; Graphing</strong>, select the <strong>Interface Graphs</strong>, <strong>Queue Graphs</strong> or <strong>Resource Graphs</strong> tab, and open an entry. Select <strong>Daily</strong>, <strong>Weekly</strong>, <strong>Monthly</strong>, or <strong>Yearly</strong> in the graph window to change the time range. Drag the window edge to enlarge the graph.</p>
+<p><em>[gambar: WinBox Graphing window with Resource Graphs selected and an enlarged Memory graph window showing the Daily, Weekly, Monthly and Yearly tabs; no samples have been collected]</em></p>
+<h2 id="troubleshoot-the-graphs">Troubleshoot the graphs</h2>
+<ul>
+<li><code>/graphs/</code> lists no graphs - No rule exists, or none allows your address. Check <code>allow-address</code> with <code>/tool/graphing/interface/print</code>, <code>/tool/graphing/queue/print</code> and <code>/tool/graphing/resource/print</code>.</li>
+<li>A new interface graph is missing, or its page shows <code>ERROR: INVALID ID!</code> - The graph can take a few minutes to appear after you add the rule. To show it at once, disable and enable the rule.</li>
+<li>A graph page shows <code>ERROR: NO ACCESS!</code> - The rules for that graph do not allow your address. For a queue graph, your address can also be in the queue's <code>target</code> when the rule has <code>allow-target=yes</code>.</li>
+<li><code>Can't change interface, please create new config</code> or <code>Can't change queue, please create new config</code> - The interface or queue of a rule cannot be changed. Remove the rule and add a new one.</li>
+<li>The graphs are empty after a reboot - The rule has <code>store-on-disk=no</code>.</li>
+<li>A rule shows an interface such as <code>*F00000</code> - The rule named a dynamic interface, such as a PPPoE user, that has reconnected. Graph the user through a static PPPoE server binding.</li>
+<li><code>/graphs/</code> answers <code>403 Forbidden</code> - The graph pages are turned off with <code>graphs-plain</code> (HTTP) or <code>graphs-secure</code> (HTTPS) in <code>/ip/service/webserver</code>.</li>
+</ul>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="web-pages">Web pages</h3>
+<ul>
+<li><code>/graphs/</code> - The list of graphs the client can see.</li>
+<li><code>/graphs/cpu/</code>, <code>/graphs/ram/</code>, <code>/graphs/hdd/</code> - CPU, memory and disk usage.</li>
+<li><code>/graphs/iface/&lt;interface&gt;/</code> - Traffic of an interface.</li>
+<li><code>/graphs/queue/&lt;queue&gt;/</code> - Traffic of a simple queue.</li>
+</ul>
+<p>The index links the names URL-encoded, for example <code>/graphs/queue/customer%2D12/</code>; the plain name works too. A queue page also shows the queue's target, <code>max-limit</code> and <code>limit-at</code>. Each graph page loads its graphs as GIF images from its own folder: <code>daily.gif</code>, <code>weekly.gif</code>, <code>monthly.gif</code> and <code>yearly.gif</code>. The pages send the <code>page-refresh</code> value (default 300 seconds) as the HTTP <code>refresh</code> header, so the browser reloads them; with <code>page-refresh=never</code>, the header is left out. A page the client is not allowed to see answers with HTTP status 200 and the text <code>ERROR: NO ACCESS!</code> or <code>ERROR: INVALID ID!</code>, not with an HTTP error.</p>
+<h3 id="rules">Rules</h3>
+<ul>
+<li>A rule without <code>interface</code> or <code>simple-queue</code> applies to <code>all</code>.</li>
+<li>A second rule with the same interface or queue and the same <code>allow-address</code> is refused with <code>Graphing rule already exists</code>.</li>
+<li><code>interface=all</code> graphs every interface, also disabled ones and the loopback interface <code>lo</code>.</li>
+<li>Graphing rules have no comment: a <code>comment</code> given to <code>add</code> is not kept.</li>
+</ul>
+<p>For all settings, see <a href="../cli-reference/tool/graphing/"><code>/tool/graphing</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="snmp">SNMP</h1>
+<blockquote>
+<p>Enable the SNMP agent, control which communities can read the router and what they can change, and receive traps. Covers the community access model, SNMPv3 security, finding OIDs, traps, and writing router settings...</p>
+</blockquote>
+<h1 id="snmp_1">SNMP</h1>
+<p>Simple Network Management Protocol (SNMP) is an Internet-standard protocol used to monitor and manage devices on IP networks. RouterOS runs an SNMP agent that answers queries about the router and its interfaces. Tools such as <a href="https://mikrotik.com/product/the-dude">The Dude</a>, LibreNMS, Zabbix, Cacti, or MRTG use those answers to collect, visualize, and graph system data.</p>
+<p>The agent is disabled until you turn it on. Enable it with <code>/snmp/set enabled=yes</code>; the router then answers SNMP queries on UDP port 161. By default a single community, <code>public</code>, can read anything, so restrict it before you put the router on an untrusted network.</p>
+<p><em>[gambar: SNMP traffic graph rendered by The Dude (RRDtool), showing download traffic for a router interface]</em></p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Enabling SNMP is enough to start monitoring: the router answers on UDP port 161 and the default <code>public</code> community has read access to everything, so a collector on the same network can read the router immediately. That also means the configuration is open to anyone on that network, so restrict or delete <code>public</code> (<a href="#restrict-a-community">Restrict a community</a>) before the router goes live.</p>
+</div>
+<h2 id="enable-snmp-for-a-collector">Enable SNMP for a collector</h2>
+<p>Turn the agent on and give the collector a community limited to its network. The community name works as a password for SNMPv1 and v2c, and it travels in clear text every time the router is polled. The examples use the documentation address range <code>192.0.2.0/24</code>; replace it with your collector network and <code>192.0.2.1</code> with the router address.</p>
+<pre><code class="language-ros">/snmp/set enabled=yes contact=&quot;NOC&quot; location=&quot;Server room&quot;
+/snmp/community/add name=monit addresses=192.0.2.0/24 \
+    security=none read-access=yes
+</code></pre>
+<pre><code class="language-text">           enabled: yes
+           contact: NOC
+          location: Server room
+  engine-id-suffix:
+         engine-id: 80003a8c04cca063f65a2d89956b75a4daa36094f61e08c68fc99350599b77b4
+       src-address: ::
+       trap-target:
+    trap-community: public
+      trap-version: 1
+   trap-generators: temp-exception
+               vrf: main
+</code></pre>
+<p>The community printout shows which addresses the collector can use and what it can do:</p>
+<pre><code class="language-ros">[admin@MikroTik] /snmp/community&gt; print detail where name=monit or name=public
+</code></pre>
+<pre><code class="language-text">Flags: * - DEFAULT
+0  * name=&quot;public&quot; addresses=::/0 security=none read-access=yes write-access=no
+     denied-oids=&quot;&quot; authentication-protocol=MD5 encryption-protocol=DES
+
+1    name=&quot;monit&quot; addresses=192.0.2.0/24 security=none read-access=yes
+     write-access=no denied-oids=&quot;&quot; authentication-protocol=MD5
+     encryption-protocol=DES
+</code></pre>
+<p>Check that the router answers from the collector, for example with <code>snmpwalk</code> (part of net-snmp on Linux and macOS; other operating systems have equivalent SNMP tools):</p>
+<pre><code class="language-bash">snmpwalk -v2c -c monit 192.0.2.1 1.3.6.1.4.1.14988.1.1.4.1.0
+</code></pre>
+<pre><code class="language-text">SNMPv2-SMI::enterprises.14988.1.1.4.1.0 = STRING: &quot;QMBK-S7GS&quot;
+</code></pre>
+<p>The value is the router's software ID; it differs per router.</p>
+<p>The default <code>public</code> community stays readable from any address (<code>addresses=::/0</code>). Either delete it and keep only the communities you created, or narrow it to your management network:</p>
+<pre><code class="language-ros">/snmp/community/set [find name=public] addresses=192.0.2.0/24
+</code></pre>
+<h2 id="restrict-a-community">Restrict a community</h2>
+<p>All properties are covered in the <a href="../cli-reference/snmp/"><code>/snmp</code> CLI reference</a> and the <a href="../cli-reference/snmp/community"><code>/snmp/community</code> CLI reference</a>.</p>
+<p>Each community is a set of access rules: which source addresses (<code>addresses</code>), which security level (<code>security</code>), and whether it can read, write, or both. A request is answered only when it comes from an address inside <code>addresses</code> and names a community with matching rules; everything else gets <strong>no reply at all</strong>, which looks like a dead host to the collector. Use prefixes, not single hosts, when several collectors share a network, and give IPv6 collectors IPv6 prefixes.</p>
+<p>Read access (<code>read-access=yes</code>) lets a collector walk every MIB the agent implements. Write access (<code>write-access=yes</code>) additionally allows changing the system identity, running <a href="../developer-guides/scripting/">scripts</a>, and rebooting the router; a write community is a powerful credential and should have a hard-to-guess name and a narrow <code>addresses</code> range. See the <a href="#snmp-write">SNMP write</a> section.</p>
+<p><code>denied-oids</code> blacklists specific OIDs or subtrees that a community cannot read: a direct GET of a blacklisted OID returns "No Such Object", and walks skip the blocked subtree, so the poll does not fail. The setting is per community, so set it on every community that could query that OID. Use it when a monitoring tool walks something expensive or irrelevant on the router, for example an empty table or a subtree another tool already covers. Pass several OIDs as a comma-separated list:</p>
+<pre><code class="language-ros">/snmp/community/set [find name=monit] \
+    denied-oids=1.3.6.1.4.1.14988.1.1.13,1.3.6.1.4.1.14988.1.1.7.1.0
+</code></pre>
+<h3 id="snmpv3-security">SNMPv3 security</h3>
+<p>For a community with <code>security=none</code>, the community name is the only protection, and v1 and v2c clients can use it directly. The <code>authorized</code> and <code>private</code> levels use SNMPv3, which authenticates the client (<code>authorized</code>) or authenticates and encrypts it (<code>private</code>). A request that does not match the level is ignored, so a v1/v2c poll with the same name gets no answer from these communities.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Security</th>
+<th style="text-align: left;">Meaning</th>
+<th style="text-align: left;">Protocols</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>none</code></td>
+<td style="text-align: left;">No authentication, no encryption (<code>noAuthNoPriv</code>)</td>
+<td style="text-align: left;">community name only</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>authorized</code></td>
+<td style="text-align: left;">Authentication required (<code>authNoPriv</code>)</td>
+<td style="text-align: left;">MD5, SHA1, SHA256, SHA384, SHA512</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>private</code></td>
+<td style="text-align: left;">Authentication and encryption required (<code>authPriv</code>)</td>
+<td style="text-align: left;">MD5, SHA1, SHA256, SHA384, SHA512 with DES or AES</td>
+</tr>
+</tbody>
+</table>
+<p>Passwords must be at least 8 characters. The router refuses a shorter one with <code>failure: authentication password minimum length is 8 symbols</code>.</p>
+<p>To add a <code>private</code> community, pick an authentication protocol (SHA256 is a good default), an encryption protocol, and two passwords:</p>
+<pre><code class="language-ros">/snmp/community/add name=monit-v3 security=private \
+    addresses=192.0.2.0/24 authentication-protocol=SHA256 \
+    encryption-protocol=AES \
+    authentication-password=change-me-a1 \
+    encryption-password=change-me-b2
+</code></pre>
+<p>Test it with <code>/tool/snmp-get</code>, so the syntax is the same as the one a monitoring tool uses. Run it from a router on that network (a router can also poll itself by its own address); the testing address must be inside the community's <code>addresses</code> (add it if it is not):</p>
+<pre><code class="language-ros">/tool/snmp-get address=192.0.2.1 oid=1.3.6.1.2.1.1.5.0 version=3 \
+    security=private community=monit-v3 authentication-protocol=SHA256 \
+    authentication-password=change-me-a1 encryption-protocol=AES \
+    encryption-password=change-me-b2
+</code></pre>
+<pre><code class="language-text">OID                            TYPE             VALUE
+1.3.6.1.2.1.1.5.0              octet-string     MikroTik
+</code></pre>
+<h2 id="find-an-oid">Find an OID</h2>
+<p>Each value the agent can answer has an object identifier (the OID). RouterOS prints the OID of every parameter of a page directly in the console, so you can build a collector template without reading the MIB file. Run the same <code>print</code> command with the <code>oid</code> keyword at any menu:</p>
+<pre><code class="language-ros">[admin@MikroTik] /interface&gt; print oid where name=ether1
+</code></pre>
+<p>The trailing number (<code>.4</code>) is the interface's index on this router; on yours the index, and so the OIDs, differ. The leading dot marks an absolute OID; monitoring tools accept it with or without. The <code>S</code> flag only marks the interface as a bridge slave and does not affect the OIDs.</p>
+<pre><code class="language-text">Flags: S - SLAVE
+0 S name=.1.3.6.1.2.1.2.2.1.2.4 actual-mtu=.1.3.6.1.2.1.2.2.1.4.4
+    mac-address=.1.3.6.1.2.1.2.2.1.6.4 admin-status=.1.3.6.1.2.1.2.2.1.7.4
+    oper-status=.1.3.6.1.2.1.2.2.1.8.4 bytes-in=.1.3.6.1.2.1.31.1.1.1.6.4
+    packets-in=.1.3.6.1.2.1.31.1.1.1.7.4 discards-in=.1.3.6.1.2.1.2.2.1.13.4
+    errors-in=.1.3.6.1.2.1.2.2.1.14.4 bytes-out=.1.3.6.1.2.1.31.1.1.1.10.4
+    packets-out=.1.3.6.1.2.1.31.1.1.1.11.4 discards-out=.1.3.6.1.2.1.2.2.1.19.4
+    errors-out=.1.3.6.1.2.1.2.2.1.20.4
+</code></pre>
+<p>The same command on any other menu enumerates that menu's OIDs. The complete definition of those OIDs and the list of tables lives in the <a href="https://mikrotik.com/download/tools">MIKROTIK-MIB file</a>, published with every RouterOS release. Most monitoring tools expect the standard MIBs (MIB-2, IF-MIB, HOST-RESOURCES-MIB, IP-MIB, IP-FORWARD-MIB, IPv6-MIB, BRIDGE-MIB), which the agent implements together with MIKROTIK-MIB; the exact list is in <a href="#technical-details">Technical details</a>.</p>
+<h2 id="receive-traps">Receive traps</h2>
+<p>SNMP traps let the router push events to a collector instead of waiting to be polled. The collector listens on UDP port 162; the router sends the trap there on the interface that reaches the target.</p>
+<pre><code class="language-ros">/snmp/set trap-target=192.0.2.50,192.0.2.51 \
+    trap-community=monit \
+    trap-version=2 \
+    trap-generators=interfaces
+</code></pre>
+<ul>
+<li><code>trap-target</code> - IP address of the collector that should receive the traps.</li>
+<li><code>trap-community</code> - community used for the trap. It must exist under <code>/snmp/community</code>; its security level decides how the trap is protected (plain when <code>none</code>, authenticated or encrypted when <code>authorized</code> or <code>private</code>). The community's <code>addresses</code> restrict who can query the agent and do not affect where traps are sent, so the collector does not have to be in the list.</li>
+<li><code>trap-version</code> - protocol version for the trap: <code>1</code>, <code>2</code>, or <code>3</code>.</li>
+<li><code>trap-generators</code> - events that generate a trap. <code>interfaces</code> sends <code>linkDown</code>/<code>linkUp</code> for interface state changes, <code>temp-exception</code> sends a trap when the CPU temperature reaches the value from <a href="./health"><code>/system/health</code></a>. By default <code>trap-generators</code> is <code>temp-exception</code>, so temperature traps are on as soon as <code>trap-target</code> is set.</li>
+</ul>
+<p>Use <code>trap-interfaces</code> to narrow <code>interfaces</code> to the interfaces whose changes matter: traps are generated only for the listed interfaces, and other interfaces stay quiet. The <code>interfaces</code> notifications are the standard <code>linkDown</code>/<code>linkUp</code> traps and carry the index of the affected interface, so the collector learns which port went down.</p>
+<pre><code class="language-ros">/snmp/set trap-interfaces=ether1,ether2
+</code></pre>
+<p>To check the collector and trapping path without changing a live interface, send one trap by hand with <code>send-trap</code>:</p>
+<pre><code class="language-ros">/snmp/send-trap oid=1.3.6.1.2.1.1.5.0 type=string value=&quot;test trap&quot;
+</code></pre>
+<p>The collector receives a packet from the router with the community and, in the payload, the MikroTik trap OID <code>1.3.6.1.4.1.14988.1.1.9.0.1</code> followed by the OID and value you passed (with <code>trap-version=1</code> the packet is a classic v1 enterprise trap without that wrapper). Confirm on the collector with a sniffer, for example Wireshark filtering <code>udp port 162</code>.</p>
+<h2 id="snmp-write">SNMP write</h2>
+<p>Write access lets a management system change the router instead of only reading it. It requires a community with <code>write-access=yes</code> and works only for a fixed set of OIDs: the system identity, the script execution entries, and the reboot control, described in this section.</p>
+<p>Restrict a write community to the monitoring network and give it a name that is hard to guess, because the name is the password. The commands in this section assume such a community named <code>monit-admin</code>.</p>
+<pre><code class="language-ros">/snmp/community/add name=monit-admin addresses=192.0.2.0/24 \
+    security=none read-access=yes write-access=yes
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>A community with write access lets anyone who knows its name change the router identity, run scripts, and reboot the router. Do not enable write access on a community that is also readable from an untrusted network, and use SNMPv3 for write communities where possible.</p>
+</div>
+<h3 id="change-the-identity">Change the identity</h3>
+<p>Set the router identity over SNMP by writing to <code>sysName.0</code> (<code>1.3.6.1.2.1.1.5.0</code>), for example with <code>snmpset</code> on Linux or macOS:</p>
+<pre><code class="language-bash">snmpset -v 1 -c monit-admin 192.0.2.1 1.3.6.1.2.1.1.5.0 s Branch-GW
+</code></pre>
+<pre><code class="language-text">SNMPv2-MIB::sysName.0 = STRING: Branch-GW
+</code></pre>
+<p>In the example, <code>-v 1</code> selects the protocol version, <code>-c monit-admin</code> the community, and the <code>s</code> marks the value as a string (the argument types of <code>snmpset</code> are not the OID types; these OIDs accept string values).</p>
+<p>The <code>public</code> community, which has no write access, refuses the same request with <code>readOnly</code>. A community with write access can also change other settings and reboot the router, which is why it needs the restrictions described earlier. See <a href="../system-information-and-utilities/identity">Identity</a> for the same operation from the console and WinBox.</p>
+<h3 id="run-a-script">Run a script</h3>
+<p>A collector can run a script on the router, which is a way to let a monitoring system perform a maintenance or reporting step without logging in. The script must exist in <a href="../developer-guides/scripting/">system scripts</a>:</p>
+<pre><code class="language-ros">/system/script/add name=status-report owner=admin \
+    policy=read,write,test source=&quot;:put \&quot;status ok\&quot;&quot;
+</code></pre>
+<p>Running a script needs a community with write access (like <code>monit-admin</code>), because it can change the router. The script is started with an SNMP GET to <code>1.3.6.1.4.1.14988.1.1.18.1.1.2.&lt;N&gt;</code>, where <code>&lt;N&gt;</code> is the script's position in <code>/system/script/print</code> (the first entry is 1, the second 2, and so on). The GET returns whatever the script prints:</p>
+<pre><code class="language-bash">snmpget -v2c -c monit-admin 192.0.2.1 1.3.6.1.4.1.14988.1.1.18.1.1.2.1
+</code></pre>
+<pre><code class="language-text">SNMPv2-SMI::enterprises.14988.1.1.18.1.1.2.1 = STRING: &quot;status ok&quot;
+</code></pre>
+<p>The list of scripts and their numbers is available as an SNMP table at <code>1.3.6.1.4.1.14988.1.1.8</code>, so a collector can discover them with a walk instead of fixing the number.</p>
+<pre><code class="language-bash">snmpwalk -v2c -c monit-admin 192.0.2.1 1.3.6.1.4.1.14988.1.1.8
+</code></pre>
+<pre><code class="language-text">iso.3.6.1.4.1.14988.1.1.8.1.1.2.1 = STRING: &quot;status-report&quot;
+iso.3.6.1.4.1.14988.1.1.8.1.1.3.1 = INTEGER: 0
+</code></pre>
+<p>The same script can also be started with a SET to <code>1.3.6.1.4.1.14988.1.1.8.1.1.3.&lt;N&gt;</code>. The value written is irrelevant — a <code>0</code> runs it exactly as any other value does:</p>
+<pre><code class="language-bash">snmpset -v2c -c monit-admin 192.0.2.1 1.3.6.1.4.1.14988.1.1.8.1.1.3.1 s 1
+</code></pre>
+<p>SNMP runs a script only with a limited set of policies: <code>ftp</code>, <code>reboot</code>, <code>read</code>, <code>write</code>, <code>test</code>, and <code>romon</code>. A script that needs any other policy (for example <code>password</code>, <code>sniff</code>, or <code>sensitive</code>) is refused, and the GET returns <code>error: not enough permissions</code>. Keep the scripts you run over SNMP to that set of policies.</p>
+<h3 id="reboot-the-router">Reboot the router</h3>
+<p>Writing the value <code>1</code> to the reboot OID <code>1.3.6.1.4.1.14988.1.1.7.1.0</code> restarts the router:</p>
+<pre><code class="language-bash">snmpset -v 1 -c monit-admin 192.0.2.1 1.3.6.1.4.1.14988.1.1.7.1.0 s 1
+</code></pre>
+<p>This disconnects every client, including the management system that sent the request, for the time the router takes to boot.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The default <code>public</code> community has no write access, so a router left on the default configuration cannot be changed or rebooted over SNMP.</p>
+<p>To see which router menus expose password-like values over management channels, see the <a href="../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">list of menus with sensitive parameters</a>.</p>
+</div>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<ul>
+<li>To see what the agent logged: add the <code>snmp</code> topic (<code>/system/logging/add topics=snmp</code>). The <code>snmp,debug</code> level also logs requests and replies; on a busy router it gets verbose.</li>
+<li>A collector times out: besides the agent checks that follow, make sure no <a href="../firewall-and-quality-of-service/firewall">firewall</a> rule or other filter drops UDP 161 (and UDP 162 for traps) from the collector.</li>
+<li>A collector times out with all settings correct: check that the agent is enabled, that the request comes from an address inside the community's <code>addresses</code>, and that the community name is spelled exactly. A request that fails any of these gets no reply at all, which looks like a dead host.</li>
+<li>A v1/v2c collector cannot read a community with <code>security=authorized</code> or <code>private</code>: those levels require SNMPv3. Create a <code>security=none</code> community for v1/v2c collectors, restricted to their address.</li>
+<li>Polling breaks after you set <code>src-address</code>: the router then answers only requests addressed to that address (and, for an IPv4 value, no IPv6 requests), so a collector that queries any other address times out. Clear <code>src-address</code> or set it to the address the collector polls.</li>
+<li>The router answers a walk slowly and logs <code>snmp,warning</code> entries such as <code>timeout while waiting for program</code> or <code>SNMP did not get OID data within expected time, ignoring OID</code> when a service is busy or an OID is expensive to answer (for example a full routing-table walk on a large router). The agent records the OID, skips it for a while, and answers the following requests as usual. Exclude such OIDs from the collector, or blacklist them with <code>denied-oids</code> as described in the community section, instead of polling them constantly.</li>
+</ul>
+<h2 id="technical-details_1">Technical details</h2>
+<h3 id="snmp-engine-id">SNMP engine ID</h3>
+<p>The agent identifies itself to SNMPv3 clients with the engine ID, shown by <code>/snmp/print</code> as <code>engine-id</code>. The configurable <code>engine-id-suffix</code> is only the tail of that value: the router writes the suffix into the engine ID as ASCII hex, so <code>engine-id-suffix=1234</code> produces the engine ID <code>80003a8c0431323334</code>. Leave the suffix empty to use the automatically generated engine ID, which is different on each router and stays the same across reboots; most SNMPv3 collectors discover it, so you rarely need a fixed suffix.</p>
+<h3 id="reply-source-and-src-address">Reply source and <code>src-address</code></h3>
+<p>By default the agent answers from the address of the interface that received the request, so replies use the same source address as the one the collector sent the request to. Setting <code>src-address</code> forces the agent onto that address: it then answers only requests addressed to the value you set, and stops answering over IPv6 when the value is IPv4. Set it only when polling reaches the router through an address you cannot change on the collector, and point the collector at that same address.</p>
+<h3 id="snmp-write-oids">SNMP write OIDs</h3>
+<p>Write access covers a fixed set of OIDs: the system identity (<code>1.3.6.1.2.1.1.5.0</code>), the script execution entries under <code>1.3.6.1.4.1.14988.1.1.8</code> and <code>1.3.6.1.4.1.14988.1.1.18</code>, and the reboot control (<code>1.3.6.1.4.1.14988.1.1.7.1.0</code>). Other MIB objects are read-only.</p>
+<h3 id="mibs-the-agent-implements">MIBs the agent implements</h3>
+<p>The agent answers the standard MIB-2 groups (system, interfaces, IP, IP forwarding, IPv6, ICMP, TCP, UDP) and the <a href="https://datatracker.ietf.org/doc/html/rfc2790">HOST-RESOURCES-MIB</a>, <a href="https://datatracker.ietf.org/doc/html/rfc2863">IF-MIB</a>, <a href="https://datatracker.ietf.org/doc/html/rfc4293">IP-MIB</a>, <a href="https://datatracker.ietf.org/doc/html/rfc4292">IP-FORWARD-MIB</a>, <a href="https://datatracker.ietf.org/doc/html/rfc4293">IPV6-MIB</a>, <a href="https://datatracker.ietf.org/doc/html/rfc4188">BRIDGE-MIB</a>, plus <a href="https://datatracker.ietf.org/doc/html/rfc1628">UPS-MIB</a> and the SQUID-MIB used by the <a href="../network-management/proxy/web-proxy">web proxy</a>. The proprietary <a href="https://mikrotik.com/download/tools">MIKROTIK-MIB</a> carries the RouterOS values that fit no standard MIB, such as the software ID, the health values, and the script table.</p>
+<p>The LLDP-MIB remote table (<code>lldpRemTable</code>) contains the same LLDP-discovered neighbors as <a href="../cli-reference/ip/neighbor/lldp"><code>/ip/neighbor/lldp</code></a>. Neighbors discovered only by CDP or MNDP are not included.</p>
+<p>All parameters of <code>/snmp</code> and <code>/snmp/community</code>, and the <code>/snmp/send-trap</code> command, are documented in the <a href="../cli-reference/snmp/">SNMP CLI reference</a>.</p>
+<hr />
+<h1 id="health">Health</h1>
+<blockquote>
+<p>This page documents MikroTik RouterOS hardware health monitoring, covering temperature, voltage, current, power supply and power consumption readings, fan control settings, SNMP OIDs, and REST API and script examples...</p>
+</blockquote>
+<h1 id="health_1">Health</h1>
+<p>Hardware that supports monitoring displays information about hardware status, such as temperature, voltage, current, fan speed, power supply state and power consumption. The same readings are also available in Winbox, on the <strong>System → Health</strong> tab. Devices without hardware sensors print nothing: this includes CHR and virtual machines, and boards that simply have no sensors (for example the hAP ax²).</p>
+<p>Example on the CCR1072-1G-8S+ device:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/health/print 
+Columns: NAME, VALUE, TYPE
+ #  NAME                VALUE  TYPE
+ 0  power-consumption   50.8   W   
+ 1  cpu-temperature     43     C   
+ 2  fan1-speed          5654   RPM 
+ 3  fan2-speed          5825   RPM 
+ 4  fan3-speed          5800   RPM 
+ 5  fan4-speed          5750   RPM 
+ 6  board-temperature1  29     C   
+ 7  board-temperature2  28     C   
+ 8  psu1-voltage        0      V   
+ 9  psu2-voltage        12.1   V   
+10  psu1-current        0      A   
+11  psu2-current        4.2    A
+</code></pre>
+<p>The <code>TYPE</code> column shows the unit of the reading: <code>C</code> is degrees Celsius, <code>RPM</code> is fan speed, <code>V</code> is voltage, <code>A</code> is current and <code>W</code> is power consumption. Scripts see the same values as the CLI shows. SNMP uses deci-units for temperature, voltage and power (23.8 V → 238), and current in mA in the legacy OIDs or dA in the dynamic gauge table (see the SNMP section below).</p>
+<p>To print a single reading, filter it by name:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/health/print where name=&quot;cpu-temperature&quot;
+Columns: NAME, VALUE, TYPE
+ #  NAME             VALUE  TYPE
+ 0  cpu-temperature  43     C   
+</code></pre>
+<p>To see what health data a specific RouterBOARD product supports, check the product specification at <a href="https://mikrotik.com/products">mikrotik.com</a>.</p>
+<h2 id="readings">Readings</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reading</th>
+<th style="text-align: left;">Unit</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>voltage</code></td>
+<td style="text-align: left;">V</td>
+<td style="text-align: left;">Supplied voltage on devices with a single power input</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-voltage</code></td>
+<td style="text-align: left;">V</td>
+<td style="text-align: left;">Voltage of power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-input-voltage</code></td>
+<td style="text-align: left;">V</td>
+<td style="text-align: left;">Input (mains) voltage of power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>jack-voltage</code>, <code>2pin-voltage</code>, <code>poe-in-voltage</code></td>
+<td style="text-align: left;">V</td>
+<td style="text-align: left;">Voltage of a specific power input (on devices without PSUs)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>poe-outN-voltage</code></td>
+<td style="text-align: left;">V</td>
+<td style="text-align: left;">Voltage on PoE-out port N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-current</code></td>
+<td style="text-align: left;">A</td>
+<td style="text-align: left;">Current drawn by power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>power-consumption</code></td>
+<td style="text-align: left;">W</td>
+<td style="text-align: left;">Total power consumption</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>poe-out-consumption</code></td>
+<td style="text-align: left;">W</td>
+<td style="text-align: left;">Current PoE-out power consumption</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-power</code></td>
+<td style="text-align: left;">W</td>
+<td style="text-align: left;">Power of power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">Device temperature on devices with a single sensor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>cpu-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">CPU temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>board-temperatureN</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">Board temperature sensor N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>phy-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">PHY temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sfp-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">SFP module temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>switch-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">Switch chip temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pcie-switch-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">PCIe switch temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-temperature</code></td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">Temperature of power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fan-state</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Fan state: <code>ok</code> or <code>fail</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fanN-speed</code></td>
+<td style="text-align: left;">RPM</td>
+<td style="text-align: left;">Speed of fan N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-fan-speed</code></td>
+<td style="text-align: left;">RPM</td>
+<td style="text-align: left;">Speed of the internal fan of power supply N</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psuN-state</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Power supply N state (see the state table below)</td>
+</tr>
+</tbody>
+</table>
+<p>Numbered names (<code>psuN</code>, <code>fanN</code>, <code>board-temperatureN</code>, <code>poe-outN</code>) use indexes starting from 1, and the count depends on the device. Which of the readings are present depends on the hardware sensors of the device.</p>
+<p>A fan speed reading of 0 RPM when the device has a high temperature can mean the fan has stopped or failed.</p>
+<h3 id="voltage">Voltage</h3>
+<p>Routers that support voltage monitoring display the supplied voltage value. In CLI, Winbox and scripts it is reported in volts; over SNMP it is in dV (the CLI value multiplied by 10).</p>
+<p>Routers that have PEXT and PoE power input are calibrated using PEXT. As a result, the value shown over PoE can be lower than input voltage due to additional Ethernet protection chains.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/health/print 
+Columns: NAME, VALUE, TYPE
+#  NAME         VALUE  TYPE
+0  voltage      23.8   V   
+1  temperature  39     C 
+</code></pre>
+<h3 id="temperature">Temperature</h3>
+<p>Routers that support temperature monitoring display a temperature reading. In CLI, Winbox and scripts it is reported in degrees Celsius; over SNMP the value is multiplied by 10. Different devices use different temperature sensors, for example <code>cpu-temperature</code>, <code>board-temperature1</code>, <code>sfp-temperature</code>, <code>phy-temperature</code> or <code>switch-temperature</code>. Some readings appear only when the corresponding component is present, for example <code>sfp-temperature</code> shows only when an SFP module is installed. You can find the device tested ambient temperature range in the specification description at <a href="https://mikrotik.com/products">mikrotik.com</a>. The tested ambient temperature range is the temperature in which the device can be physically located. It is <strong>not</strong> the same as the temperature reported by the system health monitor.</p>
+<h3 id="power-supply-states">Power supply states</h3>
+<p>Devices with redundant power supplies report the state of each power supply. For battery-backed devices, see the <a href="../system-information-and-utilities/ups">UPS</a> page. Possible values are:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Value</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ok</code></td>
+<td style="text-align: left;">The power supply works normally.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fail</code></td>
+<td style="text-align: left;">The power supply has failed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>not-present</code></td>
+<td style="text-align: left;">No power supply is detected in this slot.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>idle</code></td>
+<td style="text-align: left;">The power supply is present but idle.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>no-input</code></td>
+<td style="text-align: left;">The power supply has no input power.</td>
+</tr>
+</tbody>
+</table>
+<p>A value of <code>fail</code> or <code>no-input</code> indicates a problem with the power supply or its power source.</p>
+<h3 id="legacy-devices">Legacy devices</h3>
+<p>If the old revision CRS112, CRS210 and CRS109 devices are powered with PoE - Health will show correct voltage only up to 26.7 V. If higher voltage is used, Health will show a constant 16 V.</p>
+<p>x86 (legacy PC hardware) based devices use a different set of reading names, for example <code>core</code>, <code>3.3v</code>, <code>5v</code>, <code>12v</code>, <code>lm87-temp</code>, <code>cpu-temp</code>, <code>board-temp</code>, <code>voltageN</code>, <code>tempN</code> and <code>fanN</code>.</p>
+<h2 id="fan-control-and-behavior">Fan control and behavior</h2>
+<p>The <a href="../cli-reference/system/health/settings">/system/health/settings</a> menu controls fan behavior on devices with fans.</p>
+<p>Three parameters can start the fans: PoE-out consumption, SFP temperature and CPU temperature. When one of the parameters exceeds the optimal value, the fans start.</p>
+<h3 id="poe-out-consumption">PoE-out consumption</h3>
+<p>If a device has PoE-out, then the fan RPM will change as described below:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">PoE-out load</th>
+<th style="text-align: left;">RPM % of max fan speed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">0%..24%</td>
+<td style="text-align: left;">Fan speed 0%</td>
+</tr>
+<tr>
+<td style="text-align: left;">25%..46%</td>
+<td style="text-align: left;">Fan speed 25%</td>
+</tr>
+<tr>
+<td style="text-align: left;">47%..70%</td>
+<td style="text-align: left;">Fan speed 50%</td>
+</tr>
+<tr>
+<td style="text-align: left;">71%..92%</td>
+<td style="text-align: left;">Fan speed 75%</td>
+</tr>
+<tr>
+<td style="text-align: left;">93%..</td>
+<td style="text-align: left;">Fan speed 100%</td>
+</tr>
+</tbody>
+</table>
+<p>For devices with <strong>PWM</strong> fans, the speed will linearly increase or decrease from 9..88% (below 100 W the fan RPM is 0).</p>
+<h3 id="manual-fan-control-option">Manual fan-control option</h3>
+<p>Manual fan-control is available for CRS3xx, CRS5xx and CCR2xxx devices, and for the revised CCR1036-8G-2S+-r2, CCR1036-12G-4S-r2 and CCR1016-12S-1S+-r2 devices.</p>
+<p>Set them in <a href="../cli-reference/system/health/settings"><code>/system/health/settings</code></a> — every parameter, including the manual fan-control options <code>fan-mode</code>, <code>use-fan</code>, <code>use-fan2</code>, <code>fan-switch</code> and <code>fan-on-threshold</code>, and the read-only <code>active-fan</code>/<code>active-fan2</code> states, is described in the CLI reference. Devices with main and auxiliary fans, such as RB1100, CCR1016 and CCR1036 devices, also support manual fan-control.</p>
+<p>For example, to keep the fans running at least at a quarter of their maximum speed:</p>
+<pre><code class="language-ros">/system/health/settings/set fan-min-speed-percent=25
+</code></pre>
+<p>When the main fan fails, the device automatically switches to the auxiliary fan and <code>active-fan</code> (or <code>active-fan2</code>) changes to <code>auxiliary</code>. Fan state changes are also written to the log on CRS3xx, CRS5xx, CCR2xxx, CCR1016r2 and CCR1036r2 devices.</p>
+<p>Use the <code>/system/health/settings/detect-fans</code> command to detect the fans connected to the device, for example after installing or replacing a fan.</p>
+<h3 id="fan-control-in-detail">Fan control in detail</h3>
+<p>If at least one of the internal measured temperatures (CPU, SFP, switch, board) exceeds <strong>fan-target-temp</strong>, the fans start spinning. The higher the temperature, the faster the fans spin.</p>
+<ul>
+<li>Devices with PWM fans: the fans increase their RPM linearly to keep the temperature at <strong>fan-target-temp</strong> if possible, and reach their maximum RPM when the temperature equals or exceeds <strong>fan-full-speed-temp</strong>.</li>
+<li>Devices with DC fans: the fans start spinning at a higher minimum RPM by default. This may cool the device so much that the fans turn off completely if <strong>fan-min-speed-percent</strong> is <strong>0%</strong>; with the default <strong>12%</strong> the fans never stop fully, which reduces the noise and on/off peaks. When the temperature rises back to <strong>fan-target-temp</strong>, the fans turn on again.</li>
+</ul>
+<p>One exception: S+RJ10 modules have a temperature threshold of 65 C before they trigger the fans, so the fans start spinning at a higher initial speed to cool the device. All the previously mentioned functionality is directly related to the <strong>fan-control-interval</strong> parameter value, as it determines how often the fan controller monitors all sensor data and applies fan-control changes.</p>
+<p>PWM and DC fans react to fan-control differently. PWM fans increase or decrease their RPM in a linear way. However, DC fans have only a few possible speed ratings at which they can operate.</p>
+<p>All readings are approximate. Their purpose is to inform users about possible or upcoming failures.</p>
+<h2 id="monitor-health-and-get-alerts">Monitor health and get alerts</h2>
+<h3 id="snmp-trap">SNMP trap</h3>
+<p>For SNMP-based monitoring, enable the <code>temp-exception</code> trap generator. The router then sends an SNMP trap when the temperature reaches 100 C or the value set with <code>cpu-overtemp-threshold</code>. See the <a href="./snmp">SNMP</a> page for details.</p>
+<h3 id="snmp-oids">SNMP OIDs</h3>
+<p>All health readings are exposed in the <a href="https://mikrotik.com/download">MIKROTIK-MIB</a> under the <code>1.3.6.1.4.1.14988.1.1.3</code> sub-tree, in the form <code>.1.3.6.1.4.1.14988.1.1.3.&lt;index&gt;.0</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Index</th>
+<th style="text-align: left;">Object name</th>
+<th style="text-align: left;">Reading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>mtxrHlCoreVoltage</code></td>
+<td style="text-align: left;">Core voltage (V)</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;"><code>mtxrHlThreeDotThreeVoltage</code></td>
+<td style="text-align: left;">3.3 V rail voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><code>mtxrHlFiveVoltage</code></td>
+<td style="text-align: left;">5 V rail voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"><code>mtxrHlTwelveVoltage</code></td>
+<td style="text-align: left;">12 V rail voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;"><code>mtxrHlSensorTemperature</code></td>
+<td style="text-align: left;">Temperature at the sensor chip (C)</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"><code>mtxrHlCpuTemperature</code></td>
+<td style="text-align: left;">CPU temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;"><code>mtxrHlBoardTemperature</code></td>
+<td style="text-align: left;">Board temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;"><code>mtxrHlVoltage</code></td>
+<td style="text-align: left;">Main voltage</td>
+</tr>
+<tr>
+<td style="text-align: left;">9</td>
+<td style="text-align: left;"><code>mtxrHlActiveFan</code></td>
+<td style="text-align: left;">Name of the active fan</td>
+</tr>
+<tr>
+<td style="text-align: left;">10</td>
+<td style="text-align: left;"><code>mtxrHlTemperature</code></td>
+<td style="text-align: left;">Temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;">11</td>
+<td style="text-align: left;"><code>mtxrHlProcessorTemperature</code></td>
+<td style="text-align: left;">Processor temperature</td>
+</tr>
+<tr>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;"><code>mtxrHlPower</code></td>
+<td style="text-align: left;">Power consumption (W)</td>
+</tr>
+<tr>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;"><code>mtxrHlCurrent</code></td>
+<td style="text-align: left;">Current (mA)</td>
+</tr>
+<tr>
+<td style="text-align: left;">14</td>
+<td style="text-align: left;"><code>mtxrHlProcessorFrequency</code></td>
+<td style="text-align: left;">CPU frequency (MHz)</td>
+</tr>
+<tr>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;"><code>mtxrHlPowerSupplyState</code></td>
+<td style="text-align: left;">PSU state (0 = not ok, 1 = ok)</td>
+</tr>
+<tr>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;"><code>mtxrHlBackupPowerSupplyState</code></td>
+<td style="text-align: left;">Backup PSU state (0 = not ok, 1 = ok)</td>
+</tr>
+<tr>
+<td style="text-align: left;">17</td>
+<td style="text-align: left;"><code>mtxrHlFanSpeed1</code></td>
+<td style="text-align: left;">Fan 1 speed (RPM)</td>
+</tr>
+<tr>
+<td style="text-align: left;">18</td>
+<td style="text-align: left;"><code>mtxrHlFanSpeed2</code></td>
+<td style="text-align: left;">Fan 2 speed (RPM)</td>
+</tr>
+<tr>
+<td style="text-align: left;">19</td>
+<td style="text-align: left;"><code>mtxrAlarmSocketStatus</code></td>
+<td style="text-align: left;">Alarm socket status (0 = inactive, 1 = active)</td>
+</tr>
+</tbody>
+</table>
+<p>Temperature, voltage and power values are multiplied by 10 (divide by 10 to get the value). Current is reported in mA, frequency in MHz and fan speeds in RPM. Which indexes return a value depends on the hardware sensors of the device; run <code>/system/health/print oid</code> on a device to see its actual OID mapping.</p>
+<p>The static OIDs in the table are the fixed legacy set. Newer readings — such as fan speeds beyond fan 2, the per-power-supply readings (<code>psuN-*</code>), <code>pcie-switch-temperature</code>, and PoE-out voltages — are available in a dynamic gauge table at <code>.1.3.6.1.4.1.14988.1.1.3.100</code>. Each row of this table lists a reading by name (<code>mtxrGaugeName</code>), together with its raw value (<code>mtxrGaugeValue</code>) and unit (<code>mtxrGaugeUnit</code>: <code>celsius(1)</code>, <code>rpm(2)</code>, <code>dV(3)</code>, <code>dA(4)</code>, <code>dW(5)</code> or <code>status(6)</code>). The <code>dV</code>, <code>dA</code> and <code>dW</code> units are deci-volts, deci-amperes and deci-watts, so divide the raw value by 10.</p>
+<h3 id="rest-api">REST API</h3>
+<p>With the REST API you can read the same readings as JSON:</p>
+<pre><code class="language-bash">curl -k -u admin https://192.168.88.1/rest/system/health
+</code></pre>
+<p>See the <a href="../developer-guides/rest-api">REST API</a> page for details.</p>
+<h3 id="send-an-email-alert">Send an email alert</h3>
+<p>With a script you can check the readings periodically by using the scheduler and send an email when a limit is exceeded. First configure the <a href="../system-information-and-utilities/e-mail">E-mail</a> settings, then add the script and a scheduler entry:</p>
+<pre><code class="language-ros">/system/script/add name=temp-alert source={
+    :local t [/system/health/get [find name=&quot;cpu-temperature&quot;] value]
+    :if ($t &gt; 65) do={/tool/e-mail/send to=&quot;admin@example.com&quot;
+        subject=&quot;Router overheating&quot; body=(&quot;CPU temperature: &quot; . $t)}
+}
+/system/scheduler/add name=temp-alert start-time=startup interval=5m on-event=temp-alert
+</code></pre>
+<p>In scripts the values are plain numbers as printed by the CLI (54 for 54 C), so the example compares against 65.</p>
+<p>For all parameters, see the <a href="../cli-reference/system/health"><code>/system/health</code></a> and <a href="../cli-reference/system/health/settings"><code>/system/health/settings</code></a> CLI reference pages.</p>
+<hr />
+<h1 id="resource">Resource</h1>
+<blockquote>
+<p>The /system/resource menu shows the router's identity and usage: uptime, RouterOS version, memory, disk/NAND, CPU model and load; submenus break load down per core (cpu), per interrupt (irq), steer packet handling...</p>
+</blockquote>
+<h1 id="resource_1">Resource</h1>
+<p>The <a href="../cli-reference/system/resource"><code>/system/resource</code></a> menu shows the overall resource usage and identity of the router: uptime, version, memory, disk, CPU model, architecture and the bad-block percentage of the NAND. All values are read-only.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/resource/print
+                   uptime: 2h31m3s
+                  version: 7.26beta1
+               build-time: 2026-10-01 13:29:47
+          minimum-version: 7.0.9
+              free-memory: 678.7MiB
+             total-memory: 1024.0MiB
+                      cpu: ARM64
+                cpu-count: 4
+            cpu-frequency: 864MHz
+                 cpu-load: 0%
+           free-hdd-space: 91.9MiB
+          total-hdd-space: 128.0MiB
+  write-sect-since-reboot: 437
+         write-sect-total: 263060
+               bad-blocks: 0%
+        architecture-name: arm64
+               board-name: hAP ax^2
+                 platform: MikroTik
+</code></pre>
+<p>The properties (uptime, version, build-time, memory, hdd space, write-sector and bad-block counters, board and platform names) are described in the <a href="../cli-reference/system/resource"><code>/system/resource</code></a> CLI reference page.</p>
+<h2 id="watch-usage-live">Watch usage live</h2>
+<p><code>/system/resource/monitor</code> prints a live-updating view of CPU usage per core and the free memory (the table refreshes continuously; bound it with <code>duration</code>):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/resource/monitor duration=2
+           cpu-used: 0%
+  cpu-used-per-core: 1%
+                     0%
+                     0%
+                     0%
+        free-memory: 694948KiB
+</code></pre>
+<p><code>free-memory</code> here is in KiB (694948 KiB ≈ 678.7 MiB shown by <code>print</code>).</p>
+<h2 id="read-per-core-breakdown">Read per-core breakdown</h2>
+<p><code>/system/resource/cpu</code> shows usage per core, split into user load (<code>load</code>), interrupt handling (<code>irq</code>) and disk I/O (<code>disk</code>):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/resource/cpu/print
+Columns: CPU, LOAD, IRQ, DISK
+#  CPU   LOAD  IRQ  DISK
+0  cpu0  0%    0%   0%
+1  cpu1  0%    0%   0%
+2  cpu2  1%    0%   0%
+3  cpu3  0%    0%   0%
+</code></pre>
+<h2 id="interrupts-irq">Interrupts (IRQ)</h2>
+<p>The <a href="../cli-reference/system/resource/irq"><code>/system/resource/irq</code></a> menu shows all used IRQs on the router, including the CPU the IRQ is assigned to and the interrupt counter rows for each device:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/resource/irq/print where count&gt;0
+Flags: o - READ-ONLY
+Columns: IRQ, USERS, CPU, ACTIVE-CPU, COUNT
+ #   IRQ  USERS                                CPU   ACTIVE-CPU   COUNT
+ 0     6  bam_dma                              auto           0      68
+ 1     8  78b5000.spi                          auto           2     157
+ 2     9  glink-native                         auto           3     116
+</code></pre>
+<p>IRQ assignment with <code>cpu=auto</code> is done by the interrupt routing (which uses <a href="https://docs.kernel.org/networking/napi.html">NAPI</a> interrupt consolidation). The <code>o</code> flag marks hardware-fixed IRQs, whose CPU assignment cannot be changed.</p>
+<p>To pin an IRQ to a specific core:</p>
+<pre><code class="language-ros">/system/resource/irq/set [find irq=6] cpu=2
+</code></pre>
+<h3 id="receive-packet-steering">Receive packet steering</h3>
+<p><a href="../cli-reference/system/resource/irq/rps"><code>/system/resource/irq/rps</code></a> is Receive Packet Steering (RPS), similar to Receive Side Scaling (RSS), but implemented in software: it directs packet processing work of an interface to a chosen CPU. RPS is useful when packets require additional processing that uses a relatively large amount of CPU time, such as PPP tunnel termination, VPLS, or firewall processing: the cost of RPS steering is outweighed by spreading the heavy work over the cores.</p>
+<p>RPS does not always pay off. If a network device has multiple hardware queues, its receive side scaling (RSS) already maps queues to CPUs, and RPS steering costs more than it saves. Configure RPS when the hardware has fewer queues than CPUs, or when RSS does not cover the path (for example packets decapsulated off a tunnel interface).</p>
+<h2 id="hardware-map">Hardware map</h2>
+<p><code>/system/resource/hardware</code> lists devices attached over the PCI, USB and SCSI buses with their bus location, vendor/device identifiers, firmware-reported name, driver owner, negotiated speed, USB version and so on. A board with no enumeration-capable bus (for example the hAP ax²) prints an empty list.</p>
+<h3 id="usb-device-authorization">USB device authorization</h3>
+<p>When USB device authorization is turned on globally (<code>authorization=yes</code> in <a href="../cli-reference/system/resource/hardware/usb-settings"><code>/system/resource/hardware/usb-settings</code></a>), newly attached USB devices stay disabled until the administrator allows them in <a href="../cli-reference/system/resource/hardware/authorize"><code>/system/resource/hardware/authorize</code></a>.</p>
+<h3 id="reset-usb-devices">Reset USB devices</h3>
+<p>To reset a misbehaving USB modem or drive without rebooting the router, power-cycle its USB port with <a href="../cli-reference/system/resource/hardware/usb-power-reset"><code>/system/resource/hardware/usb-power-reset</code></a> (the <code>bus</code> and <code>slot</code> come from the device's <code>/system/resource/hardware</code> row):</p>
+<pre><code class="language-ros">/system/resource/hardware/usb-power-reset bus=1 slot=2 duration=5s
+</code></pre>
+<h2 id="technical-details_2">Technical details</h2>
+<ul>
+<li><code>cpu-load</code> sums the usage of all cores of the CPU; use <code>/system/resource/cpu</code> or <code>monitor</code> for the per-core breakdown.</li>
+<li><code>write-sect-since-reboot</code>/<code>write-sect-total</code> and <code>bad-blocks</code> help spot flash wear on NAND devices (together with the <a href="health">Health</a> readings and <code>.65</code>-style early warnings).</li>
+</ul>
+<p>For all parameters and their defaults, see the <a href="../cli-reference/system/resource"><code>/system/resource</code></a>, <a href="../cli-reference/system/resource/cpu"><code>cpu</code></a>, <a href="../cli-reference/system/resource/irq"><code>irq</code></a>, <a href="../cli-reference/system/resource/irq/rps"><code>irq/rps</code></a>, <a href="../cli-reference/system/resource/hardware"><code>hardware</code></a>, <a href="../cli-reference/system/resource/hardware/usb-settings"><code>usb-settings</code></a>, <a href="../cli-reference/system/resource/hardware/authorize"><code>authorize</code></a> and <a href="../cli-reference/system/resource/hardware/usb-power-reset"><code>usb-power-reset</code></a> CLI reference pages.</p>
+<hr />
+<h1 id="profiler">Profiler</h1>
+<blockquote>
+<p>The Profiler tool shows CPU usage for each RouterOS process classifier, summed or per core, to identify which process consumes CPU resources.</p>
+</blockquote>
+<h1 id="profiler_1">Profiler</h1>
+<p>The Profiler tool shows CPU usage for each process running in RouterOS. It helps to identify which process is using most of the CPU resources. See the <a href="https://youtu.be/BkRaW14p8_s">video about this feature</a>.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/profile
+</code></pre>
+<p>Processes are grouped by type (classifiers), for example <code>wireless</code>, <code>bridging</code> or <code>console</code>, and each classifier's CPU usage is shown separately. Only the classifiers with running processes appear, so the rows depend on the device and the features in use.</p>
+<p>On multi-core systems, the <code>cpu</code> parameter selects the view: <code>cpu=total</code> (the default) sums the usage of all cores, <code>cpu=all</code> shows every core separately with per-core <code>cpuN</code> summary rows, and <code>cpu=&lt;number&gt;</code> shows only that core. Both views are demonstrated in the example below.
+Without a <code>duration</code>, the profile keeps refreshing until you stop it; <code>freeze-frame-interval</code> (in seconds) sets how often a new frame is printed, and each frame shows the usage measured since the previous frame. With <code>duration</code>, the tool stops after the given number of seconds. The first one or two frames show only the <code>total</code> row before the sampled data arrives.</p>
+<p>For a plain per-core load summary without the process split (for example for scripts), use <a href="../cli-reference/system/resource/cpu"><code>/system/resource/cpu/print</code></a>.</p>
+<h2 id="find-a-busy-process">Find a busy process</h2>
+<p>A runaway script keeps one core busy. In the summed view (<code>cpu=total</code>), 100% usage of one core of a 4-core router shows as 25%:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/profile cpu=total freeze-frame-interval=1 duration=5
+Columns: NAME, USAGE
+NAME            USAGE
+interface-mgmt  0%   
+bridging        0%   
+console         25.1%
+resource-mgmt   0%   
+ssh             0%   
+total           25.1%
+</code></pre>
+<p><code>console</code> consuming the CPU points at script or console session activity (here a script loop). The per-core view shows the exact core and its total in the <code>cpuN</code> rows:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/profile cpu=all freeze-frame-interval=1 duration=3
+Columns: NAME, CPU, USAGE
+NAME         CPU  USAGE
+console        0  95.5%
+cpu0              95.5%
+console        1  0.5% 
+wireless       1  0.5% 
+kernel         1  0.5% 
+cpu1              1.5% 
+console        2  4%   
+certificate    2  0.5% 
+cpu2              4.5% 
+console        3  0.5% 
+cpu3              0.5% 
+</code></pre>
+<h2 id="classifiers">Classifiers</h2>
+<p>RouterOS processes are classified by type and the CPU usage of each type is displayed separately for ease of debugging. Besides the feature classifiers below, system rows such as <code>kernel</code>, <code>ipc</code>, <code>interface-mgmt</code> and <code>resource-mgmt</code> can also appear; anything without a classifier accounts under <code>unclassified</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">backup</td>
+<td style="text-align: left;">Backup service</td>
+</tr>
+<tr>
+<td style="text-align: left;">bfd</td>
+<td style="text-align: left;">BFD service</td>
+</tr>
+<tr>
+<td style="text-align: left;">bgp</td>
+<td style="text-align: left;">BGP service</td>
+</tr>
+<tr>
+<td style="text-align: left;">bridging</td>
+<td style="text-align: left;">Bridging service</td>
+</tr>
+<tr>
+<td style="text-align: left;">btest</td>
+<td style="text-align: left;">Bandwidth test.</td>
+</tr>
+<tr>
+<td style="text-align: left;">certificate</td>
+<td style="text-align: left;">Certificate service</td>
+</tr>
+<tr>
+<td style="text-align: left;">console</td>
+<td style="text-align: left;">Console</td>
+</tr>
+<tr>
+<td style="text-align: left;">container</td>
+<td style="text-align: left;">combined container usage</td>
+</tr>
+<tr>
+<td style="text-align: left;">dhcp</td>
+<td style="text-align: left;">DHCP-Server and DHCP-Client services</td>
+</tr>
+<tr>
+<td style="text-align: left;">disk</td>
+<td style="text-align: left;">storage-related services</td>
+</tr>
+<tr>
+<td style="text-align: left;">dns</td>
+<td style="text-align: left;">DNS-related services</td>
+</tr>
+<tr>
+<td style="text-align: left;">dude</td>
+<td style="text-align: left;">The Dude package services</td>
+</tr>
+<tr>
+<td style="text-align: left;">e-mail</td>
+<td style="text-align: left;">e-mail tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">encrypting</td>
+<td style="text-align: left;">encrypting processes</td>
+</tr>
+<tr>
+<td style="text-align: left;">eoip</td>
+<td style="text-align: left;">EoIP</td>
+</tr>
+<tr>
+<td style="text-align: left;">ethernet</td>
+<td style="text-align: left;">Ethernet-related properties like link speed, auto-negotiation, duplex mode, monitor transceiver diagnostic information, etc.</td>
+</tr>
+<tr>
+<td style="text-align: left;">fetcher</td>
+<td style="text-align: left;">Fetch tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">fileman</td>
+<td style="text-align: left;">File manager</td>
+</tr>
+<tr>
+<td style="text-align: left;">firewall</td>
+<td style="text-align: left;">Firewall-related processes</td>
+</tr>
+<tr>
+<td style="text-align: left;">firewall-mgmt</td>
+<td style="text-align: left;">Firewall Management: Filtering, NAT, Mangle</td>
+</tr>
+<tr>
+<td style="text-align: left;">flash</td>
+<td style="text-align: left;">storage-related services</td>
+</tr>
+<tr>
+<td style="text-align: left;">ftp</td>
+<td style="text-align: left;">FTP Service</td>
+</tr>
+<tr>
+<td style="text-align: left;">gps</td>
+<td style="text-align: left;">GPS Service</td>
+</tr>
+<tr>
+<td style="text-align: left;">graphing</td>
+<td style="text-align: left;">Graphing tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">gre</td>
+<td style="text-align: left;">GRE</td>
+</tr>
+<tr>
+<td style="text-align: left;">health</td>
+<td style="text-align: left;">system monitoring, system health</td>
+</tr>
+<tr>
+<td style="text-align: left;">hotspot</td>
+<td style="text-align: left;">Hotspot service</td>
+</tr>
+<tr>
+<td style="text-align: left;">idle</td>
+<td style="text-align: left;">Free CPU resources</td>
+</tr>
+<tr>
+<td style="text-align: left;">igmp-proxy</td>
+<td style="text-align: left;">IGMP Proxy service</td>
+</tr>
+<tr>
+<td style="text-align: left;">internet-detect</td>
+<td style="text-align: left;">Detect Internet tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">ip-pool</td>
+<td style="text-align: left;">IP Pool service</td>
+</tr>
+<tr>
+<td style="text-align: left;">ipsec</td>
+<td style="text-align: left;">IPsec service:  xfrm -  set of statistics showing numbers of packets dropped by the transformation code and why.  drivers/crypto - drivers that provide access to the hardware cryptographic accelerators. ipsec - processes that relate to the Internet Key Exchange (IKE) protocols, Authentication Header (AH), Encapsulating Security Payload (ESP).</td>
+</tr>
+<tr>
+<td style="text-align: left;">kvm</td>
+<td style="text-align: left;">KVM virtual machine functionality</td>
+</tr>
+<tr>
+<td style="text-align: left;">l7-matcher</td>
+<td style="text-align: left;">L7 matcher</td>
+</tr>
+<tr>
+<td style="text-align: left;">lcd</td>
+<td style="text-align: left;">LCD Interfaces system</td>
+</tr>
+<tr>
+<td style="text-align: left;">ldp</td>
+<td style="text-align: left;">Label Distribution Protocol (LDP)</td>
+</tr>
+<tr>
+<td style="text-align: left;">logging</td>
+<td style="text-align: left;">Logging system</td>
+</tr>
+<tr>
+<td style="text-align: left;">management</td>
+<td style="text-align: left;">different subsystems: scheduler, networking, file management, etc.</td>
+</tr>
+<tr>
+<td style="text-align: left;">mpls</td>
+<td style="text-align: left;">MPLS-related features</td>
+</tr>
+<tr>
+<td style="text-align: left;">neighbor-discovery</td>
+<td style="text-align: left;">Neighbor discovery service</td>
+</tr>
+<tr>
+<td style="text-align: left;">networking</td>
+<td style="text-align: left;">common set of services included in the networking</td>
+</tr>
+<tr>
+<td style="text-align: left;">ntp</td>
+<td style="text-align: left;">NTP service</td>
+</tr>
+<tr>
+<td style="text-align: left;">ospf</td>
+<td style="text-align: left;">OSPF service</td>
+</tr>
+<tr>
+<td style="text-align: left;">ovpn</td>
+<td style="text-align: left;">OVPN service</td>
+</tr>
+<tr>
+<td style="text-align: left;">pim</td>
+<td style="text-align: left;">Protocol Independent Multicast</td>
+</tr>
+<tr>
+<td style="text-align: left;">profiling</td>
+<td style="text-align: left;">Profiler service</td>
+</tr>
+<tr>
+<td style="text-align: left;">queue-mgmt</td>
+<td style="text-align: left;">Queues: Simple queues, Queue tree, Queue types</td>
+</tr>
+<tr>
+<td style="text-align: left;">queuing</td>
+<td style="text-align: left;">Intermediate Queuing</td>
+</tr>
+<tr>
+<td style="text-align: left;">radius</td>
+<td style="text-align: left;">RADIUS service</td>
+</tr>
+<tr>
+<td style="text-align: left;">radvd</td>
+<td style="text-align: left;">IPv6 Router Advertisement daemon (radvd) service</td>
+</tr>
+<tr>
+<td style="text-align: left;">remote-access</td>
+<td style="text-align: left;">accessing the device directly without logging into RouterOS</td>
+</tr>
+<tr>
+<td style="text-align: left;">rip</td>
+<td style="text-align: left;">Routing Information Protocol</td>
+</tr>
+<tr>
+<td style="text-align: left;">routing</td>
+<td style="text-align: left;">Routing-related services</td>
+</tr>
+<tr>
+<td style="text-align: left;">serial</td>
+<td style="text-align: left;">serial console and terminal tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">sniffing</td>
+<td style="text-align: left;">packet Sniffer tool</td>
+</tr>
+<tr>
+<td style="text-align: left;">snmp</td>
+<td style="text-align: left;">SNMP</td>
+</tr>
+<tr>
+<td style="text-align: left;">socks</td>
+<td style="text-align: left;">Socket Secure</td>
+</tr>
+<tr>
+<td style="text-align: left;">spi</td>
+<td style="text-align: left;">storage-related services</td>
+</tr>
+<tr>
+<td style="text-align: left;">ssh</td>
+<td style="text-align: left;">SSH Server</td>
+</tr>
+<tr>
+<td style="text-align: left;">ssl</td>
+<td style="text-align: left;">SSL</td>
+</tr>
+<tr>
+<td style="text-align: left;">supout.rif</td>
+<td style="text-align: left;">supout.rif file generation</td>
+</tr>
+<tr>
+<td style="text-align: left;">telnet</td>
+<td style="text-align: left;">Telnet service</td>
+</tr>
+<tr>
+<td style="text-align: left;">tftp</td>
+<td style="text-align: left;">TFTP service</td>
+</tr>
+<tr>
+<td style="text-align: left;">traffic-accounting</td>
+<td style="text-align: left;">Traffic-Flow log system</td>
+</tr>
+<tr>
+<td style="text-align: left;">traffic-flow</td>
+<td style="text-align: left;">Traffic-Flow system</td>
+</tr>
+<tr>
+<td style="text-align: left;">unclassified</td>
+<td style="text-align: left;">processes or services that are not defined by this classifier</td>
+</tr>
+<tr>
+<td style="text-align: left;">upnp</td>
+<td style="text-align: left;">UPnP protocol</td>
+</tr>
+<tr>
+<td style="text-align: left;">usb</td>
+<td style="text-align: left;">USB features</td>
+</tr>
+<tr>
+<td style="text-align: left;">user-manager</td>
+<td style="text-align: left;">User Manager service</td>
+</tr>
+<tr>
+<td style="text-align: left;">vrrp</td>
+<td style="text-align: left;">VRRP</td>
+</tr>
+<tr>
+<td style="text-align: left;">web-proxy</td>
+<td style="text-align: left;">Web Proxy</td>
+</tr>
+<tr>
+<td style="text-align: left;">winbox</td>
+<td style="text-align: left;">Winbox</td>
+</tr>
+<tr>
+<td style="text-align: left;">wireguard</td>
+<td style="text-align: left;">Wireguard</td>
+</tr>
+<tr>
+<td style="text-align: left;">wireless</td>
+<td style="text-align: left;">common set of services using Wireless systems</td>
+</tr>
+<tr>
+<td style="text-align: left;">www</td>
+<td style="text-align: left;">Webfig HTTP service</td>
+</tr>
+<tr>
+<td style="text-align: left;">zerotier</td>
+<td style="text-align: left;">ZeroTier</td>
+</tr>
+</tbody>
+</table>
+<p>For all parameters, see the <a href="../cli-reference/tool/profile"><code>/tool/profile</code></a> CLI reference.</p>
+<hr />
+<h1 id="ip-scan">IP Scan</h1>
+<blockquote>
+<p>IP scan finds the devices on a network: scan an address range to list the hosts with their MAC addresses, response times, DNS and SNMP names, or listen on an interface to see the addresses that devices use, including...</p>
+</blockquote>
+<h1 id="ip-scan_1">IP Scan</h1>
+<p>IP scan finds the devices on a network. It works in two ways:</p>
+<ul>
+<li>Scan an address range: the router probes every address in the range and lists the hosts that answer, with their MAC address, response time, DNS name and SNMP name.</li>
+<li>Listen on an interface: the router sends no probes to the hosts and lists the addresses it sees in the traffic on that interface.</li>
+</ul>
+<p>Use it to find the address of a printer or a camera, to check that an address is free before you assign it, or to see which devices are on a network segment. IP scan works with IPv4 only. It is not available on devices with the SMIPS architecture; <code>architecture-name</code> in <code>/system/resource/print</code> shows the architecture of a router.</p>
+<h2 id="find-the-devices-on-your-lan">Find the devices on your LAN</h2>
+<p>Scan the LAN subnet:</p>
+<pre><code class="language-ros">/tool/ip-scan address-range=192.168.88.0/24
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, MAC-ADDRESS, TIME, DNS, SNMP
+ADDRESS        MAC-ADDRESS        TIME  DNS                  SNMP
+192.168.88.1                      1ms
+192.168.88.20  FE:2F:28:FC:FE:16  1ms   printer.office.lan.  Test2
+192.168.88.21  FE:A2:FB:A4:C8:34  1ms
+</code></pre>
+<p>The scan runs until you stop it with <kbd>Control</kbd>+<kbd>C</kbd>, or for the time given in <code>duration</code>, for example <code>duration=30s</code>. The columns are:</p>
+<ul>
+<li><code>ADDRESS</code> - The address of the host. The router's own address in the range is listed too, without a MAC address.</li>
+<li><code>MAC-ADDRESS</code> - The MAC address from the host's ARP reply.</li>
+<li><code>TIME</code> - The response time to an ICMP echo request.</li>
+<li><code>DNS</code> - The name from a reverse DNS lookup through the router's <a href="../network-management/dns">DNS resolver</a>, for example from a static DNS entry. Many LANs have no reverse names, and then the column stays empty.</li>
+<li><code>SNMP</code> - The system name of the host, when it answers an SNMP query with the community <code>public</code>. Printers, switches and routers often show their name or model here.</li>
+<li><code>NETBIOS</code> - The NetBIOS name, when the host answers a NetBIOS name query, for example a Windows computer.</li>
+</ul>
+<p>A column appears only when a host has a value for it. To match a host to a device, compare its MAC address with the label of the device or with the host names in the <a href="../network-management/dhcp/server#leases">DHCP server leases</a>.</p>
+<p>A host is listed when it answers ARP, so a computer whose firewall drops ping still appears, with an empty <code>TIME</code>.</p>
+<h2 id="check-that-an-address-is-free">Check that an address is free</h2>
+<p>To check one address, scan only that address:</p>
+<pre><code class="language-ros">/tool/ip-scan address-range=192.168.88.50 duration=5s
+</code></pre>
+<p>An empty list means that no device answered at that moment. A device that is switched off does not answer either, so before you give the address to a server as a static address, also check that it is outside the pool of the DHCP server and has no lease there.</p>
+<h2 id="find-a-device-with-an-unknown-address">Find a device with an unknown address</h2>
+<p>A device with a static address from another subnet, for example a camera or a switch with its factory address, does not answer a scan of the LAN range. Listen on the interface instead: when the device sends traffic, for example an ARP request for its gateway, the router lists its address. A device sends such traffic when it starts, so restart it while the scan runs:</p>
+<pre><code class="language-ros">/tool/ip-scan interface=bridge duration=30s
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, MAC-ADDRESS, TIME
+ADDRESS       MAC-ADDRESS        TIME
+172.16.99.5   FE:6B:12:9C:3A:05
+192.168.88.1                     0ms
+</code></pre>
+<p>The device at 172.16.99.5 is on the bridge, although its address is not in the LAN subnet. The router's own address is listed too. To reach the device from the router, add an address from its subnet to the bridge for the time you need it, and remove it afterwards:</p>
+<pre><code class="language-ros">/ip/address/add address=172.16.99.1/24 interface=bridge
+/ping 172.16.99.5 count=3
+/ip/address/remove [find address=&quot;172.16.99.1/24&quot;]
+</code></pre>
+<p>The router reaches the device directly in its subnet. A computer on the LAN reaches it through the router only when the device's gateway is the address you added; otherwise, give the computer a second address from the device's subnet.</p>
+<p>In this mode, the router lists the addresses it sees in the traffic that reaches its CPU on the interface. On a bridge with hardware offloading, that is broadcast traffic, such as ARP requests, and traffic to the router; traffic between two other devices is not seen. A device that sends nothing does not appear.</p>
+<h2 id="scan-a-remote-network">Scan a remote network</h2>
+<p>The range can be a network behind a router, for example a branch office reached over a VPN. Hosts on such a network are found by ping, so the list has no MAC addresses, and hosts that drop ping do not appear:</p>
+<pre><code class="language-ros">/tool/ip-scan address-range=198.51.100.0/29 duration=8s
+</code></pre>
+<pre><code class="language-text">Columns: ADDRESS, TIME, SNMP
+ADDRESS       TIME  SNMP
+198.51.100.1  0ms   Test2
+198.51.100.2  0ms   Test2
+198.51.100.3  0ms   Test2
+</code></pre>
+<p>The hosts found there also get the SNMP and NetBIOS queries.</p>
+<p>When you give both <code>address-range</code> and <code>interface</code>, the router scans the range, and the results are the same as without <code>interface</code>.</p>
+<h2 id="technical-details_3">Technical details</h2>
+<p>For an address range on a directly connected subnet, the router sends an ARP request to each address. To each host that answers, it sends:</p>
+<ul>
+<li>An ICMP echo request, for <code>TIME</code>.</li>
+<li>An SNMPv1 request for the system name (<code>sysName</code>) with the community <code>public</code>, for <code>SNMP</code>.</li>
+<li>A NetBIOS name query to UDP port 137, for <code>NETBIOS</code>.</li>
+</ul>
+<p>It also looks up the name of each address through its DNS resolver, for <code>DNS</code>.</p>
+<p>In both modes, the router also sends one BOOTP request on the interface. A DHCP server that answers BOOTP requests can lease an address to the router's MAC address. The RouterOS DHCP server answers BOOTP requests only for static leases by default (<code>bootp-support=static</code>), and for all clients with <code>bootp-support=dynamic</code>.</p>
+<p>For the parameters, see the <a href="../cli-reference/tool/ip-scan"><code>/tool/ip-scan</code> CLI reference</a>.</p>
+<hr />
+<h1 id="detect-internet">Detect Internet</h1>
+<blockquote>
+<p>Detect Internet gives each watched interface a state (lan, wan, internet and others) from its link, its routes and MikroTik cloud reachability, and keeps interface lists up to date with the result.</p>
+</blockquote>
+<h1 id="detect-internet_1">Detect Internet</h1>
+<p>Detect Internet watches the interfaces in <code>detect-interface-list</code> and gives each one a state: whether it has a link, whether the router's route to the internet goes through it, and whether MikroTik's cloud server answers through it. It adds each interface to the LAN, WAN or internet interface list you name, so settings and scripts that use those lists follow the current state of the interfaces.</p>
+<p>Detect Internet is off by default (<code>detect-interface-list=none</code>), and the hAP ax² default configuration does not turn it on. While it runs, the router contacts <code>cloud.mikrotik.com</code> on UDP port 30000 to check the internet state, see <a href="../network-management/cloud/communication-mikrotik-cloud-servers">Communication with MikroTik Cloud Services</a>.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Detect Internet changes the members of the interface lists by itself. Rules and settings that use these lists change their effect whenever an interface changes its state.</p>
+</div>
+<h2 id="see-which-interface-has-internet">See which interface has internet</h2>
+<p>Create a list for the interfaces with internet, and watch all interfaces:</p>
+<pre><code class="language-ros">/interface/list/add name=internet
+/interface/detect-internet/set detect-interface-list=all \
+    internet-interface-list=internet
+</code></pre>
+<p>The state of each interface shows in the <code>state</code> menu:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/detect-internet/state/print
+Columns: NAME, STATE, STATE-CHANGE-TIME, CLOUD-RTT
+#  NAME    STATE     STATE-CHANGE-TIME    CLOUD-RTT
+0  lo      lan       2026-10-01 13:48:56
+1  ether1  no-link   2026-10-01 13:48:56
+2  ether2  slave     2026-10-01 13:48:56
+3  ether3  slave     2026-10-01 13:48:56
+4  ether4  slave     2026-10-01 13:48:56
+5  ether5  slave     2026-10-01 13:48:56
+6  wifi1   slave     2026-10-01 13:48:56
+7  wifi2   slave     2026-10-01 13:48:56
+8  bridge  internet  2026-10-01 13:49:02  12ms
+</code></pre>
+<p>This router gets its internet from another router on its LAN, so its <code>bridge</code> has the internet state. On a typical home router, the internet state goes to the interface with the default route, for example <code>ether1</code>. Ports of the bridge show as <code>slave</code>, and <code>ether1</code> has no cable here (<code>no-link</code>). <code>lo</code> is the router's loopback interface, shown as <code>lan</code>.</p>
+<p>The interface with the internet state is a dynamic member of the <code>internet</code> list:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/list/member/print where list=internet
+Flags: D - DYNAMIC
+Columns: LIST, INTERFACE
+#   LIST      INTERFACE
+;;; INTERNET detected
+0 D internet  bridge
+</code></pre>
+<h2 id="use-the-lists-with-care">Use the lists with care</h2>
+<p>The lists change on their own: an interface leaves the <code>internet</code> or <code>wan</code> list when its state changes, and every interface is <code>lan</code> again after a link change. Do not use these lists for trust decisions, for example in firewall rules that accept traffic, and do not set them to the <code>LAN</code> and <code>WAN</code> lists of the default configuration. They fit informational use, for example in scripts that report which line has the internet.</p>
+<p>Set <code>lan-interface-list</code> and <code>wan-interface-list</code> to fill lists for the other states in the same way.</p>
+<h2 id="how-the-states-work">How the states work</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">State</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>no-link</code></td>
+<td style="text-align: left;">The interface has no link.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>slave</code></td>
+<td style="text-align: left;">The interface is a port of a bridge or another interface, for example a bridge port or a Wi-Fi interface in a bridge.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>lan</code></td>
+<td style="text-align: left;">The start state of layer 2 interfaces, and the state again after a link change.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>unknown</code></td>
+<td style="text-align: left;">The router is checking the interface. It lasts about 6 seconds.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wan</code></td>
+<td style="text-align: left;">The router's active route to 8.8.8.8 goes through the interface. Layer 3 tunnels, such as IPIP, become <code>wan</code> when their link comes up.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>internet</code></td>
+<td style="text-align: left;">A <code>wan</code> interface through which the router reaches <code>cloud.mikrotik.com</code> on UDP port 30000. The router's route to the cloud server must go through this interface.</td>
+</tr>
+</tbody>
+</table>
+<p>The router checks an interface again after a link change, a route change or a change of the Detect Internet settings. These rules decide what can change:</p>
+<ul>
+<li>An interface that has stayed <code>lan</code> for an hour is locked. It changes only after a link change, also when a route to 8.8.8.8 goes through it later.</li>
+<li>A <code>wan</code> interface goes back to <code>lan</code> only after a link change.</li>
+<li>An <code>internet</code> interface falls back to <code>wan</code> when the cloud server stops answering (after about 4 minutes with the default <code>request-interval</code>), or when the route to the cloud server no longer goes through the interface. When the server answers again, the interface gets the <code>internet</code> state back.</li>
+<li>With two equal-cost routes to 8.8.8.8 through different interfaces, neither interface becomes <code>wan</code>.</li>
+</ul>
+<p>A link change means that the link of the interface goes down and comes up again, for example when a cable is unplugged and plugged in, or when the interface is disabled and enabled.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Detect Internet shows which interface the router's active route uses, not the health of every line. A backup line whose route is not active stays <code>lan</code>, and after an hour it is locked, so Detect Internet is not a health check for failover. A /32 route to 8.8.8.8 through one line, which some failover setups use, keeps the <code>wan</code> state on that line. To check backup lines, use routes with <code>check-gateway</code> (see <a href="../high-availability-solutions/load-balancing/failover-wan-backup">Failover (WAN backup)</a>) or <a href="netwatch">Netwatch</a>.</p>
+</div>
+<p>Each state change is logged with the topic <code>interface</code>, for example <code>ether1 detect WAN</code>.</p>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<p>When every interface stays <code>lan</code>:</p>
+<ul>
+<li>Check that the router's active route to the internet goes through the interface:</li>
+</ul>
+<p><code>ros
+  /ip/route/print where active and dst-address=0.0.0.0/0</code></p>
+<ul>
+<li>An interface that stayed <code>lan</code> for an hour is locked. Disable and enable it, or unplug and plug in its cable, so that the router checks it again.</li>
+<li>With two equal-cost routes to 8.8.8.8 through different interfaces, neither becomes <code>wan</code>.</li>
+</ul>
+<p>When an interface is <code>wan</code> but never <code>internet</code>, check that the router's route to <code>cloud.mikrotik.com</code> goes through that interface, and that UDP port 30000 to the cloud server is not blocked on the way.</p>
+<h2 id="technical-details_4">Technical details</h2>
+<h3 id="cloud-check">Cloud check</h3>
+<p>For a <code>wan</code> interface, the router sends a 32-byte UDP message to <code>cloud.mikrotik.com</code> port 30000, and the server sends it back. The router sends the message at half of <code>request-interval</code>, so about every minute with the default of 2 minutes. <code>request-interval</code> takes values from 1 minute to 1 day. <code>CLOUD-RTT</code> in the <code>state</code> menu shows the round-trip time of the last answer.</p>
+<h3 id="dynamic-list-members">Dynamic list members</h3>
+<p>Each dynamic member of a list gets a comment with the state that added it: <code>LAN detected</code>, <code>WAN detected</code> or <code>INTERNET detected</code>.</p>
+<h3 id="settings-changes">Settings changes</h3>
+<p>A change of the Detect Internet settings checks all watched interfaces again. Each interface shows <code>unknown</code> for a few seconds and then its state.</p>
+<h2 id="turn-it-off">Turn it off</h2>
+<p>Stop watching the interfaces:</p>
+<pre><code class="language-ros">/interface/detect-internet/set detect-interface-list=none
+</code></pre>
+<p>This also removes the dynamic members from the lists. With no interfaces to watch, Detect Internet no longer contacts the cloud server.</p>
+<p>For all parameters, see the CLI reference for <a href="../cli-reference/interface/detect-internet/"><code>/interface/detect-internet</code></a> and <a href="../cli-reference/interface/detect-internet/state"><code>/interface/detect-internet/state</code></a>.</p>
+<hr />
+<h1 id="dns-update">DNS update</h1>
+<blockquote>
+<p>The DNS update tool sends an RFC 2136 dynamic update, signed with a TSIG hmac-md5 key, to the authoritative DNS server of a zone to point a name at an IPv4 address.</p>
+</blockquote>
+<h1 id="dns-update_1">DNS update</h1>
+<p>The <code>/tool/dns-update</code> command sends one dynamic update (RFC 2136) to the authoritative DNS server of a zone and points a name in that zone at an IPv4 address. The update is signed with a TSIG key (RFC 8945), so the server can check that it comes from you, as in a secure dynamic update (RFC 3007). Use it for a zone that you run yourself, for example on a BIND server.</p>
+<p>You do not need this command in two common cases:</p>
+<ul>
+<li>For a name that follows the router's own public address without running a DNS server, use the DDNS service of <a href="../network-management/cloud/#ddns">IP Cloud</a>.</li>
+<li>Dynamic DNS services that take updates over HTTP, such as DynDNS, are updated with <a href="../system-information-and-utilities/fetch">Fetch</a> instead.</li>
+</ul>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>A DNS server that is authoritative for the zone and accepts dynamic updates over TCP port 53.</li>
+<li>A TSIG key that the server accepts for updates of the zone, with the algorithm hmac-md5. RouterOS signs with hmac-md5 only; the command has no algorithm setting.</li>
+<li>The name of the key and its secret in base64, as configured on the server. For example on BIND, create the key with <code>tsig-keygen -a hmac-md5 dns-update-key</code>, because BIND creates keys with another algorithm by default, and allow this key to update only the name it needs (<code>update-policy</code>).</li>
+<li>A router clock that differs from the server's clock by less than 5 minutes. The signature allows 300 seconds of difference, so keep the clock synchronized with <a href="../system-information-and-utilities/ntp">NTP</a>.</li>
+<li>A firewall on the server side that accepts TCP port 53 from the router.</li>
+</ul>
+<h2 id="point-a-name-at-an-address">Point a name at an address</h2>
+<p>Point <code>office.example.com</code> at 198.51.100.20 on the DNS server 192.0.2.53, with the key <code>dns-update-key</code>. Replace the key with the base64 secret of your key, and keep the quotes, because a base64 value can end in <code>=</code>:</p>
+<pre><code class="language-ros">/tool/dns-update dns-server=192.0.2.53 zone=example.com \
+    name=office address=198.51.100.20 ttl=300 \
+    key-name=dns-update-key key=&quot;c2VjcmV0LWtleS1mb3ItZXhhbXBsZQ==&quot;
+</code></pre>
+<p><code>ttl=300</code> keeps the record for 5 minutes in the caches of other DNS servers, so they pick up a changed address soon. Without <code>ttl</code>, the record gets one day.</p>
+<p>When the server accepts the update, the command prints nothing. When it does not, the command stops with a <code>failure:</code> message; the Troubleshoot section lists what each one means.</p>
+<p>How the parameters work:</p>
+<ul>
+<li><code>name</code> is relative to <code>zone</code>: <code>name=office</code> with <code>zone=example.com</code> updates <code>office.example.com</code>. A full name is doubled: <code>name=office.example.com</code> updates <code>office.example.com.example.com</code>. A name with a trailing dot is refused with <code>failure: bad name</code>.</li>
+<li>The update first deletes all A records of the name and then adds the new one, so it replaces the address instead of adding a second one.</li>
+<li><code>ttl</code> sets the time to live of the record in seconds. Without <code>ttl</code>, the record gets 86400 seconds (one day), which is long for an address that changes.</li>
+<li><code>address</code> takes one IPv4 address. Two addresses fail with <code>failure: only one address allowed</code>, and an IPv6 address is refused. The command updates A records only.</li>
+</ul>
+<h2 id="keep-the-name-current">Keep the name current</h2>
+<p>The command sends one update each time it runs. To keep a name pointing at an address that changes, run it from a script when the address changes, for example from the lease script of the <a href="../network-management/dhcp/client">DHCP client</a> on the WAN interface, or regularly from a <a href="../system-information-and-utilities/scheduler">scheduler</a> entry. The script reads the current address, removes the prefix length (see <a href="../developer-guides/scripting/scripting-examples#strip-netmask">Strip netmask</a>), and passes the address to <code>/tool/dns-update</code>.</p>
+<p>Things to keep in mind for such a script:</p>
+<ul>
+<li>Each update changes the zone on the server. Compare the address with the address the name has now (<code>:resolve</code>), and send the update only when it differs.</li>
+<li>At startup, wait until <a href="../system-information-and-utilities/ntp">NTP</a> has synchronized the clock, so that the server accepts the signature.</li>
+<li>Behind NAT or carrier-grade NAT, the address on the WAN interface is not the public one. The router's public address is in <code>public-address</code> of <a href="../network-management/cloud/">IP Cloud</a>.</li>
+<li>The key is part of the command, so every user who can read the script can read the key.</li>
+</ul>
+<h2 id="troubleshoot_1">Troubleshoot</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Message</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>failure: update send failed</code></td>
+<td style="text-align: left;">The router could not open a TCP connection to port 53 of the server: the server is down, does not listen on TCP, or a firewall blocks it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>failure: reply not signed</code></td>
+<td style="text-align: left;">The server rejected the signature, for example because the key name or the key is wrong.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>failure: refused</code></td>
+<td style="text-align: left;">The server refuses the update, for example because the key has no permission to update this zone, or because the update was sent without a key.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>failure: name not within zone</code></td>
+<td style="text-align: left;">The name is not in the zone. Check <code>zone</code> and <code>name</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>failure: bad name</code></td>
+<td style="text-align: left;"><code>name</code> is not valid, for example because it ends with a dot.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details_5">Technical details</h2>
+<h3 id="protocol">Protocol</h3>
+<p>The update goes to TCP port 53 of <code>dns-server</code>. The message is a DNS UPDATE for the zone (zone section <code>example.com. IN SOA</code>). Its update section deletes the A records of the name (<code>office.example.com. ANY A</code>) and adds the new record (<code>office.example.com. 86400 IN A 198.51.100.20</code>).</p>
+<h3 id="signature">Signature</h3>
+<p>With <code>key-name</code> and <code>key</code>, the message carries a TSIG record with the algorithm <code>hmac-md5.sig-alg.reg.int</code> and a fudge of 300 seconds, the allowed clock difference. <code>key</code> is the base64 secret of the key. Without <code>key-name</code> and <code>key</code>, the update is sent unsigned, and most servers refuse it.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/dns-update"><code>/tool/dns-update</code></a> CLI reference.</p>
+<hr />
+<h1 id="watchdog">Watchdog</h1>
+<blockquote>
+<p>Watchdog reboots the router when the system stops responding or when one IP address stops answering pings, and writes a support output file after a software failure.</p>
+</blockquote>
+<h1 id="watchdog_1">Watchdog</h1>
+<p>The watchdog reboots the router by itself in two cases, each with its own settings in <code>/system/watchdog</code>:</p>
+<ul>
+<li>The software watchdog timer reboots the router when the system stops responding. This is mostly caused by a hardware malfunction, and the reboot lets the device recover by itself. It is on by default (<code>watchdog-timer=yes</code>).</li>
+<li>The ping watchdog reboots the router when one IP address stops answering pings. It is off by default (<code>watch-address=none</code>).</li>
+</ul>
+<p>A watchdog reboot is an automatic <code>/system/reboot</code>, not a software failure. The watchdog timer reboots the router because a service does not respond as fast as it should. Reasons can be damaged hardware, a slow software implementation of a service, a DDoS attack, a bad configuration and others.</p>
+<h2 id="reboot-when-an-address-stops-answering">Reboot when an address stops answering</h2>
+<p>A remote router can lose its uplink or its VPN and stay unreachable until someone restarts it, for example a router on a mast whose wireless link hangs. The ping watchdog reboots such a router when an address on the other side of the link stops answering:</p>
+<pre><code class="language-ros">/system/watchdog/set watch-address=192.0.2.1
+</code></pre>
+<p>Use an address that is reliably up and that the router reaches through the link you care about, such as the gateway of the uplink. For a VPN, watch an address inside the tunnel, such as the tunnel address of the far end, not its public address: the public address can still answer when the tunnel is down. An address that is down for its own reasons reboots a router that works.</p>
+<p>The router pings the address six times, spread over <code>ping-timeout</code> (1 minute by default, so one ping every 10 seconds), and reboots when all six pings fail. After a boot, it waits <code>ping-start-after-boot</code> (5 minutes by default) before the first ping. On a router that has been up longer than <code>ping-start-after-boot</code>, setting <code>watch-address</code> starts the pings at once.</p>
+<p>Set <code>ping-start-after-boot</code> longer than the link needs to come up after a boot, for example a VPN or an LTE connection. Otherwise the router reboots before the link is up. After each reboot, this time is also your window to log in and set <code>watch-address=none</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the address stays unreachable, the router reboots again after each boot, every <code>ping-start-after-boot</code> plus <code>ping-timeout</code>: about every 6 minutes with the defaults. Choose the address carefully, and keep another way in, such as console access or MAC Telnet from a neighbor.</p>
+</div>
+<p>To turn the ping watchdog off:</p>
+<pre><code class="language-ros">/system/watchdog/set watch-address=none
+</code></pre>
+<p>The ping watchdog reboots for as long as the address does not answer. For a limited number of reboots, or for other actions when an address stops answering, use <a href="netwatch">Netwatch</a> with a script.</p>
+<h2 id="see-why-the-router-rebooted">See why the router rebooted</h2>
+<p>After a ping watchdog reboot, the log shows these entries (topics <code>system,error,critical</code> for the first one):</p>
+<pre><code class="language-text">System rebooted because of ping watchdog timeout
+router rebooted
+</code></pre>
+<p>A ping watchdog reboot does not write a support output file (<code>autosupout.rif</code>).</p>
+<h2 id="support-output-after-a-crash">Support output after a crash</h2>
+<p>When the software fails, the router writes <code>autosupout.rif</code> by itself (<code>automatic-supout=yes</code>, on by default) and renames the previous file to <code>autosupout.old.rif</code>. Send these files to MikroTik support with the problem description. For more about support output files, see <a href="../getting-started/supout-rif">Supout.rif</a>.</p>
+<p>The router can also send the file by email. For example, to send it to <code>support@example.com</code> through the SMTP server <code>192.0.2.1</code>:</p>
+<pre><code class="language-ros">/system/watchdog/set auto-send-supout=yes \
+    send-email-to=support@example.com send-smtp-server=192.0.2.1
+</code></pre>
+<p>When <code>send-email-from</code> or <code>send-smtp-server</code> is not set, the router uses the values from <a href="../system-information-and-utilities/e-mail"><code>/tool/e-mail</code></a>. While <code>auto-send-supout=no</code>, <code>print</code> does not show the email settings.</p>
+<h2 id="technical-details_6">Technical details</h2>
+<h3 id="ping-interval">Ping interval</h3>
+<p>The interval between the pings is <code>ping-timeout</code> divided by six: 10 seconds with the default <code>1m</code>, 20 seconds with <code>2m</code>. The reboot follows a few seconds after the sixth failed ping, so it comes about <code>ping-timeout</code> after the first failed ping.</p>
+<p>Older exports call <code>ping-start-after-boot</code> <code>no-ping-delay</code>.</p>
+<h3 id="software-watchdog-timer">Software watchdog timer</h3>
+<p>With <code>watchdog-timer=yes</code>, the router reboots when the system is unresponsive for a minute. Set <code>watchdog-timer=no</code> to turn it off.</p>
+<p>For all parameters, see the <a href="../cli-reference/system/watchdog"><code>/system/watchdog</code></a> CLI reference.</p>
+<hr />
+<h1 id="downgrading-routeros">Downgrading RouterOS</h1>
+<blockquote>
+<p>Learn how to downgrade RouterOS to a previous version, including pre-downgrade checks, architecture verification, and step-by-step instructions.</p>
+</blockquote>
+<p>You can downgrade RouterOS <strong>only as far as the minimum version supported by your hardware</strong>. Check it with the following command:</p>
+<pre><code class="language-ros">/system/resource/print
+                   uptime: 2m18s
+                  version: 7.26beta1
+               build-time: 2026-10-01 13:29:47
+          minimum-version: 7.0.9
+              free-memory: 681.8MiB
+             total-memory: 1024.0MiB
+                      cpu: ARM64
+                cpu-count: 4
+            cpu-frequency: 864MHz
+                 cpu-load: 3%
+           free-hdd-space: 91.8MiB
+          total-hdd-space: 128.0MiB
+  write-sect-since-reboot: 64
+         write-sect-total: 266154
+               bad-blocks: 0%
+        architecture-name: arm64
+               board-name: hAP ax^2
+                 platform: MikroTik
+</code></pre>
+<p>The <code>minimum-version</code> field is the oldest RouterOS release supported by your hardware's bootloader. The exact value depends on the device. In earlier RouterOS versions the same value was shown as <code>factory-software</code> — treat that field identically if your version still prints it.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Attempting to install a version older than <code>minimum-version</code> can cause severe system instability or brick the device.</p>
+</div>
+<h2 id="before-you-start">Before you start</h2>
+<ul>
+<li><strong>Back up everything.</strong> Configuration syntax changes between major versions. A direct downgrade can corrupt settings. Generate a <a href="../getting-started/configuration-management/backup.md">binary backup (<code>.backup</code>)</a> and an <a href="../getting-started/configuration-management/#export-the-configuration">export file (<code>.rsc</code>)</a> before proceeding.</li>
+<li><strong>Security and stability.</strong> Keep in mind that reverting to legacy versions exposes your router to older software bugs and patched security vulnerabilities.</li>
+</ul>
+<h2 id="downgrade-procedure">Downgrade procedure</h2>
+<ol>
+<li><strong>Verify the architecture.</strong> Check the <code>architecture-name</code> field of <code>/system/resource/print</code> (for example <code>arm64</code>, <code>arm</code>, <code>mipsbe</code>, <code>mmips</code>, <code>x86</code>).</li>
+<li><strong>Download the packages.</strong> From the <a href="https://mikrotik.com/download">MikroTik download page</a>, download the <strong>main bundle</strong> for that architecture and your targeted older version — it contains the <code>routeros-&lt;version&gt;-&lt;architecture&gt;.npk</code> system package. Check <code>/system/package/print</code> for the other packages installed on the router and download each of them in the same target version from the "Extra packages" bundle. On a device with WiFi, this includes the wireless driver package (<code>wifi-qcom</code>, <code>wifi-qcom-ac</code> or <code>wireless</code>, depending on the device); other common extra packages are container, calea and cmr.</li>
+<li><strong>Upload the files.</strong> Connect to your router via WinBox, WebFig, or an FTP client, open the Files menu, and upload the <code>.npk</code> files: the main <code>routeros</code> package and every extra package from step 2.</li>
+<li><strong>Run the downgrade.</strong> Execute the command and confirm the prompt:</li>
+</ol>
+<p><code>ros
+   /system/package/downgrade</code></p>
+<p>The router prompts for a reboot. During the reboot it checks the uploaded packages and downgrades RouterOS to the version they contain.
+5. <strong>Wait for the reboot.</strong> The router restarts, unpacks the older version, and comes back online with the downgrade complete.</p>
+<p>After the reboot, verify the new version with <code>/system/resource/print</code> and confirm that the <code>version</code> field shows the expected downgrade target.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

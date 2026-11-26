@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>802.11 a/b/g/n · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="80211-abgn-part-13">802.11 a/b/g/n (part 1/3)</h1>
+<h1 id="80211-abgn">802.11 a/b/g/n</h1>
+<blockquote>
+<p>MikroTik 802.11 a/b/g/n devices use the legacy /interface/wireless menu provided by the wireless package. This section covers the wireless interface, MikroTik-proprietary protocols (Nstreme, Nv2), HWMP+ mesh,...</p>
+</blockquote>
+<h1 id="80211-abgn_1">802.11 a/b/g/n</h1>
+<p>This section covers MikroTik <strong>802.11 a/b/g/n</strong> devices (and any 802.11ac device running the <code>wireless</code> package), configured through the <strong><code>/interface/wireless</code></strong> menu (the <strong><code>wireless</code></strong> driver package) — the only option on MIPS-based devices.</p>
+<p>This menu is also where the MikroTik-specific, throughput-oriented features live — <strong>Nstreme</strong> and <strong>Nv2</strong> (TDMA), <strong>WDS</strong>, and <strong>HWMP+ mesh</strong> — as well as the original <strong><a href="./capsman/ap-controller-capsman.md">CAPsMAN</a></strong> (<code>/caps-man</code>) controller.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Some 802.11ac devices can instead run the new <code>/interface/wifi</code> menu via the <code>wifi-qcom-ac</code> package — see <a href="../wifi-ac/index.md">Wi-Fi 5 (802.11ac)</a> to choose. WPA3 and fast roaming are only available through the new menu.</p>
+</div>
+<hr />
+<h1 id="hwmpplus-mesh">HWMPplus mesh</h1>
+<blockquote>
+<p>This page documents the HWMP+ mesh protocol in MikroTik RouterOS, a layer-2 routing solution for wireless mesh networks using Hybrid Wireless Mesh Protocol. It covers interface properties, port configurations, FDB...</p>
+</blockquote>
+<h1 id="hwmpplus-mesh_1">HWMPplus mesh</h1>
+<p><strong>Sub-menu:</strong> <code>/interface/mesh</code></p>
+<p>HWMP+ is a MikroTik-specific layer-2 routing protocol for wireless mesh networks. It is based on Hybrid Wireless Mesh Protocol (HWMP) from the IEEE 802.11s draft standard. It can be used instead of (Rapid) Spanning Tree protocols in mesh setups to ensure loop-free optimal routing.</p>
+<p>The HWMP+ protocol, however, is not compatible with HWMP from the IEEE 802.11s draft standard.</p>
+<p>Note that the distribution system you use for your network need not be a Wireless Distribution System (WDS). HWMP+ mesh routing supports not only WDS interfaces but also Ethernet interfaces inside the mesh. So you can use a simple Ethernet-based distribution system, or you can combine both WDS and Ethernet links!</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>HWMPplus is not supported on  <a href="../wifi/index.md">Wifi</a> interfaces, but can be used on <a href="./">Wireless</a> interfaces.</p>
+</div>
+<h2 id="properties">Properties</h2>
+<h3 id="mesh">Mesh</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>admin-mac</strong> (<em>MAC address</em>; <strong>Default: 00:00:00:00:00:00)</strong></td>
+<td style="text-align: left;">Administratively assigned MAC address, used when the <strong>auto-mac</strong> setting is disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled | enabled | proxy-arp | reply-only</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">Address Resolution Protocol setting</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>auto-mac</strong> (<em>boolean</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If disabled, then the value from <strong>admin-mac</strong> will be used as the MAC address of the mesh interface; else the address of some port will be used if ports are present</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-default-hoplimit</strong> (<em>integer: 1..255</em>; Default: )</td>
+<td style="text-align: left;">Maximum hop count for generated routing protocol packets; after an HWMP+ packet is forwarded "hoplimit" times, it is dropped</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-prep-lifetime</strong> (<em>time</em>; Default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Lifetime for routes created from received PREP or PREQ messages</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-preq-destination-only</strong> (<em>boolean</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether the only destination can respond to a HWMP+ PREQ message</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-preq-reply-and-forward</strong> (<em>boolean</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether intermediate nodes should forward the HWMP+ PREQ message after responding to it. Useful only when <strong>hwmp-preq-destination-only</strong> is disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-preq-retries</strong> (<em>integer</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">How many times to retry a route discovery to a specific MAC address before the address is considered unreachable</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-preq-waiting-time</strong> (<em>time</em>; Default: <strong>4s</strong>)</td>
+<td style="text-align: left;">How long to wait for a response to the first PREQ message. Note that for subsequent PREQs the waiting time is increased exponentially</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-rann-interval</strong> (<em>time</em>; Default: <strong>10s</strong>)</td>
+<td style="text-align: left;">How often to send out HWMP+ RANN messages</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-rann-lifetime</strong> (<em>time</em>; Default: <strong>1s</strong>)</td>
+<td style="text-align: left;">Lifetime for routes created from received RANN messages</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hwmp-rann-propagation-delay</strong> (<em>time</em>; Default: <strong>0.5s</strong>)</td>
+<td style="text-align: left;">How long to wait before propagating a RANN message. Value in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mesh-portal</strong> (<em>boolean</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether this interface is a portal in the mesh network</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>number</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;">Maximum transmission unit size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Interface name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>reoptimize-paths</strong> (<em>boolean</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to send out periodic PREQ messages asking for known MAC addresses. Turning on this setting is useful if the network topology is changing often. Note that if no reply is received to a re-optimization PREQ, the existing path is kept anyway (until it times out)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="port">Port</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>active-port-type</strong> (<em>read-only: wireless | WDS | ethernet-mesh | ethernet-bridge | ethernet-mixed</em>; Default: )</td>
+<td style="text-align: left;">port type and state actually used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hello-interval</strong> (<em>time</em>; Default: <strong>10s</strong>)</td>
+<td style="text-align: left;">the maximum interval between sending out HWMP+ Hello messages. Used only for Ethernet type ports</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>interface name</em>; Default: )</td>
+<td style="text-align: left;">interface name, which is to be included in a mesh</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mesh</strong> (<em>interface name</em>; Default: )</td>
+<td style="text-align: left;">mesh interface this port belongs to</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>path-cost</strong> (<em>integer: 0..65535</em>; Default: <strong>10</strong>)</td>
+<td style="text-align: left;">path cost to the interface, used by routing protocol to determine the 'best' path</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port-type</strong> (<em>WDS | auto | ethernet | wireless</em>; Default: )</td>
+<td style="text-align: left;">port type to useauto - port type is determined automatically based on the underlying interface's typeWDS - a Wireless Distribution System interface. Remote MAC address is learned from wireless connection dataethernet - Remote MAC addresses are learned either from HWMP+ Hello messages or from source MAC addresses in received or forwarded trafficwireless - Remote MAC addresses are learned from wireless connection data</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fdb-status">FDB Status</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC address</em>)</td>
+<td style="text-align: left;">MAC address corresponding to this FDB entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>seq-number</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">sequence number used in the routing protocol to avoid loops</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (<em>local | outsider | direct | mesh | neighbor | larval | unknown</em>)</td>
+<td style="text-align: left;">type of this FDB entrylocal -- MAC address belongs to the local router itselfoutsider -- MAC address belongs to a device external to the mesh networkdirect -- MAC address belongs to a wireless client on an interface that is in the mesh networkmesh -- MAC address belongs to a device reachable over the mesh network; it can be either internal or external to the mesh networkneighbor -- MAC address belongs to a mesh router that is a direct neighbor to this routerlarval -- MAC address belongs to an unknown device that is reachable over the mesh networkunknown -- MAC address belongs to an unknown device</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mesh</strong> (<em>interface name</em>)</td>
+<td style="text-align: left;">the mesh interface this FDB entry belongs to</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>on-interface</strong> (<em>interface name</em>)</td>
+<td style="text-align: left;">mesh port used for traffic forwarding, kind of a next-hop value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lifetime</strong> (<em>time</em>)</td>
+<td style="text-align: left;">time remaining to live if this entry is not used for traffic forwarding</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>age</strong> (<em>time</em>)</td>
+<td style="text-align: left;">age of this FDB entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>metric</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">a metric value used by the routing protocol to determine the 'best' path</td>
+</tr>
+</tbody>
+</table>
+<h2 id="example">Example</h2>
+<p>This example uses static WDS links that are dynamically added as mesh ports when they become active. Two different frequencies are used: one for AP interconnections, and one for client connections to APs, so the AP must have at least two wireless interfaces. Of course, the same frequency for all connections also could be used, but that might not work as well because of potential interference issues.</p>
+<p>Repeat this configuration on all APs:</p>
+<pre><code class="language-ros">/interface/mesh/add disabled=no
+/interface/mesh/port/add interface=wlan1 mesh=mesh1
+/interface/mesh/port/add interface=wlan2 mesh=mesh1
+
+ # interface used for AP interconnections 
+/interface/wireless/set wlan1 disabled=no ssid=mesh frequency=2437 band=2ghz-b/g/n mode=ap-bridge \
+ wds-mode=static-mesh wds-default-bridge=mesh1 
+
+# interface used for client connections
+ /interface/wireless/set wlan2 disabled=no ssid=mesh-clients frequency=5180 band=5ghz-a/n/ac mode=ap-bridge 
+
+# a static WDS interface for each AP you want to connect to
+/interface/wireless/wds/add disabled=no master-interface=wlan1 name=&lt;descriptive name of remote end&gt; \
+ wds-address=&lt;MAC address of remote end&gt; 
+</code></pre>
+<p>Here a WDS interface is added manually because static WDS mode is used. If you are using <strong>wds-mode</strong>=<strong>dynamic-mesh</strong>, all WDS interfaces will be created automatically. The <strong>frequency</strong> and <strong>band</strong> parameters are specified here only to produce a valid example configuration; mesh protocol operations are by no means limited to or optimized for these particular values.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>You may want to increase the <strong>disconnect-timeout</strong> wireless interface option to make the protocol more stable.</p>
+</div>
+<p>In real-world setups you also should take care of securing the wireless connections, using <code>/interface/wireless/security-profile</code>. For simplicity, that configuration is not shown here.</p>
+<p>Results on router A (there is one client connected to wlan2):</p>
+<pre><code class="language-ros">[admin@A] &gt; /interface/mesh/print
+Flags: X - disabled, R - running
+0 R name=&quot;mesh1&quot; mtu=1500 arp=enabled mac-address=00:0C:42:0C:B5:A4 auto-mac=yes
+admin-mac=00:00:00:00:00:00 mesh-portal=no hwmp-default-hoplimit=32
+hwmp-preq-waiting-time=4s hwmp-preq-retries=2 hwmp-preq-destination-only=yes
+hwmp-preq-reply-and-forward=yes hwmp-prep-lifetime=5m hwmp-rann-interval=10s
+hwmp-rann-propagation-delay=1s hwmp-rann-lifetime=22s
+
+[admin@A] &gt; /interface/mesh/port/print detail
+Flags: X - disabled, I - inactive, D - dynamic
+0 interface=wlan1 mesh=mesh1 path-cost=10 hello-interval=10s port-type=auto port-type-used=wireless
+1 interface=wlan2 mesh=mesh1 path-cost=10 hello-interval=10s port-type=auto port-type-used=wireless
+2 D interface=router_B mesh=mesh1 path-cost=105 hello-interval=10s port-type=auto port-type-used=WDS
+3 D interface=router_D mesh=mesh1 path-cost=76 hello-interval=10s port-type=auto port-type-used=WDS
+</code></pre>
+<p>The FDB (Forwarding Database) at the moment contains information only about local MAC addresses, non-mesh nodes reachable through a local interface, and direct mesh neighbors:</p>
+<pre><code class="language-ros">[admin@A] /interface/mesh/fdb/print
+Flags: A - active, R - root
+MESH TYPE MAC-ADDRESS ON-INTERFACE LIFETIME AGE
+A mesh1 local 00:0C:42:00:00:AA 3m17s
+A mesh1 neighbor 00:0C:42:00:00:BB router_B 1m2s
+A mesh1 neighbor 00:0C:42:00:00:DD router_D 3m16s
+A mesh1 direct 00:0C:42:0C:7A:2B wlan2 2m56s
+A mesh1 local 00:0C:42:0C:B5:A4 2m56s
+
+[admin@A] /interface/mesh/fdb/print detail
+Flags: A - active, R - root
+A mac-address=00:0C:42:00:00:AA type=local age=3m21s mesh=mesh1 metric=0 seqnum=4294967196
+A mac-address=00:0C:42:00:00:BB type=neighbor on-interface=router_B age=1m6s mesh=mesh1 metric=132 seqnum=4294967196
+A mac-address=00:0C:42:00:00:DD type=neighbor on-interface=router_D age=3m20s mesh=mesh1 metric=79 seqnum=4294967196
+A mac-address=00:0C:42:0C:7A:2B type=direct on-interface=wlan2 age=3m mesh=mesh1 metric=10 seqnum=0
+A mac-address=00:0C:42:0C:B5:A4 type=local age=3m mesh=mesh1 metric=0 seqnum=0
+</code></pre>
+<p>Test if ping works:</p>
+<pre><code class="language-ros">[admin@A] &gt; /ping 00:0C:42:00:00:CC
+00:0C:42:00:00:CC 64 byte ping time=108 ms
+00:0C:42:00:00:CC 64 byte ping time=51 ms
+00:0C:42:00:00:CC 64 byte ping time=39 ms
+00:0C:42:00:00:CC 64 byte ping time=43 ms
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip min/avg/max = 39/60.2/108 ms
+</code></pre>
+<p>Router A had to discover a path to Router C first, hence the slightly larger time for the first ping. Now the FDB also contains an entry for 00:0C:42:00:00:CC, with type "mesh".</p>
+<p>Also, test that ARP resolving works and so does IP level ping:</p>
+<pre><code class="language-ros">[admin@A] &gt; /ping 10.4.0.3
+10.4.0.3 64 byte ping: ttl=64 time=163 ms
+10.4.0.3 64 byte ping: ttl=64 time=46 ms
+10.4.0.3 64 byte ping: ttl=64 time=48 ms
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 46/85.6/163 ms
+</code></pre>
+<h4 id="mesh-traceroute">Mesh traceroute</h4>
+<p>There is also a mesh traceroute command, that can help you to determine which paths are used for routing.</p>
+<p>For example, for this network:</p>
+<pre><code class="language-ros">[admin@1] /interface/mesh/fdb/print
+Flags: A - active, R - root
+MESH TYPE MAC-ADDRESS ON-INTERFACE LIFETIME AGE
+A mesh1 local 00:0C:42:00:00:01 7m1s
+A mesh1 mesh 00:0C:42:00:00:02 wds4 17s 4s
+A mesh1 mesh 00:0C:42:00:00:12 wds4 4m58s 1s
+A mesh1 mesh 00:0C:42:00:00:13 wds4 19s 2s
+A mesh1 neighbor 00:0C:42:00:00:16 wds4 7m1s
+A mesh1 mesh 00:0C:42:00:00:24 wds4 18s 3s
+</code></pre>
+<p>Traceroute to 00:0C:42:00:00:12 shows:</p>
+<pre><code class="language-ros">[admin@1] /interface/mesh/traceroute mesh1 00:0C:42:00:00:12
+ADDRESS TIME STATUS
+00:0C:42:00:00:16 1ms ttl-exceeded
+00:0C:42:00:00:02 2ms ttl-exceeded
+00:0C:42:00:00:24 4ms ttl-exceeded
+00:0C:42:00:00:13 6ms ttl-exceeded
+00:0C:42:00:00:12 6ms success
+</code></pre>
+<h2 id="protocol-description">Protocol description</h2>
+<h3 id="reactive-mode">Reactive mode</h3>
+<p>Router A wants to discover a path to C:</p>
+<p>Router C sends a unicast response to A:</p>
+<p>In reactive mode, HWMP+ is very much like AODV (Ad-hoc On-demand Distance Vector). All paths are discovered on-demand, by flooding Path Request (PREQ) messages in the network. The destination node or some router that has a path to the destination will reply with a Path Response (PREP). Note that if the destination address belongs to a client, the AP this client is connected to will serve as a proxy for him (i.e. reply to PREQs on his behalf).</p>
+<p>This mode is best suited for mobile networks, and/or when most of the communication happens between intra-mesh nodes.</p>
+<h3 id="proactive-mode">Proactive mode</h3>
+<p>The root announces itself by flooding RANN:</p>
+<p>Internal nodes respond with PREGs:</p>
+<p>In proactive mode, there are some routers configured as portals. In general, being a portal means that the router has interfaces to some other network, i.e. it is an entry/exit point to the mesh network.</p>
+<p>The portals will announce their presence by flooding the Root Announcement (RANN) message in the network. Internal nodes will reply with a Path Registration (PREG) message. The result of this process will be routing trees with roots in the portal.</p>
+<p>Routes to portals will serve as a kind of default route. If an internal router does not know the path to a particular destination, it will forward all data to its closest portal. The portal will then discover the path on behalf of the router if needed. The data afterward will flow through the portal. This may lead to sub-optimal routing unless the data is addressed to the portal itself or some external network the portals have interfaces to.</p>
+<p>A proactive mode is best suited when most of the traffic goes between internal mesh nodes and a few portal nodes.</p>
+<h3 id="topology-change-detection">Topology change detection</h3>
+<p>Data flow path:</p>
+<p>After the link disappears, an error is propagated upstream:</p>
+<p>HWMP+ uses a Path Error (PERR) message to notify that a link has disappeared. The message is propagated to all upstream nodes up to the data source. The source on PERR reception restarts the path discovery process.</p>
+<h2 id="faq">FAQ</h2>
+<p><strong>Q. How is this better than RSTP?</strong></p>
+<p>A. It gives you optimal routing. RSTP is only for loop prevention.</p>
+<p><strong>Q. How the route selection is done?</strong></p>
+<p>A. The route with the best metric is always selected after the discovery process. There is also a configuration option to periodically reoptimize already known routes.</p>
+<p>Route metric is calculated as the sum of individual link metrics.</p>
+<p>Link metric is calculated in the same way as for (R)STP protocols:</p>
+<ul>
+<li>For Ethernet links the metric is configured statically (same as for OSPF, for example).</li>
+<li>For WDS links the metric is updated dynamically depending on actual link bandwidth, which in turn is influenced by wireless signal strength, and the selected data transfer rate.</li>
+</ul>
+<p>Currently, the protocol does not take into account the amount of bandwidth being used on a link, but that might also be used in the future.</p>
+<p><strong>Q. How is this better than OSPF/RIP/layer-3 routing in general?</strong></p>
+<p>A. WDS networks usually are bridged, not routed. The ability to self-configure is important for mesh networks, and routing generally requires much more configuration than bridging. Of course, you can always run any L3 routing protocol over a bridged network, but for mesh networks that usually makes little sense.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Since optimized layer-2 multicast forwarding is not included in the mesh protocol, it is better to avoid forwarding any multicast traffic (including OSPF) over meshed networks. If you need OSPF, then you have to configure <a href="../../user-guides/routing-and-networking-protocols/unicast/ospf/neighbour-relationship.md#discovery-on-nbma-subnets">OSPF NBMA</a> neighbors that use unicast mode instead.</p>
+</div>
+<p><strong>Q. What about performance/CPU requirements?</strong></p>
+<p>A. The protocol itself, when properly configured, will take much fewer resources than OSPF (for example) would. Data forwarding performance on an individual router should be close to that of bridging.</p>
+<p><strong>Q. How does it work together with existing mesh setups that are using RSTP?</strong></p>
+<p>A. The internal structure of an RSTP network is transparent to the mesh protocol (because mesh hello packets are forwarded inside the RSTP network). The mesh will see the path between two entry points in the RSTP network as a single segment. On the other hand, a mesh network is not transparent to the RSTP, since RSTP hello packets are not forwarded inside the mesh network.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Routing loops are possible if a mesh network is attached to an RSTP network in two or more points!</p>
+</div>
+<p>Note that if you have a WDS link between two access points, then both ends must have the same configuration (either as ports in a mesh on both ends or as ports in a bridge interface on both ends).</p>
+<p>You can also put a bridge interface as a mesh port (to be able to use a bridge firewall, for example).</p>
+<p><strong>Q. Can I have multiple entry/exit points to the network?</strong></p>
+<p>A. If the entry/exit points are configured as portals (i.e. proactive mode is used), each router inside the mesh network will select its closest portal and forward all data to it. The portal will then discover a path on behalf of the router if needed.</p>
+<p><strong>Q. How to control or filter mesh traffic?</strong></p>
+<p>A. At the moment the only way is to use a bridge firewall. Create a bridge interface, put the WDS interfaces and/or Ethernets in that bridge, and put that bridge in a mesh interface. Then configure bridge firewall rules.</p>
+<p>To match the MAC protocol used for mesh traffic encapsulation, use MAC protocol number 0x9AAA, and to match mesh routing traffic, use MAC protocol number 0x9AAB. Example:</p>
+<pre><code class="language-ros">/interface/bridge/settings/set use-ip-firewall=yes 
+/interface/bridge/filter/add chain=input action=log mac-protocol=0x9aaa 
+/interface/bridge/filter/add chain=input action=log mac-protocol=0x9aab
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>It is perfectly possible to create mixed mesh/bridge setups that will not work (e.g. <em>Problematic example 1</em> with a bridge instead of a switch). The recommended fail-safe way that will always work is to create a separate bridge interface for each of the physical interfaces; then add all these bridge interfaces as mesh ports.</p>
+</div>
+<h2 id="advanced-topics">Advanced topics</h2>
+<p>We all know that it's easy to make problematic layer-2 bridging or routing setups and it can be hard to debug them. (Compared to layer-3 routing setups.) So here are a few bad configuration examples that could create problems for you. Avoid them!</p>
+<h3 id="problematic-example-1-ethernet-switch-inside-a-mesh">Problematic example 1: Ethernet switch inside a mesh</h3>
+<p><em>Router A is outside the mesh; all the rest of the routers are inside. For routers B, C, D, all interfaces are added as mesh ports</em>:</p>
+<p>Router A will not be able to communicate reliably with router C. The problem manifests itself when D is the designated router for Ethernet; if B takes this role, everything is OK. The main cause of the problem is MAC address learning on the Ethernet switch.</p>
+<p>Consider what happens when router A wants to send something to C. We suppose router A either knows or floods data to all interfaces. Either way, data arrives at the switch. The switch, not knowing anything about the destination's MAC address, forwards the data to both B and D.</p>
+<p>What happens now:</p>
+<ol>
+<li>B receives the packet on a mesh interface. Since the MAC address is not local to B and B knows that he is not the designated router for the Ethernet network, he simply ignores the packet.</li>
+<li>D receives the packet on a mesh interface. Since the MAC address is not local to D and D is the designated router for the Ethernet network, he initiates the path discovery process to C.</li>
+</ol>
+<p>After path discovery is completed, D has information that C is reachable over B. Now D encapsulates the packet and forwards it back to the Ethernet network. The encapsulated packet is forwarded by the switch, received and forwarded by B, and received by C. So far everything is good.</p>
+<p>Now C is likely to respond to the packet. Since B already knows where A is, he will decapsulate and forward the reply packet. But now the switch will learn that the MAC address of C is reachable through B! That means, next time when something arrives from A addressed to C, the switch will forward data <em>only</em> to B (and B, of course, will silently ignore the packet)!</p>
+<p>In contrast, if B took up the role of a designated router, everything would be OK, because traffic would not have to go through the Ethernet switch twice.</p>
+<p><strong><em>Troubleshooting</em></strong>: either avoid such a setup or disable MAC address learning on the switch. Note that on many switches that is not possible.</p>
+<p>Also note that there will be no problem, if either:</p>
+<ul>
+<li>Router A supports and is configured to use HWMP+.</li>
+<li>Or the Ethernet switch is replaced with a router that supports HWMP+ and has Ethernet interfaces added as mesh ports.</li>
+</ul>
+<h3 id="problematic-example-2-wireless-modes">Problematic example 2: wireless modes</h3>
+<p><em>Consider this (invalid) setup example</em>...<em>Routers A and B are inside the mesh, router C is outside. For routers A and B all interfaces are added as mesh ports:</em></p>
+<p>It is not possible to bridge wlan1 and wlan2 on router B now. The reason for this is pretty obvious if you understand how WDS works. For WDS communications four address frames are used. This is because for wireless multihop forwarding you need to know the addresses of the intermediate hops, as well as the original sender and final receiver. In contrast, non-WDS 802.11 communication includes only three MAC addresses in a frame. That's why it's not possible to do multi-hop forwarding in station mode.</p>
+<p><strong><em>Troubleshooting</em></strong> depends on what you want to achieve:</p>
+<ol>
+<li>If you want router C to act as a repeater either for wireless or Ethernet traffic, configure the WDS link between router B and router C, and run mesh routing protocol on all nodes.</li>
+<li>In other cases, configure wlan2 on router B in AP mode and WLAN on router C in station mode.</li>
+</ol>
+<hr />
+<h1 id="interworking-profiles">Interworking Profiles</h1>
+<blockquote>
+<p>This page describes MikroTik RouterOS interworking profiles for wireless networks, enabling devices to exchange information via IEEE 802.11u and Hotspot 2.0 standards. It details configuration properties like network...</p>
+</blockquote>
+<h1 id="interworking-profiles_1">Interworking Profiles</h1>
+<h2 id="interworking">Interworking</h2>
+<p>Interworking is the occurrence of two or more things working together. For a better Wireless network experience, information about the network must be exchanged between Access Points and Wireless client devices. The information that can be found in basic Wireless beacons and probe requests is limited. For this reason, the IEEE 802.11u™-2011 (Interworking with External Networks) standard was created that specifies how devices should exchange information between each other. Network discovery and Access Point selection process can be enhanced with the interworking service. Wireless client devices can have more criteria upon which they can choose the network with which to associate.</p>
+<h2 id="hotspot-20">Hotspot 2.0</h2>
+<p>Hotspot 2.0 is a specification developed and owned by the Wi-Fi Alliance. It was designed to enable a more cellular-like experience when connecting to Wi-Fi networks. In an attempt to increase wireless network security, Hotspot 2.0 access points use mandatory WPA2 authentication. Hotspot 2.0 relies on Interworking and adds some of its own properties and procedures.</p>
+<p>Interworking profiles are implemented according to IEEE 802.11u and Hotspot 2.0 Release 1 specifications.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This manual page describes interworking configuration for the legacy <code>wireless</code> package (<code>/interface/wireless</code>). For the <code>wifi</code> package (<code>/interface/wifi</code>), see <a href="../wifi/interworking-for-wifi6.md">Interworking for WiFi6</a>.</p>
+</div>
+<h2 id="configuration-properties">Configuration Properties</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/interworking-profiles</code></p>
+<h3 id="information-elements-in-beacon-and-probe-response">Information elements in beacon and probe response</h3>
+<p>Some information can be added to beacon and probe response packets with an Interworking element. Following parameters of an Interworking element can be configured:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>asra</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Additional Steps Required for Access. Set to <code>yes</code>, if a user should take additional steps to access the internet, like the walled garden.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>esr</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Emergency services reachable (ESR). Set to <code>yes</code> in order to indicate that emergency services are reachable through the access point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hessid</strong> (<em>MAC address</em>; Default: )</td>
+<td style="text-align: left;">Homogenous extended service set identifier (HESSID). Devices that provide access to the same external networks are in one homogenous extended service set. This service set can be identified by the HESSID that is the same on all access points in this set. The 6-byte value of HESSID is represented as a MAC address. It should be globally unique, therefore it is advised to use one of the MAC addresses of the access points in the service set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>internet</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether the internet is available through this connection or not. This information is included in the Interworking element.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network-type</strong> (<em>emergency-only | personal-device | private | private-with-guest | public-chargeable | public-free | test | wildcard</em>; Default: <strong>wildcard</strong>)</td>
+<td style="text-align: left;">Information about network access type.<code>emergency-only</code> - a network dedicated and limited to accessing emergency services;<code>personal-device</code> - a network of personal devices. An example of this type of network is a camera that is attached to a printer, thereby forming a network for the purpose of printing pictures;<code>private</code> - network for users with user accounts. Usually used in enterprises for employees, not guests;<code>private-with-guest</code> - same as private, but guest accounts are available;<code>public-chargeable</code> - a network that is available to anyone willing to pay. For example, a subscription to Hotspot 2.0 service or in-room internet access in a hotel;<code>public-free</code> - a network is available to anyone without any fee. For example, municipal network in city or airport Hotspot;<code>test</code> - a network used for testing and experimental uses. Not used in production;<code>wildcard</code> - It is used on Wireless clients. Sending a probe request with a wildcard as a network type value will make all Interworking Access Points respond despite their actual network-type setting.A client sends a probe request frame with network-type set to a value it is interested in. It will receive replies only from access points with the same value (except the case of wildcard).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uesa</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Unauthenticated emergency service accessible (UESA).<code>no</code> - indicates that no unauthenticated emergency services are reachable through this Access Point;<code>yes</code> - indicates that higher layer unauthenticated emergency services are reachable through this Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>venue</strong> (<em>venue</em>; Default: <strong>unspecified</strong>)</td>
+<td style="text-align: left;">Specify the venue in which the Access Point is located. Choose the value from available ones. Some examples:<code>venue=business-bank``venue=mercantile-shopping-mall``venue=educational-university-or-college</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="anqp-elements">ANQP elements</h3>
+<p>Access network query protocol (ANQP). Not all necessary information is included in probe response and beacon frames. For a client device to get more information before choosing an access point to associate with, ANQP is used. The Access Point can have stored information in multiple ANQP elements. The client device will use ANQP to query only for the information it is interested in. This reduces the time needed before association.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>3gpp-raw</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Cellular network advertisement information - country and network codes. This helps Hotspot 2.0 clients in the selection of an Access Point to access 3GPP network. Please see 3GPP TS 24.302. (Annex H) for a format of this field. This value is sent in an ANQP response if queried.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3gpp-info</strong>(<em>number/number</em>; Default: )</td>
+<td style="text-align: left;">Cellular network advertisement information - country and network codes. This helps Hotspot 2.0 clients in the selection of an Access Point to access 3GPP network.  Written as "mcc/mnc". Usage is identical to "3gpp-raw", but without using hex. Multiple mcc/mnc pairs can be defined, by separating them with a comma.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>authentication-types</strong> (<em>dns-redirection:<code>url</code> | https-redirection:<code>url</code> | online-enrollment:<code>url</code> | terms-and-conditions:<code>url</code></em>; Default: )</td>
+<td style="text-align: left;">This property is only effective when asra is set to <code>yes</code>. Value of <code>url</code> is optional and not needed if <code>dns-redirection</code> or <code>online-enrollment</code> is selected. To set the value of <code>url</code> to empty string use double quotes. For example:<code>authentication-types=online-enrollment:""</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connection-capabilities</strong> (<em>number:number:closed|open|unknown</em>; Default: )</td>
+<td style="text-align: left;">This option allows providing information about the allowed IP protocols and ports. This information can be provided in ANQP response. The first number represents the IP protocol number, the second number represents a port number.<code>closed</code> - set if protocol and port combination is not allowed;<code>open</code> - set if protocol and port combination is allowed;<code>unknown</code> - set if protocol and port combination is either open or closed. Example: <code>connection-capabilities=6:80:open,17:5060:closed</code>  Setting such a value on an Access Point informs the Wireless client, which is connecting to the Access Point, that HTTP (6 - TCP, 80 - HTTP) is allowed and VoIP (17 - UDP; 5060 - VoIP) is not allowed. This property does not restrict or allow usage of these protocols and ports, it only gives information to station device which is connecting to Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>domain-names</strong> (<em>list of strings</em>; Default: )</td>
+<td style="text-align: left;">None or more fully qualified domain names (FQDN) that indicate the entity operating the Hotspot. A station that is connecting to the Access Point can request this ANQP property and check if there is a suffix match with any of the domain names it has credentials to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ipv4-availability</strong> (<em>double-nated | not-available | port-restricted | port-restricted-double-nated | port-restricted-single-nated | public | single-nated | unknown</em>; Default: <strong>not-available</strong>)</td>
+<td style="text-align: left;">Information about what IPv4 address and access is available.<code>not-available</code> - Address type not available;<code>public</code> - public IPv4 address available;<code>port-restricted</code> - port-restricted IPv4 address available;<code>single-nated</code> - single NATed private IPv4 address available;<code>double-nated</code> - double NATed private IPv4 address available;<code>port-restricted-single-nated</code> -port-restricted IPv4 address and single NATed IPv4 address available;<code>port-restricted-double-nated</code> - port-restricted IPv4 address and double NATed IPv4 address available;<code>unknown</code> - availability of the address type is not known.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ipv6-availability</strong> (<em>available | not-available | unknown</em>; Default: <strong>not-available</strong>)</td>
+<td style="text-align: left;">Information about what IPv6 address and access is available.<code>not-available</code> - Address type not available;<code>available</code> - address type available;<code>unknown</code> - availability of the address type is not known.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>realms</strong> (<em>string:eap-sim|eap-aka|eap-tls|not-specified</em>; Default: )</td>
+<td style="text-align: left;">Information about supported realms and the corresponding EAP method.<code>realms=example.com:eap-tls,foo.ba:not-specified</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>realms-raw</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Set NAI Realm ANQP-element manually.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>roaming-ois</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Organization identifier (OI) is usually a 24-bit unique identifier like organizationally unique identifier (OUI) or company identifier (CID). In some cases, OI is longer for example OUI-36. A subscription service provider (SSP) can be specified by its OI. roaming-ois property can contain zero or more SSPs OIs whose networks are accessible via this AP. Length of OI should be specified before OI itself. For example, to set E4-8D-8C and 6C-3B-6B: <code>roaming-ois=03E48D8C036C3B6B</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>venue-names</strong> (<em>string:lang</em>; Default: )</td>
+<td style="text-align: left;">Venue name can be used to provide additional info on the venue. It can help the client to choose a proper Access Point. The Venue-names parameter consists of zero or more duples that contain Venue Name and Language Code: <code>venue-names=CoffeeShop:eng,TiendaDeCafe:es</code>The Language Code field value is a two or three-character language code selected from ISO-639.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="realms-raw">Realms raw</h4>
+<p><strong>realms-raw</strong> - a list of strings with hex values. Each string specifies the contents of "NAI Realm Tuple", excluding the "NAI Realm Data Field Length" field.</p>
+<p>Each hex encoded string must consist of the following fields:</p>
+<pre><code>- NAI Realm Encoding (1 byte)
+- NAI Realm Length (1 byte)
+- NAI Realm (variable)
+- EAP Method Count (1 byte)
+- EAP Method Tuples (variable)
+</code></pre>
+<p>For example, the value "00045465737401020d00" decodes as:</p>
+<pre><code>- NAI Realm Encoding: 0 (rfc4282)
+- NAI Realm Length: 4
+- NAI Realm: Test
+- EAP Method Count: 1
+- EAP Method Length: 2
+- EAP Method Tuple: TLS, no EAP method parameters
+</code></pre>
+<p>Note that setting "realms-raw=00045465737401020d00" produces the same advertisement contents as setting "realms=Test:eap-tls".</p>
+<p>Refer to 802.11-2016, section 9.4.5.10 for full NAI Realm encoding.</p>
+<h3 id="hotspot-20-anqp-elements">Hotspot 2.0 ANQP elements</h3>
+<p>The Hotspot 2.0 specification introduced some additional ANQP elements. These elements use an ANQP vendor specific element ID. Here are the available properties to change these elements.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>hotspot20</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Indicates Hotspot 2.0 capability of the Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hotspot20-dgaf</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Downstream Group-Addressed Forwarding (DGAF). Sets value of DGAF bit to indicate whether multicast and broadcast frames to clients are disabled or enabled.<code>yes</code> - multicast and broadcast frames to clients are enabled;<code>no</code> - multicast and broadcast frames to clients are disabled.To disable multicast and broadcast frames set <code>multicast-helper=full</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>operational-classes</strong> (<em>list of numbers</em>; Default: )</td>
+<td style="text-align: left;">Information about other available bands of the same ESS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>operator-names</strong> (<em>string:lang</em>; Default: )</td>
+<td style="text-align: left;">Sets operator name. Language must be specified for each operator name entry. Operator-names parameter consists of zero or more duples that contain Operator Name and Language Code: <code>operator-names=BestOperator:eng,MejorOperador:es</code>The Language Code field value is a two or three-character language code selected from ISO-639.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-at-capacity</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the Access Point or the network is at its max capacity. If set to <code>yes</code> no additional mobile devices will be permitted to associate to the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-downlink</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The downlink speed of the WAN connection set in kbps. If the downlink speed is not known, set to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-downlink-load</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The downlink load of the WAN connection measured over <code>wan-measurement-duration</code>. Values from 0 to 255.<code>0</code> - unknown;<code>255</code> - 100%.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-measurement-duration</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Duration during which wan-downlink-load and <code>wan-uplink-load</code> are measured. Value is a numeric value from 0 to 65535 representing tenths of seconds.<code>0</code> - not measured;<code>10</code> - 1 second;<code>65535</code> - 1 hour 49 minutes or more.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-status</strong> (<em>down | reserved | test | up</em>; Default: <strong>reserved</strong>)</td>
+<td style="text-align: left;">Information about the status of the Access Point's WAN connection. The value <code>reserved</code> indicates status is not advertised.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-symmetric</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the WAN link is symmetric (upload and download speeds are the same) or not.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-uplink</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The uplink speed of the WAN connection set in kbps. If the uplink speed is not known set to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-uplink-load</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The uplink load of the WAN connection measured over wan-measurement-duration. Values from 0 to 255.<code>0</code> - unknown;<code>255</code> - 100%.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="other-properties">Other Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the Interworking profile.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration-guide-using-native-radsec-and-orion-wifi">Configuration guide using native RadSec and Orion Wifi</h2>
+<p>This guide describes how to set up your MikroTik devices so you can use them with RadSec proxy and Orion Wifi, though the main configuration steps remain the same and will work with different providers as well:
+Make sure to use the latest long-term or stable RouterOS releases.</p>
+<p>It is important to set up a secure RADIUS connection between the wireless LAN controller and Orion Wifi.<br />
+Orion Wifi uses RADIUS over TLS (RadSec) to ensure end-to-end encryption of AAA traffic.</p>
+<p>1) Import RadSec certificates you have downloaded from Orion:</p>
+<p>Drag and drop the certificate in WinBox, and then use the import function for it, which can be found under <code>/system/certificates</code> in WinBox. The command line equivalent is:</p>
+<pre><code>/certificate/import file-name=bw.radsec.cacert.pem passphrase=&quot;&quot;
+/certificate/import file-name=cert.pem passphrase=&quot;&quot;
+/certificate/import file-name=key.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Once certificates are imported, they should look like this:</p>
+<p>1) Configure the Radius client:</p>
+<p>Command line equivalent:</p>
+<pre><code>/radius/add address=216.239.32.91 certificate=cert.pem_0 protocol=radsec service=wireless timeout=1s500ms
+</code></pre>
+<p>1) Create a wireless security profile that performs 802.1x authentication:</p>
+<p>The Command line equivalent is:</p>
+<pre><code>/interface/wireless/security-profiles/add authentication-types=wpa2-eap management-protection=allowed mode=dynamic-keys name=dot1x_profile supplicant-identity=&quot;&quot; radius-eap-accounting=yes eap-methods=passthrough
+</code></pre>
+<p>1) The next step is configuring the wireless interface and assigning the created security profile. Press “Advanced mode” to see all the options:</p>
+<p>The command line equivalent is:</p>
+<pre><code>/interface/wireless/set [ find default-name=wlan1 ] mode=ap-bridge security-profile=dot1x_profile wps-mode=disabled
+</code></pre>
+<p>Make sure the correct country profile is configured. In this example, we are using “wlan1”, but the same command would work with other interfaces, or as <code>/interface/wireless/set wlan1</code>.</p>
+<p>1) Configure interworking settings (hotspot 2.0):</p>
+<p>Command line equivalent:</p>
+<pre><code>/interface/wireless/interworking-profile/add domain-names=orion.area120.com ipv4-availability=public name=Orion_MikroTik network-type=public-chargeable operator-names=Orion:eng realms=orion.area120.com:eap-tls roaming-ois=f4f5e8f5f4,baa2D00100,baa2d00000 venue=business-unspecified venue-names=Orion:eng wan-downlink=50 wan-uplink=50 wan-status=up
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Pay special attention to "wan-downlink" and "wan-uplink", in this scenario the value of "50" is used as a placeholder, make sure to adjust the values according to your setup. Some client devices use it to evaluate if they should join the network. Set “venue” – venue type, ”venue-names” and other attributes as applicable. “domain-names” should be of the hotspot 2.0 Operator.</p>
+</div>
+<p>1) Assign the interworking profile to the interface:</p>
+<p>The command-line equivalent is:</p>
+<pre><code>/interface/wireless/set wlan1 interworking-profile=Orion_MikroTik
+</code></pre>
+<p>If you don't see the interworking-profile field, press "Advanced mode".</p>
+<p>Note: NAS-id that's used by Orion to differentiate networks is equal to system identity, to adjust the nas-id, you can do <code>/system/identity/set name=exampleName</code>.</p>
+<h2 id="configuration-guide-using-radsec-proxy-and-orion-wifi">Configuration guide using RadSec proxy and Orion Wifi</h2>
+<p>This guide describes how to set up your MikroTik devices so you can use them with a RadSec proxy and Orion Wifi, though the main configuration steps remain the same and will work with different providers as well:
+This guide assumes that you have configured a radsecproxy with Orion Wifi credentials. Make sure to use the latest long-term or stable RouterOS releases.  </p>
+<p>It is important to set up a secure RADIUS connection between the wireless LAN controller and Orion Wifi.<br />
+Orion Wifi uses RADIUS over TLS (RadSec) to ensure end-to-end encryption of AAA traffic. This guide is made for scenarios where the RouterOS access point redirects AAA traffic to a RadSec proxy (radsecproxy) before the traffic is sent over the internet.</p>
+<p>1) Configure the Radius client that points to radsecproxy:</p>
+<p>The command line equivalent is:</p>
+<pre><code>/radius/add address=192.168.88.233 secret=yourSecret service=wireless timeout=1s500ms
+</code></pre>
+<p>The secret should match the one configured on the radsecproxy. In this example, “192.168.88.233” is a virtual machine running the proxy.</p>
+<p>1) Create a wireless security profile that would perform 802.1x authentication:</p>
+<p>The Command line equivalent is:</p>
+<pre><code>/interface/wireless/security-profiles/add authentication-types=wpa2-eap management-protection=allowed mode=dynamic-keys name=dot1x_profile supplicant-identity=&quot;&quot; radius-eap-accounting=yes eap-methods=passthrough
+</code></pre>
+<p>1) The next step is configuring the wireless interface and assigning the created security profile. Press “Advanced mode” to see all the options:</p>
+<p>The command line equivalent is:</p>
+<pre><code>/interface/wireless/set [ find default-name=wlan1 ] mode=ap-bridge security-profile=dot1x_profile wps-mode=disabled
+</code></pre>
+<p>Make sure the correct country profile is configured. In this example, we are using “wlan1”, but the same command would work with other interfaces, or as <code>/interface/wireless/set wlan1</code>.</p>
+<p>1) Configure interworking settings (hotspot 2.0):</p>
+<p>Command line equivalent:</p>
+<pre><code>/interface/wireless/interworking-profile/add domain-names=orion.area120.com ipv4-availability=public name=Orion_MikroTik network-type=public-chargeable operator-names=Orion:eng realms=orion.area120.com:eap-tls roaming-ois=f4f5e8f5f4,baa2D00100,baa2d00000 venue=business-unspecified venue-names=Orion:eng wan-downlink=50 wan-uplink=50 wan-status=up
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Be sure to specify some value in "wan-downlink" and "wan-uplink", in this scenario the value of "50" is used as a placeholder, some client devices use it to evaluate, if they should join the network. Set “venue” – venue type, ”venue-names” and other attributes as applicable. “domain-names” should be of the hotspot 2.0 Operator.</p>
+</div>
+<p>1) Assign the interworking profile to the interface:</p>
+<p>This step can also be done with the following command:</p>
+<pre><code>/interface/wireless/set wlan1 interworking-profile=Orion_MikroTik
+</code></pre>
+<p>If the radsecproxy is working, then clients with the appropriate Hotspot profile installed should be able to connect.</p>
+<p>Note: NAS-id that's used by Orion to differentiate networks is equal to system identity. To adjust the nas-id, you can do <code>/system/identity/set name=exampleName</code>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>To check the status of RADIUS messages, you can use the radius menu.  </p>
+<p>Or alternatively, via the command line, run <code>/radius/monitor X</code>, X being the numerical ID. You can see the IDs with <code>/radius/print</code>.<br />
+For more information, additional logging can be configured under <code>/system/logging/add topics=radius,debug,packet</code>. You can view results under <a href="../../diagnostics-monitoring-and-troubleshooting/log/index.md"><code>/log</code></a>.</p>
+<p>To view active wireless connections check the wireless registration table <code>/interface/wireless/registration-table/print</code>:</p>
+<hr />
+<h1 id="nv2">Nv2</h1>
+<blockquote>
+<p>Nv2 is a MikroTik proprietary wireless protocol using TDMA for efficient media access in PtMP networks, supporting both Atheros 802.11n and legacy devices without hardware upgrades. It offers dynamic rate selection,...</p>
+</blockquote>
+<h1 id="nv2_1">Nv2</h1>
+<p>Nv2 is a proprietary wireless protocol developed by MikroTik for use with Atheros 802.11 wireless chips. It is based on TDMA (Time Division Multiple Access) media access technology, as opposed to the CSMA (Carrier Sense Multiple Access) technology used in regular 802.11 devices. TDMA solves the hidden node problem and improves media usage, resulting in better throughput and latency — especially in PtMP networks.</p>
+<p>Nv2 is supported on Atheros 802.11n chips and legacy 802.11a/b/g chips starting from AR5212, but is not supported on the older AR5211 and AR5210 chips. This means both 11n and legacy devices can participate in the same network, and no hardware upgrades are required to implement Nv2.</p>
+<p>Media access in an Nv2 network is controlled by the Nv2 Access Point. The AP divides time into fixed-size "periods", which are then dynamically split into downlink (AP to clients) and uplink (clients to AP) portions based on the queue state on the AP and clients. Uplink time is further divided between connected clients according to their bandwidth requirements. At the beginning of each period, the AP broadcasts a schedule that tells clients when they should transmit and how much time they can use.</p>
+<p>To allow new clients to connect, the Nv2 AP periodically assigns uplink time for an "unspecified" client. A new client uses this interval to initiate registration with the AP. The AP then estimates the propagation delay between itself and the client, and begins periodically scheduling uplink time for that client to complete registration and receive data.</p>
+<p>Nv2 implements dynamic rate selection on a per-client basis, along with ARQ for data transmissions, enabling reliable communication across Nv2 links.</p>
+<p>For QoS, Nv2 supports a variable number of priority queues with a built-in default QoS scheduler. This can be complemented by fine-grained QoS policies based on firewall rules or priority information propagated across the network using VLAN priority or MPLS EXP bits.</p>
+<p>The Nv2 protocol supports a maximum of 511 clients per interface.</p>
+<h2 id="nv2-protocol-implementation-status">Nv2 Protocol Implementation Status</h2>
+<p>Nv2 includes the following features:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TDMA media access</td>
+<td>Time Division Multiple Access for media control</td>
+</tr>
+<tr>
+<td>WDS support</td>
+<td>Wireless Distribution System compatibility</td>
+</tr>
+<tr>
+<td>QoS support</td>
+<td>Variable number of priority queues</td>
+</tr>
+<tr>
+<td>Data encryption</td>
+<td>Encryption of transmitted data</td>
+</tr>
+<tr>
+<td>RADIUS authentication</td>
+<td>RADIUS-based authentication features</td>
+</tr>
+<tr>
+<td>Statistics fields</td>
+<td>Available statistics and reporting fields</td>
+</tr>
+<tr>
+<td>Fixed Downlink mode</td>
+<td>Support for fixed downlink operation</td>
+</tr>
+<tr>
+<td>Uplink/Downlink ratio</td>
+<td>Configurable uplink/downlink ratio support</td>
+</tr>
+<tr>
+<td>Nv2 AP synchronization</td>
+<td>Experimental support for AP synchronization</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compatibility-and-coexistence-with-other-wireless-protocols">Compatibility and Coexistence with Other Wireless Protocols</h2>
+<p>Nv2 protocol is not compatible with or based on any other available wireless protocols or implementations, whether TDMA-based or any other kind. This means that <strong>only Nv2-supporting and enabled devices can participate in an Nv2 network</strong>.</p>
+<p>Regular 802.11 devices will not recognize or be able to connect to an Nv2 AP. RouterOS devices that have Nv2 support (i.e., running RouterOS version 5.0rc1 or higher) will see Nv2 APs when issuing the scan command, but will only connect to an Nv2 AP if properly configured.</p>
+<p>Because Nv2 does not use CSMA technology, it may disturb other networks operating on the same channel. Equally, other networks may disturb an Nv2 network, since every non-Nv2 signal is treated as noise.</p>
+<p>The key points regarding compatibility and coexistence are:</p>
+<ul>
+<li>Only RouterOS devices can participate in an Nv2 network.</li>
+<li>Only RouterOS devices will see an Nv2 AP when scanning.</li>
+<li>An Nv2 network will disturb other networks on the same channel.</li>
+<li>An Nv2 network may be affected by any other network on the same channel, whether Nv2 or not.</li>
+<li>An Nv2-enabled device will not connect to any other TDMA-based network.</li>
+</ul>
+<h2 id="how-nv2-compares-with-nstreme-and-80211">How Nv2 compares with Nstreme and 802.11</h2>
+<h3 id="nv2-vs-80211">Nv2 vs 802.11</h3>
+<p>The key differences between Nv2 and 802.11:</p>
+<ul>
+<li>Media access is scheduled by AP - this eliminates the hidden node problem and allows implementing a centralized media access policy - AP controls how much time is used by every client and can assign time to clients according to some policy instead of every device contending for media access.</li>
+<li>Reduced propagation delay overhead - There are no per-frame ACKs in Nv2 - this significantly improves throughput, especially on long-distance links where data frame and following ACK frame propagation delay significantly reduces the effectiveness of media usage.</li>
+<li>Reduced per frame overhead - Nv2 implements frame aggregation and fragmentation to maximize assigned media usage and reduce per-frame overhead (interframe spaces, preambles).</li>
+</ul>
+<h3 id="nv2-vs-nstreme">Nv2 vs Nstreme</h3>
+<p>The key differences between Nv2 and Nstreme:</p>
+<ul>
+<li>Reduced polling overhead - instead of polling each client, Nv2 AP broadcasts an uplink schedule that assigns time to multiple clients; this can be considered "group polling" - no time is wasted on polling each client individually, leaving more time for actual data transmission. This improves throughput, especially in PtMP configurations.</li>
+<li>Reduced propagation delay overhead - Nv2 must not poll each client individually; this allows the creation of an uplink schedule based on estimated distance (propagation delay) to clients such that media usage is most effective. This improves throughput, especially in PtMP configurations.</li>
+<li>More control over latency - reduced overhead, adjustable period size and QoS features allow for more control over latency in the network.</li>
+</ul>
+<h2 id="configuring-nv2">Configuring Nv2</h2>
+<p>The <strong>wireless-protocol</strong> setting controls which wireless protocol is selected and used. Note that the meaning of this setting depends on the interface role (either AP or client) that depends on the interface <strong>mode</strong> setting. Find possible values of <strong>wireless-protocol</strong> and their meaning in the table below.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">value</th>
+<th style="text-align: left;">AP</th>
+<th style="text-align: left;">client</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">unspecified</td>
+<td style="text-align: left;">establish nstreme or 802.11 network based on old <strong>nstreme</strong> setting</td>
+<td style="text-align: left;">connect to nstreme or 802.11 network based on old <strong>nstreme</strong> setting</td>
+</tr>
+<tr>
+<td style="text-align: left;">any</td>
+<td style="text-align: left;">same as <strong>unspecified</strong></td>
+<td style="text-align: left;">scan for all matching networks, no matter what protocol, connect using protocol of chosen network</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11</td>
+<td style="text-align: left;">establish 802.11 network</td>
+<td style="text-align: left;">connect to 802.11 networks only</td>
+</tr>
+<tr>
+<td style="text-align: left;">nstreme</td>
+<td style="text-align: left;">establish Nstreme network</td>
+<td style="text-align: left;">connect to Nstreme networks only</td>
+</tr>
+<tr>
+<td style="text-align: left;">Nv2</td>
+<td style="text-align: left;">establish Nv2 network</td>
+<td style="text-align: left;">connect to Nv2 networks only</td>
+</tr>
+<tr>
+<td style="text-align: left;">Nv2-nstreme-802.11</td>
+<td style="text-align: left;">establish Nv2 network</td>
+<td style="text-align: left;">scan for Nv2 networks, if suitable network found - connect, otherwise scan for Nstreme networks, if suitable network found - connect, otherwise scan for 802.11 network and if suitable network found - connect.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Nv2-nstreme</td>
+<td style="text-align: left;">establish Nv2 network</td>
+<td style="text-align: left;">scan for Nv2 networks, if suitable network found - connect, otherwise scan for Nstreme networks and if suitable network found - connect</td>
+</tr>
+</tbody>
+</table>
+<p>Note that <strong>wireless-protocol</strong> values <strong>Nv2-nstreme-802.11</strong> and <strong>Nv2-nstreme</strong> <strong>DO NOT</strong> specify some hybrid or special kind of protocol - these values are implemented to simplify client configuration when the protocol of the network that the client must connect to can change. Using these values can help in migrating the network to Nv2 protocol.</p>
+<p>Most of the Nv2 settings are significant only to the Nv2 AP - Nv2 client automatically adapts necessary settings from the AP. The following settings are relevant to the Nv2 AP:</p>
+<ul>
+<li><strong>Nv2-queue-count</strong> - Specifies how many priority queues are used in Nv2 network. For more details see <a href="#qos-in-nv2-network">QoS in Nv2 network</a>.</li>
+<li><strong>Nv2-qos</strong> - Controls the frame to priority queue mapping policy. For more details see <a href="#qos-in-nv2-network">QoS in Nv2 network</a>.</li>
+<li><strong>Nv2-cell-radius</strong> - Specifies the distance to the farthest client in the Nv2 network in km. This setting affects the size of the contention time slot that AP allocates for clients to initiate a connection and also the size of time slots used for estimating distance to the client. If this setting is too small, clients that are farther away may have trouble connecting and/or disconnect with a "ranging timeout" error. Although during normal operation the effect of this setting should be negligible, in order to maintain maximum performance, it is advised to not increase this setting if not necessary, so the AP is not reserving time that is actually never used, but instead allocates it for actual data transfer.</li>
+<li><strong>tdma-period-size</strong> - Specifies the size in ms of time periods that Nv2 AP uses for media access scheduling. A smaller period can potentially decrease latency (because AP can assign time for client sooner), but will increase protocol overhead and therefore decrease throughput. On the other hand - increasing period will increase throughput but also increase latency. It may be required to increase this value for especially long links to get acceptable throughput. This necessity can be caused by the fact that there is a "propagation gap" between downlink (from AP to clients) and uplink (from clients to AP) data during which no data transfer is happening. This gap is necessary because the client must receive the last frame from the AP - this happens after propagation delay after AP's transmission, and only then the client can transmit - as a result, the frame from the client arrives at the AP after propagation delay after client's transmission (so the gap is propagation delay times two). The longer the distance, the bigger the necessary propagation gap in every period. If the propagation gap takes a significant portion of period, actual throughput may become unacceptable and period size should get increased at the expense of increased latency. Basically value of this setting must be carefully chosen to maximize throughput but also to keep latency at acceptable levels.</li>
+<li><strong>Nv2-mode</strong> - Specifies to use dynamic or fixed downlink/uplink ratio. Default value is "dynamic-downlink".</li>
+</ul>
+<p>"sync-master" - works as nv2-mode=fixed-downlink (so uses nv2-downlink-ratio), but allows slaves to sync to this master; "sync-slave" - tries to sync to the master (or already synced slave) and adapt period-size and downlink ratio settings from the master.</p>
+<ul>
+<li><strong>Nv2-downlink-ratio</strong> - specifies the Nv2 downlink ratio. Uplink ratio is automatically calculated from the downlink-ratio value. When using dynamic-downlink mode the downlink-ratio is also used when link gets fully saturated. Minimum value is 20 and maximum 80. Default value is 50.</li>
+</ul>
+<p>The following settings are significant on both - Nv2 AP and Nv2 client:</p>
+<ul>
+<li><strong>Nv2-security</strong> - specifies Nv2 security mode, for more details see <a href="#security-in-nv2-network">Security in Nv2 network</a>.</li>
+<li><strong>Nv2-preshared-key</strong> - specifies a preshared key to be used, for more details see <a href="#security-in-nv2-network">Security in Nv2 network</a>.</li>
+<li><strong>nv2-sync-secret</strong> - specifies a secret key for use in the Nv2 synchronization. The secret should match on Master and Slave devices in order to establish the synced state.</li>
+</ul>
+<h2 id="migrating-to-nv2">Migrating to Nv2</h2>
+<p>Using <strong>wireless-protocol</strong> setting makes migration or evaluation of Nv2 protocol in existing networks really simple and reduces downtime as much as possible. These are the recommended steps:</p>
+<ul>
+<li>Upgrade AP to a version that supports Nv2, but do not enable Nv2 on AP yet.</li>
+<li>Upgrade clients to a version that supports Nv2.</li>
+<li>Configure all clients with <strong>wireless-protocol=Nv2-nstreme-802.11</strong>. Clients will still connect to AP using the protocol that was used previously, because AP is not changed over to Nv2 yet.</li>
+<li>Configure Nv2 related settings on AP.</li>
+<li>If it is necessary to use data encryption and secure authentication, configure Nv2 security related settings on AP and clients (refer to <a href="#security-in-nv2-network">Security in Nv2 network</a>).</li>
+<li>Set <strong>wireless-protocol=Nv2</strong> on AP. This will make the AP change to Nv2 protocol. Clients should now connect using Nv2 protocol.</li>
+<li>In case of some trouble you can easily switch back to previous protocol by simply changing it back to whatever was used before on the AP.</li>
+<li>Fine tune Nv2 related settings to get acceptable latency and throughput.</li>
+<li>Implement a QoS policy for maximum performance.</li>
+</ul>
+<p>The basic troubleshooting guide:</p>
+<ul>
+<li>Clients have trouble connecting or disconnect with "ranging timeout" error - check that <strong>Nv2-cell-radius</strong> setting is set appropriately.</li>
+<li>Unexpectedly low throughput on long distance links although signal and rate are fine - try to increase <strong>tdma-period-size</strong> setting.</li>
+</ul>
+<h2 id="nv2-ap-synchronization">Nv2 AP Synchronization</h2>
+<p>This feature will let multiple MikroTik Nv2 APs on the same location coexist in a better fashion by reducing the interference between each other. This feature will synchronize the transmit/receive time windows of APs on the same frequency, so that all synced MikroTik Nv2 APs transmit/receive at the same time. That allows reusing the same wireless frequency on the location for multiple APs giving more flexibility in frequency planning.</p>
+<p>To make Nv2 synced setup:</p>
+<ul>
+<li>For Nv2 Synchronization a Master Nv2 AP should be chosen and "nv2-mode=sync-master" should be specified together with "nv2-sync-secret".</li>
+<li>For Nv2 Slave APs the same wireless frequency as Master AP should be used and "nv2-mode=sync-slave" should be specified with the same "nv2-sync-secret" as in the Master AP configuration.</li>
+<li>When Master AP is enabled Slave APs will try to start searching for Master AP by matching it against specified "nv2-sync-secret".</li>
+<li>After Master AP is found the Slave AP will calculate the distance to the Master AP as it is possible that Master AP is located not at the same location.</li>
+<li>Then Slave AP starts operating as an AP and it adapts the period size and downlink ratio from the synced Master AP.</li>
+<li>In addition after the Slave AP is operational other Slave APs can use this Slave AP to sync with.</li>
+<li>Slave AP periodically listens for the Master AP and checks if the "nv2-sync-secret" still matches and adapts the parameters again. If Master AP interface is disabled/enabled all the Slaves will also be disabled and will start the synchronization process from the beginning.</li>
+<li>If Master AP stops working Slave APs will also stop working as they do not have sync information.</li>
+</ul>
+<h3 id="configuration-example">Configuration example</h3>
+<p>Master AP:</p>
+<pre><code> /interface/wireless/set wlan1 mode=ap-bridge ssid=Sector1 frequency=5220 nv2-mode=sync-master nv2-preshared-key=clients1 nv2-sync-secret=Tower1
+</code></pre>
+<p>Slave AP:</p>
+<pre><code> /interface/wireless/set wlan1 mode=ap-bridge ssid=Sector2 frequency=5220 nv2-mode=sync-slave nv2-preshared-key=clients2 nv2-sync-secret=Tower1
+</code></pre>
+<p>Monitor interface on the Slave AP:</p>
+<pre><code>[admin@SlaveAP] /interface/wireless&gt; monitor wlan1
+                   status: running-ap
+                  channel: 5220/20/an
+        wireless-protocol: nv2
+              noise-floor: -110dBm
+       registered-clients: 1
+    authenticated-clients: 1
+           nv2-sync-state: synced
+          nv2-sync-master: 4C:5E:0C:57:84:38
+        nv2-sync-distance: 1
+     nv2-sync-period-size: 2
+  nv2-sync-downlink-ratio: 50
+</code></pre>
+<p>Debug logs on the Master AP:</p>
+<pre><code> 09:22:08 wireless,debug wlan1: 4C:5E:0C:57:85:BE attempts to sync
+</code></pre>
+<p>Debug logs on the Slave AP:</p>
+<pre><code>09:22:08 wireless,debug wlan1: attempting to sync to 4C:5E:0C:57:84:38 
+09:22:09 wireless,debug wlan1: synced to 4C:5E:0C:57:84:38 
+</code></pre>
+<h2 id="qos-in-nv2-network">QoS in Nv2 network</h2>
+<p>QoS in Nv2 is implemented by means of a variable number of priority queues. A queue is considered for transmission based on the rule recommended by 802.1D-2004 - only if all higher priority queues are empty. In practice this means that at first all frames from the queue with higher priority will be sent, and only then the next queue is considered. Therefore QoS policy must be designed with care so that higher priority queues do not make lower priority queues starve.</p>
+<p>QoS policy in an Nv2 network is controlled by the AP, clients adapt the policy from the AP. On the AP QoS policy is configured with <strong>Nv2-queue-count</strong> and <strong>Nv2-qos</strong> parameters. <strong>Nv2-queue-count</strong> parameter specifies the number of priority queues used. Mapping of frames to queues is controlled by the <strong>Nv2-qos</strong> parameter.</p>
+<h3 id="nv2-qosdefault">Nv2-qos=default</h3>
+<p>In this mode the outgoing frame is first inspected by the built-in QoS policy algorithm that selects the queue based on packet type and size. If built-in rules do not match, the queue is selected based on the frame priority field, as in <strong>Nv2-qos=frame-priority</strong> mode.</p>
+<h3 id="nv2-qosframe-priority">Nv2-qos=frame-priority</h3>
+<p>In this mode the QoS queue is selected based on the frame priority field. Note that the frame priority field is not some field in headers and therefore it is valid only while the packet is processed by the given device. The frame priority field must be set either explicitly by firewall rules or implicitly from the ingress priority by the frame forwarding process, for example, from MPLS EXP bits. For more information on the frame priority field see:</p>
+<ul>
+<li><a href="../../user-guides/routing-and-networking-protocols/mpls/exp-bit-and-mpls-queuing.md">EXP bit and MPLS Queuing</a></li>
+<li><a href="../../bridging-and-switching/user-guides/wmm-and-vlan-priority.md">WMM and VLAN priority</a></li>
+</ul>
+<p>Queue is selected based on frame priority according to 802.1D recommended user priority to traffic class mapping. Mapping depends on the number of available queues (<strong>Nv2-queue-count</strong> parameter). For example, if the number of queues is 4, mapping is as follows (pay attention to how this mapping resembles mapping used by WMM):</p>
+<ul>
+<li>Priority 0,3 -&gt; queue 0.</li>
+<li>Priority 1,2 -&gt; queue 1.</li>
+<li>Priority 4,5 -&gt; queue 2.</li>
+<li>Priority 6,7 -&gt; queue 3.</li>
+</ul>
+<p>If the number of queues is 2 (default), mapping is as follows:</p>
+<ul>
+<li>priority 0,1,2,3 -&gt; queue 0.</li>
+<li>priority 4,5,6,7 -&gt; queue 1.</li>
+</ul>
+<p>If the number of queues is 8 (maximum possible), mapping is as follows:</p>
+<ul>
+<li>Priority 1 -&gt; queue 0.</li>
+<li>Priority 2 -&gt; queue 1.</li>
+<li>Priority 0 -&gt; queue 2.</li>
+<li>Priority 3 -&gt; queue 3.</li>
+<li>Priority 4 -&gt; queue 4.</li>
+<li>Priority 5 -&gt; queue 5.</li>
+<li>Priority 6 -&gt; queue 6.</li>
+<li>Priority 7 -&gt; queue 7.</li>
+</ul>
+<p>For other mappings, discussion on the rationale for these mappings and recommended practices please see 802.1D-2004.</p>
+<h2 id="security-in-nv2-network">Security in Nv2 network</h2>
+<p>Nv2 security implementation has the following features:</p>
+<ul>
+<li>Hardware accelerated data encryption using AES-CCM with 128 bit keys.</li>
+<li>4-way handshake for key management (similar to that of 802.11i).</li>
+<li>Preshared key authentication method (similar to that of 802.11i).</li>
+<li>Periodically updated group keys (used for broadcast and multicast data).</li>
+</ul>
+<p>Being a proprietary protocol, Nv2 does not use security mechanisms of 802.11, therefore security configuration is different. An interface using Nv2 protocol ignores <strong>security-profile</strong> setting. Instead, security is configured by the following interface settings:</p>
+<ul>
+<li><strong>Nv2-security</strong> - this setting enables/disables use of security in the Nv2 network. Note that when security is enabled on the AP, it will not accept clients with disabled security. In the same way clients with enabled security will not connect to unsecure APs.</li>
+<li><strong>Nv2-preshared-key</strong> - preshared key to use for authentication. Data encryption keys are derived from the preshared key during the 4-way handshake. The preshared key must be the same in order for 2 devices to establish a connection. If the preshared key differs, the connection will time out because the remote party will not be able to correctly interpret key exchange messages.</li>
+</ul>
+<hr />
+<h1 id="spectral-scan">Spectral scan</h1>
+<blockquote>
+<p>The Spectral Scan feature in MikroTik RouterOS allows continuous monitoring and visualization of wireless spectrum activity, including interference detection across 2.4GHz and 5GHz bands using spectral snapshots with...</p>
+</blockquote>
+<h1 id="spectral-scan_1">Spectral scan</h1>
+<p>The spectral scan can scan all frequencies supported by your wireless card, and plot them directly in the console. The exact frequency span depends on the card. Allowed ranges on r52n: [4790; 6085], [2182; 2549].</p>
+<p>A wireless card can generate 4us long spectral snapshots for any 20mhz wide channel. This is considered a single spectral sample.</p>
+<p>To improve data quality, the spectrum is scanned with 10mhz frequency increments, which means doubled sample coverage at each specific frequency (considering 20mhz wide samples).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Currently, is NOT supported for Atheros 802.11ac chips (e.g. QCA98xx, IPQ-4018). See <a href="https://mikrotik.com/products">https://mikrotik.com/products</a> to determine the wireless chip on your device.</p>
+</div>
+<h2 id="console">Console</h2>
+<h3 id="spectral-history">Spectral History</h3>
+<pre><code class="language-ros">/interface/wireless/spectral-history &lt;wireless interface name&gt; 
+</code></pre>
+<p>Plots a spectrogram. Legend and frequency ruler are printed every 24 lines. Numbers in the ruler correspond to the value at their leftmost character position. Power values that fall in different ranges are printed as different colored characters with the same foreground and background color, so it is possible to copy and paste the terminal output of this command.</p>
+<ul>
+<li><em>value</em> -- Select the value that is plotted on the output. 'interference' is special as it shows detected interference sources (affected by the 'classify-samples' parameter) instead of power readings, and cannot be made audible.</li>
+<li><em>interval</em> -- Interval at which spectrogram lines are printed.</li>
+<li><em>duration</em> -- Terminate command after a specified time. The default is indefinite.</li>
+<li><em>buckets</em> -- How many values to show in each line of a spectrogram. This value is limited by the number of columns in the terminal. It is useful to reduce this value if using 'audible'.</li>
+<li><em>average-samples</em> -- Number of 4us spectral snapshots to take at each frequency, and calculate average and maximum energy over them. (default 10).</li>
+<li><em>classify-samples</em> -- Number of spectral snapshots taken at each frequency and processed by the interference classification algorithm. Generally, more samples give more chance to spot certain types of interference (default 50).</li>
+<li><em>range</em> --</li>
+<li>2.4ghz - scan the whole 2.4ghz band;</li>
+<li>5ghz - scan the whole 5ghz band;</li>
+<li>current-channel - scan the current channel only (20 or 40 MHz wide);</li>
+<li>
+<p>range - scan a specific range.</p>
+</li>
+<li>
+<p><em>audible=yes</em> -- Play each line as it is printed. There is a short silence between the lines. Each line is played from left to right, with higher frequencies corresponding to higher values in the spectrogram.</p>
+</li>
+</ul>
+<h3 id="spectral-scan_2">Spectral Scan</h3>
+<pre><code class="language-ros"> /interface/wireless/spectral-scan &lt;wireless interface name&gt; 
+</code></pre>
+<p>Continuously monitors spectral data. This command uses the same data source as 'spectral-history', and thus shares many parameters.</p>
+<p>Each line displays one spectrogram bucket -- frequency, the numeric value of average power, and a character graphic bar. A bar shows average power value with ':' characters and average peak hold with '.' characters. Maximum is displayed as a lone floating ':' character.</p>
+<ul>
+<li><em>show-interference</em> -- adds a column that shows detected interference sources;</li>
+</ul>
+<p>Types of possibly classified interference:</p>
+<ul>
+<li>Bluetooth-headset</li>
+<li>Bluetooth-stereo</li>
+<li>cordless-phone</li>
+<li>microwave-oven</li>
+<li>CWA</li>
+<li>video-bridge</li>
+<li>wifi</li>
+</ul>
+<h2 id="the-dude">The Dude</h2>
+<p>The Dude is a free network monitoring and management program by MikroTik. You <a href="http://www.mikrotik.com/thedude.php">can download it here</a>.</p>
+<p>The Dude has a built-in capability to run graphical Spectral Scan from any of your RouterOS devices with a supported wireless card. Simply select this device in your Dude map, right click and choose Tools -&gt; Spectral Scan.</p>
+<p>This will bring up the Spectral Scan GUI with various options and different view modes:</p>
+<hr />
+<h1 id="vlans-on-wireless">VLANs on Wireless</h1>
+<blockquote>
+<p>This page explains how to configure VLANs on MikroTik RouterOS wireless interfaces, enabling Layer2 segmentation between different Virtual APs and networks. It includes setup examples for isolating Guest and Work APs...</p>
+</blockquote>
+<h1 id="vlans-on-wireless_1">VLANs on Wireless</h1>
+<h2 id="summary">Summary</h2>
+<p>VLANs provide the possibility to isolate devices into different Layer2 segments while still using the same Layer1 medium. This is very useful in setups where you want to separate different types of devices or users. This feature is also very useful for Wireless setups since you can isolate different Virtual APs and restrict access to certain services or networks by using Firewall. Below is an example with a setup with two Access Points on the same device that isolates them into separate VLANs. This kind of scenario is very common when you have a <strong>Guest AP</strong> and <strong>Work AP</strong>.</p>
+<h2 id="example_1">Example</h2>
+<p><a href="../../bridging-and-switching/index.md#bridge-vlan-filtering">Bridge VLAN Filtering</a> provides VLAN aware Layer2 forwarding and VLAN tag modifications within the bridge.</p>
+<h3 id="r1">R1</h3>
+<ul>
+<li>Add necessary VLAN interfaces on the ethernet interface to make it a VLAN trunk port. Add ip addresses on VLAN interfaces:</li>
+</ul>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether1 name=vlan111 vlan-id=111
+add interface=ether1 name=vlan222 vlan-id=222
+
+/ip/address
+add address=192.168.1.1/24 interface=vlan111
+add address=192.168.2.1/24 interface=vlan222
+</code></pre>
+<h3 id="r2">R2</h3>
+<ul>
+<li>Add VirtualAP under the wlan1 interface and create wireless security-profiles for wlan1 and wlan2:</li>
+</ul>
+<pre><code class="language-ros">/interface/wireless/security-profiles
+add name=vlan111 authentication-types=wpa-psk,wpa2-psk mode=dynamic-keys wpa-pre-shared-key=secret111 wpa2-pre-shared-key=secret111
+add name=vlan222 authentication-types=wpa-psk,wpa2-psk mode=dynamic-keys wpa-pre-shared-key=secret222 wpa2-pre-shared-key=secret222
+/interface/wireless
+set [ find default-name=wlan1 ] disabled=no mode=ap-bridge security-profile=vlan111 ssid=vlan111 vlan-id=111 vlan-mode=use-tag
+add disabled=no master-interface=wlan1 name=wlan2 security-profile=vlan222 ssid=vlan222 vlan-id=222 vlan-mode=use-tag
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>It is important to set wlan1,wlan2 vlan-mode to "use-tag".</p>
+</div>
+<ul>
+<li>Create a bridge with <em>vlan-filtering=yes</em>;</li>
+<li>Add necessary bridge ports;</li>
+<li>Add <em>tagged</em> interfaces under the <em>interface bridge vlan</em> section with correct <em>vlan-ids</em>:</li>
+</ul>
+<pre><code class="language-ros">/interface/bridge
+add fast-forward=no name=bridge1 vlan-filtering=yes
+
+/interface/bridge/port
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=wlan1
+add bridge=bridge1 interface=wlan2
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether2,wlan1 vlan-ids=111
+add bridge=bridge1 tagged=ether2,wlan2 vlan-ids=222
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Some devices have a built-in switch chip that can switch packets between Ethernet ports with wire-speed performance. Bridge VLAN filtering disables <a href="../../bridging-and-switching/index.md#bridge-hardware-offloading">hardware offloading</a> for certain devices, which will prevent packets from being switched. This does not affect Wireless interfaces as traffic through them cannot be offloaded to the switch chip either way.</p>
+</div>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>VLAN filtering is not required in this setup, but is highly recommended due to security reasons. Without VLAN filtering it is possible to forward unknown VLAN IDs in certain scenarios. Disabling VLAN filtering does have performance benefits.</p>
+</div>
+<h3 id="r3">R3</h3>
+<ul>
+<li>Add an IP address on the wlan1 interface;</li>
+<li>Create a wireless security-profile compatible with R2 wlan1:</li>
+</ul>
+<pre><code class="language-ros">/ip/address
+add address=192.168.1.3/24 interface=wlan1
+
+/interface/wireless
+set [ find default-name=wlan1 ] disabled=no mode=station security-profile=vlan111 ssid=vlan111
+</code></pre>
+<h3 id="r4">R4</h3>
+<ul>
+<li>Add an IP address on wlan1 interface;</li>
+<li>Create a wireless security-profile compatible with R2 wlan2:</li>
+</ul>
+<pre><code class="language-ros">/ip/address
+add address=192.168.2.4/24 interface=wlan1
+
+/interface/wireless
+set [ find default-name=wlan1 ] disabled=no mode=station security-profile=vlan222 ssid=vlan222
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

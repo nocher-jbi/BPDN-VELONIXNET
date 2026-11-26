@@ -1,0 +1,1747 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>system · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="system-part-12">system (part 1/2)</h1>
+<h1 id="cloud">cloud</h1>
+<blockquote>
+<p>Backup of this device stored on the MikroTik cloud server. Each device has one slot. Every command in this menu, including print, connects to cloud2.mikrotik.com. For examples, see Cloud backup.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupcloud">system/backup/cloud</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Backup of this device stored on the MikroTik cloud server. Each device has one slot. Every command in this menu, including <code>print</code>, connects to <code>cloud2.mikrotik.com</code>. For examples, see <a href="../../../../network-management/cloud/cloud-backup">Cloud backup</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the backup, set with <code>name</code> in <code>upload-file</code>. <code>download-file</code> saves the backup as <code>&lt;name&gt;.backup</code> unless <code>dst-file</code> is given.</li>
+<li><strong>size</strong> <code>num</code> — Size of the encrypted backup file.</li>
+<li><strong>ros-version</strong> <code>string</code> — RouterOS version that created the backup.</li>
+<li><strong>date</strong> <code>date</code> — Time of the upload.</li>
+<li><strong>status</strong> <code>string</code> — State of the stored backup. <code>ok</code> when the backup can be downloaded.</li>
+<li><strong>secret-download-key</strong> <code>string</code> — Key that downloads this backup on any router, with <code>download-file secret-download-key=&lt;key&gt;</code>. Replacing the backup generates a new key. Anyone who has the key can download the file, but cannot read it without the backup password.</li>
+</ul>
+<hr />
+<h1 id="download-file">download-file</h1>
+<blockquote>
+<p>Downloads a backup from the cloud server: this device's backup by its number in the list (number=0), or any backup by its secret-download-key.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupclouddownload-file">system/backup/cloud/download-file</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Downloads a backup from the cloud server: this device's backup by its number in the list (<code>number=0</code>), or any backup by its <code>secret-download-key</code>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>secret-download-key</strong> <code>string</code> — Key of the backup to download, shown as <code>secret-download-key</code> on the router that uploaded it. Use it to download the backup to another router.</li>
+<li><strong>action</strong> <code>enum (download | download-and-apply)</code> — What to do with the backup: - <code>download</code> - Save the backup file to the router's storage. - <code>download-and-apply</code> - Save the backup file, restore the configuration from it with <code>password</code>, and reboot.</li>
+<li><strong>dst-file</strong> <code>string</code> — Name of the saved file; <code>.backup</code> is added. Without it, the file is saved as <code>&lt;name&gt;.backup</code>.</li>
+<li><strong>password</strong> <code>string</code> — Password of the backup, for <code>action=download-and-apply</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Progress of the command: <code>working...</code> while it runs, <code>finished</code> when it is done, or the error message, for example from the cloud server.</li>
+</ul>
+<hr />
+<h1 id="remove-file">remove-file</h1>
+<blockquote>
+<p>Deletes the backup from the cloud server and frees the slot of this device. Give the backup by its number in the list, for example remove-file number=0.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupcloudremove-file">system/backup/cloud/remove-file</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Deletes the backup from the cloud server and frees the slot of this device. Give the backup by its number in the list, for example <code>remove-file number=0</code>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Progress of the command: <code>working...</code> while it runs, <code>finished</code> when it is done, or the error message, for example from the cloud server.</li>
+</ul>
+<hr />
+<h1 id="upload-file">upload-file</h1>
+<blockquote>
+<p>Uploads an AES-encrypted backup to this device's slot on the cloud server. When the slot is used, the upload fails with Server error: All slots used. Delete file to free up space., unless replace names the stored backup.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupcloudupload-file">system/backup/cloud/upload-file</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Uploads an AES-encrypted backup to this device's slot on the cloud server. When the slot is used, the upload fails with <code>Server error: All slots used. Delete file to free up space.</code>, unless <code>replace</code> names the stored backup.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>action</strong> <code>enum (upload | create-and-upload)</code> — What to upload: - <code>create-and-upload</code> - Create a backup of the current configuration, encrypt it with <code>password</code> and upload it. - <code>upload</code> - Upload the backup file given in <code>src-file</code>.</li>
+<li><strong>name</strong> <code>string</code> — Name of the backup in the cloud list. It does not have to match a file name.</li>
+<li><strong>replace</strong> <code>enum</code> — Name of the stored backup to overwrite. The new backup gets a new <code>secret-download-key</code>.</li>
+<li><strong>src-file</strong> <code>file</code> — Backup file to upload with <code>action=upload</code>. The file must be saved with a password (<code>/system/backup/save password=...</code>), otherwise the command fails with <code>src file must be AES encrypted</code>.</li>
+<li><strong>password</strong> <code>string</code> — Password that encrypts the backup with <code>action=create-and-upload</code>. Required for that action; you need it to restore the backup.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Progress of the command: <code>working...</code> while it runs, <code>finished</code> when it is done, or the error message, for example from the cloud server.</li>
+</ul>
+<hr />
+<h1 id="load">load</h1>
+<blockquote>
+<p>Loads a configuration saved with /system/backup/save from a backup file, then reboots the router after confirmation.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupload">system/backup/load</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Loads a configuration saved with <code>/system/backup/save</code> from a <a href="../../../getting-started/configuration-management/backup.md">backup file</a>, then reboots the router after confirmation.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>file</code> — Name of the backup file, as given to <code>save</code> (without the <code>.backup</code> extension).</li>
+<li><strong>password</strong> <code>string</code> — Password used to decrypt the backup file. When omitted, RouterOS asks for it. For an unencrypted backup, any password works.</li>
+<li><strong>force-v6-to-v7-configuration-upgrade</strong> <code>bool</code> — Whether to load a backup made on RouterOS v6 and convert its configuration to v7. The flag has no effect on a backup made on v7.</li>
+</ul>
+<hr />
+<h1 id="save">save</h1>
+<blockquote>
+<p>Saves the whole router configuration in a binary backup file. The backup file appears in the /file menu and can be copied off the router.</p>
+</blockquote>
+<hr />
+<h2 id="systembackupsave">system/backup/save</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Saves the whole router configuration in a binary <a href="../../../getting-started/configuration-management/backup.md">backup file</a>. The backup file appears in the <code>/file</code> menu and can be copied off the router.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>file</code> — Name of the backup file. The file is saved as <code>&lt;name&gt;.backup</code> and appears in the <code>/file</code> menu.</li>
+<li><strong>password</strong> <code>string</code> — Password that encrypts the backup file. Without a password, the backup is saved unencrypted.</li>
+<li><strong>dont-encrypt</strong> <code>bool</code> — Save the backup unencrypted even when <code>password</code> is given. Default: no.</li>
+<li><strong>encryption</strong> <code>enum (aes-sha256 | rc4) { aes-sha256:0, rc4:1 }</code> — Encryption algorithm used when <code>password</code> is given. - <code>aes-sha256</code> (default) - Encryption with AES and SHA-256. - <code>rc4</code> - Legacy weak algorithm, kept for compatibility with older RouterOS versions.</li>
+</ul>
+<hr />
+<h1 id="check-disk">check-disk</h1>
+<blockquote>
+<p>RouterOS command reference for /system/check-disk.</p>
+</blockquote>
+<hr />
+<h2 id="systemcheck-disk">system/check-disk</h2>
+<p><strong>Conditions:</strong> i386
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="check-installation">check-installation</h1>
+<blockquote>
+<p>This command ensures the integrity of the RouterOS system by verifying the readability and correct placement of files. Its primary purpose is to confirm the health and status of your NAND/Flash storage.</p>
+</blockquote>
+<hr />
+<h2 id="systemcheck-installation">system/check-installation</h2>
+<p><strong>Type:</strong> Command</p>
+<p>This command ensures the integrity of the RouterOS system by verifying the readability and correct placement of files. Its primary purpose is to confirm the health and status of your NAND/Flash storage.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="clock">clock</h1>
+<blockquote>
+<p>System clock settings: local date and time, time zone selection and automatic time zone detection. See the Clock guide for time sources, daylight saving configuration and troubleshooting.</p>
+</blockquote>
+<hr />
+<h2 id="systemclock">system/clock</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>System clock settings: local date and time, time zone selection and automatic time zone detection. See the <a href="../../../system-information-and-utilities/clock">Clock</a> guide for time sources, daylight saving configuration and troubleshooting.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>time</strong> <code>date</code> — HH:MM:SS, where HH - hour 00..23, MM - minutes 00..59, SS - seconds 00..59. Sets or shows the current local time on the router. When <code>date</code> and <code>time</code> are set in one command, the time is interpreted with the GMT offset that was in effect before the change.</li>
+<li><strong>date</strong> <code>date</code> — YYYY-MM-DD, where YYYY - year, MM - month 01..12, DD - date 01..31. Sets or shows the current local date on the router. The date cannot be set before the build date of the installed RouterOS version, and a date after 2038-01-19 03:14:07 UTC is ignored without an error. Local time cannot be exported and is not stored with the rest of the configuration.</li>
+<li><strong>time-zone-autodetect</strong> <code>bool</code> — If enabled, the MikroTik cloud service looks up the time zone for the location of the router's public IP address at startup and applies it to <code>time-zone-name</code>, including daylight saving time. Detection also runs when the setting is enabled again, and the detected zone then replaces a manually set one within seconds. A <code>time-zone-name</code> set by hand while detection is on is kept until the next detection. Default: yes.</li>
+<li><strong>time-zone-name</strong> <code>enum</code> — Name of the time zone from the IANA time zone database, for example <code>Europe/Riga</code>. Case sensitive. Daylight saving rules of the zone are applied automatically. The special value <code>manual</code> applies the GMT offset and daylight saving period configured in <a href="manual"><code>/system/clock/manual</code></a>. Default: manual.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>gmt-offset</strong> <code>timezone</code> — Current value of GMT offset used by the system, after applying base time zone offset and active daylight saving time offset. <code>print</code> shows it as <code>+03:00</code>; in scripts, <code>get gmt-offset</code> returns the offset in seconds, for example <code>10800</code>.</li>
+<li><strong>dst-active</strong> <code>bool</code> — <code>yes</code> while the daylight saving period of the current time zone is in effect.</li>
+</ul>
+<hr />
+<h1 id="manual">manual</h1>
+<blockquote>
+<p>Manual GMT offset and daylight saving settings, applied while time-zone-name in /system/clock is manual. See the Clock guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemclockmanual">system/clock/manual</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Manual GMT offset and daylight saving settings, applied while <code>time-zone-name</code> in <a href="."><code>/system/clock</code></a> is <code>manual</code>. See the <a href="../../../system-information-and-utilities/clock">Clock</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>time-zone</strong> <code>timezone</code> — GMT offset while daylight saving time is not active. Has an effect only when <code>time-zone-name</code> is <code>manual</code>. Default: +00:00.</li>
+<li><strong>dst-delta</strong> <code>timezone</code> — Offset added to <code>time-zone</code> while daylight saving time is active. Negative values are accepted, for time zones where the winter time is the daylight saving period. Default: +00:00.</li>
+<li><strong>dst-start</strong> <code>date</code> — Local date and time when the daylight saving period starts. Daylight saving time is active from <code>dst-start</code> until <code>dst-end</code> exactly as configured: the period is a single date range and does not repeat in the following years. If <code>dst-start</code> is later than <code>dst-end</code>, daylight saving time is never active. Format: YYYY-MM-DD HH:MM:SS. An omitted date or time part is reset, the date to 1970-01-01 or the time to 00:00:00 (for example <code>dst-start=05:00:00</code> gives <code>1970-01-01 05:00:00</code>), so always give both parts. Default: 1970-01-01 00:00:00.</li>
+<li><strong>dst-end</strong> <code>date</code> — Local date and time when the daylight saving period ends. See <code>dst-start</code> for how the period is applied. Format: YYYY-MM-DD HH:MM:SS. An omitted date or time part is reset, the date to 1970-01-01 or the time to 00:00:00, so always give both parts. Default: 1970-01-01 00:00:00.</li>
+</ul>
+<hr />
+<h1 id="console">console</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/console.</p>
+</blockquote>
+<hr />
+<h2 id="systemconsole">system/console</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code></li>
+<li><strong>X</strong> <code>disabled</code></li>
+<li><strong>W</strong> <code>wedged</code></li>
+<li><strong>U</strong> <code>used</code></li>
+<li><strong>F</strong> <code>free</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>port</strong> <code>enum</code></li>
+<li><strong>channel</strong> <code>num</code></li>
+<li><strong>term</strong> <code>string</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>vcno</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="screen">screen</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/console/screen.</p>
+</blockquote>
+<hr />
+<h2 id="systemconsolescreen">system/console/screen</h2>
+<p><strong>Conditions:</strong> i386
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>line-count</strong> <code>enum (25 | 40 | 50) { 25:2, 40:1, 50:0 }</code></li>
+<li><strong>blank-interval</strong> <code>enum (never | 1min | 10min | 60min) { never:0, 1min:1, 10min:10, 60min:60 }</code></li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/dashboard/settings.</p>
+</blockquote>
+<hr />
+<h2 id="systemdashboardsettings">system/dashboard/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>uplink-interfaces</strong> <code>multi { array-id, interface: iface_enum
+ }</code></li>
+</ul>
+<hr />
+<h1 id="show">show</h1>
+<blockquote>
+<p>RouterOS command reference for /system/dashboard/show.</p>
+</blockquote>
+<hr />
+<h2 id="systemdashboardshow">system/dashboard/show</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>model</strong> <code>string</code></li>
+<li><strong>board-name</strong> <code>string</code></li>
+<li><strong>identity</strong> <code>string</code></li>
+<li><strong>version</strong> <code>string</code></li>
+<li><strong>uptime</strong> <code>time</code></li>
+<li><strong>cpu-usage</strong> <code>num</code></li>
+<li><strong>memory-usage</strong> <code>composite { used: num
+, total: num
+ }</code></li>
+<li><strong>hdd-usage</strong> <code>composite { used: num
+, total: num
+ }</code></li>
+<li><strong>ether</strong> <code>super { running: num
+, [enabled] /num
+, [total] /num
+ }</code></li>
+<li><strong>wifi</strong> <code>super { running: num
+, [enabled] /num
+, [total] /num
+ }</code></li>
+<li><strong>total-bw</strong> <code>super { tx: num
+, [rx] /num
+ }</code></li>
+<li><strong>uplink-bw</strong> <code>super { tx: num
+, [rx] /num
+ }</code></li>
+<li><strong>ether-bw</strong> <code>super { tx: num
+, [rx] /num
+ }</code></li>
+<li><strong>wifi-bw</strong> <code>super { tx: num
+, [rx] /num
+ }</code></li>
+<li><strong>lte-bw</strong> <code>super { tx: num
+, [rx] /num
+ }</code></li>
+</ul>
+<hr />
+<h1 id="default-configuration">default-configuration</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/default-configuration.</p>
+</blockquote>
+<hr />
+<h2 id="systemdefault-configuration">system/default-configuration</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>script</strong> <code>string</code></li>
+<li><strong>caps-mode-script</strong> <code>string</code></li>
+<li><strong>wps-sync-mode-script</strong> <code>string</code></li>
+<li><strong>custom-script</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="caps-mode-script">caps-mode-script</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/default-configuration/caps-mode-script.</p>
+</blockquote>
+<hr />
+<h2 id="systemdefault-configurationcaps-mode-script">system/default-configuration/caps-mode-script</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>caps-mode-script</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="custom-script">custom-script</h1>
+<blockquote>
+<p>Shows the custom default configuration script, if one is installed. A custom script replaces MikroTik's default configuration: it runs when the configuration is reset (/system/reset-configuration, the TR-069...</p>
+</blockquote>
+<hr />
+<h2 id="systemdefault-configurationcustom-script">system/default-configuration/custom-script</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Shows the custom default configuration script, if one is installed. A custom script replaces MikroTik's default configuration: it runs when the configuration is reset (<code>/system/reset-configuration</code>, the TR-069 FactoryReset RPC). It is installed with Netinstall or with the TR-069 Download RPC (<code>X MIKROTIK Factory Configuration File</code>). After a Download of the script, <code>/system/default-configuration/print</code> keeps showing MikroTik's script, and <code>/export</code> starts with a comment that a custom script is installed.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>custom-script</strong> <code>string</code> — Text of the custom default configuration script. Empty when none is installed.</li>
+</ul>
+<hr />
+<h1 id="script">script</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/default-configuration/script.</p>
+</blockquote>
+<hr />
+<h2 id="systemdefault-configurationscript">system/default-configuration/script</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>script</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="wps-sync-mode-script">wps-sync-mode-script</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/default-configuration/wps-sync-mode-script.</p>
+</blockquote>
+<hr />
+<h2 id="systemdefault-configurationwps-sync-mode-script">system/default-configuration/wps-sync-mode-script</h2>
+<p><strong>Syscap:</strong> wpssync
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>wps-sync-mode-script</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="device-mode">device-mode</h1>
+<blockquote>
+<p>Current device-mode settings. The mode and the per-feature switches apply at startup and can be changed only with update, which requires physical confirmation. See the Device mode guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemdevice-mode">system/device-mode</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Current device-mode settings. The mode and the per-feature switches apply at startup and can be changed only with <a href="update"><code>update</code></a>, which requires physical confirmation. See the <a href="../../../system-information-and-utilities/device-mode">Device mode</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>mode</strong> <code>enum</code> — Current device mode. - <code>advanced</code> - For CCR and 1100 series devices; previously called <code>enterprise</code>. - <code>basic</code> - For most other devices. - <code>home</code> - For home routers. - <code>rose</code> - For RDS and similar devices with wide disk use.</li>
+<li><strong>allowed-versions</strong> <code>string</code> — Comma-separated list of RouterOS versions considered secure, used to block downgrades to vulnerable releases (for example <code>7.13+,6.49.8+</code>). An upgrade to a release that ships a newer list updates it; a downgrade does not. Ignored when <code>install-any-version</code> is enabled.</li>
+<li><strong>flagged</strong> <code>bool</code> — Whether the device is in the flagged state: the startup configuration analysis found signs of unauthorized access and disabled the suspicious configuration. Reviewed and cleared with <code>update flagged=no</code>.</li>
+<li><strong>flagging-enabled</strong> <code>bool</code> — Whether the configuration analysis for signs of unauthorized access runs at startup. Default: yes.</li>
+<li><strong>scheduler</strong> <code>bool</code> — Whether <code>/system/scheduler</code> is allowed to perform actions.</li>
+<li><strong>socks</strong> <code>bool</code> — Whether the SOCKS proxy in <code>/ip/socks</code> is allowed.</li>
+<li><strong>fetch</strong> <code>bool</code> — Whether <code>/tool/fetch</code> is allowed.</li>
+<li><strong>pptp</strong> <code>bool</code> — Whether <code>/interface/pptp-client</code> and <code>/interface/pptp-server</code> are allowed.</li>
+<li><strong>l2tp</strong> <code>bool</code> — Whether <code>/interface/l2tp-client</code> and <code>/interface/l2tp-server</code> are allowed.</li>
+<li><strong>bandwidth-test</strong> <code>bool</code> — Whether <code>/tool/bandwidth-test</code>, <code>/tool/bandwidth-server</code> and <code>/tool/speed-test</code> are allowed.</li>
+<li><strong>traffic-gen</strong> <code>bool</code> — Whether <code>/tool/traffic-generator</code>, <code>/tool/flood-ping</code> and <code>/tool/ping-speed</code> are allowed.</li>
+<li><strong>sniffer</strong> <code>bool</code> — Whether <code>/tool/sniffer</code> is allowed.</li>
+<li><strong>ipsec</strong> <code>bool</code> — Whether <code>/ip/ipsec</code> is allowed.</li>
+<li><strong>romon</strong> <code>bool</code> — Whether <code>/tool/romon</code> is allowed.</li>
+<li><strong>proxy</strong> <code>bool</code> — Whether the web proxy in <code>/ip/proxy</code> is allowed.</li>
+<li><strong>hotspot</strong> <code>bool</code> — Whether <code>/ip/hotspot</code> is allowed.</li>
+<li><strong>smb</strong> <code>bool</code> — Whether <code>/ip/smb</code> is allowed.</li>
+<li><strong>email</strong> <code>bool</code> — Whether <code>/tool/e-mail</code> is allowed.</li>
+<li><strong>zerotier</strong> <code>bool</code> — Whether <code>/zerotier</code> is allowed.</li>
+<li><strong>container</strong> <code>bool</code> — Whether container functionality (<code>/container</code>) is allowed.</li>
+<li><strong>install-any-version</strong> <code>bool</code> — Whether installing RouterOS versions outside the <code>allowed-versions</code> list is permitted.</li>
+<li><strong>partitions</strong> <code>bool</code> — Whether changing the partition count (<code>/partitions</code>) is allowed.</li>
+<li><strong>routerboard</strong> <code>bool</code> — Whether changing <code>/system/routerboard/settings</code> options (except auto-upgrade) and the SwOS/RouterOS transition on dual-boot devices is allowed.</li>
+<li><strong>attempt-count</strong> <code>num</code> — Number of unsuccessful device-mode update attempts since the last reset; a request that cancels a pending update does not count. After three, an <code>update</code> is refused and a reset window opens for the time set by the last <code>activation-timeout</code>; a button press or power cycle inside the window resets the counter. A confirmed update also resets it. Default: 0.</li>
+</ul>
+<hr />
+<h1 id="update">update</h1>
+<blockquote>
+<p>Starts a device-mode configuration change. The change activates after a button press or power cycle and reboots the device; if it is not confirmed within activation-timeout, it is canceled. A regular reboot also...</p>
+</blockquote>
+<hr />
+<h2 id="systemdevice-modeupdate">system/device-mode/update</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Starts a device-mode configuration change. The change activates after a button press or power cycle and reboots the device; if it is not confirmed within <code>activation-timeout</code>, it is canceled. A regular reboot also cancels it. Running <code>update</code> without parameters cancels a pending update; an <code>update</code> with parameters while another is pending cancels the pending one and is not applied itself. See the <a href="../../../system-information-and-utilities/device-mode">Device mode</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>mode</strong> <code>enum</code> — Device mode to apply. Specifying <code>mode</code> replaces the entire device-mode configuration except the other parameters given in the same command; omitted features get the new mode's defaults. - <code>advanced</code> - Previously called <code>enterprise</code>. - <code>basic</code> - For most other devices. - <code>home</code> - For home routers. - <code>rose</code> - For RDS and similar devices with wide disk use.</li>
+<li><strong>flagged</strong> <code>bool</code> — Set to <code>no</code> to clear the flagged state, after inspecting the configuration for unauthorized changes. Requires physical confirmation.</li>
+<li><strong>flagging-enabled</strong> <code>bool</code> — Enable or disable the configuration analysis for signs of unauthorized access. Default: yes.</li>
+<li><strong>scheduler</strong> <code>bool</code> — Allow or block <code>/system/scheduler</code>.</li>
+<li><strong>socks</strong> <code>bool</code> — Allow or block <code>/ip/socks</code>.</li>
+<li><strong>fetch</strong> <code>bool</code> — Allow or block <code>/tool/fetch</code>.</li>
+<li><strong>pptp</strong> <code>bool</code> — Allow or block PPTP client and server interfaces.</li>
+<li><strong>l2tp</strong> <code>bool</code> — Allow or block L2TP client and server interfaces.</li>
+<li><strong>bandwidth-test</strong> <code>bool</code> — Allow or block <code>/tool/bandwidth-test</code>, <code>/tool/bandwidth-server</code> and <code>/tool/speed-test</code>.</li>
+<li><strong>traffic-gen</strong> <code>bool</code> — Allow or block <code>/tool/traffic-generator</code>, <code>/tool/flood-ping</code>, and <code>/tool/ping-speed</code>.</li>
+<li><strong>sniffer</strong> <code>bool</code> — Allow or block <code>/tool/sniffer</code>.</li>
+<li><strong>ipsec</strong> <code>bool</code> — Allow or block <code>/ip/ipsec</code>.</li>
+<li><strong>romon</strong> <code>bool</code> — Allow or block <code>/tool/romon</code>.</li>
+<li><strong>proxy</strong> <code>bool</code> — Allow or block <code>/ip/proxy</code>.</li>
+<li><strong>hotspot</strong> <code>bool</code> — Allow or block <code>/ip/hotspot</code>.</li>
+<li><strong>smb</strong> <code>bool</code> — Allow or block <code>/ip/smb</code>.</li>
+<li><strong>email</strong> <code>bool</code> — Allow or block <code>/tool/e-mail</code>.</li>
+<li><strong>zerotier</strong> <code>bool</code> — Allow or block <code>/zerotier</code>.</li>
+<li><strong>container</strong> <code>bool</code> — Allow or block container functionality.</li>
+<li><strong>install-any-version</strong> <code>bool</code> — Allow or block downgrading to RouterOS versions outside the allowed-versions list.</li>
+<li><strong>partitions</strong> <code>bool</code> — Allow or block changing partition count.</li>
+<li><strong>routerboard</strong> <code>bool</code> — Allow or block <code>/system/routerboard/settings</code> (except auto-upgrade) and SwOS/RouterOS transition on dual-boot devices.</li>
+<li><strong>activation-timeout</strong> <code>time</code> — How long to wait for the physical confirmation (button press or power cycle) before the update is canceled. Also sets the length of the <code>attempt-count</code> reset window when an update is refused after three unsuccessful attempts. Range: 00:00:10 to 1d00:00:00. Default: 5m.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>update</strong> <code>string</code> — Status of a pending update with the time left to confirm it; empty when no update is pending.</li>
+</ul>
+<hr />
+<h1 id="gps">gps</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/gps.</p>
+</blockquote>
+<hr />
+<h2 id="systemgps">system/gps</h2>
+<p><strong>Package:</strong> gps
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code></li>
+<li><strong>port</strong> <code>alt { serial: enum (none)
+, interface: iface_enum
+ }</code></li>
+<li><strong>channel</strong> <code>num</code></li>
+<li><strong>init-channel</strong> <code>num</code></li>
+<li><strong>init-string</strong> <code>multi { array-id, string: string
+ }</code></li>
+<li><strong>set-system-time</strong> <code>bool</code></li>
+<li><strong>coordinate-format</strong> <code>enum (dms | dd | ddmm)</code></li>
+<li><strong>gps-antenna-select</strong> <code>enum (internal | external) { internal:0, external:1 }</code></li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /system/gps/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="systemgpsmonitor">system/gps/monitor</h2>
+<p><strong>Package:</strong> gps
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>date-and-time</strong> <code>date</code></li>
+<li><strong>latitude</strong> <code>string</code></li>
+<li><strong>longitude</strong> <code>string</code></li>
+<li><strong>altitude</strong> <code>string</code></li>
+<li><strong>speed</strong> <code>string</code></li>
+<li><strong>destination-bearing</strong> <code>string</code></li>
+<li><strong>true-bearing</strong> <code>string</code></li>
+<li><strong>magnetic-bearing</strong> <code>string</code></li>
+<li><strong>valid</strong> <code>bool</code></li>
+<li><strong>satellites</strong> <code>num</code></li>
+<li><strong>fix-quality</strong> <code>num</code></li>
+<li><strong>horizontal-dilution</strong> <code>num</code></li>
+<li><strong>data-age</strong> <code>alt { never: enum (never) { never:0 }
+, time: time
+ }</code></li>
+</ul>
+<hr />
+<h1 id="health">health</h1>
+<blockquote>
+<p>Hardware health monitoring on x86 (i386) based devices. Use /system/health/print to read the sensor values.</p>
+</blockquote>
+<hr />
+<h2 id="systemhealth">system/health</h2>
+<p><strong>Conditions:</strong> i386
+<strong>Type:</strong> Settings Directory</p>
+<p>Hardware health monitoring on x86 (i386) based devices. Use <code>/system/health/print</code> to read the sensor values.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>state-after-reboot</strong> <code>enum (disabled | enabled)</code> — Enables or disables hardware health monitoring after a reboot.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>core</strong> <code>num</code> — CPU core voltage.</li>
+<li><strong>3.3v</strong> <code>num</code> — 3.3 V supply line voltage.</li>
+<li><strong>5v</strong> <code>num</code> — 5 V supply line voltage.</li>
+<li><strong>12v</strong> <code>num</code> — 12 V supply line voltage.</li>
+<li><strong>lm87-temp</strong> <code>num</code> — Temperature measured by the LM87 sensor.</li>
+<li><strong>cpu-temp</strong> <code>num</code> — CPU temperature.</li>
+<li><strong>board-temp</strong> <code>num</code> — Board temperature.</li>
+<li><strong>voltage1</strong> <code>num</code> — Voltage measured by sensor 1.</li>
+<li><strong>voltage2</strong> <code>num</code> — Voltage measured by sensor 2.</li>
+<li><strong>voltage3</strong> <code>num</code> — Voltage measured by sensor 3.</li>
+<li><strong>voltage4</strong> <code>num</code> — Voltage measured by sensor 4.</li>
+<li><strong>voltage5</strong> <code>num</code> — Voltage measured by sensor 5.</li>
+<li><strong>voltage6</strong> <code>num</code> — Voltage measured by sensor 6.</li>
+<li><strong>voltage7</strong> <code>num</code> — Voltage measured by sensor 7.</li>
+<li><strong>voltage8</strong> <code>num</code> — Voltage measured by sensor 8.</li>
+<li><strong>voltage9</strong> <code>num</code> — Voltage measured by sensor 9.</li>
+<li><strong>voltage10</strong> <code>num</code> — Voltage measured by sensor 10.</li>
+<li><strong>temp1</strong> <code>num</code> — Temperature measured by sensor 1.</li>
+<li><strong>temp2</strong> <code>num</code> — Temperature measured by sensor 2.</li>
+<li><strong>temp3</strong> <code>num</code> — Temperature measured by sensor 3.</li>
+<li><strong>fan1</strong> <code>num</code> — Speed of fan 1 in RPM.</li>
+<li><strong>fan2</strong> <code>num</code> — Speed of fan 2 in RPM.</li>
+<li><strong>fan3</strong> <code>num</code> — Speed of fan 3 in RPM.</li>
+<li><strong>state</strong> <code>enum (disabled | enabled)</code> — Health monitoring state.</li>
+</ul>
+<h2 id="systemhealth_1">system/health</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Syscap:</strong> health
+<strong>Type:</strong> Directory</p>
+<p>Hardware health monitoring on non-x86 devices. Use <code>/system/health/print</code> to list the name, current value and type of each monitored parameter.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the monitored parameter, for example <code>voltage</code>, <code>cpu-temperature</code> or <code>fan1-speed</code>.</li>
+<li><strong>value</strong> <code>alt { valuet: num
+, valuer: num
+, valuev: num
+, valuea: num
+, valuew: num
+, valueb: enum (ok | fail | not-present | idle | no-input) { ok:0, fail:1, not-present:2, idle:3, no-input:4 }
+, values: string
+ }</code> — Current value of the parameter. The value and its unit depend on the parameter <code>type</code>.</li>
+<li><strong>type</strong> <code>enum (C | RPM | V | A | W |  | )</code> — Type of the measured value: <code>C</code> is degrees Celsius, <code>RPM</code> is fan speed, <code>V</code> is voltage, <code>A</code> is current and <code>W</code> is power consumption.</li>
+</ul>
+<hr />
+<h1 id="settings_1">settings</h1>
+<blockquote>
+<p>Configures the fan and temperature monitoring behavior of the device.</p>
+</blockquote>
+<hr />
+<h2 id="systemhealthsettings">system/health/settings</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Syscap:</strong> health and health-settings
+<strong>Type:</strong> Settings Directory</p>
+<p>Configures the fan and temperature monitoring behavior of the device.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>fan-full-speed-temp</strong> <code>num</code> — Sets the temperature value at which the fan speed is increased to the maximum possible RPM. The fan controller reads the temperature from CPU, PHY, switch and SFP, and adjusts the fan speed based on the component with the highest temperature. Range: -273..65. Default: 65.</li>
+<li><strong>fan-target-temp</strong> <code>num</code> — Sets the target temperature for the hottest component. The fan controller adjusts the fan behavior to keep the temperature in the target range. Range: -273..65. Default: 58.</li>
+<li><strong>fan-min-speed-percent</strong> <code>num</code> — Sets the minimum percentage of the fan speed, so the fans do not drop below this value. The default varies by fan controller chip; current devices default to 12. Range: 0..100.</li>
+<li><strong>fan-control-interval</strong> <code>time</code> — Sets the interval for reading the temperature data from the CPU, PHY, switch and SFP. This setting directly affects CPU usage. Range: 5..30 seconds. Default: 30s.</li>
+<li><strong>fan-mode</strong> <code>enum (manual | auto) { manual:0, auto:1 }</code> — Selects the fan control mode. With <code>auto</code>, the device automatically switches to the auxiliary fan when the main fan fails. With <code>manual</code>, you select which fans run by using <code>use-fan</code> and <code>use-fan2</code>.</li>
+<li><strong>use-fan</strong> <code>enum (auxiliary | main) { auxiliary:0, main:1 }</code> — Selects which fan to use in the manual fan-control mode.</li>
+<li><strong>use-fan2</strong> <code>enum (auxiliary | main) { auxiliary:0, main:1 }</code> — Selects which second fan to use in the manual fan-control mode.</li>
+<li><strong>fan-switch</strong> <code>enum (auto | on | off) { auto:0, on:1, off:2 }</code> — Sets the fan state: <code>auto</code> follows the automatic temperature control, <code>on</code> forces the fan to run, and <code>off</code> forces the fan to stop.</li>
+<li><strong>fan-on-threshold</strong> <code>num</code> — Sets the temperature at which the fans are switched on.</li>
+<li><strong>cpu-overtemp-check</strong> <code>bool</code> — Enables or disables CPU overtemperature monitoring. Available on ARM and ARM64 devices. Default: no.</li>
+<li><strong>cpu-overtemp-threshold</strong> <code>num</code> — Sets the maximum temperature before the overtemperature protection is triggered. Range: 0..105. Default: 105.</li>
+<li><strong>cpu-overtemp-startup-delay</strong> <code>time</code> — Sets the delay after startup before overtemperature monitoring is enabled. Default: 1m.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>active-fan</strong> <code>enum (auxiliary | main | none) { auxiliary:0, main:1, none:2 }</code> — Fan that is currently in use.</li>
+<li><strong>active-fan2</strong> <code>enum (auxiliary | main | none) { auxiliary:0, main:1, none:2 }</code> — Second fan that is currently in use.</li>
+</ul>
+<hr />
+<h1 id="detect-fans">detect-fans</h1>
+<blockquote>
+<p>Detects the fans connected to the device, for example after installing or replacing a fan.</p>
+</blockquote>
+<hr />
+<h2 id="systemhealthsettingsdetect-fans">system/health/settings/detect-fans</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Syscap:</strong> health and health-settings
+<strong>Type:</strong> Command</p>
+<p>Detects the fans connected to the device, for example after installing or replacing a fan.</p>
+<hr />
+<h1 id="history">history</h1>
+<blockquote>
+<p>List of configuration changes, made from any session (CLI, GUI or API). /undo and /redo take back or reapply the last change; each further /undo takes back the change before it. The list keeps the last 100 changes...</p>
+</blockquote>
+<hr />
+<h2 id="systemhistory">system/history</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>List of configuration changes, made from any session (CLI, GUI or API). <code>/undo</code> and <code>/redo</code> take back or reapply the last change; each further <code>/undo</code> takes back the change before it. The list keeps the last 100 changes and is cleared when the router reboots. Changes made while safe mode is on are kept with the <code>F</code> flag and undone if the safe mode session ends without releasing safe mode. See <a href="../../getting-started/configuration-management/#undo-and-redo-changes">Configuration Management</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>U</strong> <code>undoable</code> — The change can be undone with <code>/undo</code>.</li>
+<li><strong>R</strong> <code>redoable</code> — The change was undone and can be applied again with <code>/redo</code>.</li>
+<li><strong>F</strong> <code>floating-undo</code> — The change was made in safe mode. It is undone if the safe mode session ends without releasing safe mode.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>redo</strong> <code>cfg</code> — Command that applies the change again.</li>
+<li><strong>undo</strong> <code>cfg</code> — Command that takes the change back.</li>
+<li><strong>action</strong> <code>string</code> — Description of the change, for example <code>filter rule added</code>.</li>
+<li><strong>by</strong> <code>string</code> — User who made the change.</li>
+<li><strong>policy</strong> <code>multi { array-id, policy: enum
+ }</code> — Policies the change needed.</li>
+<li><strong>time</strong> <code>date</code> — Time of the change.</li>
+<li><strong>trace</strong> <code>string</code> — Session that made the change, for example <code>ssh-cmd:admin@192.0.2.10/redo</code>.</li>
+</ul>
+<hr />
+<h1 id="identity">identity</h1>
+<blockquote>
+<p>The name of the router. For where it appears and examples, see Identity.</p>
+</blockquote>
+<hr />
+<h2 id="systemidentity">system/identity</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>The name of the router. For where it appears and examples, see <a href="../../system-information-and-utilities/identity">Identity</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the router, up to 64 characters; spaces and other characters are allowed, a longer name fails with <code>could not change identity: too long</code>. It appears in the CLI prompt and in WinBox, in neighbor discovery, as the SNMP <code>sysName</code>, as the host name the DHCP client sends, and as the default SSID of legacy wireless interfaces. SNMP can set it with a community that has write access. Default: MikroTik.</li>
+</ul>
+<hr />
+<h1 id="keymat-provider">keymat-provider</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/keymat-provider.</p>
+</blockquote>
+<hr />
+<h2 id="systemkeymat-provider">system/keymat-provider</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>type</strong> <code>enum (qkd | hkdf)</code></li>
+<li><strong>key-size</strong> <code>num</code> — in bits</li>
+<li><strong>qkd-address</strong> <code>string</code> — KME device address</li>
+<li><strong>qkd-kme-id</strong> <code>string</code> — should match the KME ID in the received TLS certificate</li>
+<li><strong>qkd-certificate</strong> <code>enum (none)</code> — this also specifies your SAE ID</li>
+<li><strong>qkd-peer-sae-id</strong> <code>string</code> — peer (master or slave) SAE ID</li>
+<li><strong>qkd-cache-size</strong> <code>num</code> — number of unused keys to keep in cache</li>
+<li><strong>hkdf-secret</strong> <code>string</code></li>
+<li><strong>hkdf-hash</strong> <code>enum (sha256 | sha512)</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>qkd-cache-state</strong> <code>num</code> — number of current unused keys in cache</li>
+<li><strong>qkd-total-keys-received</strong> <code>num</code> — total number of received keys</li>
+</ul>
+<hr />
+<h1 id="qkd-get-key-with-ids">qkd-get-key-with-ids</h1>
+<blockquote>
+<p>RouterOS command reference for /system/keymat-provider/qkd-get-key-with-ids.</p>
+</blockquote>
+<hr />
+<h2 id="systemkeymat-providerqkd-get-key-with-ids">system/keymat-provider/qkd-get-key-with-ids</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-ids</strong> <code>multi { array-id, key-id: string
+ }</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>keys</strong> <code>object { qkd-key: super { key-id: string
+, [key] : string
+ }
+ }</code></li>
+</ul>
+<hr />
+<h1 id="qkd-get-key">qkd-get-key</h1>
+<blockquote>
+<p>RouterOS command reference for /system/keymat-provider/qkd-get-key.</p>
+</blockquote>
+<hr />
+<h2 id="systemkeymat-providerqkd-get-key">system/keymat-provider/qkd-get-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>additional-sae-ids</strong> <code>multi { array-id, sae-id: string
+ }</code> — additional SAEs which will also get the generated key</li>
+<li><strong>number</strong> <code>num</code> — number of keys to generate</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>keys</strong> <code>object { qkd-key: super { key-id: string
+, [key] : string
+ }
+ }</code></li>
+</ul>
+<hr />
+<h1 id="qkd-get-status">qkd-get-status</h1>
+<blockquote>
+<p>RouterOS command reference for /system/keymat-provider/qkd-get-status.</p>
+</blockquote>
+<hr />
+<h2 id="systemkeymat-providerqkd-get-status">system/keymat-provider/qkd-get-status</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>sae-id</strong> <code>string</code> — if not specified, peer-sae-id will be used</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>source-kme-id</strong> <code>string</code></li>
+<li><strong>target-kme-id</strong> <code>string</code></li>
+<li><strong>master-sae-id</strong> <code>string</code></li>
+<li><strong>slave-sae-id</strong> <code>string</code></li>
+<li><strong>key-size</strong> <code>num</code></li>
+<li><strong>stored-key-count</strong> <code>num</code></li>
+<li><strong>max-key-count</strong> <code>num</code></li>
+<li><strong>max-key-per-request</strong> <code>num</code></li>
+<li><strong>max-key-size</strong> <code>num</code></li>
+<li><strong>min-key-size</strong> <code>num</code></li>
+<li><strong>max-sae-id-count</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="leds">leds</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/leds.</p>
+</blockquote>
+<hr />
+<h2 id="systemleds">system/leds</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code></li>
+<li>***** <code>default</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (interface-status | interface-receive | interface-transmit | interface-activity | wireless-signal-strength | wireless-status | modem-signal | modem-technology | flash-access | interface-speed | interface-speed-1G | interface-speed-25G | interface-speed-2.5G | interface-speed-100G | poe-out | ap-cap | on | off | fan-fault | poe-fault | gps-valid | align-left | align-right | align-up | align-down)</code></li>
+<li><strong>leds</strong> <code>object { led: enum
+ }</code></li>
+<li><strong>interface</strong> <code>object { iface: iface_enum
+ }</code></li>
+<li><strong>modem-signal-threshold</strong> <code>num</code> — RSSI threshold</li>
+<li><strong>color</strong> <code>alt { color-name: enum (none | red | orange | yellow | green-yellow | green | green-cyan | cyan | blue-cyan | blue | blue-magenta | magenta | red-magenta) { none:0, red:0xff0000, orange:0xff7f00, yellow:0xffff00, green-yellow:0x7fff00, green:0x00ff00, green-cyan:0x00ff7f, cyan:0x00ffff, blue-cyan:0x007fff, blue:0x0000ff, blue-magenta:0x7f00ff, magenta:0xff00ff, red-magenta:0xff007f }
+, color-number: num [0 .. 0xffffff]
+ }</code></li>
+</ul>
+<hr />
+<h1 id="settings_2">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/leds/settings.</p>
+</blockquote>
+<hr />
+<h2 id="systemledssettings">system/leds/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>all-leds-off</strong> <code>enum (never | immediate | after-1min | after-1h) { never:0, immediate:1, after-1min:60, after-1h:3600 }</code></li>
+</ul>
+<hr />
+<h1 id="license">license</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/license.</p>
+</blockquote>
+<hr />
+<h2 id="systemlicense">system/license</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>software-id</strong> <code>string</code> — Unique identifier for MikroTik hardware and x86 systems, used for licensing. Bound to the device storage.</li>
+<li><strong>old-software-id</strong> <code>string</code> — The previous Software ID, shown when the ID has changed.</li>
+<li><strong>nlevel</strong> <code>num</code> — The license level number (0-6).</li>
+<li><strong>features</strong> <code>ubit (AP, synchronous, radiolan, wireless, extra-channels, , , )</code> — Bitmask of licensed features.</li>
+<li><strong>expires-in</strong> <code>time</code> — Time remaining until the trial license expires.</li>
+<li><strong>system-id</strong> <code>string</code> — Unique identifier for CHR instances, used for licensing. The license is tied directly to the CHR system ID.</li>
+<li><strong>level</strong> <code>enum (free | p1 | p10 | p-unlimited) { free:0, p1:1, p10:2, p-unlimited:3 }</code> — Current CHR license level.</li>
+<li><strong>limited-upgrades</strong> <code>bool</code> — Indicates whether RouterOS upgrades are limited. When the value is <code>yes</code>, RouterOS cannot be upgraded and package changes are disabled.</li>
+<li><strong>next-renewal-at</strong> <code>date</code> — The next time the router attempts to contact the MikroTik license server.</li>
+<li><strong>deadline-at</strong> <code>date</code> — The latest time by which successful communication with the license server must occur.</li>
+</ul>
+<hr />
+<h1 id="generate-new-id">generate-new-id</h1>
+<blockquote>
+<p>Generates a new unique system ID for a CHR instance. Use after the first boot and before requesting a trial license when deploying multiple CHR instances from the same disk image to avoid identical system IDs.</p>
+</blockquote>
+<hr />
+<h2 id="systemlicensegenerate-new-id">system/license/generate-new-id</h2>
+<p><strong>Syscap:</strong> chr
+<strong>Type:</strong> Command</p>
+<p>Generates a new unique system ID for a CHR instance. Use after the first boot and before requesting a trial license when deploying multiple CHR instances from the same disk image to avoid identical system IDs.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>This command must only be used on a CHR running the Free license level. Do not use it after a trial or paid license has been applied.</p>
+</div>
+<hr />
+<h1 id="output">output</h1>
+<blockquote>
+<p>Outputs license information in a format suitable for support requests.</p>
+</blockquote>
+<hr />
+<h2 id="systemlicenseoutput">system/license/output</h2>
+<p><strong>Syscap:</strong> nochr
+<strong>Type:</strong> Command</p>
+<p>Outputs license information in a format suitable for support requests.</p>
+<hr />
+<h1 id="renew">renew</h1>
+<blockquote>
+<p>RouterOS command reference for /system/license/renew.</p>
+</blockquote>
+<hr />
+<h2 id="systemlicenserenew">system/license/renew</h2>
+<p><strong>Syscap:</strong> chr
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>account</strong> <code>string</code> — MikroTik.com account username.</li>
+<li><strong>password</strong> <code>string</code> — MikroTik.com account password.</li>
+<li><strong>level</strong> <code>enum (p1 | p10 | p-unlimited) { p1:1, p10:2, p-unlimited:3 }</code> — The desired CHR license level.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Status of the renewal operation.</li>
+</ul>
+<hr />
+<h1 id="logging">logging</h1>
+<blockquote>
+<p>Rules that decide which log messages are kept and where they go. Each rule selects messages by their topics, and optionally by a regular expression, and passes them to an action from /system/logging/action. The...</p>
+</blockquote>
+<hr />
+<h2 id="systemlogging">system/logging</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Rules that decide which log messages are kept and where they go. Each rule selects messages by their topics, and optionally by a regular expression, and passes them to an action from <a href="action/"><code>/system/logging/action</code></a>. The default rules pass <code>info</code>, <code>error</code> and <code>warning</code> messages to the <code>memory</code> action and <code>critical</code> messages to <code>echo</code>; other messages, for example <code>debug</code>, are not logged until a rule asks for them. See <a href="../../../diagnostics-monitoring-and-troubleshooting/log/">Log</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The rule is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The rule is invalid.</li>
+<li>***** <code>default</code> — One of the four default rules: <code>info</code>, <code>error</code> and <code>warning</code> to <code>memory</code>, <code>critical</code> to <code>echo</code>.</li>
+<li><strong>Y</strong> <code>managed</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>topics</strong> <code>multi { array-id, array-id, topic: super { !
+, topic: enum
+ }
+ }</code> — Topics a message must carry to match. A message matches only when it has every topic listed: <code>topics=dhcp,debug</code> matches DHCP debug messages, not all DHCP messages and all debug messages. To log several topics, add one rule per topic. A rule without topics matches every message, debug messages included. <code>!</code> before a topic excludes the messages that carry it, for example <code>topics=ntp,debug,!packet</code> logs NTP debug messages without the packet dumps. The topics are described on the <a href="../../../diagnostics-monitoring-and-troubleshooting/log/#topics">Log</a> page. The router accepts: <code>account</code>, <code>acme-client</code>, <code>amt</code>, <code>async</code>, <code>backup</code>, <code>bfd</code>, <code>bgp</code>, <code>bridge</code>, <code>calc</code>, <code>caps</code>, <code>certificate</code>, <code>clock</code>, <code>container</code>, <code>critical</code>, <code>ddns</code>, <code>debug</code>, <code>dhcp</code>, <code>discover</code>, <code>disk</code>, <code>dns</code>, <code>dot1x</code>, <code>dude</code>, <code>e-mail</code>, <code>error</code>, <code>event</code>, <code>evpn</code>, <code>fetch</code>, <code>firewall</code>, <code>gps</code>, <code>gsm</code>, <code>health</code>, <code>hotspot</code>, <code>igmp-proxy</code>, <code>info</code>, <code>interface</code>, <code>ipsec</code>, <code>iscsi</code>, <code>isdn</code>, <code>isis</code>, <code>kvm</code>, <code>l2tp</code>, <code>ldp</code>, <code>lora</code>, <code>lte</code>, <code>manager</code>, <code>mme</code>, <code>mpls</code>, <code>mqtt</code>, <code>mvrp</code>, <code>natpmp</code>, <code>netinstall</code>, <code>netwatch</code>, <code>ntp</code>, <code>ospf</code>, <code>ovpn</code>, <code>packet</code>, <code>pim</code>, <code>poe-in</code>, <code>poe-out</code>, <code>pon</code>, <code>ppp</code>, <code>pppoe</code>, <code>pptp</code>, <code>ptp</code>, <code>queue</code>, <code>radius</code>, <code>radvd</code>, <code>raw</code>, <code>read</code>, <code>rip</code>, <code>route</code>, <code>rpki</code>, <code>rproxy</code>, <code>rsvp</code>, <code>script</code>, <code>sertcp</code>, <code>simulator</code>, <code>smb</code>, <code>snmp</code>, <code>socksify</code>, <code>ssh</code>, <code>ssld</code>, <code>sstp</code>, <code>state</code>, <code>store</code>, <code>stp</code>, <code>system</code>, <code>telephony</code>, <code>tftp</code>, <code>timer</code>, <code>tr069</code>, <code>update</code>, <code>upnp</code>, <code>ups</code>, <code>vpls</code>, <code>vrrp</code>, <code>warning</code>, <code>watchdog</code>, <code>web-proxy</code>, <code>wiliot</code>, <code>wireguard</code>, <code>wireless</code>, <code>write</code>, <code>zerotier</code>.</li>
+<li><strong>prefix</strong> <code>string</code> — Text added in front of every message the rule passes, as <code>&lt;prefix&gt;: &lt;message&gt;</code>. The prefix is part of the stored and of the sent message.</li>
+<li><strong>regex</strong> <code>super { !
+, regex: string
+ }</code> — Regular expression matched against the message text, followed by the message's extra fields. When it does not match, the rule does not pass the message, even when the topics match.</li>
+<li><strong>action</strong> <code>enum</code> — Action from <a href="action/"><code>/system/logging/action</code></a> that receives the matching messages. Every rule that matches passes the message to its own action; when two rules pass the same message to one action, the action receives it once. Default: memory.</li>
+</ul>
+<hr />
+<h1 id="action">action</h1>
+<blockquote>
+<p>Actions that store or send the messages selected by the rules in /system/logging. The default actions are memory (the buffer /log shows), disk (files named log), echo (open terminal sessions) and remote (a syslog...</p>
+</blockquote>
+<hr />
+<h2 id="systemloggingaction">system/logging/action</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Actions that store or send the messages selected by the rules in <a href="../"><code>/system/logging</code></a>. The default actions are <code>memory</code> (the buffer <code>/log</code> shows), <code>disk</code> (files named <code>log</code>), <code>echo</code> (open terminal sessions) and <code>remote</code> (a syslog server, with no address set). Each memory action keeps its own buffer, which <a href="clear"><code>clear</code></a> empties. See <a href="../../../../diagnostics-monitoring-and-troubleshooting/log/">Log</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — One of the default actions: <code>memory</code>, <code>disk</code>, <code>echo</code> and <code>remote</code>.</li>
+<li><strong>Y</strong> <code>managed</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the action, letters and digits only. Rules refer to the action by this name, and for <code>target=memory</code> it is also the buffer name shown in the <code>buffer</code> field of <a href="../../../log"><code>/log</code></a>.</li>
+<li><strong>target</strong> <code>enum (memory | disk | echo | remote | email | script | cmr) { memory:0, disk:1, echo:2, remote:3, email:4, script:5, cmr:6 }</code> — Where the messages go: - <code>memory</code> - Keep them in a memory buffer named after the action, shown by <code>/log/print</code>. The buffer is empty after a reboot. - <code>disk</code> - Write them to text files (<code>disk-file-name</code>). - <code>echo</code> - Print them on open terminal sessions (<code>remember</code>). - <code>remote</code> - Send them to a syslog server (<code>remote</code>). - <code>email</code> - Send each message as an email (<code>email-to</code>). - <code>script</code> - Run a script for each message (<code>script</code>).</li>
+<li><strong>memory-lines</strong> <code>num</code> — Number of entries the buffer keeps, <code>1..65535</code>. When the buffer is full, each new entry drops the oldest one, unless <code>memory-stop-on-full</code> is set. Default: 1000.</li>
+<li><strong>memory-stop-on-full</strong> <code>bool</code> — When <code>yes</code>, the buffer keeps its first <code>memory-lines</code> entries and drops new ones until it is emptied with <a href="clear"><code>clear</code></a>. Default: no.</li>
+<li><strong>disk-file-name</strong> <code>string</code> — Name of the log files, without the extension. The action writes to <code>&lt;name&gt;.0.txt</code>; when that file is full, it becomes <code>&lt;name&gt;.1.txt</code> and a new <code>&lt;name&gt;.0.txt</code> starts. To write to another disk or folder, put its name first, for example <code>usb1/log</code>. The folder must exist, otherwise the action is refused with <code>bad disk file name</code>. Two disk actions cannot use the same file name. Default: log.</li>
+<li><strong>disk-lines-per-file</strong> <code>num</code> — Number of lines in each file before the action starts a new file, <code>1..65535</code>. Default: 1000.</li>
+<li><strong>disk-file-count</strong> <code>num</code> — Number of files the action keeps, <code>1..65535</code>. When a new file starts and the count is reached, the oldest file and its entries are dropped. Default: 2.</li>
+<li><strong>disk-stop-on-full</strong> <code>bool</code> — Stop writing to this action when the log files are full, instead of dropping the oldest entries. Default: no.</li>
+<li><strong>remote</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+, hostname: string
+ }</code> — Address of the syslog server: an IPv4 or IPv6 address or a host name. The default <code>remote</code> action has <code>0.0.0.0</code> (no server set). Default: 0.0.0.0.</li>
+<li><strong>remote-port</strong> <code>num</code> — Port of the syslog server. Default: 514.</li>
+<li><strong>src-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — Source address of the packets sent to the syslog server. <code>0.0.0.0</code> leaves the choice to the router. Default: 0.0.0.0.</li>
+<li><strong>remote-log-format</strong> <code>enum (default | syslog | cef)</code> — Format of the messages sent to the syslog server: - <code>default</code> (default) - The topics and the message, <code>&lt;topics&gt; &lt;message&gt;</code>, without time or host name. - <code>syslog</code> - BSD syslog (RFC 3164): <code>&lt;PRI&gt;</code> (facility and severity), the time, the router's identity and the message. <code>syslog-facility</code>, <code>syslog-severity</code>, <code>syslog-time-format</code> and <code>add-topics-string</code> apply to it. - <code>cef</code> - Common Event Format: the time and the router's identity, then <code>CEF:0|MikroTik|&lt;model&gt;|&lt;version&gt;|</code> with the topics, a severity (<code>Low</code>, <code>Medium</code>, <code>High</code>) and the fields <code>dvchost</code>, <code>dvc</code> and <code>msg</code>, followed by the message's extra fields. Each message ends with <code>cef-event-delimiter</code>.</li>
+<li><strong>remote-protocol</strong> <code>enum (udp | tcp | tls)</code> — Transport to the syslog server. Every format works with every transport. An action sends to one server address, port and protocol; to send several sets of topics to the same server, add a rule for each set and point the rules at one action. - <code>udp</code> (default) - One datagram per message. Messages sent while the server is unreachable are lost. - <code>tcp</code> - A TCP connection. Up to 1000 messages logged while the server is unreachable, for all remote actions together, are kept in memory and sent when the connection is back; newer ones are dropped when the buffer is full. <code>default</code> and <code>syslog</code> messages have no delimiter in the stream; use <code>cef</code> over TCP. - <code>tls</code> - The same as <code>tcp</code>, encrypted with TLS (<code>check-certificate</code>).</li>
+<li><strong>check-certificate</strong> <code>bool</code> — For <code>remote-protocol=tls</code>: whether to verify the server certificate against the trusted certificates in <a href="../../../certificate/"><code>/certificate</code></a>. When the verification fails, the router does not send, logs <code>ssld,error client session, logging, remote IP: &lt;address&gt;, ssl: no trusted CA certificate found</code> and tries again later. The certificate must also name the server: the address or host name in <code>remote=</code> must be among its subject alternative names. Default: no.</li>
+<li><strong>cef-event-delimiter</strong> <code>string</code> — Characters added at the end of every <code>cef</code> message, also over UDP. Default: <code>\r\n</code>.</li>
+<li><strong>syslog-time-format</strong> <code>enum (bsd-syslog | iso8601)</code> — Time format of <code>syslog</code> messages: - <code>bsd-syslog</code> (default) - <code>Oct 2 16:51:21</code>, the router's local time without the year. - <code>iso8601</code> - <code>2026-10-02T16:51:21.726+03:00</code>, with milliseconds and the time zone offset.</li>
+<li><strong>syslog-facility</strong> <code>enum (kern | user | mail | daemon | auth | syslog | lpr | news | uucp | cron | authpriv | ftp | ntp | local0 | local1 | local2 | local3 | local4 | local5 | local6 | local7) { kern:0, user:1, mail:2, daemon:3, auth:4, syslog:5, lpr:6, news:7, uucp:8, cron:9, authpriv:10, ftp:11, ntp:12, local0:16, local1:17, local2:18, local3:19, local4:20, local5:21, local6:22, local7:23 }</code> — Facility in the <code>&lt;PRI&gt;</code> of <code>syslog</code> messages, with its code: - <code>kern</code> (0) - <code>user</code> (1) - <code>mail</code> (2) - <code>daemon</code> (3) (default) - <code>auth</code> (4) - <code>syslog</code> (5) - <code>lpr</code> (6) - <code>news</code> (7) - <code>uucp</code> (8) - <code>cron</code> (9) - <code>authpriv</code> (10) - <code>ftp</code> (11) - <code>ntp</code> (12) - <code>local0</code> to <code>local7</code> (16 to 23)</li>
+<li><strong>syslog-severity</strong> <code>enum (auto | emergency | alert | critical | error | warning | notice | info | debug) { auto:0xffffffff, emergency:0, alert:1, critical:2, error:3, warning:4, notice:5, info:6, debug:7 }</code> — Severity in the <code>&lt;PRI&gt;</code> of <code>syslog</code> messages. A value other than <code>auto</code> sends every message with that severity. - <code>auto</code> (default) - Take the severity from the message topics: <code>debug</code> 7, <code>info</code> 6, <code>warning</code> 4, <code>error</code> 3. A message with both <code>error</code> and <code>critical</code> gets 3. - <code>emergency</code> (0) - System is unusable. - <code>alert</code> (1) - Action must be taken immediately. - <code>critical</code> (2) - Critical conditions. - <code>error</code> (3) - Error conditions. - <code>warning</code> (4) - Warning conditions. - <code>notice</code> (5) - Significant condition. - <code>info</code> (6) - Informational message. - <code>debug</code> (7) - Debug message.</li>
+<li><strong>email-to</strong> <code>string</code> — Address the email action sends to. Each matching message is sent as its own email, with <code>&lt;topics&gt; &lt;message&gt;</code> as the subject and the body, through the SMTP server, port, TLS mode and sender set in <a href="../../../tool/e-mail/"><code>/tool/e-mail</code></a>. See <a href="../../../../system-information-and-utilities/e-mail">Email</a>.</li>
+<li><strong>email-cc</strong> <code>multi { array-id, cc: string
+ }</code> — Additional recipients of the email action, in the CC header. Several addresses are allowed.</li>
+<li><strong>email-start-tls</strong> <code>bool</code> — Not used by the email action: STARTTLS follows the <code>tls</code> setting in <a href="../../../tool/e-mail/"><code>/tool/e-mail</code></a>. Default: no.</li>
+<li><strong>remember</strong> <code>bool</code> — For <code>target=echo</code>: keep the messages logged while no terminal session is open and print them at the next login, once. Default: yes.</li>
+<li><strong>add-topics-string</strong> <code>bool</code> — For <code>remote-log-format=syslog</code>: put the topics in front of the message, <code>&lt;PRI&gt;&lt;time&gt; &lt;identity&gt; &lt;topics&gt; &lt;message&gt;</code>. The <code>default</code> format always contains the topics. Default: no.</li>
+<li><strong>script</strong> <code>enum ()</code> — For <code>target=script</code>: the script from <a href="../../script/"><code>/system/script</code></a> to run for each matching message. The script gets the variables <code>$topics</code> (the topics as text, for example <code>system,error,critical</code>) and <code>$message</code>. Messages that match while the script is still running are skipped, and a message the script logs itself does not run it again.</li>
+<li><strong>vrf</strong> <code>enum ()</code> — VRF the remote action connects from. Default: main.</li>
+</ul>
+<hr />
+<h1 id="clear">clear</h1>
+<blockquote>
+<p>Empties the buffer of a memory action, for example /system/logging/action/clear action=memory for the default buffer. A buffer with memory-stop-on-full=yes accepts new entries again after it is cleared. A disk action...</p>
+</blockquote>
+<hr />
+<h2 id="systemloggingactionclear">system/logging/action/clear</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Empties the buffer of a memory action, for example <code>/system/logging/action/clear action=memory</code> for the default buffer. A buffer with <code>memory-stop-on-full=yes</code> accepts new entries again after it is cleared. A disk action refuses with <code>cleanup not supported on this target</code>. See <a href="."><code>/system/logging/action</code></a> and <a href="../../../../diagnostics-monitoring-and-troubleshooting/log/">Log</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>action</strong> <code>enum</code> — Name of the memory action whose buffer to empty.</li>
+</ul>
+<hr />
+<h1 id="note">note</h1>
+<blockquote>
+<p>A text that the router shows to administrators at login, for example the router's purpose, contacts or a warning. For examples, see Note.</p>
+</blockquote>
+<hr />
+<h2 id="systemnote">system/note</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>A text that the router shows to administrators at login, for example the router's purpose, contacts or a warning. For examples, see <a href="../../system-information-and-utilities/note">Note</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>show-at-login</strong> <code>bool</code> — Show the note after login: in interactive command-line sessions such as SSH or Telnet, right after the banner, and in WinBox. A command run over SSH without an interactive session does not show it. Default: yes.</li>
+<li><strong>show-at-cli-login</strong> <code>bool</code> — Also show the note before the Telnet login prompt, to anyone who connects, without authentication; independent of <code>show-at-login</code>. SSH does not show the note before login, and MAC Telnet asks for the credentials before it connects. Default: no.</li>
+<li><strong>note</strong> <code>string</code> — Text of the note. <code>\n</code> starts a new line; <code>/system/note/edit note</code> opens the text in the built-in editor. A file named <code>sys-note.txt</code> in the root of the file storage replaces the note at the next startup, and the router then removes the file. Default: empty.</li>
+</ul>
+<hr />
+<h1 id="client">client</h1>
+<blockquote>
+<p>Network Time Protocol (NTP) client settings. The client synchronizes the router's clock with one or more NTP servers. Static servers are set in servers or in the servers list; the DHCP client adds servers dynamically...</p>
+</blockquote>
+<hr />
+<h2 id="systemntpclient">system/ntp/client</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Network Time Protocol (NTP) client settings. The client synchronizes the router's clock with one or more NTP servers. Static servers are set in <code>servers</code> or in the <a href="./servers">servers</a> list; the DHCP client adds servers dynamically when its <code>use-peer-ntp</code> is enabled. See the <a href="../../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enable the NTP client. When disabled, <code>status</code> is <code>stopped</code>. Default: no.</li>
+<li><strong>mode</strong> <code>enum (unicast | broadcast | multicast | manycast)</code> — How the client gets time from servers: - <code>unicast</code> (default) - Query each configured server directly. - <code>broadcast</code> - Listen for time broadcast by servers on the local network. - <code>multicast</code> - Listen for time multicast by servers on the local network. - <code>manycast</code> - Discover servers by sending manycast queries to the local network.</li>
+<li><strong>servers</strong> <code>multi { server-list: address (flags=46D)
+ }</code> — Space-separated list of NTP servers. Accepts IPv4 and IPv6 addresses (with <code>@vrf</code> or <code>%interface</code> suffixes where needed) and domain names, which are resolved with <code>/ip/dns</code>. Servers from this list also appear in the <a href="./servers">servers</a> list alongside dynamic entries.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF used for communication with the servers. Default: main.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>freq-drift</strong> <code>num</code> — Estimated frequency drift of the local clock, in PPM. Reset with <a href="./reset-freq-drift"><code>reset-freq-drift</code></a>.</li>
+<li><strong>status</strong> <code>enum (stopped | waiting | synchronized | using-local-clock)</code> — Current client state: - <code>stopped</code> - The client is disabled. - <code>waiting</code> - No server is usable yet (no answer, or all peers rejected). - <code>synchronized</code> - The clock is synchronized to <code>synced-server</code>. - <code>using-local-clock</code> - The local clock is used as the reference (requires <code>use-local-clock=yes</code> in <a href="../server"><code>/system/ntp/server</code></a>).</li>
+<li><strong>synced-server</strong> <code>address (flags=46D)</code> — Address of the server the clock is synchronized to. <code>127.127.1.0</code> when the local clock is the reference.</li>
+<li><strong>synced-stratum</strong> <code>num</code> — Stratum of the synchronized source. Primary servers are stratum 1; each synchronization step adds one.</li>
+<li><strong>system-offset</strong> <code>num</code> — Offset between the local clock and the NTP source; shown in milliseconds when read with <code>print</code>.</li>
+</ul>
+<hr />
+<h1 id="reset-freq-drift">reset-freq-drift</h1>
+<blockquote>
+<p>Resets the client's measured frequency drift of the local clock to zero, discarding the correction the client has learned. The estimate is rebuilt as the client keeps polling its servers. See the NTP guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemntpclientreset-freq-drift">system/ntp/client/reset-freq-drift</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the client's measured frequency drift of the local clock to zero, discarding the correction the client has learned. The estimate is rebuilt as the client keeps polling its servers. See the <a href="../../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<hr />
+<h1 id="servers">servers</h1>
+<blockquote>
+<p>NTP servers of the client. Static entries are added here or with servers in /system/ntp/client; entries learned from DHCP (when the DHCP client has use-peer-ntp=yes) are dynamic. See the NTP guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemntpclientservers">system/ntp/client/servers</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>NTP servers of the client. Static entries are added here or with <code>servers</code> in <a href="../client"><code>/system/ntp/client</code></a>; entries learned from DHCP (when the DHCP client has <code>use-peer-ntp=yes</code>) are dynamic. See the <a href="../../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The entry is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — Dynamic entry, learned from DHCP. Dynamic entries cannot be edited.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>address (flags=46D)</code> — IP address or domain name of the NTP server. IPv4 and IPv6 addresses can carry a <code>@vrf</code> suffix, and a link-local IPv6 address an <code>%interface</code> suffix. Domain names are resolved with <code>/ip/dns</code>; the result shows in <code>resolved-address</code>.</li>
+<li><strong>min-poll</strong> <code>num</code> — Shortest interval between queries to this server, as the power of 2 in seconds (6 means every 64 s). Must be lower than <code>max-poll</code>. Range: 3..17. Default: 6.</li>
+<li><strong>max-poll</strong> <code>num</code> — Longest interval between queries to this server, as the power of 2 in seconds (10 means every 1024 s). Range: 3..17. Default: 10.</li>
+<li><strong>iburst</strong> <code>bool</code> — When enabled, the client sends a burst of about a second interval queries right after the server is added, to get an initial estimate quickly. Default: yes.</li>
+<li><strong>auth-key</strong> <code>enum (none) { none:0 }</code> — Key from <a href="../key"><code>/system/ntp/key</code></a> used to authenticate replies from this server. Replies that fail authentication are rejected (crypto NAK) and the client does not synchronize. Default: none.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>resolved-address</strong> <code>address (flags=46)</code> — IP address that the domain name in <code>address</code> resolved to.</li>
+</ul>
+<hr />
+<h1 id="key">key</h1>
+<blockquote>
+<p>Symmetric keys for NTP authentication, selected by their key ID in /system/ntp/client/servers and /system/ntp/server. The key value is sensitive: it is not shown in print or saved in export output. See the NTP guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemntpkey">system/ntp/key</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Symmetric keys for NTP authentication, selected by their key ID in <a href="./client/servers"><code>/system/ntp/client/servers</code></a> and <a href="./server"><code>/system/ntp/server</code></a>. The key value is sensitive: it is not shown in <code>print</code> or saved in <code>export</code> output. See the <a href="../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-id</strong> <code>num</code> — Key identifier, referenced by <code>auth-key</code> in the client and server configuration.</li>
+<li><strong>key-val</strong> <code>string</code> — The shared secret. Not included in <code>export</code> output.</li>
+</ul>
+<hr />
+<h1 id="monitor-peers">monitor-peers</h1>
+<blockquote>
+<p>Continuously prints the client's view of its time sources, updating in place. Includes the local reference clock (127.127.1.0) when use-local-clock is enabled. See the NTP guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemntpmonitor-peers">system/ntp/monitor-peers</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Continuously prints the client's view of its time sources, updating in place. Includes the local reference clock (127.127.1.0) when <code>use-local-clock</code> is enabled. See the <a href="../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>string</code> — Association type, for example <code>ucast-client</code> for a unicast server.</li>
+<li><strong>address</strong> <code>address (flags=46)</code> — Peer address from the server list, or 127.127.1.0 for the local reference clock.</li>
+<li><strong>refid</strong> <code>string</code> — Reference ID: the time source of the peer (typically the address of the peer's own upstream source). Empty while the peer is unsynchronized.</li>
+<li><strong>stratum</strong> <code>num</code> — Stratum announced by the peer. 16 means unsynchronized.</li>
+<li><strong>hpoll</strong> <code>num</code> — Current poll interval to this peer, as the power of 2 in seconds (6 = 64 s).</li>
+<li><strong>ppoll</strong> <code>num</code> — Poll interval the peer asks for, as the power of 2 in seconds.</li>
+<li><strong>root-delay</strong> <code>num</code> — Total round-trip delay from the peer to the root (stratum 1) time source.</li>
+<li><strong>root-disp</strong> <code>num</code> — Maximum error of the peer relative to the root time source.</li>
+<li><strong>offset</strong> <code>num</code> — Estimated clock offset of the peer relative to the local clock.</li>
+<li><strong>delay</strong> <code>num</code> — Round-trip delay to the peer.</li>
+<li><strong>disp</strong> <code>num</code> — Dispersion of the peer: the accumulated measurement error of its time.</li>
+<li><strong>jitter</strong> <code>num</code> — Variation of the offset between consecutive samples.</li>
+</ul>
+<hr />
+<h1 id="server">server</h1>
+<blockquote>
+<p>NTP server settings. The server answers time queries from NTP clients on the network; it serves the time the router itself is synchronized to. See the NTP guide.</p>
+</blockquote>
+<hr />
+<h2 id="systemntpserver">system/ntp/server</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>NTP server settings. The server answers time queries from NTP clients on the network; it serves the time the router itself is synchronized to. See the <a href="../../../system-information-and-utilities/ntp">NTP</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enable the NTP server. Default: no.</li>
+<li><strong>broadcast</strong> <code>bool</code> — Periodically send the time to the addresses in <code>broadcast-addresses</code>. Default: no.</li>
+<li><strong>multicast</strong> <code>bool</code> — Distribute the time to the local network as multicast. Default: no.</li>
+<li><strong>manycast</strong> <code>bool</code> — Take part in manycast discovery, in which clients find servers through multicast queries. Default: no.</li>
+<li><strong>broadcast-addresses</strong> <code>multi { broadcast-address: ipAddr
+ }</code> — Broadcast addresses to send the time to when <code>broadcast</code> is enabled.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the server operates in. Default: main.</li>
+<li><strong>use-local-clock</strong> <code>bool</code> — Use the router's local clock as a time reference when no better source is available; the daemon then serves and follows its own clock at <code>local-clock-stratum</code>. The client's <code>status</code> shows <code>using-local-clock</code> in this state. The router's clock without external synchronization drifts, so do not use this for precise timekeeping. Default: no.</li>
+<li><strong>local-clock-stratum</strong> <code>num</code> — Stratum announced for the local clock when <code>use-local-clock</code> is enabled. Default: 5.</li>
+<li><strong>auth-key</strong> <code>enum (none) { none:0 }</code> — Key from <a href="./key"><code>/system/ntp/key</code></a> for symmetric-key authentication of the time exchange. Default: none (no authentication).</li>
+</ul>
+<hr />
+<h1 id="package">package</h1>
+<blockquote>
+<p>Commands executed in this menu will take place only on the restart of the router. Until then, you can freely schedule or revert the set actions.</p>
+</blockquote>
+<hr />
+<h2 id="systempackage">system/package</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Commands executed in this menu will take place only on the restart of the router. Until then, you can freely schedule or revert the set actions.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The package is disabled, or it is not installed yet (with <code>A</code>).</li>
+<li><strong>A</strong> <code>available</code> — The package is available on the download server but not installed. It is listed after <code>/system/package/update/check-for-updates</code>; <code>enable</code> and <code>apply-changes</code> download and install it.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the package.</li>
+<li><strong>version</strong> <code>string</code> — Version of the package.</li>
+<li><strong>build-time</strong> <code>date</code> — Date and time the package was built.</li>
+<li><strong>scheduled</strong> <code>enum ( | scheduled for uninstall | scheduled for disable | scheduled for enable | Use</code>apply-changes<code>to proceed with install) { :0, scheduled for uninstall:1, scheduled for disable:2, scheduled for enable:3, Use</code>apply-changes<code>to proceed with install:4 }</code> — Scheduled action for the package after the next reboot.</li>
+<li><strong>bundle</strong> <code>enum</code> — The bundle package this package belongs to.</li>
+<li><strong>size</strong> <code>num</code> — Size of the package in bytes.</li>
+</ul>
+<hr />
+<h1 id="apply-changes">apply-changes</h1>
+<blockquote>
+<p>Apply scheduled changes and reboot the device.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageapply-changes">system/package/apply-changes</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Apply scheduled changes and reboot the device.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ignore-missing</strong> <code>bool</code> — Upgrade only the RouterOS main package, omitting packages that are missing or not uploaded.</li>
+</ul>
+<hr />
+<h1 id="disable">disable</h1>
+<blockquote>
+<p>Schedule the package to be disabled after the next reboot. No features provided by the package will be accessible.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagedisable">system/package/disable</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Schedule the package to be disabled after the next reboot. No features provided by the package will be accessible.</p>
+<hr />
+<h1 id="downgrade">downgrade</h1>
+<blockquote>
+<p>Prompt for a reboot. During the reboot process, the router will try to downgrade RouterOS to the oldest version possible by checking the packages that are uploaded to the router.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagedowngrade">system/package/downgrade</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Prompt for a reboot. During the reboot process, the router will try to downgrade RouterOS to the oldest version possible by checking the packages that are uploaded to the router.</p>
+<hr />
+<h1 id="enable">enable</h1>
+<blockquote>
+<p>RouterOS command reference for /system/package/enable.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageenable">system/package/enable</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="local-update">local-update</h1>
+<blockquote>
+<p>Instead of connecting directly to MikroTik servers, you can upload package files to one of your local RouterOS devices and use it as a local package server.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-update">system/package/local-update</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Instead of connecting directly to MikroTik servers, you can upload package files to one of your local RouterOS devices and use it as a local package server.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>download</strong> <code>bool</code> — Whether to download available packages from the local package server.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>source</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — IP address of the local package server.</li>
+<li><strong>name</strong> <code>string</code> — Name of the package.</li>
+<li><strong>version</strong> <code>string</code> — Version of the package.</li>
+<li><strong>status</strong> <code>enum (installed | downloaded | downloading | scheduled | available) { installed:0, downloaded:1, downloading:2, scheduled:3, available:4 }</code> — Current status of the package.</li>
+<li><strong>completed</strong> <code>num</code> — Download completion percentage.</li>
+</ul>
+<hr />
+<h1 id="download-all">download-all</h1>
+<blockquote>
+<p>Download all compatible (matching device architecture) packages that are available on the local package server. Downloaded packages are saved in the root directory.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updatedownload-all">system/package/local-update/download-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Download all compatible (matching device architecture) packages that are available on the local package server. Downloaded packages are saved in the root directory.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>download-beta</strong> <code>bool</code> — Whether to include beta packages when downloading all compatible packages.</li>
+<li><strong>reboot-after-download</strong> <code>bool</code> — Whether to automatically reboot the device after all packages finish downloading.</li>
+</ul>
+<hr />
+<h1 id="download">download</h1>
+<blockquote>
+<p>Download specific compatible (matching device architecture) packages that are available on the local package server. Downloaded packages are saved in the root directory.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updatedownload">system/package/local-update/download</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Download specific compatible (matching device architecture) packages that are available on the local package server. Downloaded packages are saved in the root directory.</p>
+<hr />
+<h1 id="mirror">mirror</h1>
+<blockquote>
+<p>You can mirror packages (for all architectures) from your main local package server by using this menu. Downloaded packages are saved into the packs folder in the root directory.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updatemirror">system/package/local-update/mirror</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>You can mirror packages (for all architectures) from your main local package server by using this menu. Downloaded packages are saved into the <code>packs</code> folder in the root directory.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Whether to enable periodic check and download of packages from the local package server.</li>
+<li><strong>primary-server</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — IP address of the primary local package server.</li>
+<li><strong>secondary-server</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — IP address of the secondary local package server.</li>
+<li><strong>check-interval</strong> <code>time</code> — Time interval at which the device checks the local package server for new package availability. If a new package is located, the package download begins. Only downloads the packages that are not already present on the device.</li>
+<li><strong>user</strong> <code>string</code> — Username for accessing the local package server.</li>
+<li><strong>password</strong> <code>string</code> — Password for accessing the local package server.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>software-id</strong> <code>string</code> — Software ID of the device.</li>
+</ul>
+<hr />
+<h1 id="force-check">force-check</h1>
+<blockquote>
+<p>RouterOS command reference for /system/package/local-update/mirror/force-check.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updatemirrorforce-check">system/package/local-update/mirror/force-check</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="refresh">refresh</h1>
+<blockquote>
+<p>Refresh and check the list of available compatible (matching device architecture) packages on the local package server.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updaterefresh">system/package/local-update/refresh</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Refresh and check the list of available compatible (matching device architecture) packages on the local package server.</p>
+<hr />
+<h1 id="update-package-source">update-package-source</h1>
+<blockquote>
+<p>The server from which to get the package is defined in this list.</p>
+</blockquote>
+<hr />
+<h2 id="systempackagelocal-updateupdate-package-source">system/package/local-update/update-package-source</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The server from which to get the package is defined in this list.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — IP address of the local package server.</li>
+<li><strong>user</strong> <code>string</code> — Username for accessing the local package server.</li>
+<li><strong>password</strong> <code>string</code> — Password for accessing the local package server.</li>
+</ul>
+<hr />
+<h1 id="uninstall">uninstall</h1>
+<blockquote>
+<p>Schedule the package to be removed from the router. That will take place during the reboot.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageuninstall">system/package/uninstall</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Schedule the package to be removed from the router. That will take place during the reboot.</p>
+<hr />
+<h1 id="unschedule">unschedule</h1>
+<blockquote>
+<p>RouterOS command reference for /system/package/unschedule.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageunschedule">system/package/unschedule</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="update_1">update</h1>
+<blockquote>
+<p>Manage the check-for-updates channel and perform RouterOS upgrades.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageupdate">system/package/update</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Manage the <code>check-for-updates</code> channel and perform RouterOS upgrades.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>channel</strong> <code>enum (long-term | stable | testing | development)</code> — Upgrade <a href="../../../../getting-started/installation-and-upgrade/upgrade#version-numbering">channel</a> to use when checking for new versions.</li>
+<li><strong>mode</strong> <code>enum (https | http)</code> — Protocol for connecting to the MikroTik download server. Use <code>http</code> only if your network blocks HTTPS. HTTPS is recommended.</li>
+<li><strong>check-certificate</strong> <code>enum (no | yes | yes-without-crl)</code> — Whether and how to validate the server SSL certificate. Always use <code>yes</code> to ensure a secure connection. <code>yes-without-crl</code> can be used to skip CRL validation.</li>
+<li><strong>ip-version</strong> <code>enum (auto | ipv4 | ipv6)</code> — IP version preference for connecting to the MikroTik download server.</li>
+<li><strong>vrf</strong> <code>enum</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>installed-version</strong> <code>string</code> — Currently installed RouterOS version.</li>
+<li><strong>latest-version</strong> <code>string</code> — Latest available RouterOS version in the selected <a href="../../../../getting-started/installation-and-upgrade/upgrade#version-numbering">channel</a>.</li>
+<li><strong>status</strong> <code>string</code> — Current status of the update process (for example, <code>New version is available</code>).</li>
+</ul>
+<hr />
+<h1 id="cancel">cancel</h1>
+<blockquote>
+<p>Cancel a pending update download or installation.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageupdatecancel">system/package/update/cancel</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Cancel a pending update download or installation.</p>
+<hr />
+<h1 id="check-for-updates">check-for-updates</h1>
+<blockquote>
+<p>Check the MikroTik download server for a newer RouterOS version in the selected release channel.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageupdatecheck-for-updates">system/package/update/check-for-updates</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Check the MikroTik download server for a newer RouterOS version in the selected release channel.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>fetch-changelog</strong> <code>switch</code> — Whether to fetch the changelog along with the update check.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>changelog</strong> <code>string</code> — Changelog text for the latest available version.</li>
+</ul>
+<hr />
+<h1 id="download_1">download</h1>
+<blockquote>
+<p>Download the latest available RouterOS packages without installing. A manual reboot is required to apply the update.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageupdatedownload">system/package/update/download</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Download the latest available RouterOS packages without installing. A manual reboot is required to apply the update.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ignore-missing</strong> <code>bool</code> — Download only the RouterOS main package, omitting packages that are missing or not uploaded.</li>
+</ul>
+<hr />
+<h1 id="install">install</h1>
+<blockquote>
+<p>Download and install the latest available RouterOS packages, followed by an automatic reboot.</p>
+</blockquote>
+<hr />
+<h2 id="systempackageupdateinstall">system/package/update/install</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Download and install the latest available RouterOS packages, followed by an automatic reboot.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ignore-missing</strong> <code>bool</code> — Install only the RouterOS main package, omitting packages that are missing or not uploaded.</li>
+</ul>
+<hr />
+<h1 id="ptp">ptp</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/ptp.</p>
+</blockquote>
+<hr />
+<h2 id="systemptp">system/ptp</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> ptp
+<strong>Type:</strong> Directory
+PTP (IEEE 1588-2008, PTPv2) instance configuration. Each entry is one PTP profile instance; ports join it in <a href="port"><code>/system/ptp/port</code></a>. Supported only on specific switch/router hardware (see the <a href="../../../system-information-and-utilities/precision-time-protocol">Precision Time Protocol</a> guide).</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>inactive</code> — inactive</li>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the PTP profile instance</li>
+<li><strong>priority1</strong> <code>enum (auto) { auto:0 }</code> — First value of the grandmaster election; the lower value wins. With <code>auto</code>, the value of the chosen profile applies (802.1AS: 246, other profiles: 128)</li>
+<li><strong>priority2</strong> <code>enum (auto)</code> — Second value of the grandmaster election, used for ties. With <code>auto</code>, the value of the chosen profile applies (802.1AS: 248, other profiles: 128)</li>
+<li><strong>delay-mode</strong> <code>enum (auto | e2e | p2p)</code> — Delay measurement mechanism: <code>e2e</code> (request-response) or <code>p2p</code> (peer delay). With <code>auto</code>, the profile default applies (802.1AS: p2p, other profiles: e2e)</li>
+<li><strong>transport</strong> <code>enum (auto | ipv4 | l2-non-forwardable | l2-forwardable)</code> — Transport used for PTP messages: <code>ipv4</code> (multicast 224.0.1.129 for PTP primary messages and 224.0.0.107 for peer delay messages), <code>l2-forwardable</code> (multicast MAC 01-1B-19-00-00-00, forwarded by PTP-unaware bridges) or <code>l2-non-forwardable</code> (01-80-C2-00-00-0E, not forwarded by compliant bridges). With <code>auto</code>, the profile default applies (802.1AS and G.8275.1 use <code>l2-non-forwardable</code>; AES67, SMPTE and the default profile use <code>ipv4</code>)</li>
+<li><strong>profile</strong> <code>enum (default | 802.1as | g8275.1 | aes67 | smpte-2059)</code> — Operating profile: <code>default</code> (plain PTPv2), <code>802.1as</code> (AVB/TSN, IEEE 802.1AS-2020), <code>aes67</code> (audio over IP), <code>g8275.1</code> (telecom frequency and phase), <code>smpte-2059</code> (professional broadcast). The profile also presets the auto values of domain, priority1/2, transport and delay-mode</li>
+<li><strong>domain</strong> <code>enum (auto)</code> — PTP domain number separating independent PTP instances on one network. Allowed ranges differ per profile (0-127 for most, 24-43 for G.8275.1). With <code>auto</code>, the profile default applies (default profile/AES67: 0, G.8275.1: 24, SMPTE: 127)</li>
+<li><strong>ptp-mode</strong> <code>enum (ordinary-clock | transparent-clock)</code> — Clock mode of the instance: an ordinary clock (end device; grandmaster or slave) or a transparent clock (measures and forwards residence time without acting as an end device)</li>
+</ul>
+<hr />
+<h1 id="monitor_1">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /system/ptp/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="systemptpmonitor">system/ptp/monitor</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> ptp
+<strong>Type:</strong> Command
+Show the detailed status and synchronization accuracy of a PTP profile instance, <code>monitor &lt;number or name&gt;</code>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the PTP profile instance</li>
+<li><strong>clock-id</strong> <code>string</code> — Identifier of the local clock</li>
+<li><strong>priority1</strong> <code>num</code> — The local priority1 value in the grandmaster election</li>
+<li><strong>priority2</strong> <code>num</code> — The local priority2 value in the grandmaster election</li>
+<li><strong>i-am-gm</strong> <code>bool</code> — Whether this device is the grandmaster clock</li>
+<li><strong>gm-clock-id</strong> <code>string</code> — Identifier of the grandmaster clock</li>
+<li><strong>gm-priority1</strong> <code>num</code> — The priority1 of the grandmaster clock</li>
+<li><strong>gm-priority2</strong> <code>num</code> — The priority2 of the grandmaster clock</li>
+<li><strong>master-clock-id</strong> <code>string</code> — Identifier of the master clock in the PTP path (the grandmaster clock or a boundary clock)</li>
+<li><strong>slave-port</strong> <code>iface_enum</code> — The local port connected towards the master clock</li>
+<li><strong>freq-drift</strong> <code>num</code> — Frequency drift between the master and the slave clock, in parts per billion</li>
+<li><strong>offset</strong> <code>num</code> — Time difference between the master and the slave clock, in nanoseconds</li>
+<li><strong>slave-port-delay</strong> <code>num</code> — Measured delay for packets between the two clocks, in nanoseconds (cable and transceiver lengths matter)</li>
+</ul>
+<hr />
+<h1 id="port">port</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/ptp/port.</p>
+</blockquote>
+<hr />
+<h2 id="systemptpport">system/ptp/port</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> ptp
+<strong>Type:</strong> Directory
+PTP ports: the interfaces that join a <a href="./"><code>/system/ptp</code></a> profile instance.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>inactive</code> — inactive</li>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ptp</strong> <code>enum</code> — The <a href="./"><code>/system/ptp</code></a> profile instance this port joins</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface used for PTP (the hardware must support PTP timestamping — see the supported device list in the <a href="../../../system-information-and-utilities/precision-time-protocol">guide</a>)</li>
+<li><strong>role</strong> <code>enum (bmca | master | slave)</code> — Port role selection: <code>bmca</code> (best master clock algorithm decides between master and slave), or a fixed <code>master</code> or <code>slave</code></li>
+<li><strong>announce-interval</strong> <code>num</code> — Log2 interval between announce messages in seconds (for example -3...4 for 0.125s-16s)</li>
+<li><strong>sync-interval</strong> <code>num</code> — Log2 interval between sync messages in seconds</li>
+<li><strong>delay-interval</strong> <code>num</code> — Log2 interval between delay request messages in seconds (E2E mode)</li>
+<li><strong>pdelay-interval</strong> <code>num</code> — Log2 interval between peer delay messages in seconds (P2P mode)</li>
+<li><strong>vlan-id</strong> <code>num</code> — VLAN ID under which the port participates in PTP when the interface carries tagged PTP traffic</li>
+</ul>
+<hr />
+<h1 id="status">status</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/ptp/status.</p>
+</blockquote>
+<hr />
+<h2 id="systemptpstatus">system/ptp/status</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> ptp
+<strong>Type:</strong> Directory
+Current PTP port state per instance and interface.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface of the PTP port</li>
+<li><strong>state</strong> <code>string</code> — Current port state (for example <code>listening</code>, <code>master</code> or <code>slave</code>)</li>
+<li><strong>delay</strong> <code>num</code> — Measured path delay on slave ports, in nanoseconds</li>
+<li><strong>port-nr</strong> <code>num</code> — Port number of this port within the PTP data set</li>
+<li><strong>as-capable</strong> <code>bool</code> — Whether the port is asCapable per IEEE 802.1AS</li>
+<li><strong>neigh-freq-drift</strong> <code>num</code> — Measured frequency drift of the neighbour clock, in parts per billion</li>
+</ul>
+<hr />
+<h1 id="reboot">reboot</h1>
+<blockquote>
+<p>RouterOS command reference for /system/reboot.</p>
+</blockquote>
+<hr />
+<h2 id="systemreboot">system/reboot</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="regulatory">regulatory</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/regulatory.</p>
+</blockquote>
+<hr />
+<h2 id="systemregulatory">system/regulatory</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>fcc</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="reset-configuration">reset-configuration</h1>
+<blockquote>
+<p>Removes the configuration, reboots the router and applies the default configuration (or the custom default configuration script, if one is installed). In an interactive session the command asks Dangerous! Reset...</p>
+</blockquote>
+<hr />
+<h2 id="systemreset-configuration">system/reset-configuration</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Removes the configuration, reboots the router and applies the default configuration (or the custom default configuration script, if one is installed). In an interactive session the command asks <code>Dangerous! Reset anyway? [y/N]:</code> first. Users are removed and <code>admin</code> gets its default password back; files are kept. See <a href="../../getting-started/configuration-management/#reset-the-configuration">Configuration Management</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>keep-users</strong> <code>bool</code> — Keeps the users and their passwords.</li>
+<li><strong>keep-apps</strong> <code>bool</code></li>
+<li><strong>no-defaults</strong> <code>bool</code> — Does not apply the default configuration after the reset.</li>
+<li><strong>caps-mode</strong> <code>bool</code> — Runs the CAPs mode script (<code>/system/default-configuration/caps-mode-script</code>) after the reset.</li>
+<li><strong>wps-sync-mode</strong> <code>bool</code></li>
+<li><strong>skip-backup</strong> <code>bool</code> — Saves no backup before the reset. Without it, the router saves the configuration to <code>auto-before-reset.backup</code>.</li>
+<li><strong>force-v6-to-v7-configuration-upgrade</strong> <code>bool</code></li>
+<li><strong>shutdown</strong> <code>bool</code> — Powers the router off after the reset instead of rebooting. The router starts with the reset configuration when it is powered on.</li>
+<li><strong>run-after-reset</strong> <code>file</code> — Script file (<code>.rsc</code>) that runs after the reset instead of the default configuration. A script that runs longer than two minutes is stopped. Errors are logged as <code>error while running run-after-reset script:</code> followed by the error, for example <code>runtime limit exceeded</code>.</li>
+</ul>
+<hr />
+<h1 id="resource">resource</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/resource.</p>
+</blockquote>
+<hr />
+<h2 id="systemresource">system/resource</h2>
+<p><strong>Type:</strong> Settings Directory
+Overall resource usage and identity of the router: uptime, memory, disk, version, board. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/resource">Resource</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>uptime</strong> <code>time</code> — Time interval passed since boot-up</li>
+<li><strong>version</strong> <code>string</code> — Installed RouterOS version number</li>
+<li><strong>build-time</strong> <code>string</code> — Installed RouterOS version build-time</li>
+<li><strong>minimum-version</strong> <code>string</code> — Minimum RouterOS version the board allows downgrading to (was factory-software)</li>
+<li><strong>free-memory</strong> <code>num</code> — The unused amount of RAM</li>
+<li><strong>total-memory</strong> <code>num</code> — Amount of installed RAM</li>
+<li><strong>cpu</strong> <code>string</code> — CPU model that is on the board</li>
+<li><strong>cpu-count</strong> <code>num</code> — Number of CPUs present on the system; each core is a separate CPU, Intel HT also counts as one CPU</li>
+<li><strong>cpu-frequency</strong> <code>num</code> — Current CPU frequency</li>
+<li><strong>cpu-load</strong> <code>num</code> — Percentage of used CPU resources, combined for all CPUs; per-core values are in <a href="cpu"><code>/system/resource/cpu</code></a></li>
+<li><strong>free-hdd-space</strong> <code>num</code> — Free space on the hard drive or NAND</li>
+<li><strong>total-hdd-space</strong> <code>num</code> — Size of the hard drive or NAND</li>
+<li><strong>write-sect-since-reboot</strong> <code>num</code> — The number of sector writes to the drive/NAND since the router was last rebooted</li>
+<li><strong>write-sect-total</strong> <code>num</code> — The number of sector writes in total</li>
+<li><strong>bad-blocks</strong> <code>num</code> — Percentage of bad blocks on the NAND</li>
+<li><strong>architecture-name</strong> <code>string</code> — CPU architecture of this build (arm, arm64, x86, tile ...)</li>
+<li><strong>board-name</strong> <code>string</code> — RouterBOARD model name</li>
+<li><strong>platform</strong> <code>string</code> — Platform name</li>
+</ul>
+<hr />
+<h1 id="cpu">cpu</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/resource/cpu.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcecpu">system/resource/cpu</h2>
+<p><strong>Type:</strong> Directory
+Per-CPU usage breakdown of the system resource counters.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>cpu</strong> <code>string</code> — Identification number of the CPU whose usage is shown</li>
+<li><strong>load</strong> <code>num</code> — CPU usage in percent</li>
+<li><strong>irq</strong> <code>num</code> — IRQ usage in percent</li>
+<li><strong>disk</strong> <code>num</code> — Disk usage in percent</li>
+</ul>
+<hr />
+<h1 id="hardware">hardware</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/resource/hardware.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardware">system/resource/hardware</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips
+<strong>Type:</strong> Directory
+Detected hardware devices connected over PCI, USB or SCSI buses. Empty on boards with no such bus (for example the hAP ax²).</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>inactive</code> — inactive: the device is present but not active</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>device-name</strong> <code>string</code> — Name of the device as reported by its firmware (name column refinement)</li>
+<li><strong>location</strong> <code>string</code> — Device location in the system topology</li>
+<li><strong>parent</strong> <code>enum</code> — Parent bus or controller</li>
+<li><strong>type</strong> <code>enum (usb | pci | scsi | serial)</code> — Bus type of the device: <code>usb</code>, <code>pci</code>, <code>scsi</code> or <code>serial</code></li>
+<li><strong>vendor</strong> <code>string</code> — Device vendor name</li>
+<li><strong>name</strong> <code>string</code> — Device name or model</li>
+<li><strong>category</strong> <code>string</code> — Device category</li>
+<li><strong>serial-number</strong> <code>string</code> — Device serial number</li>
+<li><strong>vendor-id</strong> <code>string</code> — Vendor identifier (VID)</li>
+<li><strong>device-id</strong> <code>string</code> — Device identifier (PID / Device ID)</li>
+<li><strong>speed</strong> <code>string</code> — Negotiated device speed</li>
+<li><strong>ports</strong> <code>num</code> — Number of ports provided by the device</li>
+<li><strong>usb-version</strong> <code>string</code> — Supported USB version</li>
+<li><strong>manufacturer-reported-max-power</strong> <code>string</code> — Maximum power draw reported by the device (for example a USB modem)</li>
+<li><strong>overcurrent</strong> <code>num</code></li>
+<li><strong>irq</strong> <code>num</code> — Assigned interrupt number</li>
+<li><strong>memory</strong> <code>multi { range: composite { min: num
+, max: num
+ }
+ }</code> — Memory window assigned to the device</li>
+<li><strong>io</strong> <code>multi { range: composite { min: num
+, max: num
+ }
+ }</code> — I/O window assigned to the device</li>
+<li><strong>owner</strong> <code>string</code> — Subsystem or driver owning the device</li>
+<li><strong>device-path</strong> <code>multi { path: string
+ }</code> — Device path from root bus to endpoint</li>
+</ul>
+<hr />
+<h1 id="authorize">authorize</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/hardware/authorize.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwareauthorize">system/resource/hardware/authorize</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips
+<strong>Type:</strong> Command
+Allow or forbid the use of a USB hardware device (used when authorization is turned on in <code>usb-settings</code>).</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>allow</strong> <code>bool</code> — Authorize the USB device (<code>yes</code>) or keep it unusable (<code>no</code>)</li>
+</ul>
+<hr />
+<h1 id="power-cycle">power-cycle</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/hardware/power-cycle.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwarepower-cycle">system/resource/hardware/power-cycle</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips
+<strong>Syscap:</strong> usb-hub
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code></li>
+</ul>
+<hr />
+<h1 id="power-reset">power-reset</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/hardware/power-reset.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwarepower-reset">system/resource/hardware/power-reset</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips, !i386
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code></li>
+<li><strong>bus</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="reset-overcurrent">reset-overcurrent</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/hardware/reset-overcurrent.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwarereset-overcurrent">system/resource/hardware/reset-overcurrent</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips
+<strong>Syscap:</strong> usb-hub
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="usb-power-reset">usb-power-reset</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/hardware/usb-power-reset.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwareusb-power-reset">system/resource/hardware/usb-power-reset</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips, i386
+<strong>Type:</strong> Command
+Power-cycle a USB port: power off for <code>duration</code> and back on (resets misbehaving modems and drives without rebooting the router).</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code> — Power-off duration before re-enabling USB</li>
+<li><strong>bus</strong> <code>num</code> — USB bus number (as shown by <code>/system/resource/hardware</code>)</li>
+<li><strong>slot</strong> <code>num</code> — USB slot number on the bus</li>
+</ul>
+<hr />
+<h1 id="usb-settings">usb-settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/resource/hardware/usb-settings.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcehardwareusb-settings">system/resource/hardware/usb-settings</h2>
+<p><strong>Conditions:</strong> !powerpc, !smips
+<strong>Type:</strong> Settings Directory
+Global USB subsystem settings.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>authorization</strong> <code>bool</code> — Require per-device authorization before USB devices become usable (<code>authorization=yes</code>)</li>
+</ul>
+<hr />
+<h1 id="irq">irq</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/resource/irq.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourceirq">system/resource/irq</h2>
+<p><strong>Type:</strong> Directory
+IRQ counters per interrupt source. With <code>cpu=auto</code> the IRQ handling is balanced by interrupt counts (NAPI-assisted); pin an IRQ to a fixed core only when needed.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>o</strong> <code>read-only</code> — read-only (the CPU assignment is fixed by the hardware)</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>cpu</strong> <code>num</code> — The CPU the IRQ is pinned to; <code>auto</code> lets the scheduler balance by interrupt counts</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>irq</strong> <code>num</code> — IRQ identification number</li>
+<li><strong>users</strong> <code>object { user: alt { interface: iface_enum
+, other: string
+ }
+ }</code> — Process/driver bound to the IRQ</li>
+<li><strong>active-cpu</strong> <code>num</code> — The CPU currently serving the IRQ on multicore systems</li>
+<li><strong>count</strong> <code>num</code> — The number of interrupts handled (on ethernet interfaces interrupt = packet)</li>
+<li><strong>per-cpu-count</strong> <code>multi { count: num
+ }</code> — Per-CPU interrupt counts as a list</li>
+</ul>
+<hr />
+<h1 id="rps">rps</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/resource/irq/rps.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourceirqrps">system/resource/irq/rps</h2>
+<p><strong>Syscap:</strong> rps
+<strong>Type:</strong> Directory
+Receive Packet Steering (RPS) entries: each entry enables RPS for its interface (the packet-processing work of that interface's receive path is spread over the CPU cores in software). See the <a href="../../../../diagnostics-monitoring-and-troubleshooting/resource">Resource guide</a> for when RPS pays off.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled entry (RPS steering off for this interface)</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface whose receive path is steered</li>
+</ul>
+<hr />
+<h1 id="monitor_2">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /system/resource/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="systemresourcemonitor">system/resource/monitor</h2>
+<p><strong>Type:</strong> Command
+Live system resource monitor output (the table keeps refreshing; stops after <code>duration</code>).</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>cpu-used</strong> <code>num</code> — Total CPU usage across cores</li>
+<li><strong>cpu-used-per-core</strong> <code>multi { cpu-used: num
+ }</code> — One line per core with its percent usage</li>
+<li><strong>free-memory</strong> <code>num</code> — Free memory in KiB</li>
+</ul>
+<hr />
+<h1 id="routerboard">routerboard</h1>
+<blockquote>
+<p>This menu allows you to view basic hardware and firmware information on RouterBOARD devices.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboard">system/routerboard</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Settings Directory</p>
+<p>This menu allows you to view basic hardware and firmware information on RouterBOARD devices.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>routerboard</strong> <code>bool</code> — Indicates whether the device is a RouterBOARD unit.</li>
+<li><strong>board-name</strong> <code>string</code></li>
+<li><strong>model</strong> <code>string</code> — The RouterBOARD model number.</li>
+<li><strong>revision</strong> <code>string</code></li>
+<li><strong>serial-number</strong> <code>string</code> — The unique serial number of the device.</li>
+<li><strong>firmware-type</strong> <code>string</code> — The type of bootloader firmware used by the device.</li>
+<li><strong>minimum-firmware</strong> <code>string</code> — The firmware version installed at the factory.</li>
+<li><strong>current-firmware</strong> <code>string</code> — The version of the RouterBOOT loader currently in use. This should not be confused with the RouterOS operating system version.</li>
+<li><strong>upgrade-firmware</strong> <code>string</code> — RouterOS upgrades may include a new RouterBOOT version file, but it must be applied manually. This line indicates whether a new RouterBOOT file has been found on the device. The file may be included with a recent RouterOS upgrade or uploaded manually as an FWF file. In both cases, the newest available version is shown here.</li>
+</ul>
+<hr />
+<h1 id="mode-button">mode-button</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/routerboard/mode-button.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardmode-button">system/routerboard/mode-button</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enables or disables the button.</li>
+<li><strong>hold-time</strong> <code>composite { min: time [0 .. 60]
+, max: time [0 .. 60]
+ }</code> — Triggers the button action only when the button is held for a duration within the specified range.</li>
+<li><strong>on-event</strong> <code>alt { script: string
+ }</code> — The name of the script to run when the button is pressed. You must create and name the script in the <a href="../../../developer-guides/scripting">Script</a> menu.</li>
+</ul>
+<hr />
+<h1 id="reset-button">reset-button</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/routerboard/reset-button.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardreset-button">system/routerboard/reset-button</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enables or disables the button.</li>
+<li><strong>hold-time</strong> <code>composite { min: time [0 .. 60]
+, max: time [0 .. 60]
+ }</code> — Triggers the button action only when the button is held for a duration within the specified range.</li>
+<li><strong>on-event</strong> <code>alt { script: string
+ }</code> — The name of the script to run when the button is pressed. You must create and name the script in the <a href="../../../developer-guides/scripting">Script</a> menu. Reset is executed with <code>read,write,reboot,ftp,romon,test</code> permissions.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>radius · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="radius">radius</h1>
+<h1 id="radius_1">radius</h1>
+<blockquote>
+<p>RADIUS servers that the router services use for authentication and accounting. The entries are used in the order of the list. See RADIUS for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="radius_2">radius</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>RADIUS servers that the router services use for authentication and accounting. The entries are used in the order of the list. See <a href="../../authentication-authorization-accounting/radius">RADIUS</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The entry is disabled and is not used.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>service</strong> <code>ubit (ppp, login, hotspot, wireless, dhcp, ipsec, dot1x)</code> — Router services that use this server. Each service also has its own setting that turns RADIUS on. - <code>ppp</code> - PPP servers. - <code>login</code> - Router users. - <code>hotspot</code> - HotSpot. - <code>wireless</code> - Wireless client authentication. - <code>dhcp</code> - DHCP server. The MAC address of the device is sent as User-Name. - <code>ipsec</code> - IPsec client authentication. - <code>dot1x</code> - Dot1X.</li>
+<li><strong>called-id</strong> <code>string</code> — The entry is used only for requests with this Called-Station-Id. For PPPoE it is the service name, for PPTP and L2TP the IP address of the server. An empty value matches every request. Default: empty.</li>
+<li><strong>domain</strong> <code>string</code> — The entry is used only for users with this domain in the login name (<code>DOMAIN\name</code> or <code>name@domain</code>). An empty value matches every user. Default: empty.</li>
+<li><strong>address</strong> <code>address (flags=46v)</code> — IPv4 or IPv6 address of the RADIUS server. With an IPv6 address the router sends NAS-IPv6-Address in place of NAS-IP-Address. To reach the server in a VRF, add the VRF name: <code>address@vrf</code>.</li>
+<li><strong>secret</strong> <code>string</code> — Shared secret of the router and the server. Not used with <code>protocol=radsec</code>. This is a <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">sensitive</a> parameter.</li>
+<li><strong>authentication-port</strong> <code>num</code> — UDP port of the server for authentication requests. Not used with <code>protocol=radsec</code>. Range: 1..65535. Default: 1812.</li>
+<li><strong>accounting-port</strong> <code>num</code> — UDP port of the server for accounting requests. Not used with <code>protocol=radsec</code>. Range: 1..65535. Default: 1813.</li>
+<li><strong>timeout</strong> <code>time</code> — Time to wait for an answer before the request is sent again. Default: 1100ms.</li>
+<li><strong>radsec-timeout</strong> <code>time</code> — Time to wait for an answer before the request is sent again over RadSec. Default: 3300ms.</li>
+<li><strong>accounting-backup</strong> <code>bool</code> — Whether the server gets a copy of the accounting requests. - <code>no</code> (default) - The entry is used for authentication and accounting in the order of the list. - <code>yes</code> - The entry gets a copy of every accounting request of its services, in addition to the entry that answers. It gets no authentication requests.</li>
+<li><strong>realm</strong> <code>string</code> — Value of the Mikrotik-Realm attribute in the Access-Requests of the entry. Without it, the attribute has the domain of the user name, and it is not sent when the name has no domain. Default: empty.</li>
+<li><strong>src-address</strong> <code>alt { ip-address: ipAddr
+, ipv6-address: ip6Addr
+ }</code> — Source IPv4 or IPv6 address of the packets sent to the server. The same address is sent as NAS-IP-Address. Default: not set, the router selects the address.</li>
+<li><strong>protocol</strong> <code>enum (udp | radsec)</code> — Transport of the requests. - <code>udp</code> (default) - RADIUS over UDP, to <code>authentication-port</code> and <code>accounting-port</code>. - <code>radsec</code> - RADIUS over TLS, to TCP port 2083. Needs <code>certificate</code>.</li>
+<li><strong>certificate</strong> <code>enum (none) { none:0 }</code> — Client certificate, with its private key, for <code>protocol=radsec</code>. The certificate authority of the server must be a trusted certificate on the router, and the certificate of the server must contain the value of <code>address</code>. Default: none.</li>
+<li><strong>require-message-auth</strong> <code>enum (no | yes-for-request-resp)</code> — Whether an answer to an Access-Request must have the Message-Authenticator attribute. The router adds the attribute to every Access-Request with either value. - <code>yes-for-request-resp</code> (default) - An answer without the attribute is dropped and counted in <code>bad-replies</code>. - <code>no</code> - An answer without the attribute is accepted.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Last connection error of the entry, for example <code>error: Connection refused</code>. With <code>protocol=radsec</code>, the state of the TLS connection: <code>connecting</code>, <code>performing TLS handshake</code>, <code>TLS connected</code>, or an error such as <code>connect:Connection refused</code> or <code>client certificate required</code>.</li>
+</ul>
+<hr />
+<h1 id="incoming">incoming</h1>
+<blockquote>
+<p>Settings for the Disconnect and Change of Authorization (CoA) requests that RADIUS servers send to the router. See RADIUS for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="radiusincoming">radius/incoming</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings for the Disconnect and Change of Authorization (CoA) requests that RADIUS servers send to the router. See <a href="../../../authentication-authorization-accounting/radius">RADIUS</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>accept</strong> <code>bool</code> — Whether the router accepts Disconnect and CoA requests. The request must be signed with the shared secret of a <code>/radius</code> entry. Default: no.</li>
+<li><strong>port</strong> <code>num</code> — UDP port on which the router listens for the requests. Default: 3799.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF in which the router listens for the requests. Requests that arrive in another VRF are not answered. Default: main.</li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>Shows the counters of the Disconnect and CoA requests. See RADIUS for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="radiusincomingmonitor">radius/incoming/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the counters of the Disconnect and CoA requests. See <a href="../../../authentication-authorization-accounting/radius">RADIUS</a> for the full guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>requests</strong> <code>num</code> — Valid requests received.</li>
+<li><strong>bad-requests</strong> <code>num</code> — Requests dropped because of a wrong signature.</li>
+<li><strong>acks</strong> <code>num</code> — Requests answered with Disconnect-ACK or CoA-ACK.</li>
+<li><strong>naks</strong> <code>num</code> — Requests answered with Disconnect-NAK or CoA-NAK, for example when no session matches.</li>
+</ul>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>Sets the counters of the Disconnect and CoA requests to zero.</p>
+</blockquote>
+<hr />
+<h2 id="radiusincomingreset-counters">radius/incoming/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the counters of the Disconnect and CoA requests to zero.</p>
+<hr />
+<h1 id="monitor_1">monitor</h1>
+<blockquote>
+<p>Shows the request counters of one entry. See RADIUS for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="radiusmonitor">radius/monitor</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the request counters of one entry. See <a href="../../authentication-authorization-accounting/radius">RADIUS</a> for the full guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>pending</strong> <code>num</code> — Requests that wait for an answer.</li>
+<li><strong>requests</strong> <code>num</code> — Requests sent to the server, without the resent ones.</li>
+<li><strong>accepts</strong> <code>num</code> — Access-Accept and accounting answers received.</li>
+<li><strong>rejects</strong> <code>num</code> — Access-Reject answers received.</li>
+<li><strong>challenges</strong> <code>num</code></li>
+<li><strong>accounting-responses</strong> <code>num</code></li>
+<li><strong>other-replies</strong> <code>num</code></li>
+<li><strong>resends</strong> <code>num</code> — Requests sent again after <code>timeout</code>.</li>
+<li><strong>timeouts</strong> <code>num</code> — Requests that got no answer after all tries.</li>
+<li><strong>bad-replies</strong> <code>num</code> — Answers that were dropped: a wrong signature, or no Message-Authenticator while <code>require-message-auth</code> asks for it.</li>
+<li><strong>last-request-rtt</strong> <code>time</code> — Time between the last request and its answer.</li>
+</ul>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>Sets the counters of all /radius entries to zero.</p>
+</blockquote>
+<hr />
+<h2 id="radiusreset-counters">radius/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the counters of all <code>/radius</code> entries to zero.</p>
+<hr />
+<h1 id="redo">redo</h1>
+<blockquote>
+<p>RouterOS command reference for /redo.</p>
+</blockquote>
+<hr />
+<h2 id="redo_1">redo</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

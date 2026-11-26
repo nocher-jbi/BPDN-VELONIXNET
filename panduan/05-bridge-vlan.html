@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge &amp; VLAN (Bridge VLAN Filtering) · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="bridge-vlan-bridge-vlan-filtering">Bridge &amp; VLAN (Bridge VLAN Filtering)</h1>
+<p>Menggabungkan port dan memisahkan jaringan dengan VLAN — penting untuk FTTH
+dan jaringan ISP.</p>
+<h2 id="1-bridge-dasar">1. Bridge dasar</h2>
+<pre><code>/interface/bridge/add name=bridge1
+/interface/bridge/port/add interface=ether2 bridge=bridge1
+/interface/bridge/port/add interface=ether3 bridge=bridge1
+</code></pre>
+<p>Pasang IP di <strong>bridge</strong>, bukan di ether-nya:</p>
+<pre><code>/ip/address/add address=192.168.88.1/24 interface=bridge1
+</code></pre>
+<h2 id="2-vlan-dengan-bridge-vlan-filtering-v7">2. VLAN dengan Bridge VLAN Filtering (v7)</h2>
+<p>Aktifkan filtering di bridge:</p>
+<pre><code>/interface/bridge/set bridge1 vlan-filtering=yes
+</code></pre>
+<p>Tentukan PVID untuk port access:</p>
+<pre><code>/interface/bridge/port/set [find interface=ether2] pvid=10
+/interface/bridge/port/set [find interface=ether3] pvid=20
+</code></pre>
+<p>Tandai VLAN (tagged) dan untagged pada bridge:</p>
+<pre><code>/interface/bridge/vlan/add bridge=bridge1 vlan-ids=10 tagged=bridge1 untagged=ether2
+/interface/bridge/vlan/add bridge=bridge1 vlan-ids=20 tagged=bridge1 untagged=ether3
+</code></pre>
+<p>Port trunk (ke switch lain) → tagged:</p>
+<pre><code>/interface/bridge/vlan/add bridge=bridge1 vlan-ids=10,20 tagged=bridge1,ether4
+</code></pre>
+<p>Beri IP per VLAN (interface VLAN):</p>
+<pre><code>/interface/vlan/add name=vlan10 vlan-id=10 interface=bridge1
+/ip/address/add address=192.168.10.1/24 interface=vlan10
+</code></pre>
+<h2 id="konsep-penting">Konsep penting</h2>
+<ul>
+<li><strong>Access port</strong>: satu VLAN, untagged.</li>
+<li><strong>Trunk port</strong>: banyak VLAN, tagged.</li>
+<li><strong>PVID</strong>: VLAN default untuk trafik untagged yang masuk port.</li>
+<li><code>vlan-filtering=yes</code> mengaktifkan pengecekan tag di bridge.</li>
+</ul>
+<h2 id="sering-bikin-gagal">Sering bikin gagal</h2>
+<ul>
+<li>Pasang IP di ether yang sudah jadi bridge port → tidak jalan</li>
+<li>Lupa <code>vlan-filtering=yes</code> → VLAN tidak difilter</li>
+<li>CPU forwarding: hardware offload kadang perlu bridge tertentu; untuk trafik
+  routing antar-VLAN, pastikan desain interface VLAN-nya benar.</li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>10 Bridging and Switching</em></li>
+<li>Manual: <em>21 CLI Reference → /interface/bridge</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

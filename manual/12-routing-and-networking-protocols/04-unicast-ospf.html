@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unicast / OSPF · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="unicast-ospf">Unicast / OSPF</h1>
+<h1 id="ospf">OSPF</h1>
+<blockquote>
+<p>OSPF (Open Shortest Path First) is a routing protocol used in MikroTik RouterOS to dynamically exchange route information and determine the best paths for data transmission within a network.</p>
+</blockquote>
+<h1 id="ospf_1">OSPF</h1>
+<hr />
+<h1 id="understanding-ospf">Understanding OSPF</h1>
+<blockquote>
+<p>Overview of OSPF protocol basics.</p>
+</blockquote>
+<h1 id="understanding-ospf_1">Understanding OSPF</h1>
+<p>OSPF is an Interior Gateway Protocol (IGP) designed to distribute routing information between routers in the same Autonomous System (AS).</p>
+<p>The protocol is based on link-state technology with several advantages over distance-vector protocols such as RIP:</p>
+<ul>
+<li>No hop count limitations exist.</li>
+<li>Multicast addressing sends routing information updates.</li>
+<li>Updates are sent only when network topology changes occur.</li>
+<li>Networks are logically defined by dividing routers into areas.</li>
+<li>External routes injected into the AS are transferred and tagged.</li>
+</ul>
+<p>However, OSPF has some disadvantages:</p>
+<ul>
+<li>OSPF is CPU and memory intensive because the SPF algorithm must maintain multiple copies of routing information.</li>
+<li>It is more complex to implement than RIP.</li>
+</ul>
+<h2 id="terminology">Terminology</h2>
+<p>Review the following terms to understand how OSPF operates. You will encounter these terms throughout the documentation.</p>
+<ul>
+<li><strong>Neighbor</strong>: A connected (adjacent) router running OSPF with the adjacent interface assigned to the same area. Hello packets discover neighbors unless you configure neighbors manually.</li>
+<li><strong>Adjacency</strong>: A logical connection between a router and its corresponding DR and BDR. Routers do not exchange routing information unless adjacencies are formed.</li>
+<li><strong>Link</strong>: A network or router interface assigned to any given network.</li>
+<li><strong>Interface</strong>: A physical interface on the router. When you add the interface to OSPF, it becomes a link used to build the link database.</li>
+<li><strong>LSA</strong>: Link State Advertisement, a data packet with link-state and routing information shared among OSPF neighbors.</li>
+<li><strong>DR</strong>: Designated Router, a router chosen to minimize the number of adjacencies formed. OSPF uses this option in broadcast networks.</li>
+<li><strong>BDR</strong>: Backup Designated Router, a hot standby for the DR. The BDR receives all routing updates from adjacent routers but does not flood LSA updates.</li>
+<li><strong><a href="./areas-and-virtual-links.md">Area</a></strong>: A logical grouping to establish a hierarchical network.</li>
+<li><strong>ABR</strong>: Area Border Router, a router connected to multiple areas. ABRs are responsible for summarization and update suppression between connected areas.</li>
+<li><strong>ASBR</strong>: Autonomous System Boundary Router, a router connected to an external network (in a different AS). A router becomes an ASBR when you import routes from other protocols into OSPF on that router.</li>
+<li><strong>NBMA</strong>: Non-broadcast multi-access networks. These networks allow multi-access but have no broadcast capability. You must configure OSPF neighbors manually on these networks.</li>
+<li><strong>Broadcast</strong>: A network with broadcast capability. For example, Ethernet.</li>
+<li><strong>Point-to-point</strong>: A network type where DRs and BDRs are not required.</li>
+<li><strong>Router-ID</strong>: An IP address used to identify the OSPF router. If you do not configure the OSPF <a href="../../../../cli-reference/routing/ospf/instance.md#router-id"><code>router-id</code></a> manually, the router uses one of its assigned IP addresses as its Router-ID.</li>
+<li><strong>Link State</strong>: The status of a link between two routers. It defines the relationship between a router's interface and its neighboring routers.</li>
+<li><strong>Cost</strong>: A value assigned to each link by link-state protocols. The <a href="../../../../cli-reference/routing/ospf/interface-template.md#cost"><code>cost</code></a> value depends on the speed of the media. Each router interface has an associated cost on its output side, referred to as the interface output cost.</li>
+<li><strong>Autonomous System</strong>: A group of routers that use a common routing protocol to exchange routing information.</li>
+</ul>
+<h2 id="supported-standards">Supported standards</h2>
+<ul>
+<li>RFC <a href="https://tools.ietf.org/html/rfc2328">2328</a> - OSPF Version 2</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc3101">3101</a> - The OSPF Not-So-Stubby Area (NSSA) Option</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc3630">3630</a> - Traffic Engineering (TE) Extensions to OSPF Version 2</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc4577">4577</a> - OSPF as the Provider/Customer Edge Protocol for BGP/MPLS IP Virtual Private Networks (VPNs)</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc5329">5329</a> - Traffic Engineering Extensions to OSPF Version 3</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc5340">5340</a> - OSPF for IPv6</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc5643">5643</a> - Management Information Base for OSPFv3</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc6549">6549</a> - OSPFv2 Multi-Instance Extensions</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc6565">6565</a> - OSPFv3 as a Provider Edge to Customer Edge (PE-CE) Routing Protocol</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc6845">6845</a> - OSPF Hybrid Broadcast and Point-to-Multipoint Interface Type</li>
+<li>RFC <a href="https://tools.ietf.org/html/rfc7471">7471</a> - OSPF Traffic Engineering (TE) Metric Extensions</li>
+</ul>
+<hr />
+<h1 id="neighbor-relationship">Neighbor Relationship</h1>
+<blockquote>
+<p>Introduction on how neighbor relationships and adjacencies are formed.</p>
+</blockquote>
+<h1 id="neighbor-relationship_1">Neighbor Relationship</h1>
+<p>OSPF is a link-state protocol that considers the router interface an OSPF link. Whenever OSPF is started, it adds the state of all the links in the local <strong>link-state database</strong>.</p>
+<p>Several steps must complete before the OSPF network becomes fully functional:</p>
+<ul>
+<li>Neighbor discovery</li>
+<li>Database synchronization</li>
+<li>Routing calculation</li>
+</ul>
+<p>Link-state routing protocols distribute and replicate a database describing the routing topology. The link-state protocol's flooding algorithm ensures that each router has an identical link-state database. The routing table is calculated based on this database.</p>
+<p>After all the previous steps are completed, the link-state database on each neighbor contains the full routing domain topology (how many other routers are in the network, how many interfaces routers have, what networks the link between routers connects, the cost of each link, and so on).</p>
+<h2 id="basic-configuration-example">Basic Configuration Example</h2>
+<p>To start OSPF v2 and v3 instances, add the instances and the backbone area:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.2.3.4
+add name=v3inst version=3 router-id=1.2.3.4
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=backbone_v3 area-id=0.0.0.0 instance=v3inst
+</code></pre>
+<p>The template matches interfaces where OSPF should discover the neighbors. Specify the network or interface directly.</p>
+<pre><code class="language-ros">/routing/ospf/interface-template
+add networks=192.168.0.0/24 area=backbone_v2
+add networks=2001:db8::/64 area=backbone_v3
+add interfaces=ether1 area=backbone_v3
+</code></pre>
+<h2 id="communication-between-ospf-routers">Communication Between OSPF Routers</h2>
+<p>OSPF operates over the IP network layer with protocol number 89.
+A destination IP address is set to the neighbor's IP address or to one of the OSPF multicast addresses, AllSPFRouters (224.0.0.5) or AllDRouters (224.0.0.6). These addresses are described later in this article.
+Every OSPF packet begins with a standard 24-byte header.</p>
+<center>
+
+<pre><code class="language-mermaid">flowchart LR
+
+  subgraph OSPFH[&quot;OSPF Header&quot;]
+    OSPFHF[&quot;Version: 1bytePacket Type: 1bytePacket Length: 2bytesRouter ID: 4bytesArea ID: 4bytesChecksum: 2bytesAuthType: 2bytesAuthentication: 8bytes&quot;]
+  end
+
+  IPH[&quot;IP Header&quot;] --&gt; OSPFH --&gt; DATA[&quot;Data&quot;]
+
+</code></pre>
+
+</center>
+
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Packet type</strong></td>
+<td style="text-align: left;">Several types of OSPF packets exist: Hello packet, Database Description (DD) packet, Link-State Request packet, Link-State Update packet, and Link-State Acknowledgment packet. All of these packets except the Hello packet are used for link-state database synchronization.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Router ID</strong></td>
+<td style="text-align: left;">Defaults to one of the router's IP addresses unless configured manually.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Area ID</strong></td>
+<td style="text-align: left;">Allows the OSPF router to associate the packet with the proper OSPF area.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Checksum</strong></td>
+<td style="text-align: left;">Allows the receiving router to determine if a packet was damaged in transit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Authentication fields</strong></td>
+<td style="text-align: left;">These fields allow the receiving router to verify that the packet's contents were not modified and that the packet came from the OSPF router whose Router ID appears in the packet.</td>
+</tr>
+</tbody>
+</table>
+<p>Five OSPF packet types ensure proper LSA flooding over the OSPF network:</p>
+<ul>
+<li><strong>Hello packet</strong> - Discovers OSPF neighbors and builds adjacencies.</li>
+<li><strong>Database Description (DD)</strong> - Checks for database synchronization between routers. Exchanged after adjacencies are built.</li>
+<li><strong>Link-State Request (LSR)</strong> - Requests up-to-date pieces of the neighbor's database. Out-of-date parts of the routing database are determined after the DD exchange.</li>
+<li><strong>Link-State Update (LSU)</strong> - Carries a collection of specifically requested link-state records.</li>
+<li><strong>Link-State Acknowledgment (LSack)</strong> - Acknowledges other packet types to ensure reliable communication.</li>
+</ul>
+<h2 id="neighbor-discovery">Neighbor Discovery</h2>
+<p>OSPF discovers potential neighbors by sending Hello packets periodically out of configured interfaces. By default, <em>Hello packets</em> are sent out at 10-second intervals. You can change this by setting <a href="../../../../cli-reference/routing/ospf/interface-template.md#hello-interval"><code>hello-interval</code></a> in OSPF interface settings. The router learns the existence of a neighboring router when it receives the neighbor's Hello in return with matching parameters.</p>
+<p>The transmission and reception of Hello packets also allow a router to detect the failure of the neighbor. If Hello packets are not received within <a href="../../../../cli-reference/routing/ospf/interface-template.md#dead-interval"><code>dead-interval</code></a> (which by default is 40 seconds), the router starts to route packets around the failure. The "Hello" protocol ensures that the neighboring routers agree on the Hello interval and Dead interval parameters, preventing situations where Hello packets that are not received in time mistakenly bring the link down.</p>
+<center>
+
+<pre><code class="language-mermaid">flowchart LR
+
+  subgraph HDATA[&quot;Hello Data&quot;]
+  HDATAF[&quot;Netmask
+    Hello Interval
+    Options | Priority
+    Dead Interval
+    DR
+    BDR
+    1st neighbor ID&quot;]
+  end
+
+  IPH[&quot;IP Header&quot;] --&gt; OSPFH[&quot;OSPF Header&quot;] --&gt; HDATA
+</code></pre>
+
+
+</center>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Network mask</strong></td>
+<td style="text-align: left;">The IP mask of the originating router's interface IP address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Hello interval</strong></td>
+<td style="text-align: left;">The period between Hello packets (default 10s).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Options</strong></td>
+<td style="text-align: left;">OSPF options for neighbor information.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Router priority</strong></td>
+<td style="text-align: left;">An 8-bit value used to aid in the election of the DR and BDR (not set in point-to-point links).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Router dead interval</strong></td>
+<td style="text-align: left;">The time interval before the neighbor is considered down (by default, four times the Hello interval).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DR</strong></td>
+<td style="text-align: left;">The router ID of the current DR.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>BDR</strong></td>
+<td style="text-align: left;">The router ID of the current BDR.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Neighbor router IDs</strong></td>
+<td style="text-align: left;">A list of router IDs for all the originating router's neighbors.</td>
+</tr>
+</tbody>
+</table>
+<p>On each type of network segment, the Hello protocol works a little differently. On point-to-point segments, only one neighbor is possible and no additional actions are required. However, if more than one neighbor can be on the segment, additional actions are taken to make OSPF more efficient.</p>
+<p>Two routers do not become neighbors unless the following conditions are met:</p>
+<ul>
+<li>Two-way communication between routers is possible. This is determined by flooding Hello packets.</li>
+<li>The interface should belong to the same area.</li>
+<li>The interface should belong to the same subnet and have the same network mask unless it has network-type configured as <strong>point-to-point</strong>.</li>
+<li>Routers should have the same authentication options and exchange the same password (if any).</li>
+<li>Hello and Dead intervals should be the same in Hello packets.</li>
+<li>External routing and NSSA flags should be the same in Hello packets.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Network mask, Priority, DR, and BDR</strong> fields are used only when the neighbors are connected by a broadcast or <strong>NBMA</strong> network segment.</p>
+</div>
+<h3 id="discovery-on-broadcast-subnets">Discovery on Broadcast Subnets</h3>
+<p>A node attached to the broadcast subnet can send a single packet, and that packet is received by all other attached nodes. This allows for auto-configuration and information replication. Another important capability in broadcast subnets is multicast. This capability allows sending a single packet which will be received by nodes configured to receive multicast packets. OSPF uses this capability to find OSPF neighbors and detect bidirectional connectivity.</p>
+<p>Each OSPF router joins the IP multicast group <strong>AllSPFRouters</strong> (224.0.0.5). Then the router periodically multicasts its Hello packets to the IP address 224.0.0.5. All other routers that joined the same group will receive a multicasted Hello packet. In that way, OSPF routers maintain relationships with all other OSPF routers by sending a single packet instead of sending a separate packet to each neighbor on the segment.</p>
+<p>This approach provides several advantages:</p>
+<ul>
+<li>Automatic neighbor discovery by multicasting or broadcasting Hello packets.</li>
+<li>Less bandwidth usage compared to other subnet types.</li>
+<li>On the broadcast segment, n*(n-1)/2 neighbor relations exist, but those relations are maintained by sending only n Hellos.</li>
+<li>If the broadcast has the multicast capability, OSPF operates without disturbing non-OSPF nodes on the broadcast segment.</li>
+<li>If the multicast capability is not supported, all routers will receive broadcasted Hello packets even if a node is not an OSPF router.</li>
+</ul>
+<h3 id="discovery-on-nbma-subnets">Discovery on NBMA Subnets</h3>
+<p>Non-broadcast multiaccess (NBMA) segments are similar to broadcast. They support more than two routers. The only difference is that NBMA does not support a data-link broadcast capability. Due to this limitation, OSPF neighbors must be discovered initially through configuration. On RouterOS, static neighbor configuration is set in the <a href="../../../../cli-reference/routing/ospf/static-neighbor.md"><code>/routing/ospf/static-neighbor</code></a> menu. To reduce the amount of Hello traffic, most routers attached to the NBMA subnet should be assigned a Router Priority of 0 (set by default in RouterOS). Routers eligible to become Designated Routers should have priority values other than 0. This ensures that during the election of DR and BDR, Hellos are sent only to eligible routers.</p>
+<h3 id="discovery-on-ptmp-subnets">Discovery on PTMP Subnets</h3>
+<p>Point-to-MultiPoint treats the network as a collection of point-to-point links.</p>
+<p>By design, PTMP networks lack broadcast capabilities, so OSPF neighbors must be discovered initially through configuration, the same as for NBMA networks. All communication happens by sending unicast packets directly between neighbors. On RouterOS, the static neighbor configuration is set in the <a href="../../../../cli-reference/routing/ospf/static-neighbor.md"><code>/routing/ospf/static-neighbor</code></a> menu. Designated Routers and Backup Designated Routers are not elected on point-to-multipoint subnets.</p>
+<p>For PTMP networks with broadcast support, a hybrid type named "ptmp-broadcast" can be used. This network type uses multicast Hellos to discover neighbors automatically and detect bidirectional communication between neighbors. After neighbor detection, "ptmp-broadcast" sends unicast packets directly to the discovered neighbors. This mode is compatible with the RouterOS v6 "ptmp" type.</p>
+<h2 id="master-slave-relation">Master-Slave Relation</h2>
+<p>Before database synchronization can begin, a hierarchical order for exchanging information must be established to determine which router sends <strong>Database Descriptor</strong> (<strong>DD</strong>) packets first (<strong>Master</strong>). The master router is the one with the higher Router ID. This is a router <a href="../../../../cli-reference/routing/ospf/interface-template.md#priority"><code>priority</code></a>-based relation for arranging the exchange of data between neighbors, and it does not affect DR/BDR election (the <strong>DR</strong> does not always have to be the <strong>Master</strong>).</p>
+<h2 id="database-synchronization">Database Synchronization</h2>
+<p>Link-state database synchronization between OSPF routers is very important. Unsynchronized databases can lead to incorrectly calculated routing tables which could cause routing loops or black holes.</p>
+<p>OSPF uses two types of database synchronization:</p>
+<ul>
+<li>Initial database synchronization.</li>
+<li>Reliable flooding.</li>
+</ul>
+<p>When the connection between two neighbors first comes up, <em>initial database synchronization</em> occurs. OSPF uses explicit database download when neighbor connections first come up. This procedure is called <strong>Database exchange</strong>. Instead of sending the entire database, the OSPF router sends only its LSA headers in a sequence of OSPF <strong>Database Description (DD)</strong> packets. The router will send the next DD packet only when the previous packet is acknowledged. When an entire sequence of DD packets has been received, the router knows which LSAs it does not have and which LSAs are more recent. The router then sends <strong>Link-State Request (LSR)</strong> packets requesting desired LSAs, and the neighbor responds by flooding LSAs in <strong>Link-State Update (LSU)</strong> packets. After all the updates are received, neighbors are said to be <strong>fully adjacent</strong>.</p>
+<p>Reliable flooding is another database synchronization method. This method is used when adjacencies are already established and the OSPF router must inform other routers about LSA changes. When the OSPF router receives such a Link State Update, it installs a new LSA in the link-state database, sends an acknowledgment packet back to the sender, repackages the LSA in a new LSU, and sends it out to all interfaces except the receiving interface.</p>
+<p>OSPF determines if LSAs are up to date by comparing sequence numbers. Sequence numbers start with 0x80000001. The larger the number, the more recent the LSA is. A sequence number is incremented each time the record is flooded, and the neighbor receiving the update resets the Maximum age timer. LSAs are refreshed every 30 minutes, but without a refresh, an LSA remains in the database for the maximum age of 60 minutes.</p>
+<p>Databases are not always synchronized between all OSPF neighbors. OSPF decides whether databases must be synchronized depending on the network segment. For example, on point-to-point links, databases are always synchronized between routers. On Ethernet networks, databases are synchronized between certain neighbor pairs.</p>
+<h3 id="synchronization-on-broadcast-subnets">Synchronization on Broadcast Subnets</h3>
+<p>On the broadcast segment, n*(n-1)/2 neighbor relations exist. A huge amount of Link State Updates and Acknowledgments would be sent over the subnet if the OSPF router tries to synchronize with each OSPF router on the subnet.</p>
+<p>This problem is solved by electing one <strong>Designated Router</strong> and one <strong>Backup Designated Router</strong> for each broadcast subnet. All other routers synchronize and form adjacencies only with those two elected routers. This approach reduces the number of adjacencies from n*(n-1)/2 to only 2n-3.</p>
+<p>The image on the right illustrates adjacency formations on broadcast subnets. R1 is the Designated Router and R2 is the Backup Designated Router. For example, if R3 wants to flood Link State Update (LSU) to both R1 and R2, the router sends LSU to the IP multicast address <strong>AllDRouters</strong> (224.0.0.6) and only DR and BDR listen to this multicast address. Then the Designated Router sends LSU addressed to AllSPFRouters, updating the rest of the routers.</p>
+<h4 id="dr-election">DR Election</h4>
+<p>DR and BDR routers are elected from data received in the Hello packet. The first OSPF router on a subnet is always elected as the Designated Router. When a second router is added, it becomes the Backup Designated Router. When an existing DR or BDR fails, a new DR or BDR is elected based on the configured router <a href="../../../../cli-reference/routing/ospf/interface-template.md#priority"><code>priority</code></a>. The router with the highest priority becomes the new DR or BDR.</p>
+<p>Being a Designated Router or Backup Designated Router consumes additional resources. If Router Priority is set to 0, the router does not participate in the election process. This is important when certain slower routers cannot be DR or BDR.</p>
+<h3 id="synchronization-on-nbma-subnets">Synchronization on NBMA Subnets</h3>
+<p>Database synchronization on NBMA networks is similar to synchronization on broadcast networks. DR and BDR are elected. Databases are initially exchanged only with DR and BDR routers, and flooding always goes through the DR. The only difference is that Link State Updates must be replicated and sent to each adjacent router separately.</p>
+<hr />
+<h1 id="routing-table-calculation">Routing Table Calculation</h1>
+<blockquote>
+<p>Basic understanding of shortest path calculation.</p>
+</blockquote>
+<h1 id="routing-table-calculation_1">Routing Table Calculation</h1>
+<p>The link-state database describes the routers and links that interconnect them and are appropriate for forwarding. It also contains the cost (metric) of each link. This metric is used to calculate the shortest path to the destination network.</p>
+<p>Each router can advertise a different cost for its own link direction. This creates asymmetric links where packets to the destination travel over one path, but the response travels a different path. Asymmetric paths complicate troubleshooting.
+Change the cost value in the <a href="../../../../cli-reference/routing/ospf/interface-template.md"><code>/routing/ospf/interface-template</code></a> menu, or create a static OSPF interface in the <a href="../../../../cli-reference/routing/ospf/interface.md"><code>/routing/ospf/interface</code></a> menu. For example, to match an ether2 interface and set a cost of 100:</p>
+<pre><code class="language-ros">/routing/ospf/interface-template
+add interfaces=ether2 cost=100 area=backbone_v2
+</code></pre>
+<p>The cost of an interface on Cisco routers is inversely proportional to the bandwidth of that interface. A higher bandwidth indicates a lower cost. If similar costs are necessary on RouterOS, then use the formula <code>Cost = 100000000/bw_in_bps</code>.</p>
+<p>An OSPF router uses Dijkstra's Shortest Path First (SPF) algorithm to calculate the shortest path. The algorithm places the router at the root of a tree and calculates the shortest path to each destination based on the cumulative cost required to reach the destination. Each router calculates its own tree even though all routers use the same link-state database.</p>
+<h2 id="spt-calculation">SPT Calculation</h2>
+<p>Assume the following network. The network consists of 4 routers. OSPF costs for outgoing interfaces are shown near the line representing the link. To build the shortest-path tree for router R1, make R1 the root and calculate the smallest cost for each destination.</p>
+<pre><code class="language-mermaid">graph LR
+
+    R1[R1]
+    R2[R2]
+    R3[R3]
+    R4[R4]
+    N1[192.168.1.0]&lt;div class=&quot;adm adm-n1&quot; markdown=&quot;1&quot;&gt;
+
+**N1**
+
+    N2[172.16.1.0]:::N2
+    N3[192.168.2.0]:::N3
+
+    %% Connections within 192.168.1.0
+    R1 -- &quot;cost:10&quot; --&gt; N1
+    N1 --- R2
+    N1 --- R3
+
+    R2 -- &quot;cost:10&quot; --&gt; N2
+    R4 -- &quot;cost:4&quot; --&gt; N2
+
+    R3 -- &quot;cost:6&quot; --&gt; N3
+    N3 --&gt; R4
+
+%% Style the network node
+    classDef N1,N2,N3 stroke:#4682b4,stroke-width:3px,rx:50%,ry:30%
+</code></pre>
+<p>Multiple shortest paths have been found to the 172.16.1.0 network. This allows load balancing of the traffic to the destination. Such routes are known as <a href="../../routing-decision.md#multipath-ecmp-routes">equal-cost multipath (ECMP)</a>. After the shortest-path tree is built, the router builds the routing table accordingly. Networks are reached according to the cost calculated in the tree.</p>
+<pre><code class="language-mermaid">graph 
+
+    R1[R1]
+    R2[R2]
+    R3[R3]
+    R4[R4]
+    N1[192.168.1.0]:::N1
+    N2[172.16.1.0]:::N2
+    N3[192.168.2.0]:::N3
+
+    %% Connections within 192.168.1.0
+    R1 -- &quot;cost:10&quot; --&gt; N1
+    R1 -- &quot;cost:10&quot; --&gt; R3
+    R1 -- &quot;cost:10&quot; --&gt; R2
+
+    R2 -- &quot;cost:10&quot; --&gt; N2
+    R4 -- &quot;cost:4&quot; --&gt; N2
+
+    R3 -- &quot;cost:6&quot; --&gt; N3
+    R3 -- &quot;cost:6&quot; --&gt; R4
+
+    R1 -- &quot;Total cost:16&quot; --&gt; N3
+    R1 --&gt; R2
+    R2 -- &quot;Total cost:20&quot; --&gt; N2
+
+    R1 --&gt; R4
+    R4 -- &quot;Total cost:20&quot; --&gt; N2
+
+%% Style all dotted lines red (including the new one)
+    linkStyle 7,8,9,10,11 stroke:#ff0000,stroke-width:2px,stroke-dasharray:5,5,color:#ff0000
+
+%% Style the network node
+    classDef N1,N2,N3 stroke:#4682b4,stroke-width:3px,rx:50%,ry:30%
+</code></pre>
+<p>The routing table calculation looks simple; however, when some of the OSPF extensions are used or OSPF areas are calculated, the routing calculation gets more complicated.</p>
+<h2 id="forwarding-address">Forwarding Address</h2>
+<p>An OSPF router can set the <strong>forwarding-address</strong> to something other than itself, indicating an alternate next-hop is possible. In most cases, the forwarding address is set to <strong>0.0.0.0</strong>, which suggests the route is reachable only by using the advertising router.</p>
+<p>The forwarding address is set in the LSA if the following conditions are met:</p>
+<ul>
+<li>OSPF must be enabled on the next-hop interface.</li>
+<li>The next-hop address falls into the network provided by OSPF networks.</li>
+</ul>
+<p>A router receiving such an LSA can use a forwarding address if OSPF is able to resolve the forwarding address. If the forwarding address is not resolved directly, the router sets the next-hop for the forwarding address from the LSA as a gateway. If the forwarding address is not resolved at all, the gateway will be the originator-id. Resolution happens only by using OSPF instance routes, not the whole routing table.</p>
+<p>Consider the following example setup:</p>
+<p>Router <strong>R1</strong> has a static route to the external network <em>192.168.0.0/24</em>. OSPF is running between R1, R2, and R3, and the static route is distributed across the OSPF network.</p>
+<p>The problem in such a setup is obvious. R2 cannot reach the external network directly. Traffic to the LAN network from <strong>R2</strong> will be forwarded over router <strong>R1</strong>, but the network diagram shows <strong>R2</strong> can directly reach the router connected to the LAN network.</p>
+<p>Knowing the forwarding address conditions, you can make router <strong>R1</strong> set the forwarding address. Add the 10.1.101.0/24 network to the OSPF networks in router <strong>R1</strong>'s configuration:</p>
+<pre><code class="language-ros">/routing/ospf/interface-template add area=backbone_v2 networks=10.1.101.0/24
+</code></pre>
+<p>Now verify the forwarding address works:</p>
+<pre><code class="language-ros">[admin@r2] /ip/route&gt; print where dst-address=192.168.0.0/24
+Flags: D - DYNAMIC; A - ACTIVE; o, y - COPY
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS       GATEWAY            DISTANCE
+DAo 192.168.0.0/24    10.1.101.1%ether1       110
+
+</code></pre>
+<p>On all OSPF routers, you will see the LSA set with a forwarding address other than 0.0.0.0.</p>
+<pre><code class="language-ros">[admin@r2] /routing/ospf/lsa&gt; print where id=192.168.0.0
+Flags: S - self-originated, F - flushing, W - wraparound; D - dynamic 
+
+ 1  D instance=default_ip4 type=&quot;external&quot; originator=10.1.101.10 id=192.168.0.0 
+      sequence=0x80000001 age=19 checksum=0xF336 body=
+        options=E
+        netmask=255.255.255.0
+        forwarding-address=10.1.101.1
+        metric=10 type-1
+        route-tag=0
+</code></pre>
+<p></div>
+tip
+OSPF adjacency between routers in the 10.1.101.0/24 network is not required.
+:::</p>
+<hr />
+<h1 id="areas-and-virtual-links">Areas and Virtual Links</h1>
+<blockquote>
+<p>Understand the concept of OSPF areas and virtual links.</p>
+</blockquote>
+<h1 id="areas-and-virtual-links_1">Areas and Virtual Links</h1>
+<p>A distinctive feature of OSPF is the possibility to divide an AS into multiple routing areas, each with its own set of neighbors. Imagine a large network with 300+ routers and multiple links between them. Whenever a link flaps or some other topology change happens in the network, this change is flooded to all OSPF devices in the network. This results in a heavy load on the network and even downtime because <a href="../../routing-decision.md">network convergence</a> can take some time for such a large network.</p>
+<p>A large single-area network can produce serious issues:</p>
+<ul>
+<li>Each router recalculates the database whenever a network topology change occurs. The process takes CPU resources.</li>
+<li>Each router holds an entire link-state database, which shows the topology of the entire network. It takes memory resources.</li>
+<li>A complete copy of the routing table and the number of routing table entries can be significantly greater than the number of networks, which can take even more memory resources.</li>
+<li>Updating large databases requires more bandwidth.</li>
+</ul>
+<p>The introduction of areas allows for better resource management because a topology change inside one area is not flooded to other areas in the network. The concept of areas enables simplicity in network administration and routing summarization between areas, significantly reducing the database size to store on each OSPF neighbor. This means each area has its own link-state database and corresponding shortest-path tree. For more information on how OSPF neighbors discover each other and synchronize databases, see <a href="./neighbour-relationship.md">Neighbor Relationship</a>.</p>
+<p>The structure of an area is invisible to other areas. This isolation of knowledge makes the protocol more scalable if multiple areas are used. Routing table calculation takes fewer CPU resources and routing traffic is reduced.</p>
+<p>However, multi-area setups create additional complexity. You should not separate areas with fewer than 50 routers. The maximum number of routers in one area is mostly dependent on the CPU power you have for routing table calculation.</p>
+<p>An OSPF area has a unique 32-bit identification (Area ID). The area with an Area ID of 0.0.0.0 (called the Backbone area) is the main area where any other area should connect. Routers connecting to more than one area are called <strong>ABR</strong> (Area Border Routers), and their main responsibility is summarization and update suppression between connected areas. The router connecting to another routing domain is called <strong>ASBR</strong> (Autonomous System Boundary Router).</p>
+<p>Each area has its own link-state database, consisting of router-LSAs and network-LSAs describing how all routers in that area are interconnected. Detailed knowledge of the area's topology is hidden from all other areas. Router-LSAs and network-LSAs are not flooded beyond the area's borders. Area Border Routers (<strong>ABR</strong>s) leak addressing information from one area into another in OSPF summary-LSAs. This allows the router to pick the best area border router when forwarding data to destinations from another area and is called <strong>intra-area routing</strong>. For more information on how the routing table is calculated, see <a href="./routing-calculation.md">Routing Table Calculation</a>.</p>
+<p>Routing information exchange between areas is essentially a Distance Vector algorithm. To prevent algorithm convergence problems, such as counting to infinity, all areas are required to attach directly to the <strong>backbone area</strong>, creating a simple hub-and-spoke topology. The area-ID of the backbone area is always 0.0.0.0 and cannot be changed. For more information on the routing decision process, see <a href="../../routing-decision.md">Routing Decision</a>.</p>
+<p>Configure RouterOS areas in the <a href="../../../../cli-reference/routing/ospf/area/area.md"><code>/routing/ospf/area</code></a> menu. For example, a configuration of an ABR router with multiple attached areas, one Stub area, and one default area:</p>
+<pre><code class="language-ros">/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=stub_area area-id=1.1.1.1 instance=v2inst type=stub
+add name=another_area area-id=2.2.2.2 instance=v2inst type=default
+</code></pre>
+<p>OSPF can have 5 types of areas, configured by the <a href="../../../../cli-reference/routing/ospf/area/area.md#type"><code>type</code></a> parameter. Each area type defines what type of LSAs the area supports:</p>
+<ul>
+<li>Standard/default - OSPF packets can be transmitted in this area. It supports types 1, 2, 3, 4, and 5 LSAs.</li>
+<li>Backbone - As already mentioned, this is the main area where any other area connects. It is basically the same as the standard area but identified with ID 0.0.0.0.</li>
+<li><a href="#stub-area">Stub</a> - This area does not accept any external routes.</li>
+<li><a href="#totally-stubby-area">Totally stubby</a> - A variation of the stub area.</li>
+<li><a href="#nssa">Not-so-stubby (NSSA)</a> - A variation of the stub area.</li>
+</ul>
+<h2 id="lsa-types">LSA Types</h2>
+<p>Before continuing with a detailed look at each area type, familiarize yourself with LSA types:</p>
+<ul>
+<li><strong><em>type 1</em></strong> - (Router LSA) Sent by routers in the area, including the list of directly attached links. These LSAs do not cross the ABR or ASBR.</li>
+<li><strong><em>type 2</em></strong> - (Network LSA) Generated for every "transit network" in an area. A transit network has at least two directly attached OSPF routers. Ethernet is an example of a transit network. A Type 2 LSA lists each of the attached routers making up the transit network and is generated by the DR.</li>
+<li><strong><em>type 3</em></strong> - (Summary LSA) The ABR sends Type 3 Summary LSAs. A Type 3 LSA advertises any networks owned by an area to the rest of the areas in the OSPF AS. By default, OSPF advertises Type 3 LSAs for every subnet defined in the originating area, which can cause flooding problems. You should use a manual summarization at the ABR.</li>
+<li><strong><em>type 4</em></strong> - (ASBR-Summary LSA) Announces the ASBR address and shows where the ASBR is located, announcing its address instead of its routing table.</li>
+<li><strong><em>type 5</em></strong> - (External LSA) Announces the routes learned through the ASBR and is flooded to all areas except Stub areas. This LSA divides into two sub-types: <strong><em>external type 1</em></strong> and <strong><em>external type 2</em></strong>.</li>
+<li><strong><em>type 6</em></strong> - (Group Membership LSA) Defined for multicast extensions to OSPF and is not used by RouterOS.</li>
+<li><strong><em>type 7</em></strong> - Type 7 LSAs inform the ABRs about external routes imported into the NSSA area. The Area Border Router then translates these LSAs to <strong>type 5</strong> external LSAs and floods them to the rest of the OSPF network.</li>
+<li><strong><em>type 8</em></strong> - External Attributes LSA (OSPFv2) / link-local LSA (OSPFv3).</li>
+<li><strong><em>type 9</em></strong> - Link-Local Scope Opaque (OSPFv2) / Intra Area Prefix LSA (OSPFv3). LSAs of this type are not flooded beyond the local (sub)network.</li>
+<li><strong><em>type 10</em></strong> - Area Local Scope Opaque. LSAs of this type are not flooded beyond the scope of their associated area.</li>
+<li><strong><em>type 11</em></strong> - Opaque LSA which is flooded throughout the AS (scope is the same as <strong>type 5</strong>). It is not flooded in stub areas and NSSAs.</li>
+</ul>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Without any ASBRs, the network has no LSA Types 4 and 5.</p>
+</div>
+<h2 id="standard-area">Standard Area</h2>
+<p>This area supports 1, 2, 3, 4, and 5 LSAs.</p>
+<p>A simple multi-area network with the default area. In this example, all networks from area1 are flooded to the backbone, and all networks from the backbone are flooded to area1.</p>
+<p><strong>R1</strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.0.3.1/24 interface=ether1
+/ip/address/add address=10.0.2.1/24 interface=ether2
+/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.1
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=area1 area-id=1.1.1.1 type=default instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.2.0/24 area=backbone_v2
+add networks=10.0.3.0/24 area=area1
+</code></pre>
+<p><strong>R2</strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.0.1.1/24 interface=ether2
+/ip/address/add address=10.0.2.2/24 interface=ether1
+/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.2
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.2.0/24 area=backbone_v2
+add networks=10.0.1.0/24 area=backbone_v2
+</code></pre>
+<p><strong>R3</strong></p>
+<pre><code class="language-ros">/ip/address/add address=10.0.3.2/24 interface=ether2
+/ip/address/add address=10.0.4.1/24 interface=ether1
+/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.3
+/routing/ospf/area
+add name=area1 area-id=1.1.1.1 type=default instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.3.0/24 area=area1
+add networks=10.0.4.0/24 area=area1
+</code></pre>
+<h2 id="stub-area">Stub Area</h2>
+<p>The main purpose of stub areas is to prevent such areas from carrying external routes. Routing from these areas to the outside world is based on a <a href="#external-routing-information-and-default-route">default route</a>. A stub area reduces the database size in an area and the memory requirements of routers in the area.</p>
+<p>The stub area has a few restrictions. ASBR routers cannot be internal to the area, and the stub area cannot be used as a transit area for virtual links. These restrictions exist because the stub area is configured not to carry external routes.</p>
+<p>This area supports 1, 2, and 3 LSAs.</p>
+<p>Consider the previous example. Area1 is configured as a stub area, meaning routers R2 and R3 will not receive any routing information from the backbone area except the default route.</p>
+<p>R1:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.1
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=area1 area-id=1.1.1.1 type=stub instance=v2inst
+
+/routing/ospf/interface-template
+add networks=10.0.0.0/24 area=backbone_v2
+add networks=10.0.1.0/24 area=area1
+add networks=10.0.3.0/24 area=area1
+</code></pre>
+<p>R2:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.2
+/routing/ospf/area
+add name=area1 area-id=1.1.1.1 type=stub instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.1.0/24 area=area1
+</code></pre>
+<p>R3:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.3
+/routing/ospf/area
+add name=area1 area-id=1.1.1.1 type=stub instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.3.0/24 area=area1
+</code></pre>
+<p>If the <a href="../../../../cli-reference/routing/ospf/area/area.md#default-cost"><code>default-cost</code></a> parameter is not set, then stub area type-3 default LSA will not be originated.</p>
+<h2 id="totally-stubby-area">Totally Stubby Area</h2>
+<p>A totally stubby area is an extension of the stub area. A totally stubby area blocks external routes and summarized (inter-area) routes from going into the area. Only intra-area routes are injected into the area. A totally stubby area is configured as a stub area with an additional <a href="../../../../cli-reference/routing/ospf/area/area.md#no-summaries"><code>no-summaries</code></a> flag. This area supports Type 1, Type 2 LSAs, and Type 3 LSAs with default routes.</p>
+<pre><code class="language-ros">/routing/ospf/area
+add name=totally_stubby_area area-id=1.1.1.1 instance=v2inst type=stub no-summaries
+</code></pre>
+<h2 id="nssa">NSSA</h2>
+<p>Not-so-stubby area (NSSA) applies when external route injection is required, but injection of type 5 LSA routes is not. See also <a href="./understanding-ospf.md#supported-standards">Understanding OSPF</a> for the NSSA RFC reference.</p>
+<p>The illustration shows two areas (backbone and area1) and a RIP connection to the router located in area1. Area1 must be configured as a stub area, but external RIP routes must also be injected into the backbone. Area1 should be configured as NSSA in this case.</p>
+<p>The configuration example does not cover <a href="../rip.md">RIP</a> configuration.</p>
+<p><strong>R1</strong></p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.1
+/routing/ospf/area
+add name=backbone_v2 area-id=0.0.0.0 instance=v2inst
+add name=area1 area-id=1.1.1.1 type=nssa instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.0.0/24 area=backbone_v2
+add networks=10.0.1.0/24 area=area1
+</code></pre>
+<p><strong>R2</strong></p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.0.0.2
+/routing/ospf/area
+add name=area1 area-id=1.1.1.1 type=nssa instance=v2inst
+/routing/ospf/interface-template
+add networks=10.0.1.0/24 area=area1
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Virtual links cannot be used over NSSA areas. Use the <a href="../../../../cli-reference/routing/ospf/area/area.md#nssa-translator"><code>nssa-translator</code></a> parameter to control type-7 to type-5 LSA translation.</p>
+</div>
+<h2 id="external-routing-information-and-default-route">External Routing Information and Default Route</h2>
+<p>On the edge of an OSPF routing domain, you can find routers called <strong>AS boundary routers (ASBRs)</strong> that run one of the other routing protocols. The job of those routers is to import routing information learned from other routing protocols into the OSPF routing domain. External routes can be imported at two separate levels depending on the metric type.</p>
+<ul>
+<li>Type1 - OSPF metric is the sum of the internal OSPF cost and the external route cost.</li>
+<li>Type2 - OSPF metric is equal only to the external route cost.</li>
+</ul>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Type 1 external paths are always preferred over type 2 external paths. When all paths are type 2 external paths, the paths with the smallest advertised type 2 metric are always preferred. (RFC2328)</p>
+</div>
+<p>External routes can be imported in several ways and processed in the listed order:</p>
+<ul>
+<li>Select routes that match the <a href="../../../../cli-reference/routing/ospf/instance.md#redistribute"><code>redistribute</code></a> or <a href="../../../../cli-reference/routing/ospf/instance.md#originate-default"><code>originate-default</code></a> instance parameter.</li>
+<li>If an output routing filter chain is specified:</li>
+<li>If the <a href="../../../../cli-reference/routing/ospf/instance.md#redistribute"><code>redistribute</code></a> or <a href="../../../../cli-reference/routing/ospf/instance.md#originate-default"><code>originate-default</code></a> parameter was used, process only selected routes.</li>
+<li>Otherwise, process all active routes.</li>
+<li>Process selected routes in the <a href="../../../../cli-reference/routing/ospf/instance.md#out-filter-select"><code>out-filter-select</code></a>.</li>
+</ul>
+<p>A <a href="../../route-selection-and-filtering.md">routing filter</a> is still necessary to set route cost and type (when needed).</p>
+<p>The configuration example picks and redistributes all static and RIP routes:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+add name=v2inst version=2 router-id=1.2.3.4 redistribute=static,rip
+</code></pre>
+<p>Redistribution of the default route is a special case where the <code>originate-default</code> parameter should be used:</p>
+<pre><code class="language-ros">/routing/ospf/instance
+set v2inst originate-default=if-installed
+</code></pre>
+<p>When redistribution is controlled by the <code>originate-default</code> and <code>redistribute</code> parameters, it introduces some corner cases for default route filtering.</p>
+<ul>
+<li>If <code>redistribute</code> is enabled, pick all routes matching the redistribute parameters.</li>
+<li>If <code>originate-default=never</code>, a default route will be rejected.</li>
+<li>Run selected routes (or all routes if the redistribute parameter is not set) through <a href="../../../../cli-reference/routing/ospf/instance.md#out-filter-select"><code>out-filter-select</code></a> (if configured).</li>
+<li>Run selected routes through <a href="../../../../cli-reference/routing/ospf/instance.md#out-filter-chain"><code>out-filter-chain</code></a> (if configured). See <a href="../../../../cli-reference/routing/filter/rule"><code>/routing/filter</code></a> for the routing filter reference.</li>
+<li>If <a href="../../../../cli-reference/routing/ospf/instance.md#originate-default"><code>originate-default</code></a> is set to <code>always</code> or <code>if-installed</code>:</li>
+<li>OSPF creates a fake default route without attributes.</li>
+<li>Run this route through <a href="../../../../cli-reference/routing/ospf/instance.md#out-filter-chain"><code>out-filter-chain</code></a> where attributes can be applied, but the action is ignored (always accept).</li>
+</ul>
+<p>For a complete list of redistribution values, see <a href="../../../../cli-reference/routing/ospf/instance.md"><code>/routing/ospf/instance</code></a>.</p>
+<h2 id="route-summarization">Route Summarization</h2>
+<p>Route summarization is a consolidation of multiple routes into one single advertisement. It is done at the area boundaries (Area Border Routers).</p>
+<p>You should summarize in the direction of the backbone. That way, the backbone receives all the aggregated routes and injects them into other areas already summarized. Two types of summarization exist: inter-area and external route summarization.</p>
+<p>Inter-area route summarization works on area boundaries (ABRs). It does not apply to external routes injected into OSPF by using redistribution. By default, the ABR creates a summary LSA for each route in a specific area and advertises it in adjacent areas.</p>
+<p>Ranges allow creating only one summary LSA for multiple routes and sending only a single advertisement into adjacent areas, or suppressing advertisements altogether.</p>
+<p>If a range is configured with the <a href="../../../../cli-reference/routing/ospf/area/range.md"><code>advertise</code></a> parameter, a single summary LSA is advertised for each range if the specific area has any routes under the range. Otherwise (when the <code>advertise</code> parameter is disabled), no summary LSAs are created and advertised outside area boundaries.</p>
+<p>Inter-area route summarization can be configured from the <a href="../../../../cli-reference/routing/ospf/area/range.md"><code>/routing/ospf/area/range</code></a> menu.</p>
+<p>Consider two areas, backbone and area1. Area1 has several /24 routes from the 10.0.0.0/16 range, and you do not have to flood the backbone area with each /24 subnet when it can be summarized. On the router connecting area1 with the backbone, you can set up the area range:</p>
+<pre><code class="language-ros">/routing/ospf/area/range
+add prefix=10.0.0.0/16 area=area1 advertise=yes cost=10
+</code></pre>
+<p>See <a href="../../../../cli-reference/routing/ospf/area/range.md"><code>/routing/ospf/area/range</code></a> for the <a href="../../../../cli-reference/routing/ospf/area/range.md"><code>advertise</code></a> and <a href="../../../../cli-reference/routing/ospf/area/range.md#cost"><code>cost</code></a> parameter references.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>For an active range (i.e. one that has at least one OSPF route from the specified area falling under it), a route with the type 'blackhole' is created and installed in the routing table.</p>
+</div>
+<p>External route summarization can be achieved by using <a href="../../route-selection-and-filtering.md">routing filters</a>. Consider the same example as the previous one, except area1 has redistributed /24 routes from other protocols. To send a single summarized LSA, add a <a href="../../../../cli-reference/ip/route/route.md">blackhole route</a> and configure an appropriate <a href="../../../../cli-reference/routing/filter/rule"><code>/routing/filter/rule</code></a> to accept only the summarized route:</p>
+<pre><code class="language-ros">/ip/route/add dst-address=10.0.0.0/16 blackhole
+/routing/ospf/instance
+set v2inst out-filter-chain=ospf_out
+/routing/filter/rule
+add chain=ospf_out rule=&quot;if (dst == 10.0.0.0/16) {accept} else {reject}&quot;
+</code></pre>
+<h2 id="virtual-link">Virtual Link</h2>
+<p>All OSPF areas must be attached to the backbone area, but sometimes the physical connection is not possible. To overcome this limitation, areas can be attached logically by using <strong>virtual links</strong>.</p>
+<p>There are two common scenarios when virtual links can be used:</p>
+<ul>
+<li>To glue together the fragmented backbone area.</li>
+<li>To connect a remote area without a direct connection to the backbone.</li>
+</ul>
+<h3 id="partitioned-backbone">Partitioned Backbone</h3>
+<p>OSPF allows linking of discontinuous parts of the backbone area by using virtual links. This might be required when two separate OSPF networks are merged into one large network. Virtual links can be configured between separate ABRs touching the backbone area from each side and having a common area.</p>
+<p>The additional area could be created to become a transit area when a common area does not exist. It is illustrated in the previous image.</p>
+<p>Virtual links are not required for non-backbone areas when they get partitioned. OSPF does not actively attempt to repair area partitions. Each component simply becomes a separate area when an area becomes partitioned. The backbone performs routing between the new areas. Some destinations are reachable through <strong>intra-area</strong> routing. The area partition requires <strong>inter-area</strong> routing.</p>
+<p>However, to maintain full routing after the partition, an address range must not be split across multiple components of the area partition. Consider using <a href="../bfd.md">BFD</a> for faster failure detection on virtual links.</p>
+<h3 id="no-physical-connection-to-a-backbone">No Physical Connection to a Backbone</h3>
+<p>An area might not have a physical connection to the backbone. A virtual link provides a logical path to the backbone for the disconnected area. A link must be established between two ABRs sharing a common area, with one ABR connected to the backbone.</p>
+<p>Both R1 and R2 are ABRs, and R1 is connected to the backbone area. Area2 will be used as a <strong>transit area</strong>, and R1 is the <strong>entry point</strong> into the backbone area. A virtual link must be configured on both routers.</p>
+<p>Add virtual link configuration in the <a href="../../../../cli-reference/routing/ospf/interface.md"><code>/routing/ospf/interface</code></a> menu. The <a href="../../../../cli-reference/routing/ospf/interface.md#vlink-transit-area"><code>vlink-transit-area</code></a> and <a href="../../../../cli-reference/routing/ospf/interface.md#vlink-neighbor-id"><code>vlink-neighbor-id</code></a> parameters must be configured on both routers. The configuration based on the diagram is as follows:</p>
+<p>R1:</p>
+<pre><code class="language-ros">/routing/ospf/interface
+add vlink-transit-area=area2 area=backbone_v2 type=virtual-link vlink-neighbor-id=2.2.2.2
+</code></pre>
+<p>R2:</p>
+<pre><code class="language-ros">/routing/ospf/interface
+add vlink-transit-area=area2 area=backbone_v2 type=virtual-link vlink-neighbor-id=1.1.1.1
+</code></pre>
+<hr />
+<h1 id="faq">FAQ</h1>
+<blockquote>
+<p>Frequently asked questions.</p>
+</blockquote>
+<h1 id="faq_1">FAQ</h1>
+<h2 id="neighbors-stuck-in-init-state-or-frequently-flapping">Neighbors Stuck in Init State or Frequently Flapping</h2>
+<p>The most common misconfiguration reasons:</p>
+<ul>
+<li><a href="../../../../cli-reference/routing/ospf/instance.md#router-id"><code>router-id</code></a> is not unique.</li>
+<li>A firewall is blocking OSPF protocol or multicast addresses used by OSPF.</li>
+<li>NAT is configured and is changing OSPF packets.</li>
+</ul>
+<p>The most common network problems:</p>
+<ul>
+<li>Neighbors are connected via an L2 device that blocks or modifies multicast packets.</li>
+<li>Neighbors are connected via a wireless link, which cannot reliably deliver multicast packets.
+The solution for both of these cases is to configure NBMA.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

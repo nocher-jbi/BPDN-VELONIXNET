@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tool · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="tool-part-22">tool (part 2/2)</h1>
+<h1 id="start">start</h1>
+<blockquote>
+<p>Starts the sniffer with the settings in /tool/sniffer. The filter arguments are the filter- settings without the filter- prefix (interface, ip-address, port, ip-protocol), and vlan-id for filter-vlan. With filter...</p>
+</blockquote>
+<hr />
+<h2 id="toolsnifferstart">tool/sniffer/start</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Starts the sniffer with the settings in <a href="."><code>/tool/sniffer</code></a>. The filter arguments are the <code>filter-*</code> settings without the <code>filter-</code> prefix (<code>interface</code>, <code>ip-address</code>, <code>port</code>, <code>ip-protocol</code>), and <code>vlan-id</code> for <code>filter-vlan</code>. With filter arguments, the run uses only the filters given; the saved filters do not apply and do not change. While the sniffer runs, the router turns off IPv4 fast path, and with it FastTrack. The captured packets stay in memory after <a href="stop"><code>stop</code></a>, for <a href="packet"><code>packet</code></a>, <a href="protocol"><code>protocol</code></a>, <a href="host"><code>host</code></a> and <a href="connection"><code>connection</code></a>, for 10 minutes or until the next start. See <a href="../../../diagnostics-monitoring-and-troubleshooting/packet-sniffer">Packet sniffer</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>object { interface: iface_enum
+ }</code> — Interfaces to sniff in this run.</li>
+<li><strong>mac-address</strong> <code>object { mac-address-element: super { !
+, mac-address-with-mask: composite { mac: macAddr
+, mask: [ macAddr]
+ }
+ }
+ }</code> — Up to 16 MAC addresses, or MAC addresses with a mask; a frame matches when its source or destination MAC address matches. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>src-mac-address</strong> <code>object { mac-address-element: super { !
+, mac-address-with-mask: composite { mac: macAddr
+, mask: [ macAddr]
+ }
+ }
+ }</code> — Up to 16 source MAC addresses, or MAC addresses with a mask. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>dst-mac-address</strong> <code>object { mac-address-element: super { !
+, mac-address-with-mask: composite { mac: macAddr
+, mask: [ macAddr]
+ }
+ }
+ }</code> — Up to 16 destination MAC addresses, or MAC addresses with a mask. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>mac-protocol</strong> <code>object { mac-protocol-element: super { !
+, protocol: alt { mac-protocol: enum ()
+, protocol-number: num [ .. 65535]
+ }
+ }
+ }</code> — Up to 16 MAC (L2) protocols, by name or number (0..65535), for example <code>ip</code>, <code>arp</code>, <code>ipv6</code> or <code>802.2</code>. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>ip-protocol</strong> <code>object { ip-protocol-element: super { !
+, ip-protocol: enum ()
+ }
+ }</code> — Up to 16 IP or IPv6 protocols, by name or number, for example <code>icmp</code>, <code>tcp</code> or <code>udp</code>. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>ip-address</strong> <code>object { ip-address-element: super { !
+, ip-address-with-mask: composite { ip: ipAddr
+, mask: [ num [ .. 32]]
+ }
+ }
+ }</code> — Up to 16 IPv4 addresses or prefixes; a packet matches when its source or destination address matches. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>src-ip-address</strong> <code>object { ip-address-element: super { !
+, ip-address-with-mask: composite { ip: ipAddr
+, mask: [ num [ .. 32]]
+ }
+ }
+ }</code> — Up to 16 source IPv4 addresses or prefixes. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>dst-ip-address</strong> <code>object { ip-address-element: super { !
+, ip-address-with-mask: composite { ip: ipAddr
+, mask: [ num [ .. 32]]
+ }
+ }
+ }</code> — Up to 16 destination IPv4 addresses or prefixes. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>ipv6-address</strong> <code>object { ipv6-address-element: super { !
+, ipv6-prefix: ip6Prefix
+ }
+ }</code> — Up to 16 IPv6 prefixes; a packet matches when its source or destination address matches. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>src-ipv6-address</strong> <code>object { ipv6-address-element: super { !
+, ipv6-prefix: ip6Prefix
+ }
+ }</code> — Up to 16 source IPv6 prefixes. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>dst-ipv6-address</strong> <code>object { ipv6-address-element: super { !
+, ipv6-prefix: ip6Prefix
+ }
+ }</code> — Up to 16 destination IPv6 prefixes. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>port</strong> <code>object { port-element: super { !
+, port: enum ()
+ }
+ }</code> — Up to 16 ports, by number or by name such as <code>ssh</code> or <code>telnet</code>; a packet matches when its source or destination port matches. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>src-port</strong> <code>object { port-element: super { !
+, port: enum ()
+ }
+ }</code> — Up to 16 source ports, by number or name. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>dst-port</strong> <code>object { port-element: super { !
+, port: enum ()
+ }
+ }</code> — Up to 16 destination ports, by number or name. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>vlan-id</strong> <code>object { vlan-element: super { !
+, vlan: num [ .. 4095]
+ }
+ }</code> — Up to 16 VLAN IDs (0..4095). Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>direction</strong> <code>enum (any | tx | rx) { any:0, tx:1, rx:2 }</code> — Directions to capture in this run. - <code>any</code> (default) - Received and sent packets. - <code>rx</code> - Received packets. They are captured before the firewall, so packets that a firewall rule drops are still captured. - <code>tx</code> - Sent packets, captured after the firewall.</li>
+<li><strong>operator-between-entries</strong> <code>enum (or | and) { or:0, and:1 }</code> — How the entries of one filter are combined in this run. - <code>or</code> (default) - A packet matches a filter when it matches any of the filter's entries. - <code>and</code> - A packet matches a filter only when it matches all of the filter's entries.</li>
+<li><strong>cpu</strong> <code>object { cpu-element: super { !
+, cpu: num
+ }
+ }</code> — CPU cores that processed the packet. Prefix an entry with <code>!</code> to negate it.</li>
+<li><strong>size</strong> <code>object { size-element: super { !
+, size-range: range [0 .. 65535]
+ }
+ }</code> — Packet sizes or size ranges in bytes (0..65535), for example <code>1000-1500</code>. Prefix an entry with <code>!</code> to negate it.</li>
+</ul>
+<hr />
+<h1 id="stop">stop</h1>
+<blockquote>
+<p>Stops the sniffer. The captured packets stay in memory for 10 minutes, or until the next start: list them in packet, protocol, host and connection, or write them to a file with save.</p>
+</blockquote>
+<hr />
+<h2 id="toolsnifferstop">tool/sniffer/stop</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Stops the sniffer. The captured packets stay in memory for 10 minutes, or until the next <a href="start"><code>start</code></a>: list them in <a href="packet"><code>packet</code></a>, <a href="protocol"><code>protocol</code></a>, <a href="host"><code>host</code></a> and <a href="connection"><code>connection</code></a>, or write them to a file with <a href="save"><code>save</code></a>.</p>
+<hr />
+<h1 id="snmp-get">snmp-get</h1>
+<blockquote>
+<p>Retrieves one OID from an SNMP agent — for example to test that a router answers SNMP queries, as described in the SNMP guide. Use /tool/snmp-walk to retrieve a whole subtree at once.</p>
+</blockquote>
+<hr />
+<h2 id="toolsnmp-get">tool/snmp-get</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Retrieves one OID from an SNMP agent — for example to test that a router answers SNMP queries, as described in the <a href="../../diagnostics-monitoring-and-troubleshooting/snmp">SNMP guide</a>. Use <code>/tool/snmp-walk</code> to retrieve a whole subtree at once.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>oid</strong> <code>object { oid: string
+ }</code> — The OID to read, for example <code>1.3.6.1.2.1.1.5.0</code>.</li>
+<li><strong>next</strong> <code>bool</code> — When set, fetch the OID that follows the given one in the MIB tree (a GETNEXT instead of a GET).</li>
+<li><strong>address</strong> <code>ipAddr</code> — Address of the SNMP agent to query.</li>
+<li><strong>port</strong> <code>num</code> — UDP port of the agent. Default: <code>161</code>.</li>
+<li><strong>tries</strong> <code>num</code> — Number of attempts before giving up.</li>
+<li><strong>try-timeout</strong> <code>time</code> — Timeout for each attempt.</li>
+<li><strong>version</strong> <code>enum (1 | 2c | 3)</code> — SNMP protocol version: <code>1</code>, <code>2c</code>, or <code>3</code>.</li>
+<li><strong>community</strong> <code>string</code> — Community name. For v1/v2c the name is the password; for v3 it is the community that carries the matching security level.</li>
+<li><strong>security</strong> <code>enum (none | authorized | private) { none:0, authorized:1, private:2 }</code> — Security level, matching the community: <code>none</code>, <code>authorized</code>, or <code>private</code>.</li>
+<li><strong>authentication-password</strong> <code>string</code> — SNMPv3 authentication password (at least 8 characters).</li>
+<li><strong>authentication-protocol</strong> <code>enum (MD5 | SHA1 | SHA256 | SHA384 | SHA512)</code> — SNMPv3 authentication protocol: <code>MD5</code>, <code>SHA1</code>, <code>SHA256</code>, <code>SHA384</code>, or <code>SHA512</code>.</li>
+<li><strong>encryption-password</strong> <code>string</code> — SNMPv3 encryption password (at least 8 characters).</li>
+<li><strong>encryption-protocol</strong> <code>enum (DES | AES | AES256)</code> — SNMPv3 encryption protocol: <code>DES</code>, <code>AES</code>, or <code>AES256</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>oid</strong> <code>string</code> — OID of the value the agent returned.</li>
+<li><strong>type</strong> <code>enum (null | integer | counter | gauge | timeticks | unsigned-integer | octet-string | opaque | object-id | ip-address | counter-64bit | no-such-object | no-such-instance | end-of-mib-view)</code> — Value type as returned by the agent.</li>
+<li><strong>value</strong> <code>string</code> — Value the agent returned.</li>
+</ul>
+<hr />
+<h1 id="snmp-walk">snmp-walk</h1>
+<blockquote>
+<p>Retrieves the values of a whole OID subtree from an SNMP agent with repeated GETNEXT requests — for example all interface counters at once, or everything under the MikroTik OID 1.3.6.1.4.1.14988. Use /tool/snmp-get...</p>
+</blockquote>
+<hr />
+<h2 id="toolsnmp-walk">tool/snmp-walk</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Retrieves the values of a whole OID subtree from an SNMP agent with repeated GETNEXT requests — for example all interface counters at once, or everything under the MikroTik OID <code>1.3.6.1.4.1.14988</code>. Use <code>/tool/snmp-get</code> to read a single OID.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>oid</strong> <code>string</code> — The OID where the walk starts; the agent lists that subtree, for example <code>1.3.6.1.2.1.2</code> for the interface table.</li>
+<li><strong>address</strong> <code>ipAddr</code> — Address of the SNMP agent to query.</li>
+<li><strong>port</strong> <code>num</code> — UDP port of the agent. Default: <code>161</code>.</li>
+<li><strong>tries</strong> <code>num</code> — Number of attempts before giving up.</li>
+<li><strong>try-timeout</strong> <code>time</code> — Timeout for each attempt.</li>
+<li><strong>version</strong> <code>enum (1 | 2c | 3)</code> — SNMP protocol version: <code>1</code>, <code>2c</code>, or <code>3</code>.</li>
+<li><strong>community</strong> <code>string</code> — Community name. For v1/v2c the name is the password; for v3 it is the community that carries the matching security level.</li>
+<li><strong>security</strong> <code>enum (none | authorized | private) { none:0, authorized:1, private:2 }</code> — Security level, matching the community: <code>none</code>, <code>authorized</code>, or <code>private</code>.</li>
+<li><strong>authentication-password</strong> <code>string</code> — SNMPv3 authentication password (at least 8 characters).</li>
+<li><strong>authentication-protocol</strong> <code>enum (MD5 | SHA1 | SHA256 | SHA384 | SHA512)</code> — SNMPv3 authentication protocol: <code>MD5</code>, <code>SHA1</code>, <code>SHA256</code>, <code>SHA384</code>, or <code>SHA512</code>.</li>
+<li><strong>encryption-password</strong> <code>string</code> — SNMPv3 encryption password (at least 8 characters).</li>
+<li><strong>encryption-protocol</strong> <code>enum (DES | AES | AES256)</code> — SNMPv3 encryption protocol: <code>DES</code>, <code>AES</code>, or <code>AES256</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>oid</strong> <code>string</code> — OID of the value the agent returned.</li>
+<li><strong>type</strong> <code>enum (null | integer | counter | gauge | timeticks | unsigned-integer | octet-string | opaque | object-id | ip-address | counter-64bit | no-such-object | no-such-instance | end-of-mib-view)</code> — Value type as returned by the agent.</li>
+<li><strong>value</strong> <code>string</code> — Value the agent returned.</li>
+</ul>
+<hr />
+<h1 id="speed-test">speed-test</h1>
+<blockquote>
+<p>Measures the link to another MikroTik router in one run: ping round-trip time, jitter and loss, then TCP and UDP throughput in both directions, through the bandwidth test server of the remote router...</p>
+</blockquote>
+<hr />
+<h2 id="toolspeed-test">tool/speed-test</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Measures the link to another MikroTik router in one run: ping round-trip time, jitter and loss, then TCP and UDP throughput in both directions, through the bandwidth test server of the remote router (<code>/tool/bandwidth-server</code>). The test runs five parts of <code>test-duration</code> each, with a pause of about a second between them, and shows the CPU load of the routers next to the throughput results. The remote router needs the server enabled, a user in a group with the <code>test</code> and <code>winbox</code> policies, and a firewall that accepts TCP port 2000 and the server's UDP ports. Needs the <code>bandwidth-test</code> device-mode feature. For examples, see <a href="../../diagnostics-monitoring-and-troubleshooting/speed-test">Speed Test</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>address (flags=46viD)</code> — IPv4 or IPv6 address of the remote router, which runs the bandwidth test server. Use its address on the path you want to measure, for example its tunnel address to test a VPN.</li>
+<li><strong>connection-count</strong> <code>num</code> — Number of TCP connections the TCP parts of the test use, <code>1..255</code>. The session list of the remote server shows it as <code>tcp-connection-count</code>. Default: 20, or the number of CPU cores of the router that runs the test when it has more than 20 (for example 64 on a 64-core router).</li>
+<li><strong>test-duration</strong> <code>time</code> — Length of each of the five parts of the test, at least 5 seconds. The router pauses for about a second between the parts, so the default test takes about 55 seconds. Default: 10s.</li>
+<li><strong>user</strong> <code>string</code> — User name on the remote router. Its group needs the <code>test</code> and <code>winbox</code> policies, as the default <code>read</code> and <code>full</code> groups have. Without <code>user</code>, the command sends no user name, and every throughput line shows <code>authentication failed</code> unless the server has <code>authenticate=no</code>. The <code>address</code> setting of the user does not limit bandwidth test logins; <code>allowed-addresses4</code> and <code>allowed-addresses6</code> of the server limit which routers can connect.</li>
+<li><strong>password</strong> <code>string</code> — Password of <code>user</code> on the remote router.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Part of the test that is running: - <code>ping</code> - Pings for latency, jitter and loss. - <code>tcp download</code> - TCP from the remote router to this router. - <code>tcp upload</code> - TCP from this router to the remote router. - <code>udp download</code> - UDP from the remote router to this router. - <code>udp upload</code> - UDP from this router to the remote router. - <code>done</code> - The test has ended.</li>
+<li><strong>time-remaining</strong> <code>time</code> — Time until the test ends.</li>
+<li><strong>ping-min-avg-max</strong> <code>string</code> — Shortest, average and longest round-trip time of the pings. The ping part sends ICMP echo requests, 20 per second.</li>
+<li><strong>jitter-min-avg-max</strong> <code>string</code> — Variation of the round-trip time between pings: smallest, average and largest.</li>
+<li><strong>loss</strong> <code>string</code> — Lost pings in percent, followed by lost and sent pings, for example <code>0% (0/100)</code>.</li>
+<li><strong>tcp-download</strong> <code>string</code> — TCP throughput from the remote router to this router, with <code>local-cpu-load</code>, the CPU load of this router. Shows <code>authentication failed</code> when the remote server refuses the user.</li>
+<li><strong>tcp-upload</strong> <code>string</code> — TCP throughput from this router to the remote router, with <code>local-cpu-load</code> and <code>remote-cpu-load</code>, the CPU load of this router and of the remote router. Shows <code>authentication failed</code> when the remote server refuses the user.</li>
+<li><strong>udp-download</strong> <code>string</code> — UDP throughput from the remote router to this router, with <code>local-cpu-load</code> and <code>remote-cpu-load</code>. Shows <code>authentication failed</code> when the remote server refuses the user.</li>
+<li><strong>udp-upload</strong> <code>string</code> — UDP throughput from this router to the remote router, with <code>local-cpu-load</code> and <code>remote-cpu-load</code>. Shows <code>authentication failed</code> when the remote server refuses the user.</li>
+</ul>
+<hr />
+<h1 id="torch">torch</h1>
+<blockquote>
+<p>Shows the traffic that passes one interface right now, grouped into flows by addresses, protocol, ports and DSCP, with the rate of each flow in both directions. Torch sees packets before the firewall, and turns IP...</p>
+</blockquote>
+<hr />
+<h2 id="tooltorch">tool/torch</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Shows the traffic that passes one interface right now, grouped into flows by addresses, protocol, ports and DSCP, with the rate of each flow in both directions. Torch sees packets before the firewall, and turns IP fast path off while it runs. It runs until stopped with Ctrl-C or until <code>duration</code> ends. For examples and how to read the output, see <a href="../../diagnostics-monitoring-and-troubleshooting/torch">Torch</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to watch. The name can be given without <code>interface=</code>, for example <code>/tool/torch bridge</code>.</li>
+<li><strong>src-address</strong> <code>super { !
+, src-address: ipPrefix
+ }</code> — Show only flows whose <code>src-address</code> is in this IPv4 prefix. <code>src-address</code> of a flow is the address on the far side of the interface, whose traffic the interface receives. Default: any.</li>
+<li><strong>dst-address</strong> <code>super { !
+, dst-address: ipPrefix
+ }</code> — Show only flows whose <code>dst-address</code>, the other end of the flow, is in this IPv4 prefix. Default: any.</li>
+<li><strong>src-address6</strong> <code>super { !
+, src-address6: ip6Prefix
+ }</code> — IPv6 prefix for <code>src-address</code>, the far side of the interface. Default: any.</li>
+<li><strong>dst-address6</strong> <code>super { !
+, dst-address6: ip6Prefix
+ }</code> — IPv6 prefix for <code>dst-address</code>, the other end of the flow. Default: any.</li>
+<li><strong>mac-protocol</strong> <code>enum (any) { any:3 }</code> — Show only flows of this MAC protocol, for example <code>ip</code>. Default: any.</li>
+<li><strong>ip-protocol</strong> <code>enum (any) { any:256 }</code> — Show only flows of this IP protocol, for example <code>tcp</code>. Default: any.</li>
+<li><strong>port</strong> <code>enum (any) { any:0 }</code> — Show only flows with this port as <code>src-port</code> or <code>dst-port</code>, one port or <code>any</code>. The filter applies to flows that have ports: flows without ports, such as ICMP, still appear. Default: any.</li>
+<li><strong>vlan-id</strong> <code>alt { number: num [ .. 4095]
+, enum: enum (any) { any:0xffff }
+ }</code> — Show only frames with this VLAN ID, <code>0..4095</code>, or <code>any</code>. Tagged frames on the parent interface get a <code>VLAN-ID</code> column also without this filter. Default: any.</li>
+<li><strong>dscp</strong> <code>num</code> — Show only flows with this DSCP value, <code>0..63</code>, for example <code>46</code> for Expedited Forwarding. Default: any.</li>
+<li><strong>cpu</strong> <code>num</code> — With <code>any</code>, adds a <code>CPU</code> column: one row for each CPU that handled packets of a flow.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>cpu</strong> <code>num</code> — CPU that handled the packets of the row. Shown with <code>cpu=any</code>.</li>
+<li><strong>vlan-id</strong> <code>num</code> — VLAN ID of the flow. Shown for tagged frames on the parent interface; on the VLAN interface itself the frames are untagged and the column does not appear.</li>
+<li><strong>mac-protocol</strong> <code>enum ()</code> — MAC protocol of the flow, for example <code>ip</code>.</li>
+<li><strong>ip-protocol</strong> <code>enum ()</code> — IP protocol of the flow, for example <code>tcp</code>, <code>udp</code> or <code>icmp</code>.</li>
+<li><strong>dscp</strong> <code>num</code> — DSCP value of the flow.</li>
+<li><strong>src-address</strong> <code>alt { ip: ipAddr
+, ipv6: ip6Addr
+ }</code> — Address on the far side of the interface: the side whose traffic the interface receives, also when the router started the conversation.</li>
+<li><strong>src-port</strong> <code>enum ()</code> — Port on the <code>src-address</code> side, for TCP and UDP flows, shown with its service name.</li>
+<li><strong>dst-address</strong> <code>alt { ip: ipAddr
+, ipv6: ip6Addr
+ }</code> — The other end of the flow.</li>
+<li><strong>dst-port</strong> <code>enum ()</code> — Port on the <code>dst-address</code> side, for TCP and UDP flows, shown with its service name, such as <code>2000 (btserv)</code>.</li>
+<li><strong>tx</strong> <code>num</code> — Rate of the traffic the interface sends towards <code>src-address</code>, in bits per second.</li>
+<li><strong>rx</strong> <code>num</code> — Rate of the traffic the interface receives from <code>src-address</code>, in bits per second.</li>
+<li><strong>tx-packets</strong> <code>num</code> — Packets per second the interface sends towards <code>src-address</code>.</li>
+<li><strong>rx-packets</strong> <code>num</code> — Packets per second the interface receives from <code>src-address</code>.</li>
+</ul>
+<hr />
+<h1 id="traceroute">traceroute</h1>
+<blockquote>
+<p>Traces the path to a host: sends probes with a growing TTL and lists the routers that answer, with loss and round-trip statistics for each hop. The trace repeats every second until you stop it, until count rounds are...</p>
+</blockquote>
+<hr />
+<h2 id="tooltraceroute">tool/traceroute</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Traces the path to a host: sends probes with a growing TTL and lists the routers that answer, with loss and round-trip statistics for each hop. The trace repeats every second until you stop it, until <code>count</code> rounds are done or until <code>duration</code> ends. For examples and how to read the results, see <a href="../../diagnostics-monitoring-and-troubleshooting/traceroute">Traceroute</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>address (flags=46viD)</code> — IP or IPv6 address, or DNS name, of the destination. A name is resolved by the router's DNS resolver. See <a href="../../cli-reference/#address-flags">address flags</a>.</li>
+<li><strong>port</strong> <code>num</code> — Destination UDP port of the probes with <code>protocol=udp</code>. Every probe uses the same port. Default: 33434.</li>
+<li><strong>size</strong> <code>num</code> — Size of each probe as a whole IP packet, in bytes, including the IP header. Default: 28, which is an IPv4 probe without payload.</li>
+<li><strong>dscp</strong> <code>num</code> — DSCP value set in the IP header of the probes.</li>
+<li><strong>do-not-fragment</strong> <code>switch</code> — Sets the Don't Fragment flag in the IP header of the probes. With a large <code>size</code>, the router with a smaller link on the path answers with <code>fragmentation needed from &lt;address&gt;</code>.</li>
+<li><strong>use-dns</strong> <code>bool</code> — Show the host names of the hops instead of their addresses. The names are looked up with reverse DNS queries through the router's DNS resolver; a hop without a reverse DNS record keeps its address. Default: no.</li>
+<li><strong>count</strong> <code>num</code> — Number of rounds to run. Without <code>count</code>, the trace repeats every second until you stop it. Default: unlimited.</li>
+<li><strong>max-hops</strong> <code>num</code> — Highest TTL to try: when the destination does not answer, the round ends after this many hops. Default: 30.</li>
+<li><strong>protocol</strong> <code>enum (icmp | udp)</code> — Type of the probes. - <code>icmp</code> (default) - ICMP echo requests. The destination answers with an echo reply. - <code>udp</code> - UDP datagrams to <code>port</code>. The destination answers with an ICMP port unreachable message.</li>
+<li><strong>src-address</strong> <code>alt { ipv6-address: ip6Addr
+, ip-address: ipAddr
+ }</code> — Source address of the probes. Routing rules that match the source address apply to the probes. Default: the <code>pref-src</code> of the route, otherwise the address of the outgoing interface.</li>
+<li><strong>timeout</strong> <code>time</code> — How long each probe waits for its answer before the next probe is sent. Default: 1s.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF whose routing table the probes use. Only VRFs are accepted; a routing table created for policy routing is refused. Default: main.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to send the probes out of. When no route through the interface covers the destination, the router treats the destination as directly connected there and sends ARP requests for it.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>object { address: alt { name: string
+, address: ip6Addr
+ }
+ }</code> — Address of the router that answered for this hop, or its host name with <code>use-dns=yes</code>. Empty when no probe to the hop got an answer.</li>
+<li><strong>loss</strong> <code>num</code> — Percentage of the probes to this hop that got no answer.</li>
+<li><strong>sent</strong> <code>num</code> — Number of probes sent to this hop.</li>
+<li><strong>last</strong> <code>num</code> — Round-trip time of the last answer from this hop. The printed table shows <code>timeout</code> when the last probe got no answer.</li>
+<li><strong>avg</strong> <code>num</code> — Average round-trip time of the answers from this hop.</li>
+<li><strong>best</strong> <code>num</code> — Shortest round-trip time of the answers from this hop.</li>
+<li><strong>worst</strong> <code>num</code> — Longest round-trip time of the answers from this hop.</li>
+<li><strong>std-dev</strong> <code>num</code> — Standard deviation of the round-trip times of this hop: how much they vary from round to round.</li>
+<li><strong>status</strong> <code>string</code> — Error the hop answered with instead of time exceeded, for example <code>network unreachable from 203.0.113.1</code> (no route, or a firewall <code>reject</code> with the default message), <code>host unreachable from 203.0.113.1</code>, <code>packet filtered from 203.0.113.1</code> (a firewall rejects the probe as administratively prohibited) or <code>fragmentation needed from 203.0.113.6</code> (with <code>do-not-fragment</code>, the probe is larger than the next link's MTU). The round ends at such a hop. Empty when the hop answers normally.</li>
+<li><strong>error</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="traffic-generator">traffic-generator</h1>
+<blockquote>
+<p>RouterOS settings reference for /tool/traffic-generator.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generator">tool/traffic-generator</h2>
+<p><strong>Type:</strong> Settings Directory
+Overall traffic generator settings and commands. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>test-id</strong> <code>num</code> — ID of the test session. The <code>start</code> and <code>quick</code> commands accept <code>test-id</code> to override it. Default: 0.</li>
+<li><strong>measure-out-of-order</strong> <code>bool</code> — Whether received packets that arrive out of order are measured and reported. When enabled on a multi-core device, a single stream uses a single CPU core. Default: no on multi-core devices, yes on single-core devices.</li>
+<li><strong>latency-distribution-max</strong> <code>time</code> — Maximum latency range for latency-distribution measurements. RouterOS derives the <code>latency-distribution-measure-interval</code> range from this value. Default: 100us.</li>
+<li><strong>stats-samples-to-keep</strong> <code>num</code> — How many statistics samples to keep. Default: 100.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>running</strong> <code>bool</code> — Whether the traffic generator is currently running.</li>
+<li><strong>latency-distribution-samples</strong> <code>num</code> — Number of individual latency ranges into which latency-distribution-measure-interval is divided.</li>
+<li><strong>latency-distribution-measure-interval</strong> <code>string</code> — The total latency measurement range currently in use, for example 0-2.67us.</li>
+</ul>
+<hr />
+<h1 id="inject-pcap">inject-pcap</h1>
+<blockquote>
+<p>RouterOS command reference for /tool/traffic-generator/inject-pcap.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorinject-pcap">tool/traffic-generator/inject-pcap</h2>
+<p><strong>Type:</strong> Command
+Replays packets from a PCAP or PCAPNG file on an interface. PCAPNG is the format the <a href="../../../diagnostics-monitoring-and-troubleshooting/packet-sniffer">sniffer tool</a> saves captures in.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the captured packets are replayed on.</li>
+<li><strong>pcap-file</strong> <code>file</code> — Name of a PCAP or PCAPNG file stored on the router.</li>
+<li><strong>speed-multiplier</strong> <code>num</code> — Replay speed multiplier relative to the capture rate (1 replays in real time).</li>
+<li><strong>loop</strong> <code>bool</code> — Whether the capture is replayed in a loop.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>iteration</strong> <code>num</code> — Current replay iteration number (in loop mode).</li>
+<li><strong>tx-packets</strong> <code>num</code> — Packets replayed so far.</li>
+<li><strong>tx-bytes</strong> <code>num</code> — Bytes replayed so far.</li>
+</ul>
+<hr />
+<h1 id="inject">inject</h1>
+<blockquote>
+<p>RouterOS command reference for /tool/traffic-generator/inject.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorinject">tool/traffic-generator/inject</h2>
+<p><strong>Type:</strong> Command
+Injects raw data into an interface.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the raw data is injected to.</li>
+<li><strong>data</strong> <code>string</code> — Raw data to inject, as a hexadecimal string.</li>
+<li><strong>priority</strong> <code>num</code> — Priority of the injected packet.</li>
+</ul>
+<hr />
+<h1 id="packet-template">packet-template</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/packet-template.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorpacket-template">tool/traffic-generator/packet-template</h2>
+<p><strong>Type:</strong> Directory
+Builds the packet content of a stream from header parameters: MAC, VLAN, IPv4/IPv6, UDP and TCP fields, plus the payload. Many header values are assumed when they can be derived; assumed values are read-only and are re-derived when the template is edited. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Descriptive name of the packet template.</li>
+<li><strong>header-stack</strong> <code>multi { header: enum (mac | vlan | ip | udp | raw | ipv6 | tcp) { mac:1, vlan:2, ip:3, udp:4, raw:5, ipv6:6, tcp:7 }
+ }</code> — Sequence of headers in the generated packet: mac (Ethernet, 14 bytes), vlan (802.1Q tag, 4 bytes), ip (IPv4, 20 bytes), udp (UDP, 8 bytes), raw (arbitrary bytes as a hex string), ipv6 (IPv6, 40 bytes), tcp (TCP). Most header types may appear several times; there can be at most two IP headers and one UDP header per packet. Sequence limitations follow protocol rules (for example a VLAN header can follow only a mac header or another VLAN header).</li>
+<li><strong>port</strong> <code>enum</code> — Name of the port (from the port menu) the packets are sent out through. Mutually exclusive with interface; the port can also be set in the stream.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the packets are sent out through. Mutually exclusive with port; convenient for quick tests since a port entry is then created dynamically.</li>
+<li><strong>mac-src</strong> <code>multi { array-id, array-id, mac-mask: composite { mac: macAddr
+, mask: [ macAddr]
+ }
+ }</code> — Source MAC address(es), with optional masks, of the Ethernet header.</li>
+<li><strong>mac-dst</strong> <code>multi { array-id, array-id, mac-mask: composite { mac: macAddr
+, mask: [ macAddr]
+ }
+ }</code> — Destination MAC address(es), with optional masks, of the Ethernet header.</li>
+<li><strong>mac-protocol</strong> <code>multi { protocol: alt { protocol-name: enum ()
+, protocol-number: num [ .. 65535]
+ }
+ }</code> — EtherType of the Ethernet frame, by name or by protocol number (0-65535).</li>
+<li><strong>vlan-priority</strong> <code>multi { priority: num [ .. 7]
+ }</code> — VLAN priority (0-7) of the 802.1Q tag.</li>
+<li><strong>vlan-id</strong> <code>multi { id: num [ .. 4095]
+ }</code> — VLAN ID (0-4095) of the 802.1Q tag.</li>
+<li><strong>vlan-protocol</strong> <code>multi { protocol: alt { protocol-name: enum ()
+, protocol-number: num [ .. 65535]
+ }
+ }</code> — VLAN protocol, by name or by EtherType number (0-65535).</li>
+<li><strong>ip-dscp</strong> <code>multi { dscp: num [ .. 255]
+ }</code> — DS Field value(s) (0-255) of the IPv4 header (DS Field holds the DSCP and ECN values).</li>
+<li><strong>ip-id</strong> <code>multi { id: num [ .. 65535]
+ }</code> — IPv4 identification value(s) (0-65535).</li>
+<li><strong>ip-frag-off</strong> <code>multi { frag-off: num [ .. 65535]
+ }</code> — IPv4 fragmentation offset(s) (0-65535).</li>
+<li><strong>ip-ttl</strong> <code>multi { ttl: num [ .. 255]
+ }</code> — IPv4 time-to-live value(s) (0-255).</li>
+<li><strong>ip-src</strong> <code>multi { array-id, array-id, ip-range: ipRange
+ }</code> — Source IPv4 address(es), with optional masks, of the IPv4 header.</li>
+<li><strong>ip-dst</strong> <code>multi { array-id, array-id, ip-range: ipRange
+ }</code> — Destination IPv4 address(es), with optional masks, of the IPv4 header.</li>
+<li><strong>ip-protocol</strong> <code>multi { protocol-name: enum ()
+ }</code> — IPv4 protocol, for example tcp, udp or icmp.</li>
+<li><strong>ip-gateway</strong> <code>ipAddr</code> — Next-hop IPv4 address. When the sender and the receiver are the same device the next hop cannot be derived from ip-dst; when ip-gateway is set, the destination MAC is assumed from the resolved gateway.</li>
+<li><strong>udp-src-port</strong> <code>multi { array-id, array-id, port-range: range [ .. 65535]
+ }</code> — UDP source port(s) or port range(s) (0-65535).</li>
+<li><strong>udp-dst-port</strong> <code>multi { array-id, array-id, port-range: range [ .. 65535]
+ }</code> — UDP destination port(s) or port range(s) (0-65535).</li>
+<li><strong>udp-checksum</strong> <code>multi { array-id, checksum: num [ .. 65535]
+ }</code> — UDP checksum value(s) (0-65535).</li>
+<li><strong>raw-header</strong> <code>multi { raw-header: string
+ }</code> — Raw header bytes as a hexadecimal string.</li>
+<li><strong>ipv6-src</strong> <code>multi { array-id, array-id, ipv6-mask: ip6Prefix
+ }</code> — Source IPv6 address(es), with optional masks, of the IPv6 header.</li>
+<li><strong>ipv6-dst</strong> <code>multi { array-id, array-id, ipv6-mask: ip6Prefix
+ }</code> — Destination IPv6 address(es), with optional masks, of the IPv6 header.</li>
+<li><strong>ipv6-next-header</strong> <code>multi { protocol: enum ()
+ }</code> — IPv6 Next Header protocol.</li>
+<li><strong>ipv6-gateway</strong> <code>ip6Addr</code> — Next-hop IPv6 address; the destination MAC is assumed from the resolved gateway.</li>
+<li><strong>ipv6-traffic-class</strong> <code>multi { traffic-class: num [ .. 255]
+ }</code> — IPv6 traffic class value(s) (0-255).</li>
+<li><strong>ipv6-flow-label</strong> <code>multi { flow-label: num [ .. 0xfffff]
+ }</code> — IPv6 flow label value(s) (0-1048575).</li>
+<li><strong>ipv6-hop-limit</strong> <code>multi { hop-limit: num [ .. 255]
+ }</code> — IPv6 hop limit value(s) (0-255).</li>
+<li><strong>tcp-src-port</strong> <code>multi { array-id, array-id, port-range: range [ .. 65535]
+ }</code> — TCP source port(s) or port range(s) (0-65535).</li>
+<li><strong>tcp-dst-port</strong> <code>multi { array-id, array-id, port-range: range [ .. 65535]
+ }</code> — TCP destination port(s) or port range(s) (0-65535).</li>
+<li><strong>tcp-syn</strong> <code>multi { array-id, array-id, syn-range: range
+ }</code> — TCP sequence number value(s), can be a range.</li>
+<li><strong>tcp-ack</strong> <code>multi { array-id, array-id, ack-range: range
+ }</code> — TCP acknowledgement number value(s), can be a range.</li>
+<li><strong>tcp-data-offset</strong> <code>multi { data-offset: num [ .. 15]
+ }</code> — TCP data offset (0-15, in 32-bit words).</li>
+<li><strong>tcp-flags</strong> <code>multi { flags: ubit (fin, syn, rst, psh, ack, urg, ece, cwr, ns, res0, res1, res2)
+ }</code> — TCP flag bits to set: fin, syn, rst, psh, ack, urg, ece, cwr, ns, res0, res1, res2.</li>
+<li><strong>tcp-window-size</strong> <code>multi { window-size: num [ .. 65535]
+ }</code> — TCP window size value(s) (0-65535).</li>
+<li><strong>tcp-urgent-pointer</strong> <code>multi { urgent-pointer: num [ .. 65535]
+ }</code> — TCP urgent pointer value(s) (0-65535).</li>
+<li><strong>data</strong> <code>enum (uninitialized | random | specific-byte | incrementing) { uninitialized:0, random:1, specific-byte:2, incrementing:3 }</code> — How the packet payload (after the header) is filled: uninitialized (not zeroed; fastest), specific-byte (with data-byte), incrementing (bytes 00 01 02 ...), random (random bytes; slowest).</li>
+<li><strong>data-byte</strong> <code>num</code> — Byte used to fill the payload when data=specific-byte.</li>
+<li><strong>random-byte-offsets-and-masks</strong> <code>multi { array-id, array-id, offset-and-mask: composite { offset: num [ .. 256]
+, mask: num [ .. 255]
+ }
+ }</code> — Byte offsets in the packet, each with a bit mask, that are filled with random values.</li>
+<li><strong>random-ranges</strong> <code>object { random-range: super { offset: num [ .. 256]
+, [width] :enum (8 | 16 | 32) { 8:8, 16:16, 32:32 }
+, [range] :range
+ }
+ }</code> — Fields at given byte offsets that are filled with random values: <code>width</code> sets the field size (8, 16 or 32 bits) and <code>range</code> the range of the values.</li>
+<li><strong>special-footer</strong> <code>bool</code> — Whether a special footer is appended to the generated packets.</li>
+<li><strong>compute-checksum-from-offset</strong> <code>num</code> — Byte offset from which the 2-byte checksum is calculated; for example 14 skips the Ethernet header. no-checksum disables the checksum.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>assumed-port</strong> <code>enum (none) { none:0xffffffff }</code> — Assumed port the packets are sent out through, derived when only an interface is set.</li>
+<li><strong>assumed-interface</strong> <code>iface_enum</code> — Assumed interface the packets are sent out through.</li>
+<li><strong>assumed-mac-src</strong> <code>multi { mac: macAddr
+ }</code> — Assumed source MAC address (the MAC address of the interface).</li>
+<li><strong>assumed-mac-dst</strong> <code>multi { mac: macAddr
+ }</code> — Assumed destination MAC address, derived from ip-dst or from resolving ip-gateway.</li>
+<li><strong>assumed-mac-protocol</strong> <code>multi { protocol: alt { protocol-name: enum ()
+, protocol-number: num
+ }
+ }</code> — Assumed EtherType, derived from the header stack (for example ip).</li>
+<li><strong>assumed-vlan-priority</strong> <code>multi { priority: num
+ }</code> — Assumed VLAN priority of the 802.1Q tag.</li>
+<li><strong>assumed-vlan-id</strong> <code>multi { priority: num
+ }</code> — Assumed VLAN ID of the 802.1Q tag.</li>
+<li><strong>assumed-vlan-protocol</strong> <code>multi { protocol: alt { protocol-name: enum ()
+, protocol-number: num
+ }
+ }</code> — Assumed VLAN protocol of the 802.1Q tag.</li>
+<li><strong>assumed-ip-dscp</strong> <code>multi { dscp: num
+ }</code> — Assumed IPv4 DS Field value.</li>
+<li><strong>assumed-ip-id</strong> <code>multi { id: num
+ }</code> — Assumed IPv4 identification value.</li>
+<li><strong>assumed-ip-frag-off</strong> <code>multi { frag-off: num
+ }</code> — Assumed IPv4 fragmentation offset.</li>
+<li><strong>assumed-ip-ttl</strong> <code>multi { ttl: num
+ }</code> — Assumed IPv4 time-to-live value (for example 64).</li>
+<li><strong>assumed-ip-src</strong> <code>multi { assumed-ip-src: ipAddr
+ }</code> — Assumed source IPv4 address (an address of the interface).</li>
+<li><strong>assumed-ip-dst</strong> <code>multi { assumed-ip-dst: ipAddr
+ }</code> — Assumed destination IPv4 address.</li>
+<li><strong>assumed-ip-protocol</strong> <code>multi { ip-protocol: enum ()
+ }</code> — Assumed IPv4 protocol, derived from the header stack (for example udp).</li>
+<li><strong>assumed-udp-src-port</strong> <code>multi { port: num
+ }</code> — Assumed UDP source port.</li>
+<li><strong>assumed-udp-dst-port</strong> <code>multi { port: num
+ }</code> — Assumed UDP destination port.</li>
+<li><strong>assumed-udp-checksum</strong> <code>multi { checksum: num
+ }</code> — Assumed UDP checksum value.</li>
+<li><strong>assumed-raw-header</strong> <code>multi { assumed-raw-header: string
+ }</code> — Assumed raw header bytes, as a hexadecimal string.</li>
+<li><strong>assumed-ipv6-src</strong> <code>multi { ip: ip6Addr
+ }</code> — Assumed source IPv6 address (an address of the interface).</li>
+<li><strong>assumed-ipv6-dst</strong> <code>multi { ip: ip6Addr
+ }</code> — Assumed destination IPv6 address.</li>
+<li><strong>assumed-ipv6-next-header</strong> <code>multi { ip-protocol: enum ()
+ }</code> — Assumed IPv6 Next Header protocol.</li>
+<li><strong>assumed-ipv6-traffic-class</strong> <code>multi { traffic-class: num
+ }</code> — Assumed IPv6 traffic class value.</li>
+<li><strong>assumed-ipv6-flow-label</strong> <code>multi { flow-label: num
+ }</code> — Assumed IPv6 flow label value.</li>
+<li><strong>assumed-ipv6-hop-limit</strong> <code>multi { hop-limit: num
+ }</code> — Assumed IPv6 hop limit value.</li>
+<li><strong>assumed-tcp-src-port</strong> <code>multi { port: num
+ }</code> — Assumed TCP source port.</li>
+<li><strong>assumed-tcp-dst-port</strong> <code>multi { port: num
+ }</code> — Assumed TCP destination port.</li>
+<li><strong>assumed-tcp-syn</strong> <code>multi { syn: num
+ }</code> — Assumed TCP sequence number.</li>
+<li><strong>assumed-tcp-ack</strong> <code>multi { ack: num
+ }</code> — Assumed TCP acknowledgement number.</li>
+<li><strong>assumed-tcp-data-offset</strong> <code>multi { data-offset: num
+ }</code> — Assumed TCP data offset.</li>
+<li><strong>assumed-tcp-flags</strong> <code>multi { flags: num
+ }</code> — Assumed TCP flags.</li>
+<li><strong>assumed-tcp-window-size</strong> <code>multi { window-size: num
+ }</code> — Assumed TCP window size.</li>
+<li><strong>assumed-tcp-urgent-pointer</strong> <code>multi { urgent-pointer: num
+ }</code> — Assumed TCP urgent pointer value.</li>
+</ul>
+<hr />
+<h1 id="port">port</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/port.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorport">tool/traffic-generator/port</h2>
+<p><strong>Type:</strong> Directory
+Ports bind an interface to the traffic generator for transmitting and receiving generated packets. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Descriptive name of the port.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Name of the interface associated with the port. Mandatory.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>first-header</strong> <code>enum (mac | vlan | ip | udp | raw | ipv6 | tcp) { mac:1, vlan:2, ip:3, udp:4, raw:5, ipv6:6, tcp:7 }</code> — Suggested first header for packets sent out of this interface. Can be used when creating packet templates.</li>
+</ul>
+<hr />
+<h1 id="quick">quick</h1>
+<blockquote>
+<p>RouterOS command reference for /tool/traffic-generator/quick.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorquick">tool/traffic-generator/quick</h2>
+<p><strong>Type:</strong> Command
+Starts the traffic generator, prints the statistics to the terminal and assembles the latency/jitter report. Parameters override the values configured in the stream and the packet template; if a parameter specifies only one header, the value is multiplied for the other headers.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>entries-to-show</strong> <code>num</code> — How many status lines to print to the terminal.</li>
+<li><strong>test-id</strong> <code>num</code> — Test session ID (see the general traffic-generator menu).</li>
+<li><strong>measure-out-of-order</strong> <code>bool</code> — Whether out-of-order received packets are measured and reported for this test.</li>
+<li><strong>cpu-core</strong> <code>multi { array-id, array-id, cpu-core: range [0 .. 255]
+ }</code> — CPU core or range of cores (0-255) the streams are pinned to, for multi-core tests.</li>
+<li><strong>stream</strong> <code>multi { stream: enum
+ }</code> — Names of the streams to start.</li>
+<li><strong>port</strong> <code>multi { port: enum
+ }</code> — Ports to start transmitting from.</li>
+<li><strong>interface</strong> <code>multi { port: iface_enum
+ }</code> — Interfaces to start transmitting from; a port is implied for each.</li>
+<li><strong>id</strong> <code>multi { id: num [0 .. 255]
+ }</code> — Stream IDs to start.</li>
+<li><strong>packet-size</strong> <code>multi { array-id, array-id, packet-size: range [1 .. 65535]
+ }</code> — Override the generated packet size (in bytes); a range generates random sizes.</li>
+<li><strong>pps</strong> <code>multi { pps: num
+ }</code> — Override the packets-per-second rate.</li>
+<li><strong>mbps</strong> <code>multi { mbps: num
+ }</code> — Override the megabits-per-second rate.</li>
+<li><strong>tx-template</strong> <code>multi { tx-template: enum
+ }</code> — Override the packet templates used as the packet content source (up to 16).</li>
+<li><strong>packet-count</strong> <code>multi { packet-count: num
+ }</code> — Override the number of packets to transmit.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>seq</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Measurement sequence number, or TOT for totals.</li>
+<li><strong>id</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Stream ID, or TOT for totals across streams.</li>
+<li><strong>tx-packet</strong> <code>num</code> — Total packets transmitted.</li>
+<li><strong>tx-rate</strong> <code>num</code> — Current transmit rate in bps.</li>
+<li><strong>rx-packet</strong> <code>num</code> — Total packets received.</li>
+<li><strong>rx-rate</strong> <code>num</code> — Current receive rate in bps.</li>
+<li><strong>rx-ooo</strong> <code>num</code> — Received packets that were out of order.</li>
+<li><strong>rx-bad-csum</strong> <code>num</code> — Received packets with a bad checksum.</li>
+<li><strong>lost-packet</strong> <code>num</code> — Total lost packets (transmitted minus received).</li>
+<li><strong>lost-rate</strong> <code>num</code> — Current loss rate in bps.</li>
+<li><strong>lost-ratio</strong> <code>string</code> — Loss as a percentage of transmitted packets.</li>
+<li><strong>lat-min</strong> <code>string</code> — Minimum measured latency.</li>
+<li><strong>lat-avg</strong> <code>string</code> — Average measured latency.</li>
+<li><strong>lat-max</strong> <code>string</code> — Maximum measured latency.</li>
+<li><strong>jitter</strong> <code>string</code> — Measured latency variation (jitter).</li>
+</ul>
+<hr />
+<h1 id="raw-packet-template">raw-packet-template</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/raw-packet-template.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorraw-packet-template">tool/traffic-generator/raw-packet-template</h2>
+<p><strong>Type:</strong> Directory
+Builds packet content from a raw header string. Use this when you need low-level packets that the packet-template builder cannot express. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Descriptive name of the RAW packet template.</li>
+<li><strong>port</strong> <code>enum</code> — Name of the port (from the port menu) the packets are sent out through.</li>
+<li><strong>header</strong> <code>string</code> — RAW packet header as a hexadecimal string; it fully defines the header stack.</li>
+<li><strong>data</strong> <code>enum (uninitialized | random | specific-byte | incrementing) { uninitialized:0, random:1, specific-byte:2, incrementing:3 }</code> — How the packet payload (after the header) is filled: uninitialized (not zeroed; fastest), specific-byte (with data-byte), incrementing (bytes 00 01 02 ...), random (random bytes; slowest).</li>
+<li><strong>data-byte</strong> <code>num</code> — Byte used to fill the payload when data=specific-byte.</li>
+<li><strong>random-byte-offsets-and-masks</strong> <code>multi { array-id, array-id, offset-and-mask: composite { offset: num [ .. 256]
+, mask: num [ .. 255]
+ }
+ }</code> — Byte offsets in the packet, each with a bit mask, that are filled with random values.</li>
+<li><strong>random-ranges</strong> <code>object { random-range: super { offset: num [ .. 256]
+, [width] :enum (8 | 16 | 32) { 8:8, 16:16, 32:32 }
+, [range] :range
+ }
+ }</code> — Fields at given byte offsets that are filled with random values: <code>width</code> sets the field size (8, 16 or 32 bits) and <code>range</code> the range of the values.</li>
+<li><strong>ip-header-offset</strong> <code>multi { ip-header-offset: num [ .. 65535]
+ }</code> — Byte offset of the IPv4 header within the packet, so the generator can locate and parse it.</li>
+<li><strong>ipv6-header-offset</strong> <code>multi { ipv6-header-offset: num [ .. 65535]
+ }</code> — Byte offset of the IPv6 header within the packet.</li>
+<li><strong>udp-header-offset</strong> <code>multi { udp-header-offset: num [ .. 65535]
+ }</code> — Byte offset of the UDP header within the packet.</li>
+<li><strong>udp-compute-checksum</strong> <code>multi { udp-compute-checksum: bool
+ }</code> — Whether the UDP checksum is computed by the generator.</li>
+<li><strong>tcp-header-offset</strong> <code>multi { tcp-header-offset: num [ .. 65535]
+ }</code> — Byte offset of the TCP header within the packet.</li>
+<li><strong>special-footer</strong> <code>bool</code> — Whether a special footer is appended to the generated packets.</li>
+<li><strong>compute-checksum-from-offset</strong> <code>num</code> — Byte offset from which the 2-byte checksum is calculated; for example 14 skips the Ethernet header. no-checksum disables the checksum.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>header-length</strong> <code>num</code> — Total length of the packet header in bytes.</li>
+</ul>
+<hr />
+<h1 id="start_1">start</h1>
+<blockquote>
+<p>RouterOS command reference for /tool/traffic-generator/start.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstart">tool/traffic-generator/start</h2>
+<p><strong>Type:</strong> Command
+Starts the traffic generator in the background. All parameters override the values configured in the stream and the packet template (like in the quick command).</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>test-id</strong> <code>num</code> — Test session ID (see the general traffic-generator menu).</li>
+<li><strong>measure-out-of-order</strong> <code>bool</code> — Whether out-of-order received packets are measured and reported for this test.</li>
+<li><strong>cpu-core</strong> <code>multi { array-id, array-id, cpu-core: range [0 .. 255]
+ }</code> — CPU core or range of cores (0-255) the streams are pinned to, for multi-core tests.</li>
+<li><strong>stream</strong> <code>multi { stream: enum
+ }</code> — Names of the streams to start.</li>
+<li><strong>port</strong> <code>multi { port: enum
+ }</code> — Ports to start transmitting from.</li>
+<li><strong>interface</strong> <code>multi { port: iface_enum
+ }</code> — Interfaces to start transmitting from; a port is implied for each.</li>
+<li><strong>id</strong> <code>multi { id: num [0 .. 255]
+ }</code> — Stream IDs to start.</li>
+<li><strong>packet-size</strong> <code>multi { array-id, array-id, packet-size: range [1 .. 65535]
+ }</code> — Override the generated packet size (in bytes); a range generates random sizes.</li>
+<li><strong>pps</strong> <code>multi { pps: num
+ }</code> — Override the packets-per-second rate.</li>
+<li><strong>mbps</strong> <code>multi { mbps: num
+ }</code> — Override the megabits-per-second rate.</li>
+<li><strong>tx-template</strong> <code>multi { tx-template: enum
+ }</code> — Override the packet templates used as the packet content source (up to 16).</li>
+<li><strong>packet-count</strong> <code>multi { packet-count: num
+ }</code> — Override the number of packets to transmit.</li>
+</ul>
+<hr />
+<h1 id="latency-distribution">latency-distribution</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/stats/latency-distribution.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstatslatency-distribution">tool/traffic-generator/stats/latency-distribution</h2>
+<p><strong>Type:</strong> Directory
+Shows how many received packets fall into each latency range, per stream or per measurement sequence. See the <a href="../../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>stream-id</strong> <code>num</code> — Filter the output to one stream ID.</li>
+<li><strong>port</strong> <code>enum</code> — Filter the output to one port.</li>
+<li><strong>seq</strong> <code>range</code> — Filter the output to one measurement sequence number.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>latency</strong> <code>string</code> — Latency range of this bucket, for example 0-15.5us.</li>
+<li><strong>count</strong> <code>num</code> — Number of packets received in this latency range.</li>
+<li><strong>share</strong> <code>num</code> — Share of received packets falling into this latency range, in percent.</li>
+<li><strong>graph</strong> <code>meter</code> — Graphical representation of the share.</li>
+</ul>
+<hr />
+<h1 id="port_1">port</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/stats/port.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstatsport">tool/traffic-generator/stats/port</h2>
+<p><strong>Type:</strong> Directory
+Statistics of a completed or running test, sorted by transmit/receive port. See the <a href="../../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>seq</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Measurement sequence number, or TOT for totals.</li>
+<li><strong>port</strong> <code>composite { p: enum (TOT) { TOT:0xffffffff }
+, interface: iface_enum
+ }</code> — Transmit/receive port and its interface, or TOT.</li>
+<li><strong>rx-unk-packet</strong> <code>num</code> — Packets received that do not belong to any known stream (do not match a packet template).</li>
+<li><strong>rx-unk-byte</strong> <code>num</code> — Bytes received that do not belong to any known stream.</li>
+<li><strong>rx-unk-rate</strong> <code>num</code> — Current receive rate of unknown packets in bps.</li>
+<li><strong>tx-packet</strong> <code>num</code> — Total packets transmitted.</li>
+<li><strong>tx-byte</strong> <code>num</code> — Total bytes transmitted.</li>
+<li><strong>tx-rate</strong> <code>num</code> — Current transmit rate in bps.</li>
+<li><strong>rx-packet</strong> <code>num</code> — Total packets received.</li>
+<li><strong>rx-byte</strong> <code>num</code> — Total bytes received.</li>
+<li><strong>rx-rate</strong> <code>num</code> — Current receive rate in bps.</li>
+<li><strong>rx-ooo</strong> <code>num</code> — Received packets that were out of order.</li>
+<li><strong>rx-bad-csum</strong> <code>num</code> — Received packets with a bad checksum.</li>
+<li><strong>lost-packet</strong> <code>num</code> — Total lost packets (transmitted minus received).</li>
+<li><strong>lost-byte</strong> <code>num</code> — Total lost bytes.</li>
+<li><strong>lost-rate</strong> <code>num</code> — Current loss rate in bps.</li>
+<li><strong>lost-ratio</strong> <code>string</code> — Loss as a percentage of transmitted packets.</li>
+<li><strong>lat-min</strong> <code>string</code> — Minimum measured latency.</li>
+<li><strong>lat-avg</strong> <code>string</code> — Average measured latency.</li>
+<li><strong>lat-max</strong> <code>string</code> — Maximum measured latency.</li>
+<li><strong>jitter</strong> <code>string</code> — Measured latency variation (jitter).</li>
+</ul>
+<hr />
+<h1 id="raw">raw</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/stats/raw.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstatsraw">tool/traffic-generator/stats/raw</h2>
+<p><strong>Type:</strong> Directory
+Raw statistics of a completed or running test, per measurement sequence, port and stream. See the <a href="../../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>seq</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Measurement sequence number, or TOT for totals.</li>
+<li><strong>port</strong> <code>composite { p: enum (TOT) { TOT:0xffffffff }
+, interface: iface_enum
+ }</code> — Transmit/receive port and its interface, or TOT.</li>
+<li><strong>id</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Stream ID, or TOT for totals across streams.</li>
+<li><strong>tx-packet</strong> <code>num</code> — Total packets transmitted.</li>
+<li><strong>tx-byte</strong> <code>num</code> — Total bytes transmitted.</li>
+<li><strong>tx-rate</strong> <code>num</code> — Current transmit rate in bps.</li>
+<li><strong>rx-packet</strong> <code>num</code> — Total packets received.</li>
+<li><strong>rx-byte</strong> <code>num</code> — Total bytes received.</li>
+<li><strong>rx-rate</strong> <code>num</code> — Current receive rate in bps.</li>
+<li><strong>rx-ooo</strong> <code>num</code> — Received packets that were out of order.</li>
+<li><strong>rx-bad-csum</strong> <code>num</code> — Received packets with a bad checksum.</li>
+<li><strong>lost-packet</strong> <code>num</code> — Total lost packets (transmitted minus received).</li>
+<li><strong>lost-byte</strong> <code>num</code> — Total lost bytes.</li>
+<li><strong>lost-rate</strong> <code>num</code> — Current loss rate in bps.</li>
+<li><strong>lost-ratio</strong> <code>string</code> — Loss as a percentage of transmitted packets.</li>
+<li><strong>lat-min</strong> <code>string</code> — Minimum measured latency.</li>
+<li><strong>lat-avg</strong> <code>string</code> — Average measured latency.</li>
+<li><strong>lat-max</strong> <code>string</code> — Maximum measured latency.</li>
+<li><strong>jitter</strong> <code>string</code> — Measured latency variation (jitter).</li>
+</ul>
+<hr />
+<h1 id="stream">stream</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/stats/stream.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstatsstream">tool/traffic-generator/stats/stream</h2>
+<p><strong>Type:</strong> Directory
+Statistics of a completed or running test, sorted by stream — the same output as in quick mode. See the <a href="../../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>seq</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Measurement sequence number, or TOT for totals.</li>
+<li><strong>id</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Stream ID, or TOT for totals across streams.</li>
+<li><strong>tx-packet</strong> <code>num</code> — Total packets transmitted.</li>
+<li><strong>tx-byte</strong> <code>num</code> — Total bytes transmitted.</li>
+<li><strong>tx-rate</strong> <code>num</code> — Current transmit rate in bps.</li>
+<li><strong>rx-packet</strong> <code>num</code> — Total packets received.</li>
+<li><strong>rx-byte</strong> <code>num</code> — Total bytes received.</li>
+<li><strong>rx-rate</strong> <code>num</code> — Current receive rate in bps.</li>
+<li><strong>rx-ooo</strong> <code>num</code> — Received packets that were out of order.</li>
+<li><strong>rx-bad-csum</strong> <code>num</code> — Received packets with a bad checksum.</li>
+<li><strong>lost-packet</strong> <code>num</code> — Total lost packets (transmitted minus received).</li>
+<li><strong>lost-byte</strong> <code>num</code> — Total lost bytes.</li>
+<li><strong>lost-rate</strong> <code>num</code> — Current loss rate in bps.</li>
+<li><strong>lost-ratio</strong> <code>string</code> — Loss as a percentage of transmitted packets.</li>
+<li><strong>lat-min</strong> <code>string</code> — Minimum measured latency.</li>
+<li><strong>lat-avg</strong> <code>string</code> — Average measured latency.</li>
+<li><strong>lat-max</strong> <code>string</code> — Maximum measured latency.</li>
+<li><strong>jitter</strong> <code>string</code> — Measured latency variation (jitter).</li>
+</ul>
+<hr />
+<h1 id="stop_1">stop</h1>
+<blockquote>
+<p>RouterOS command reference for /tool/traffic-generator/stop.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstop">tool/traffic-generator/stop</h2>
+<p><strong>Type:</strong> Command
+Stops the background traffic generator started with the <a href="start">start</a> command. The collected statistics remain available under the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator#stats">stats menu</a> (<code>/tool/traffic-generator/stats/*</code>).</p>
+<hr />
+<h1 id="stream_1">stream</h1>
+<blockquote>
+<p>RouterOS directory reference for /tool/traffic-generator/stream.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-generatorstream">tool/traffic-generator/stream</h2>
+<p><strong>Type:</strong> Directory
+Defines the generated traffic flows: rate, packet size, packet template and CPU core binding. See the <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator">Traffic Generator</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Descriptive name of the stream.</li>
+<li><strong>port</strong> <code>enum</code> — Name of the port (from the port menu) the stream transmits through. Usually taken from the packet template; can be overridden here.</li>
+<li><strong>id</strong> <code>num</code> — Stream ID used to identify the stream in stats and in the start/quick commands. The value TOT is reserved for totals.</li>
+<li><strong>packet-size</strong> <code>range</code> — L2 size of the generated packets in bytes; a range (for example 64-1518) generates random packet sizes.</li>
+<li><strong>pps</strong> <code>num</code> — Packets per second the stream tries to generate.</li>
+<li><strong>mbps</strong> <code>num</code> — Megabits per second the stream tries to generate.</li>
+<li><strong>packet-count</strong> <code>num</code> — Number of packets to transmit; <code>unlimited</code> transmits until the stream is stopped.</li>
+<li><strong>cpu-core</strong> <code>range</code> — CPU core (0-255) the stream is pinned to, or a range of cores for multi-core streams.</li>
+<li><strong>tx-template</strong> <code>enum</code> — Name of the packet template (from packet-template or raw-packet-template) used as the packet content source. Mandatory.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>default-port</strong> <code>enum</code> — The port this stream transmits on, taken from the packet template.</li>
+</ul>
+<hr />
+<h1 id="traffic-monitor">traffic-monitor</h1>
+<blockquote>
+<p>Threshold trigger: run a script (on-event) when an interface's transmit or receive rate crosses a threshold.</p>
+</blockquote>
+<hr />
+<h2 id="tooltraffic-monitor">tool/traffic-monitor</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Threshold trigger: run a <a href="../../developer-guides/scripting/">script</a> (<code>on-event</code>) when an interface's transmit or receive rate crosses a threshold.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+<li><strong>I</strong> <code>invalid</code> — invalid</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the traffic monitor entry</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface whose rate is watched</li>
+<li><strong>traffic</strong> <code>enum (transmitted | received) { transmitted:1, received:2 }</code> — Direction to watch: <code>transmitted</code> or <code>received</code></li>
+<li><strong>trigger</strong> <code>enum (above | below | always) { above:1, below:2, always:3 }</code> — When <code>on-event</code> runs: when the rate crosses <code>above</code> the threshold, crosses <code>below</code> it, or <code>always</code> (on every poll).</li>
+<li><strong>threshold</strong> <code>num</code> — Traffic rate in bits per second that the trigger compares against</li>
+<li><strong>on-event</strong> <code>alt { script: string
+ }</code> — Script run when the trigger condition is met</li>
+</ul>
+<hr />
+<h1 id="wol">wol</h1>
+<blockquote>
+<p>See Wake on LAN for the full documentation.</p>
+</blockquote>
+<hr />
+<h2 id="toolwol">tool/wol</h2>
+<p><strong>Type:</strong> Command</p>
+<p>See <a href="../../system-information-and-utilities/wake-on-lan">Wake on LAN</a> for the full documentation.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to send the magic packet out of, for example the LAN bridge. With an interface, the router sends an Ethernet frame (EtherType <code>0x0842</code>) to the broadcast MAC address on it. Without an interface, it sends a UDP packet to <code>255.255.255.255</code> port 9 through the default route, which on most routers is the internet connection.</li>
+<li><strong>mac</strong> <code>macAddr</code> — MAC address of the computer to wake. The magic packet holds it 16 times.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1678 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Bridging and Switching</p>
+      <h1 id="user-guides-part-13">User Guides (part 1/3)</h1>
+<h1 id="bridging-and-switching-case-studies">Bridging and Switching Case Studies</h1>
+<blockquote>
+<p>This page presents practical case studies for RouterOS bridging and switching, covering VLAN configurations, IGMP/MLD snooping, spanning tree protocols, loop prevention, and switch-chip behavior to aid Layer 2...</p>
+</blockquote>
+<h1 id="bridging-and-switching-case-studies_1">Bridging and Switching Case Studies</h1>
+<p>These case studies show common RouterOS bridging and switching designs, including VLAN switching, IGMP and MLD snooping, spanning tree, loop protection, and switch-chip behavior. Use them as practical examples for Layer 2 deployments and troubleshooting.</p>
+<hr />
+<h1 id="basic-vlan-switching">Basic VLAN switching</h1>
+<blockquote>
+<p>This page provides an overview of basic VLAN switching configuration on MikroTik RouterOS, covering setup for devices with Marvell Prestera and RTL8367/CRS series switch chips, including hardware-offloaded VLAN...</p>
+</blockquote>
+<h1 id="basic-vlan-switching_1">Basic VLAN switching</h1>
+<hr />
+<p>Many MikroTik devices come with built-in switch chips that support hardware-level VLAN switching. This enables wire-speed performance when using VLANs, provided the appropriate configuration method is employed. Since the configuration method varies across different models, this guide focuses on setting up a basic trunk/access port with a management port from the trunk port using different devices with the right configuration to achieve the best performance and to fully utilize the available hardware components.</p>
+<p><em>[gambar: Basic VLAN Switching]</em></p>
+<h2 id="mikrotik-devices-with-marvell-prestera-switch-and-rtl8367-88e6393x-88e6191x-88e6190-mt7621-mt7531-and-en7523-switch-chips">MikroTik devices with Marvell Prestera switch and RTL8367, 88E6393X, 88E6191X, 88E6190, MT7621, MT7531 and EN7523 switch chips</h2>
+<hr />
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 frame-types=admit-only-vlan-tagged
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 frame-types=admit-only-vlan-tagged
+add bridge=bridge1 interface=ether2 pvid=20 frame-types=admit-only-untagged-and-priority-tagged
+add bridge=bridge1 interface=ether3 pvid=30 frame-types=admit-only-untagged-and-priority-tagged
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 vlan-ids=20
+add bridge=bridge1 tagged=ether1 vlan-ids=30
+add bridge=bridge1 tagged=ether1,bridge1 vlan-ids=99
+/interface/vlan
+add interface=bridge1 vlan-id=99 name=MGMT
+/ip/address
+add address=192.168.99.1/24 interface=MGMT
+/interface/bridge
+set bridge1 vlan-filtering=yes
+</code></pre>
+<p>More detailed examples can be found <a href="../index.md#bridge-vlan-filtering">here</a>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>RTL8367, 88E6393X, 88E6191X, 88E6190, MT7621, MT7531, and EN7523 switch chips can use hardware-offloaded VLAN filtering starting in RouterOS v7.</p>
+</div>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Bridge ports with <code>frame-types</code> set to <code>admit-all</code> or <code>admit-only-untagged-and-priority-tagged</code> will be automatically added as untagged ports for the <code>pvid</code> VLAN.</p>
+</div>
+<h2 id="crs1xxcrs2xx-series-switches">CRS1xx/CRS2xx series switches</h2>
+<hr />
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/interface/ethernet/switch/ingress-vlan-translation
+add ports=ether2 customer-vid=0 new-customer-vid=20
+add ports=ether3 customer-vid=0 new-customer-vid=30
+/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether1 vlan-id=20
+add tagged-ports=ether1 vlan-id=30
+add tagged-ports=ether1,switch1-cpu vlan-id=99
+/interface/ethernet/switch/vlan
+add ports=ether1,ether2 vlan-id=20
+add ports=ether1,ether3 vlan-id=30
+add ports=ether1,switch1-cpu vlan-id=99
+/interface/vlan
+add interface=bridge1 vlan-id=99 name=MGMT
+/ip/address
+add address=192.168.99.1/24 interface=MGMT
+/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether1,ether2,ether3
+</code></pre>
+<p>More detailed examples can be found <a href="./crs1xx-2xx-series-switches-examples.md#vlan">here</a>.</p>
+<h2 id="other-devices-with-a-built-in-switch-chip">Other devices with a built-in switch chip</h2>
+<hr />
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/interface/ethernet/switch/vlan
+add ports=ether1,ether2 switch=switch1 vlan-id=20
+add ports=ether1,ether3 switch=switch1 vlan-id=30
+add ports=ether1,switch1-cpu switch=switch1 vlan-id=99
+/interface/vlan
+add interface=bridge1 vlan-id=99 name=MGMT
+/ip/address
+add address=192.168.99.1/24 interface=MGMT
+/interface/ethernet/switch/port
+set ether1 vlan-mode=secure vlan-header=add-if-missing
+set ether2 vlan-mode=secure vlan-header=always-strip default-vlan-id=20
+set ether3 vlan-mode=secure vlan-header=always-strip default-vlan-id=30
+set switch1-cpu vlan-header=leave-as-is vlan-mode=secure
+</code></pre>
+<p>More detailed examples can be found <a href="../switch-chip-features.md#setup-examples">here</a>.</p>
+<p>:::info Applicability &amp; Scope
+This configuration is intended for RouterBOARD series devices (RB4xx, RB9xx, RB2011, RB3011, hAP, hEX, cAP, etc.).</p>
+<p>Not all devices with a switch chip support hardware-level VLAN switching. If a device has <code>VLAN table</code> support, it can use the built-in switch chip. Check your chip's capability using <code>/interface/ethernet/switch/print</code> or the <a href="../switch-chip-features.md">compatibility table</a>.
+:::</p>
+<p>:::warning Hardware Limitations &amp; Configuration Rules</p>
+<ul>
+<li><strong>Multiple Switch Chips:</strong> On devices with multiple chips (e.g., RB2011, RB3011, RB1100), VLAN traffic is only hardware-switched between ports on the <em>same</em> chip. Bridging ports across different chips means VLANs will not be filtered at the hardware level. To bypass this, either connect a physical cable between the chips, or use Bridge VLAN Filtering (which disables hardware offloading).</li>
+<li><strong>QCA8337 &amp; Atheros8327 Chips:</strong> You must leave the default <code>vlan-header=leave-as-is</code> property. The switch chip uses the <code>default-vlan-id</code> property (which should only be applied to access/hybrid ports) to assign untagged ingress traffic to a VLAN.</li>
+<li><strong>RSTP Conflict:</strong> By default, bridge interfaces use <code>protocol-mode=rstp</code>. On certain devices, this disables hardware offloading. Check the <a href="../#bridge-hardware-offloading">Bridge Hardware Offloading</a> section for supported features.
+:::</li>
+</ul>
+<h2 id="other-devices-without-a-built-in-switch-chip">Other devices without a built-in switch chip</h2>
+<hr />
+<p>It is possible to do VLAN filtering using the CPU; there are multiple ways to do it, but it is highly recommended to use bridge VLAN filtering.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 frame-types=admit-only-vlan-tagged
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 frame-types=admit-only-vlan-tagged
+add bridge=bridge1 interface=ether2 pvid=20 frame-types=admit-only-untagged-and-priority-tagged
+add bridge=bridge1 interface=ether3 pvid=30 frame-types=admit-only-untagged-and-priority-tagged
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 vlan-ids=20
+add bridge=bridge1 tagged=ether1 vlan-ids=30
+add bridge=bridge1 tagged=ether1,bridge1 vlan-ids=99
+/interface/vlan
+add interface=bridge1 vlan-id=99 name=MGMT
+/ip/address
+add address=192.168.99.1/24 interface=MGMT
+/interface/bridge
+set bridge1 vlan-filtering=yes
+</code></pre>
+<p>More detailed examples can be found <a href="../index.md#bridge-vlan-filtering">here</a>.</p>
+<hr />
+<h1 id="bridge-igmpmld-snooping">Bridge IGMP/MLD snooping</h1>
+<blockquote>
+<p>This page documents MikroTik RouterOS bridge features for IGMP/MLD snooping, enabling efficient multicast traffic forwarding by filtering streams to subscribed ports. It covers configuration options for IGMP/MLD...</p>
+</blockquote>
+<h1 id="bridge-igmpmld-snooping_1">Bridge IGMP/MLD snooping</h1>
+<hr />
+<p>IGMP (Internet Group Management Protocol) and MLD (Multicast Listener Discovery) snooping are bridge features that enable the bridge to passively listen to IGMP/MLD network communication and use this information to make intelligent forwarding decisions for multicast traffic. By default, bridges flood all multicast traffic to every bridge port, similar to how broadcast traffic is handled. This default behavior may not be ideal for certain applications such as multicast video streaming or SDVoE (Software Defined Video over Ethernet) deployments. IGMP/MLD snooping addresses this issue by forwarding multicast traffic only to ports where interested clients are subscribed. See the IGMP/MLD network concept diagram below.</p>
+<p>The RouterOS bridge implementation supports IGMP versions 1, 2, and 3, as well as MLD versions 1 and 2. This implementation is based on RFC4541, and the respective protocols specifications are defined in RFC1112 (IGMPv1), RFC2236 (IGMPv2), RFC3376 (IGMPv3), RFC2710 (MLDv1), and RFC3810 (MLDv2).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Source-specific multicast forwarding is not supported for IGMPv3 and MLDv2.</p>
+</div>
+<p><em>[gambar: IGMP Configuration Diagram]</em></p>
+<p>The bridge processes IGMP/MLD messages only when <code>igmp-snooping</code> is enabled. Additionally, the bridge must have an active IPv6 address to process MLD packets. Initially, the bridge does not restrict any multicast traffic and floods all multicast packets. Once an IGMP/MLD querier is detected—by receiving an IGMP/MLD query message (either from an external multicast router or locally from the bridge interface with <code>multicast-querier</code> enabled)—the bridge begins restricting unknown IP multicast traffic and forwards only known multicast streams from the Multicast Database (MDB). IGMP and MLD querier detection operate independently; detecting an IGMP querier does not affect IPv6 multicast forwarding, and vice versa. Querier detection also does not restrict the forwarding of non-IP and link-local multicast groups, such as 224.0.0.0/24 and ff02::1.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>CRS3xx series devices with Marvell-98DX3236, Marvell-98DX224S, or Marvell-98DX226S switch chips cannot distinguish between non-IP, IPv4, and IPv6 multicast packets once an IGMP or MLD querier is detected. This means the switch will stop forwarding all unknown multicast traffic (regardless of protocol) when a querier is detected. This limitation does not apply to certain link-local multicast address ranges, such as 224.0.0.0/24 or ff02::1.</p>
+</div>
+<h2 id="configuration-options">Configuration options</h2>
+<hr />
+<p>This section describes the IGMP and MLD snooping bridge configuration options.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/bridge</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>igmp-snooping</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Enables IGMP and MLD snooping.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>igmp-version</strong> (<em>2 | 3</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">Selects the IGMP version in which IGMP membership queries will be generated when the bridge interface is acting as an IGMP querier. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>last-member-interval</strong> (<em>time</em>; Default: <strong>1s</strong>)</td>
+<td style="text-align: left;">When the last client on the bridge port unsubscribes from a multicast group and the bridge is acting as an active querier, the bridge will send a group-specific IGMP/MLD query, to make sure that no other client is still subscribed. The setting changes the response time for these queries. In case no membership reports are received in a certain time period (<code>last-member-interval</code> * <code>last-member-query-count</code>), the multicast group is removed from the multicast database (MDB).  If the bridge port is configured with fast-leave, the multicast group is removed right away without sending any queries.  This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>last-member-query-count</strong> (<em>integer: 0..4294967295</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">How many times should <code>last-member-interval</code> pass until the IGMP/MLD snooping bridge stops forwarding a certain multicast stream. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>membership-interval</strong> (<em>time</em>; Default: <strong>4m20s</strong>)</td>
+<td style="text-align: left;">The amount of time after an entry in the Multicast Database (MDB) is removed if no IGMP/MLD membership reports are received on a bridge port. This property only has an effect when <code>igmp-snooping</code> is set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-version</strong> (<em>1 | 2</em>; Default: <strong>1</strong>)</td>
+<td style="text-align: left;">Selects the MLD version in which MLD membership queries will be generated, when the bridge interface is acting as an MLD querier. This property only has an effect when the bridge has an active IPv6 address, <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-querier</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Multicast querier generates periodic IGMP/MLD general membership queries to which all IGMP/MLD capable devices respond with an IGMP/MLD membership report, usually a PIM (multicast) router or IGMP proxy generates these queries.  By using this property you can make an IGMP/MLD snooping enabled bridge generate IGMP/MLD general membership queries. This property should be used whenever there is no active querier (PIM router or IGMP proxy) in a Layer2 network. Without a multicast querier in a Layer2 network, the Multicast Database (MDB) is not being updated, the learned entries will timeout and IGMP/MLD snooping will not function properly.  Only untagged IGMP/MLD general membership queries are generated, IGMP queries are sent with the bridge interface's own IPv4 address as the source address (see <code>querier-uses-bridge-address</code>), MLD queries are sent with IPv6 link-local address of the bridge interface. The bridge will not send queries if an external IGMP/MLD querier is detected (see the monitoring values <code>igmp-querier</code> and <code>mld-querier</code>).  This property only has an effect when <code>igmp-snooping</code> is set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-router</strong> (<em>disabled | permanent | temporary-query</em>; Default: <strong>temporary-query</strong>)</td>
+<td style="text-align: left;">A multicast router port is a port where a multicast router or querier is connected. On this port, unregistered multicast streams and IGMP/MLD membership reports will be sent. This setting changes the state of the multicast router for a bridge interface itself. This property can be used to send IGMP/MLD membership reports and multicast traffic to the bridge interface for further multicast routing or proxying. This property only has an effect when <code>igmp-snooping</code> is set to <code>yes</code>.<code>disabled</code> - disabled multicast router state on the bridge interface. Unregistered multicast streams and IGMP/MLD membership reports are not sent to the bridge interface regardless of what is configured on the bridge interface.<code>permanent</code> - enabled multicast router state on the bridge interface. Unregistered multicast streams and IGMP/MLD membership reports are sent to the bridge interface itself regardless of what is configured on the bridge interface.<code>temporary-query</code> - automatically detect multicast router state on the bridge interface using IGMP/MLD queries.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>querier-interval</strong> (<em>time</em>; Default: <strong>4m15s</strong>)</td>
+<td style="text-align: left;">Changes the timeout period for detected querier and multicast-router ports. This property only has an effect when <code>igmp-snooping</code> is set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>querier-uses-bridge-address</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">When enabled, the bridge IGMP querier uses the bridge interface's own IPv4 address as the source address for IGMP query packets instead of the default 0.0.0.0. Some multicast clients consider queries from 0.0.0.0 invalid and do not respond, which can lead to multicast stream interruptions when snooping table entries time out. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code> and the bridge interface has an IPv4 address assigned. This setting applies only to IPv4 (IGMP). MLD queries always use the IPv6 link-local address of the bridge interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>query-interval</strong> (<em>time</em>; Default: <strong>2m5s</strong>)</td>
+<td style="text-align: left;">Changes the interval at which IGMP/MLD general membership queries are sent out when the bridge interface is acting as an IGMP/MLD querier. The interval takes effect when the last startup query is sent. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>query-response-interval</strong> (<em>time</em>; Default: <strong>10s</strong>)</td>
+<td style="text-align: left;">The setting changes the response time for general IGMP/MLD queries when the bridge is acting as an IGMP/MLD querier. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>startup-query-count</strong> (<em>integer: 0..4294967295</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">Specifies how many times general IGMP/MLD queries must be sent when the bridge interface is enabled or active querier times out. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>startup-query-interval</strong> (<em>time</em>; Default: <strong>31s250ms</strong>)</td>
+<td style="text-align: left;">Specifies the interval between startup general IGMP/MLD queries. This property only has an effect when <code>igmp-snooping</code> and <code>multicast-querier</code> are set to <code>yes</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>fast-leave</code>, <code>multicast-router</code> and <code>unknown-multicast-flood</code> properties are described in the <a href="../../cli-reference/interface/bridge/port/">bridge port CLI reference</a>.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/bridge/mdb</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>bridge</strong> (<em>name</em>; Default: )</td>
+<td style="text-align: left;">The bridge interface to which the MDB entry is going to be assigned.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disables or enables the static MDB entry.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group</strong> (<em>ipv4 | ipv6 address</em>; Default: )</td>
+<td style="text-align: left;">The IPv4 or IPv6 multicast address. Static entries for link-local multicast groups 224.0.0.0/24 and ff02::1 cannot be created, as these packets are always flooded on all ports and VLANs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ports</strong> (<em>name</em>; Default: )</td>
+<td style="text-align: left;">The list of bridge ports to which the multicast group will be forwarded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vid</strong> (<em>integer: 1..4094</em>; Default: )</td>
+<td style="text-align: left;">The VLAN ID on which the MDB entry will be created, only applies when <code>vlan-filtering</code> is enabled. When the VLAN ID is not specified, the entry will work in shared-VLAN mode and dynamically apply on all defined VLAN IDs for particular ports.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="monitoring-and-troubleshooting">Monitoring and troubleshooting</h2>
+<hr />
+<p>This section describes the IGMP/MLD snooping bridge monitoring and troubleshooting options.</p>
+<p>To monitor learned multicast database (MDB) entries, use the <code>print</code> command.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/bridge/mdb</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>bridge</strong> (*read-only: *name**)</td>
+<td style="text-align: left;">Shows the bridge interface the entry belongs to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group</strong> (<em>read-only:</em> <em>ipv4 | ipv6 address</em>)</td>
+<td style="text-align: left;">Shows a multicast group address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>on-ports</strong> (<em>read-only: name</em>)</td>
+<td style="text-align: left;">Shows the bridge ports that are subscribed to a certain multicast group.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vid</strong> (<em>read-only: integer</em>)</td>
+<td style="text-align: left;">Shows the VLAN ID for the multicast group, only applies when <code>vlan-filtering</code> is enabled.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-ros">[admin@MikroTik] /interface/bridge/mdb/print 
+Flags: D - DYNAMIC
+Columns: GROUP, VID, ON-PORTS, BRIDGE
+ #   GROUP              VID  ON-PORTS  BRIDGE 
+ 0 D ff02::2              1  bridge1   bridge1
+ 1 D ff02::6a             1  bridge1   bridge1
+ 2 D ff02::1:ff00:0       1  bridge1   bridge1
+ 3 D ff02::1:ff01:6a43    1  bridge1   bridge1
+ 4 D 229.1.1.1           10  ether2    bridge1
+ 5 D 229.2.2.2           10  ether3    bridge1
+                             ether2           
+ 6 D ff02::2             10  ether5    bridge1
+                             ether3           
+                             ether2           
+                             ether4            
+</code></pre>
+<p>To monitor the current status of a bridge interface, use the <code>monitor</code> command.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/bridge</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>igmp-querier</strong> (<em>none</em>| <em>interface &amp; IPv4 address</em>)</td>
+<td style="text-align: left;">Shows a bridge port and source IP address from the detected IGMP querier. Only shows the detected external IGMP querier, the local bridge IGMP querier (including IGMP proxy and PIM) will not be displayed. The monitoring value appears only when <code>igmp-snooping</code> is enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mld-querier</strong> (<em>none</em>| <em>interface &amp; IPv6 address</em>)</td>
+<td style="text-align: left;">Shows a bridge port and source IPv6 address from the detected MLD querier. Only shows the detected external MLD querier, the local bridge MLD querier will not be displayed. The monitoring value appears only when <code>igmp-snooping</code> is enabled and the bridge has an active IPv6 address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-router</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows if a multicast router is detected on the bridge interface. The monitoring value appears only when <code>igmp-snooping</code> is enabled.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-ros">[admin@MikroTik] /interface/bridge/monitor bridge1
+                  state: enabled
+    current-mac-address: 64:D1:54:C7:3A:59
+            root-bridge: yes
+         root-bridge-id: 0x8000.64:D1:54:C7:3A:59
+         root-path-cost: 0
+              root-port: none
+             port-count: 3
+  designated-port-count: 3
+           fast-forward: no
+       multicast-router: no
+           igmp-querier: ether2 192.168.10.10
+            mld-querier: ether2 fe80::e68d:8cff:fe39:3824
+</code></pre>
+<p>To monitor the current status of bridge ports, use the <code>monitor</code> command.</p>
+<p>The <code>multicast-router</code> field is described in the <a href="../../cli-reference/interface/bridge/port/monitor">bridge port monitor CLI reference</a>.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/monitor [find]
+              interface: ether2          ether3          ether4
+                 status: in-bridge       in-bridge       in-bridge
+            port-id: 0x80.1             0x80.2          0x80.3
+                   role: designated-port designated-port designated-port
+              edge-port: no              yes             yes
+    edge-port-discovery: yes             yes             yes
+    point-to-point-port: yes             yes             yes
+           external-fdb: no              no              no
+           sending-rstp: yes             yes             yes
+               learning: yes             yes             yes
+             forwarding: yes             yes             yes
+       multicast-router: yes             no              no
+       hw-offload-group: switch1         switch1         switch1
+</code></pre>
+<h2 id="configuration-examples">Configuration examples</h2>
+<hr />
+<p>Below are described the most common configuration examples. Some examples are using a bridge with VLAN filtering, so make sure to understand the filtering principles first - <a href="../index.md#bridge-vlan-filtering">bridge VLAN filtering</a>, <a href="./bridge-vlan-table.md">bridge VLAN table</a>.</p>
+<h3 id="basic-igmp-snooping-configuration">Basic IGMP snooping configuration</h3>
+<p>The first example consists only of a single IGMP snooping bridge, a single multicast source device, and a couple of multicast client devices. See a network scheme below.</p>
+<p><em>[gambar: IGMP Basic Setup Diagram]</em></p>
+<p>First, create a bridge interface with enabled IGMP snooping. In this example, there is no active IGMP querier (no multicast router or proxy), so a local IGMP querier must be enabled on the same bridge. This can be done with a <code>multicast-querier</code> setting. If there is no active IGMP querier in the LAN, the unregistered IP multicast will be flooded and multicast entries will always timeout from the multicast database.</p>
+<pre><code class="language-ros">/interface/bridge
+add igmp-snooping=yes multicast-querier=yes name=bridge1
+</code></pre>
+<p>Then add the necessary interfaces as bridge ports.</p>
+<pre><code class="language-ros">/interface/bridge/port
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+add bridge=bridge1 interface=ether4
+add bridge=bridge1 interface=ether5
+</code></pre>
+<p>The basic IGMP snooping configuration is finished. Use "<code>/interface/bridge/mdb/print"</code> command to monitor the active multicast groups. If necessary, you can configure an IP address and <a href="../../network-management/dhcp/server#configuration-examples">DHCP server</a> on the same bridge interface.</p>
+<h3 id="igmp-snooping-configuration-with-vlans">IGMP snooping configuration with VLANs</h3>
+<p>The second example adds some complexity. There are two IGMP snooping bridges and we need to isolate the multicast traffic on a different VLAN. See a network scheme below.</p>
+<p><em>[gambar: IGMP VLAN Setup Diagram]</em></p>
+<p>First, create a bridge on both devices and add the needed interfaces as bridge ports. To change the untagged VLAN for a bridge port, use the <code>pvid</code> setting. Bridge1 will be acting as an IGMP querier. Below are the configuration commands for Bridge1:</p>
+<pre><code class="language-ros">/interface/bridge
+add igmp-snooping=yes multicast-querier=yes name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 pvid=10
+add bridge=bridge1 interface=ether3 pvid=10
+add bridge=bridge1 interface=ether4 pvid=10
+add bridge=bridge1 interface=ether5 pvid=20
+add bridge=bridge1 interface=sfp-sfpplus1 pvid=10
+</code></pre>
+<p>And for the Bridge2:</p>
+<pre><code class="language-ros">/interface/bridge
+add igmp-snooping=yes name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether3 pvid=10
+add bridge=bridge1 interface=ether4 pvid=10
+add bridge=bridge1 interface=ether5 pvid=20
+add bridge=bridge1 interface=sfp-sfpplus1 pvid=10
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Bridge IGMP querier implementation can only send untagged IGMP queries. In case tagged IGMP queries should be sent or IGMP queries should be generated in multiple VLANs, you can configure VLAN interfaces alongside <a href="../../user-guides/routing-and-networking-protocols/multicast/igmp-proxy.md">IGMP Proxy</a> or <a href="../../user-guides/routing-and-networking-protocols/multicast/pim-sm.md">PIM-SM</a>. The downstream interfaces of the IGMP Proxy, as well as PIM-SM interfaces, can operate as IGMP queriers.</p>
+</div>
+<p>Make sure to configure <a href="../#management-access-configuration">management access</a> for devices. It is essential when configuring a bridge with VLAN filtering. In this example, a VLAN 99 interface with an IP address is added to the bridge. This VLAN will be allowed on the tagged sfp-sfpplus1 port. Below are configuration commands for the Bridge1:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=bridge1 name=MGMT vlan-id=99
+/ip/address
+add address=192.168.99.1/24 interface=MGMT network=192.168.99.0
+/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1,sfp-sfpplus1 vlan-ids=99
+</code></pre>
+<p>And for the Bridge2:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=bridge1 name=MGMT vlan-id=99
+/ip/address
+add address=192.168.99.2/24 interface=MGMT network=192.168.99.0
+/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1,sfp-sfpplus1 vlan-ids=99
+</code></pre>
+<p>Add bridge VLAN entries and specify tagged and untagged ports. The VLAN 99 entry was already created when configuring management access; only VLAN 10 and VLAN 20 should be added now. Below are the configuration commands for Bridge1:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 untagged=ether2,ether3,ether4,sfp-sfpplus1 vlan-ids=10
+add bridge=bridge1 tagged=sfp-sfpplus1 untagged=ether5 vlan-ids=20
+</code></pre>
+<p>And for the Bridge2:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 untagged=ether3,ether4,sfp-sfpplus1 vlan-ids=10
+add bridge=bridge1 tagged=sfp-sfpplus1 untagged=ether5 vlan-ids=20
+</code></pre>
+<p>Last, enable VLAN filtering. Below is the configuration command for Bridge1 and Bridge2:</p>
+<pre><code class="language-ros">/interface/bridge/set [find name=bridge1] vlan-filtering=yes
+</code></pre>
+<p>At this point, VLANs and IGMP snooping are configured and devices should be able to communicate through ports. However, it is recommended to go even a step further and apply some additional filtering options. Enable <code>ingress-filtering</code> and <code>frame-types</code> on bridge ports. Below are the configuration commands for Bridge1:</p>
+<pre><code class="language-ros">/interface/bridge/port
+set [find interface=ether2] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=ether3] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=ether4] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=ether5] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=sfp-sfpplus1] ingress-filtering=yes
+</code></pre>
+<p>And for the Bridge2:</p>
+<pre><code class="language-ros">/interface/bridge/port
+set [find interface=ether3] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=ether4] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=ether5] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+set [find interface=sfp-sfpplus1] ingress-filtering=yes
+</code></pre>
+<h3 id="static-mdb-entries">Static MDB entries</h3>
+<p>Since RouterOS version 7.7, it is possible to create static MDB entries for IPv4 and IPv6 multicast groups. For example, to create a static MDB entry for multicast group 229.10.10.10 on ports ether2 and ether3 on VLAN 10, use the command below:</p>
+<pre><code class="language-ros">/interface/bridge/mdb
+add bridge=bridge1 group=229.10.10.10 ports=ether2,ether3 vid=10
+</code></pre>
+<p>Verify the results with the <code>print</code> command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/mdb/print where group=229.10.10.10
+Columns: GROUP, VID, ON-PORTS, BRIDGE
+ # GROUP         VID  ON-PORTS  BRIDGE 
+12 229.10.10.10   10  ether2    bridge1
+                      ether3   
+</code></pre>
+<p>In case a certain IPv6 multicast group does not need to be snooped and it is desired to be flooded on all ports and VLANs, it is possible to create a static MDB entry on all VLANs and ports, including the bridge interface itself. Use the command below to create a static MDB entry for multicast group ff02::2 on all VLANs and ports (modify the <code>ports</code> setting for your particular setup):</p>
+<pre><code class="language-ros">/interface/bridge/mdb
+add bridge=bridge1 group=ff02::2 ports=bridge1,ether2,ether3,ether4,ether5
+
+[admin@MikroTik] &gt; /interface/bridge/mdb/print where group=ff02::2
+Flags: D - DYNAMIC
+Columns: GROUP, VID, ON-PORTS, BRIDGE
+ #   GROUP    VID  ON-PORTS  BRIDGE 
+ 0   ff02::2                 bridge1
+15 D ff02::2    1  bridge1   bridge1
+16 D ff02::2   10  bridge1   bridge1
+                   ether2           
+                   ether3           
+                   ether4           
+                   ether5           
+17 D ff02::2   20  bridge1   bridge1
+                   ether2           
+                   ether3           
+18 D ff02::2   30  bridge1   bridge1
+                   ether2           
+                   ether3     
+</code></pre>
+<hr />
+<h1 id="bridge-vlan-table">Bridge VLAN Table</h1>
+<blockquote>
+<p>This page introduces MikroTik RouterOS's Bridge VLAN Table feature, explaining how to configure VLAN filtering in bridges using tagged/untagged ports, PVIDs, and ingress/egress rules. It includes setup examples for...</p>
+</blockquote>
+<h1 id="bridge-vlan-table_1">Bridge VLAN Table</h1>
+<hr />
+<p>It is possible to use a bridge to filter out VLANs in your network. To achieve this, you should use the <a href="../index.md#bridge-vlan-filtering">Bridge VLAN Filtering</a> feature. This feature should be used instead of many known VLAN misconfigurations that are most likely causing you either performance issues or connectivity issues. You can read about one of the most popular misconfigurations in the <a href="layer2-misconfiguration.md#vlan-in-a-bridge-with-a-physical-interface">VLAN in a bridge with a physical interface</a> section. The most important part of the bridge VLAN filtering feature is the bridge VLAN table, which specifies which VLANs are allowed on each port, but configuring it might get quite complex if you are trying to make a more advanced setup, for generic setups you should be able to configure your device using the <a href="../index.md#vlan-example-trunk-and-access-ports">Trunk and Access ports</a> example, but the purpose of this guide is to provide an in-depth explanation and point out some of the behavior characteristics when using bridge VLAN Filtering.</p>
+<h2 id="background">Background</h2>
+<hr />
+<p>Before explaining bridge VLAN filtering in-depth, you should understand a few basic concepts that are involved in bridge VLAN filtering.</p>
+<ul>
+<li>
+<p><strong>Tagged/Untagged</strong> - Under the <code>/interface/bridge/vlan</code> menu, you can specify an entry that contains tagged and untagged ports. In general, tagged ports should be your trunk port and untagged port should be your access port. By specifying a tagged port, the bridge will always set a VLAN tag for packets that are being sent out through this port (egress). By specifying an untagged port, the bridge will always remove the VLAN tag from egress packets.</p>
+</li>
+<li>
+<p><strong>VLAN-ids</strong> - Under the <code>/interface/bridge/vlan</code> menu, you can specify an entry in which certain VLANs are allowed on a specific port. The VLAN ID is checked on the egress port. If the packet contains a VLAN ID that does not exist in the bridge VLAN table for the egress port, then the packet is dropped before it gets sent out.</p>
+</li>
+<li>
+<p><strong>PVID</strong> - The Port VLAN ID is used for access ports to tag all ingress traffic with a specific VLAN ID. A dynamic entry is added in the bridge VLAN table for every PVID used, and the port is automatically added as an untagged port.</p>
+</li>
+<li>
+<p><strong>Ingress filtering</strong> - By default, VLANs that don't exist in the bridge VLAN table are dropped before they are sent out (egress), but this property allows you to drop the packet when they are received (ingress).</p>
+</li>
+<li>
+<p><strong>Management access</strong> - The bridge is supposed to simply forward packets between bridge ports, and it would seem to other devices that there is simply a wire between them. With bridge VLAN filtering, you can limit which packets are allowed to access the device that has the bridge configured. The most common practice is to allow access to the device only by using a very specific VLAN ID, but there are other ways you can grant access to the device. Management access is a great way to add another layer of security when accessing the device through a bridge port; this type of access is sometimes called the management port. For devices that support VLAN Filtering with hardware offloading, it is also related to the CPU port of a bridge.</p>
+</li>
+<li>
+<p><strong>CPU port</strong> - Every device with a switch chip has a special-purpose port called the CPU port, and it is used to communicate with the device's CPU. For devices that support VLAN filtering with hardware offloading, this port is the bridge interface itself. This port is mostly used to create management access but can be used for other purposes, for example, to route traffic between VLANs, to mark packets, and to apply queue.</p>
+</li>
+<li>
+<p><strong>frame-type</strong> - You can filter out packets based on whether they have a VLAN tag or not; this is useful to add an extra layer of security for your bridge ports.</p>
+</li>
+<li>
+<p><strong>EtherType</strong> - By default, a VLAN-aware bridge will filter VLANs by checking the C-TAG (0x8100); all other VLAN tags types are considered as untagged packets (without a VLAN tag). The selected EtherType will be used for VLAN filtering and VLAN tagging/untagging.</p>
+</li>
+<li>
+<p><strong>VLAN Tunnelling</strong> - If the EtherType of the packet does not match with the EtherType configured for the bridge, then ingress packets are considered as untagged packets; this behavior gives a possibility to encapsulate VLANs into another, different VLAN. This also gives a possibility to divert specific traffic through different devices in your network.</p>
+</li>
+<li>
+<p><strong>Tag stacking</strong> - If a packet has a VLAN tag that matches the EtherType, then the packet is considered as a tagged packet, but you can force another VLAN tag regardless of the packet's content. By setting <code>tag-stacking=yes</code> on a bridge port, you will add another VLAN tag with the PVID value on top of any other tag for all ingress packets.</p>
+</li>
+</ul>
+<h2 id="trunkaccess-port-setup">Trunk/Access port setup</h2>
+<hr />
+<p>For the configuration of a trunk port and access ports without the explanations, see <a href="../#vlan-example-trunk-and-access-ports">VLAN Example: Trunk and Access Ports</a>. This section builds such a setup step by step and explains the caveats along the way.</p>
+<p>Below you can find a very common diagram for a very typical type of setup that consists of a trunk port and multiple access ports:</p>
+<p><em>[gambar: Trunk and Access Setup]</em></p>
+<p>This setup is very common since it gives the possibility to divide your network into multiple segments while using a single switch and maybe a single router. Such a requirement is very common for companies that want to separate multiple departments. With VLANs you can use different DHCP Servers, which can give out an IP address from a different subnet based on the VLAN ID, which makes creating Firewall rules and QoS a lot easier.</p>
+<p>In such a setup you would connect some generic devices like Desktop PCs to <strong>ether2</strong> and <strong>ether3</strong>. These can be considered as workstations and they generally only use untagged traffic (it is possible to force a VLAN tag for all traffic that is sent out a generic workstation, though it is not very common). To isolate some workstations from other workstations you must add a VLAN tag to all packets that enter <strong>ether2</strong> or <strong>ether3</strong>, but to decide what VLAN ID the packet should get, you need to use a concept called <strong>Port-based VLANs</strong>. In this concept, packets get a VLAN tag with a VLAN ID based on the bridge port to which the device is connected. For example, in this setup the device on <strong>ether2</strong> will get a VLAN tag with <strong>VLAN20</strong> and the device on <strong>ether3</strong> will get a VLAN tag with <strong>VLAN30</strong>. This concept is very scalable as long as you have enough bridge ports. This should give you the understanding that traffic between the bridge and devices behind <strong>ether2/ether3</strong> is untagged (since there is no VLAN tag, hence the name).</p>
+<p>When we have determined our untagged ports, we can now determine our tagged ports. Tagged ports are going to be the trunk ports (the port that carries multiple VLANs) and usually, this port is connected to a router or another switch/bridge. You can have multiple trunk ports as well. Tagged ports are always carrying packets with a VLAN tag (hence the name) and you must <strong>ALWAYS</strong> specify the tagged ports for each VLAN ID you want this port to forward. It is possible that a port is a tagged port for one VLAN ID and the same port is an untagged port for a different VLAN ID, but this is for a different type of setup (Hybrid port setup).</p>
+<p>A special note must be added for the PVID property. This property should be used on access ports, but it can be used for trunk ports as well (in a Hybrid port setup). By using the PVID property you are adding a new VLAN tag with a VLAN ID that is specified in the PVID to all <strong>UNTAGGED</strong> packets that are received on that specific bridge port. The PVID does not have any effect on tagged packets, this means that, for example, if a packet with a VLAN tag of <strong>VLAN40</strong> is received on <strong>ether2</strong> that has <code>PVID=20</code>, then the VLAN tag is <strong>NOT</strong> changed and forwarding will depend on the entries from the bridge VLAN table.</p>
+<p>To configure the trunk/access port setup, you need to first create a bridge:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Don't enable VLAN filtering yet as you might get locked out of the device because of the lack of management access, which is configured at the end.</p>
+</div>
+<p>Add the bridge ports and specify PVID for each access port:</p>
+<pre><code class="language-ros">/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2 pvid=20
+add bridge=bridge1 interface=ether3 pvid=30
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>PVID has no effect until VLAN filtering is enabled.</p>
+</div>
+<p>Add appropriate entries in the bridge VLAN table:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 untagged=ether2 vlan-ids=20
+add bridge=bridge1 tagged=ether1 untagged=ether3 vlan-ids=30
+</code></pre>
+<p>You might think that you could simplify these entries with a single entry, similar to this:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 untagged=ether2,ether3 vlan-ids=20,30
+</code></pre>
+<p>Do <strong>NOT</strong> use multiple VLAN IDs on access ports. This will unintentionally allow both <strong>VLAN20</strong> and <strong>VLAN30</strong> on both access ports. In the example above, <strong>ether3</strong> is supposed to set a VLAN tag for all ingress packets to use <strong>VLAN30</strong> (since <code>PVID=30</code>), but this does not limit the allowed VLANs on this port when VLANs are being sent out through this port. The bridge VLAN table is responsible for deciding whether a VLAN is allowed to be sent through a specific port or not. The entry above specifies that both <strong>VLAN20</strong> and <strong>VLAN30</strong> are allowed to be sent out through <strong>ether2</strong> and <strong>ether3</strong> and on top of that the entry specifies that packets should be sent out without a VLAN tag (packets are sent out as untagged packets). As a result, you may create a packet leak from VLANs to ports that are not even supposed to receive such traffic, see the image below.</p>
+<p><em>[gambar: Trunk and Access Setup Bad]</em></p>
+<p>A misconfigured VLAN table allows VLAN20 to be sent through ether3; it will also allow VLAN30 through ether2</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Don't use more than one VLAN ID specified in a bridge VLAN table entry for access ports; you should only specify multiple VLAN IDs for trunk ports.</p>
+</div>
+<p>It is not necessary to add a bridge port as an untagged port, because each bridge port is added as an untagged port dynamically with a VLAN ID that is specified in the PVID property. This is because of a feature that automatically will add an appropriate entry in the bridge VLAN table for convenience and performance reasons. This feature does have some caveats that you must be aware of. All ports that have the same PVID will be added to a single entry for the appropriate VLAN ID as untagged ports, but note that the <strong>Bridge interface</strong> also has a VLAN ID.</p>
+<p>For testing purposes, we are going to enable VLAN filtering, but note that it might make you lose access to the device since it does not have management access configured yet (we will configure it later). It is always recommended to configure VLAN filtering while using a serial console, though you can also configure a device through a port that is not added to a bridge. Make sure you are using a serial console or connected through a different port (that is not in a bridge) and enable VLAN filtering:</p>
+<pre><code class="language-ros">/interface/bridge/set bridge1 vlan-filtering=yes
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>You might not lose access to the device as soon as you enable VLAN filtering, but you might get disconnected since the bridge must reset itself in order for VLAN filtering to take any effect, which will force you to reconnect (this is mostly relevant when using MAC-telnet). There is a chance you might be able to access your device using untagged traffic. This scenario is described below.</p>
+</div>
+<p>If you have enabled VLAN filtering now and printed out the current VLAN table, you would see such a table:</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; /interface/bridge/vlan/print
+Flags: X - disabled, D - dynamic 
+ #   BRIDGE                     VLAN-IDS  CURRENT-TAGGED       CURRENT-UNTAGGED
+ 0   bridge1                    20        ether1               ether2
+ 1   bridge1                    30        ether1               ether3
+ 2 D bridge1                    1                              bridge1
+                                                               ether1
+</code></pre>
+<p>There is a dynamic entry added for <strong>VLAN1</strong> since <code>PVID=1</code> is set by default to all bridge ports (including our trunk port, <strong>ether1</strong>), but you should also notice that the <strong>bridge1</strong> interface (the CPU port) is also added dynamically. You should be aware that <strong>bridge1</strong> is also a bridge port and therefore might get added to the bridge VLAN table dynamically. There is a chance that you might unintentionally allow access to the device because of this feature. For example, if you have followed this guide and left <strong>PVID=1</strong> set for the trunk port (<strong>ether1</strong>) and did not change the PVID for the CPU port (<strong>bridge1</strong>) as well, then access through <strong>ether1</strong> to the device using untagged traffic is allowed. This is also visible when you print out the bridge VLAN table. This scenario is illustrated in the image below:</p>
+<p><em>[gambar: Trunk and Access Setup Unintentional Management]</em></p>
+<p>Unintentionally allowed management access using untagged traffic through the trunk port</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Always check the bridge VLAN table if you have not unintentionally allowed certain VLANs or untagged traffic to specific ports, especially the CPU port (bridge).</p>
+</div>
+<p>There is a simple way to prevent the bridge (CPU port) from being added as an untagged port. You can simply set the PVID on the trunk port to be different than the bridge's PVID (or change the bridge's PVID), but there is another option, which is more intuitive and recommended. Since you are expecting that the trunk port is only supposed to receive tagged traffic (in this example, it should only receive <strong>VLAN20/VLAN30</strong>), but no untagged traffic, you can use ingress-filtering along with frame-type to filter out unwanted packets, but to fully understand the behavior of ingress filtering, we must first understand the details of management access.</p>
+<p>Management access is used to create a way to access a device through a bridge that has VLAN filtering enabled. You could simply allow untagged access and doing that is fairly simple. Let us say you wanted the workstation behind <strong>ether3</strong> to be able to access the device. We assumed before that the workstation is a generic computer that will not use tagged packets and therefore will only send out untagged packets. This means that we should add the CPU port (<strong>bridge1</strong>) as an untagged interface to the bridge VLAN table, to do so, simply use the same PVID value for the <strong>bridge1</strong> and <strong>ether3</strong> ports and set both ports as untagged members for the VLAN ID. In this case, you are going to connect from <strong>ether3</strong> that has <code>PVID=30</code>, so you change the configuration accordingly:</p>
+<pre><code class="language-ros">/interface/bridge/set [find name=bridge1] pvid=30
+/interface/bridge/vlan/set [find vlan-ids=30] untagged=bridge1,ether3
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>You can use the feature that dynamically adds untagged ports with the same PVID value, or you can simply change the PVID to match between <strong>ether3</strong> and <strong>bridge1</strong>.</p>
+</div>
+<p>Allowing access to the device using untagged traffic is not considered a good security practice. A much better way is to allow access to the device using a very specific VLAN sometimes called the management VLAN. In our case, this is going to be <strong>VLAN99</strong>. This adds a significant layer of security since an attacker must guess the VLAN ID that is being used for management purposes and then guess the login credentials. On top of this, you can even add another layer of security by allowing access to the device using only certain IP addresses. The purpose of this guide is to provide an in-depth explanation. For that reason, we are adding a level of complexity to our setup to understand some possible caveats that you must take into account. We are going to allow access from an access port using tagged traffic (illustrated in the image below). To allow access to the device using <strong>VLAN99</strong> from <strong>ether3</strong>, we must add a proper entry in the bridge VLAN table. Additionally, a network device connected to ether3 must support VLAN tagging.</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1,ether3 vlan-ids=99
+</code></pre>
+<p><em>[gambar: Trunk and Access Setup Management Access]</em></p>
+<p>Management access using tagged traffic through an access port (which makes it a hybrid port)</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If PVID for ether1 and bridge1 match (by default, it does match with 1), then access to the device is allowed using untagged traffic from ether1 because of the feature that dynamically adds untagged ports to the bridge VLAN table.</p>
+</div>
+<p>But you might notice that access using <strong>VLAN99</strong> does not work at this point. This is because you need a VLAN interface that listens for tagged traffic. You can simply create this interface for the appropriate VLAN ID and you can set an IP address for the interface as well:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=bridge1 name=VLAN99 vlan-id=99
+/ip/address
+add address=192.168.99.2/24 interface=VLAN99
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Our access port (<strong>ether3</strong>) at this point expects tagged and untagged traffic at the same time; such a port is called a <strong>hybrid port</strong>.</p>
+</div>
+<p>At this point, we can benefit from using <code>ingress-filtering</code> and <code>frame-type</code>. First, we are going to focus on <code>frame-type</code>, which limits the allowed packet types (tagged, untagged, both), but for <code>frame-type</code> to work properly, <code>ingress-filtering</code> must be enabled, otherwise it will not have any effect. In our example, where we wanted to allow access from <strong>ether3</strong> using tagged traffic (<strong>VLAN99</strong>) and at the same time allow a generic workstation to access the network, we can conclude that this port needs to allow tagged and untagged packets, but <strong>ether1</strong> and <strong>ether2</strong> are supposed to receive only specific types of packets, for these reasons we can enhance our network's security. Since <strong>ether1</strong> is our trunk port, it is only supposed to carry tagged packets, but <strong>ether2</strong> is our access port so it should not carry any tagged packets, based on these conclusions we can drop invalid packets:</p>
+<pre><code class="language-ros">/interface/bridge/port
+set [find where interface=ether1] ingress-filtering=yes frame-types=admit-only-vlan-tagged
+set [find where interface=ether2] ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+</code></pre>
+<p>Let's say that you forgot to enable ingress-filtering and change the frame-type property on <strong>ether1</strong>, this would unintentionally add access to the device through <strong>ether1</strong> using untagged traffic since PVID matches for <strong>bridge1</strong> and <strong>ether1</strong>, but you are expecting only tagged traffic to be able to access the device. It is possible to drop all untagged packets that are destined for the <strong>CPU port</strong>:</p>
+<pre><code class="language-ros">/interface/bridge
+set bridge1 frame-types=admit-only-vlan-tagged ingress-filtering=yes
+</code></pre>
+<p>This not only drops untagged packets, but disables the feature that dynamically adds untagged ports to the bridge VLAN table. If you print out the current bridge VLAN table, you will notice that <strong>bridge1</strong> is not dynamically added as an untagged port:</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; /interface/bridge/vlan/print 
+Flags: X - disabled, D - dynamic 
+ #   BRIDGE       VLAN-IDS  CURRENT-TAGGED        CURRENT-UNTAGGED
+ 0   bridge1      20        ether1
+ 1   bridge1      30        ether1                ether3
+ 2 D bridge1      1                               ether1
+ 3   bridge1      99        bridge1
+                            ether3  
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When <code>frame-type=admit-only-vlan-tagged</code> is used on a port, then the port is not dynamically added as an untagged port for the PVID.</p>
+</div>
+<p>While <code>frame-type</code> can be used to drop a certain type of packet, the <code>ingress-filtering</code> can be used to filter out packets before they can be sent out. To fully understand the need for ingress filtering, consider the following scenario: <strong>VLAN99</strong> is allowed on <strong>ether3</strong> and <strong>bridge1</strong>, but you can still send <strong>VLAN99</strong> traffic from <strong>ether1</strong> to <strong>ether3</strong>. This is because the bridge VLAN table checks if a port is allowed to carry a certain VLAN only on egress ports. In our case, <strong>ether3</strong> is allowed to carry <strong>VLAN99</strong> and for this reason, it is forwarded. To prevent this, you <strong>MUST</strong> use ingress-filtering. With ingress filtering, ingress packets are also checked. In our case, the bridge VLAN table does not contain an entry that <strong>VLAN99</strong> is allowed on <strong>ether1</strong>, and therefore the packet will be dropped immediately. Of course, in our scenario without ingress filtering, the connection cannot be established since <strong>VLAN99</strong> can be forwarded only from <strong>ether1</strong> to <strong>ether3</strong>, but not from <strong>ether3</strong> to <strong>ether1</strong>, though there are still possible attacks that can be used in such a misconfiguration (for example, ARP poisoning). The packet dropping behavior is illustrated in the image below:</p>
+<p><em>[gambar: Trunk and Access Setup Ingress]</em></p>
+<p>Trunk/access port setup with and without ingress filtering. Ingress filtering can prevent unwanted traffic from being forwarded. Note that ether1 is not allowed to carry VLAN99 in the bridge VLAN table.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Always try to use <code>ingress-filtering</code> wherever it is possible. It adds a significant layer of security.</p>
+</div>
+<p>The ingress-filtering can be used on the <strong>CPU port</strong>(bridge) as well. This can be used to prevent some possible attack vectors and limit the allowed VLANs that can access the CPU. It is better to drop a packet on an ingress port, rather than on an egress port. This reduces the CPU load, which is quite crucial when you are using hardware offloading with bridge VLAN filtering.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The <code>ingress-filtering</code> property only affects ingress traffic, but <code>frame-type</code> affects both egress and ingress traffic.</p>
+</div>
+<p>Even though you can limit the allowed VLANs and packet types on a port, it is never a good security practice to allow access to a device through access ports since an attacker could sniff packets and extract the management VLAN's ID. You should only allow access to the device from the trunk port (<strong>ether1</strong>) since trunk ports usually have better physical security. You should remove the previous entry and allow access to the device through the port that is connected to your router (illustrated in the image below):</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1,ether1 vlan-ids=99
+</code></pre>
+<p><em>[gambar: Basic VLAN Switching]</em></p>
+<h2 id="vlan-tunnelling-setup">VLAN Tunnelling setup</h2>
+<hr />
+<p>In some cases, you might want to forward already tagged traffic through certain switches. This is a quite common setup for backbone infrastructures since it provides a possibility to encapsulate traffic from, for example, your edge routers and seamlessly forward it over your backbone to another edge router. Below you can find an example of a VLAN tunneling topology:</p>
+<p><em>[gambar: Provider Bridge]</em></p>
+<p>Provider bridge topology</p>
+<p>SVID stands for Service VID, indicating the tag type along with the VID.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>To fully understand how to configure VLAN tunneling properly, you should first read the Trunk/Access port setup section before proceeding any further.</p>
+</div>
+<p>There are two possible ways to achieve this, one is the standardized IEEE 802.1ad way, and the other way is using <strong>Tag stacking</strong>. We will first review the standardized way since the same principles apply to both ways and only a couple of parameters must be changed to use the other method. The way VLAN tunneling works is that the bridge checks if the outer VLAN tag is using the same VLAN tag as specified in ether-type. If the VLAN tag matches, the packet is considered as a tagged packet, otherwise, it is considered as an untagged packet.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The bridge checks only the outer tag (closest to the MAC address); any other tag is ignored anywhere in a bridge configuration. The bridge is not aware of the packet contents; even though there might be another VLAN tag, only the first VLAN tag is checked.</p>
+</div>
+<p>The ether-type property allows you to select the following EtherTypes for the VLAN tag:</p>
+<ul>
+<li>0x88a8 - IEEE 802.1ad, Service Tag.</li>
+<li>0x8100 - IEEE 802.1Q, Customer VLAN (regular VLAN tag).</li>
+<li>0x9100 - Unofficial tag type (rarely used).</li>
+</ul>
+<p>To properly configure bridge VLAN filtering, you must understand how the bridge distinguishes between tagged and untagged packets. As mentioned before, the bridge will check if EtherType matches with the outer VLAN tag in the packet. For example, consider the following packet:</p>
+<pre><code class="language-text">FFFFFFFFFFFF 6C3B6B7C413E 8100 6063 9999
+----------------------------------------
+DST-MAC = FFFFFFFFFFFF
+SRC-MAC = 6C3B6B7C413E
+Outer EtherType = 8100 (IEEE 802.1Q VLAN tag)
+VLAN priority = 3
+VLAN ID = 99 (HEX = 63)
+Inner EtherType = 9999
+</code></pre>
+<p>Let us assume that we have set <strong><code>ether-type=0x88a8</code></strong>, in this case, the packet above will be considered untagged since the bridge is looking for a different VLAN tag. Let's now consider the following packet:</p>
+<pre><code class="language-text">FFFFFFFFFFFF 6C3B6B7C413E 88A8 6063 8100 5062 9999
+----------------------------------------
+DST-MAC = FFFFFFFFFFFF
+SRC-MAC = 6C3B6B7C413E
+Outer EtherType = 88A8 (IEEE 802.1ad VLAN tag)
+VLAN priority = 3
+VLAN ID = 99 (HEX = 63)
+Inner EtherType 1 = 8100 (IEEE 802.1Q VLAN tag)
+VLAN priority = 2
+VLAN ID = 98 (HEX = 62)
+Inner EtherType 2 = 9999
+</code></pre>
+<p>This time let us assume that we have set <strong><code>ether-type=0x8100</code></strong>. In this case, the packet above is considered as untagged as well since the outer tag is using an IEEE 802.1ad VLAN tag. The same principles apply to other VLAN-related functions, for example, the <code>PVID</code> property will add a new VLAN tag on access ports and the VLAN tag will be using the EtherType specified in ether-type.</p>
+<p>Both <strong>SW1</strong> and <strong>SW2</strong> are using the same configuration:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes ether-type=0x88a8
+/interface/bridge/port
+add interface=ether1 bridge=bridge1 pvid=200
+add interface=ether2 bridge=bridge1 pvid=300
+add interface=ether3 bridge=bridge1
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether3 untagged=ether1 vlan-ids=200
+add bridge=bridge1 tagged=ether3 untagged=ether2 vlan-ids=300
+</code></pre>
+<p>In this example, we are assuming that all routers are passing traffic that is using a regular/customer VLAN tag. Such traffic on switches will be considered as untagged traffic based on the principle described above. Switches will encapsulate this traffic using a Service VLAN tag (the outer 802.1ad tag) and traffic between <strong>SW1</strong> and <strong>SW2</strong> will be considered as tagged. Before traffic reaches its destination, the switches will decapsulate the outer tag and forward the original 802.1Q tagged frame. See a packet example below:</p>
+<p><em>[gambar: Service VLAN 802.1ad]</em>A packet example before and after 802.1ad VLAN encapsulation</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>All principles that apply to the regular trunk/access port setup using IEEE 802.1Q also apply to VLAN tunneling setups. Make sure you are limiting VLANs and packet type properly using the bridge VLAN table and ingress filtering.</p>
+</div>
+<p>In case you want to create management access from, let's say, <strong>ether3</strong> to the device and want to use <strong>VLAN99</strong>, then you would use such commands:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1,ether3 vlan-ids=99
+/interface/vlan
+add interface=bridge1 name=VLAN99 use-service-tag=yes vlan-id=99
+/ip/address
+add address=192.168.99.2/24 interface=VLAN99
+</code></pre>
+<p>As you may notice, the only difference is that the VLAN interface is using <code>use-service-tag=yes</code>; this sets the VLAN interface to listen to IEEE 802.1ad VLAN tags. This will require you to use the IEEE 802.1ad VLAN tag to access the device using the management VLAN - you will not be able to connect to the device using a regular VLAN tag while bridge VLAN filtering is enabled. The ether-type is set globally and will affect all bridge VLAN filtering functions.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Devices with switch chip Marvell-98DX3257 (e.g. CRS354 series) do not support VLAN filtering on 1Gbps Ethernet interfaces for other VLAN types (<code>0x88a8</code> and <code>0x9100</code>).</p>
+</div>
+<h3 id="tag-stacking">Tag Stacking</h3>
+<p>In the VLAN Tunnelling setup, we were adding a new VLAN tag that was different from the VLAN tag, but it is possible to add a new VLAN tag regardless of the packet contents. The difference from the regular VLAN tunneling setup is that the bridge does not check if the packet is tagged or untagged, it assumes that all packets that are received on a specific port are all untagged packets and will add a new VLAN tag regardless of whether a VLAN tag is present or not. This is called <strong>Tag Stacking</strong> since it "stacks" VLAN tags on top of the previous tag, regardless of the VLAN tag type. This is a very common setup for networks that do not support the IEEE 802.1ad standard, but still want to encapsulate VLAN traffic into a new VLAN.</p>
+<p>The VLAN tag that is going to be added depends on <code>ether-type</code> and <code>PVID</code>. For example, if you have <code>ether-type=0x8100</code> and <code>PVID=200</code> on a port, then the bridge will add a new IEEE 802.1Q VLAN tag right on top of any other tag (if such is present). The same VLAN filtering principles still apply. You have to determine which ports are going to be your trunk ports and mark them as tagged ports, determine your access ports, and add them as untagged ports.</p>
+<p>To explain how VLAN tagging and untagging works with tag stacking, let us use the same network topology as before:</p>
+<p><em>[gambar: Basic VLAN Switching 2]</em></p>
+<p>What we want to achieve is that regardless of what is being received on <strong>ether2</strong> and <strong>ether3</strong>, a new VLAN tag will be added to encapsulate the traffic that is coming from those ports. <code>Tag-stacking</code> forces a new VLAN tag, so we can use this property to achieve our desired setup. We are going to be using the same configuration as in the Trunk/Access port setup, but with <code>tag-stacking</code> enabled on the access ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes ether-type=0x8100
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2 tag-stacking=yes pvid=20
+add bridge=bridge1 interface=ether3 tag-stacking=yes pvid=30
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 untagged=ether2 vlan-ids=20
+add bridge=bridge1 tagged=ether1 untagged=ether3 vlan-ids=30
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The added VLAN tag will use the specified <code>ether-type</code>. The selected EtherType will also be used for VLAN filtering. Only the outer tag is checked, but with tag-stacking in place, the tag checking is skipped, and it is assumed that a new tag must be added either way.</p>
+</div>
+<p>Let us assume that the devices behind <strong>ether2</strong> and <strong>ether3</strong> are sending tagged <strong>VLAN40</strong> traffic. With this configuration, <strong>ALL</strong> packets will get encapsulated with a new VLAN tag, but you must make sure that you have added the VLAN ID from the outer tag to the bridge VLAN table. <strong>VLAN40</strong> is not added to the bridge VLAN table since it is the inner tag and it is not checked; we are only concerned about the outer tag, which is either <strong>VLAN20</strong> or <strong>VLAN30</strong> depending on the port.</p>
+<p>Similar to other setups, the bridge VLAN table is going to be used to determine if the VLAN tag needs to be removed or not. For example, when <strong>ether1</strong> receives tagged <strong>VLAN20</strong> packets, the bridge checks that <strong>ether2</strong> is allowed to carry <strong>VLAN20</strong> so it is about to send it out through <strong>ether2</strong>, but it also checks the bridge VLAN table whether the VLAN tag should be removed and since <strong>ether2</strong> is marked as an untagged port, the bridge will forward these packets from <strong>ether1</strong> to <strong>ether2</strong> without the <strong>VLAN20</strong> VLAN tag.</p>
+<p>From the access port perspective, the same principles as in the Trunk/Access port setup apply. All packets that are received on <strong>ether2</strong> will get a new VLAN tag with the VLAN ID that is specified in PVID, in this case, a new VLAN tag will be added with <strong>VLAN20</strong> and this VLAN will be subjected to VLAN filtering. See a packet example below:</p>
+<p><em>[gambar: Tag Stacking]</em></p>
+<p>A packet example before and after tag stacking</p>
+<hr />
+<h1 id="crs1xx2xx-series-switch-examples">CRS1xx/2xx series switch examples</h1>
+<blockquote>
+<p>This page provides configuration examples and use cases for Cloud Router Switch features on CRS1xx/2xx series switches, covering port switching, management access setup with VLAN filtering, and security...</p>
+</blockquote>
+<h1 id="crs1xx2xx-series-switch-examples_1">CRS1xx/2xx series switch examples</h1>
+<p>The Cloud Router Switch series is highly integrated switches with a high-performance MIPS CPU and feature-rich packet processors. The CRS switches can be designed into various Ethernet applications including unmanaged switch, Layer 2 managed switch, carrier switch, and wireless/wired unified packet processing.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>This article applies to CRS1xx and CRS2xx series switches and not to MikroTik devices with Marvell Prestera switch (e.g. CRS3xx). For MikroTik devices with Marvell Prestera switch, see the <a href="../marvell-prestera-switch-chip-features.md">Marvell Prestera switch chip features</a> manual.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Features</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Forwarding</strong></td>
+<td style="text-align: left;">Configurable ports for switching or routingFull non-blocking wire-speed switchingUp to 16k MAC entries in Unicast FDB for Layer 2 unicast forwardingUp to 1k MAC entries in Multicast FDB for multicast forwardingUp to 256 MAC entries in Reserved FDB for control and management purposesAll Forwarding Databases support IVL and SVLConfigurable Port-based MAC learning limitJumbo frame support (CRS1xx/2xx: 9204 Bytes; CRS125/CRS109: 4064 Bytes)IGMP Snooping support</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mirroring</strong></td>
+<td style="text-align: left;">Various types of mirroring:Port-based mirroringVLAN-based mirroringMAC-based mirroring2 independent mirroring analyzer ports</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>VLAN</strong></td>
+<td style="text-align: left;">Fully compatible with IEEE802.1Q and IEEE802.1ad VLAN4k active VLANsFlexible VLAN assignment:Port-based VLANProtocol-based VLANMAC-based VLANFrom any to any VLAN translation and swapping1:1 VLAN switching - VLAN to port mappingVLAN filtering</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Port Isolation and Leakage</strong></td>
+<td style="text-align: left;">Applicable for Private VLAN implementation3 port profile types: Promiscuous, Isolated, and CommunityUp to 28 Community profilesLeakage profiles allow bypassing egress VLAN filtering</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trunking</strong></td>
+<td style="text-align: left;">Supports static link aggregation groupsUp to 8 Port Trunk groupsUp to 8 member ports per Port Trunk groupHardware automatic failover and load balancing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Quality of Service (QoS)</strong></td>
+<td style="text-align: left;">Flexible QoS classification and assignment:Port-basedMAC-basedVLAN-basedProtocol-basedPCP/DEI basedDSCP basedACL basedQoS remarking and remapping for QoS domain translation between a service provider and client networksOverriding of each QoS assignment according to the configured priority</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Shaping and Scheduling</strong></td>
+<td style="text-align: left;">8 queues on each physical portShaping per port, per queue, per queue group</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Access Control List</strong></td>
+<td style="text-align: left;">Ingress and Egress ACL tablesUp to 128 ACL rules (limited by RouterOS)Classification based on ports, L2, L3, L4 protocol header fieldsACL actions include filtering, forwarding, and modifying the protocol header fields</td>
+</tr>
+</tbody>
+</table>
+<h3 id="applicable-switch-models">Applicable Switch models</h3>
+<hr />
+<p>This table clarifies the main differences between Cloud Router Switch models.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Model</strong></td>
+<td style="text-align: left;"><strong>Switch Chip</strong></td>
+<td style="text-align: left;"><strong>CPU</strong></td>
+<td style="text-align: left;"><strong>Wireless</strong></td>
+<td style="text-align: left;"><strong>SFP+ port</strong></td>
+<td style="text-align: left;"><strong>Access Control List</strong></td>
+<td style="text-align: left;"><strong>Jumbo Frame (Bytes)</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS105-5S-FB</strong></td>
+<td style="text-align: left;">QCA-8511</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS106-1C-5S</strong></td>
+<td style="text-align: left;">QCA-8511</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS112-8G-4S</strong></td>
+<td style="text-align: left;">QCA-8511</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS210-8G-2S+</strong></td>
+<td style="text-align: left;">QCA-8519</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS212-1G-10S-1S+</strong></td>
+<td style="text-align: left;">QCA-8519</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS226-24G-2S+</strong></td>
+<td style="text-align: left;">QCA-8519</td>
+<td style="text-align: left;">400MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS125-24G-1S</strong></td>
+<td style="text-align: left;">QCA-8513L</td>
+<td style="text-align: left;">600MHz</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">4064</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS125-24G-1S-2HnD</strong></td>
+<td style="text-align: left;">QCA-8513L</td>
+<td style="text-align: left;">600MHz</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">4064</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS109-8G-1S-2HnD</strong></td>
+<td style="text-align: left;">QCA-8513L</td>
+<td style="text-align: left;">600MHz</td>
+<td style="text-align: left;">+</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">4064</td>
+</tr>
+</tbody>
+</table>
+<h3 id="abbreviations-and-explanations">Abbreviations and Explanations</h3>
+<hr />
+<p>CVID - Customer VLAN id: inner VLAN tag id of the IEEE 802.1ad frame</p>
+<p>SVID - Service VLAN id: outer VLAN tag id of the IEEE 802.1ad frame</p>
+<p>IVL - Independent VLAN learning - learning/lookup is based on both MAC addresses and VLAN IDs.</p>
+<p>SVL - Shared VLAN learning - learning/lookup is based on MAC addresses - not on VLAN IDs.</p>
+<p>TPID - Tag Protocol Identifier</p>
+<p>PCP - Priority Code Point: a 3-bit field which refers to the IEEE 802.1p priority</p>
+<p>DEI - Drop Eligible Indicator</p>
+<p>DSCP - Differentiated Services Code Point</p>
+<p>Drop precedence - an internal CRS switch QoS attribute used for packet enqueuing or dropping.</p>
+<h3 id="port-switching">Port Switching</h3>
+<hr />
+<p>To set up port switching on CRS1xx/2xx series switches, check the <a href="../#bridge-hardware-offloading">Bridge Hardware Offloading</a> page.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Dynamic reserved VLAN entries (VLAN4091; VLAN4090; VLAN4089; etc.) are created in the CRS switch when switched port groups are added when a hardware offloaded bridge is created. These VLANs are necessary for internal operation and have lower precedence than user-configured VLANs.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>It is possible to create multiple isolated switch groups by using multiple bridges with enabled hardware offloading; this is possible only on CRS1xx/2xx series switches. For more complex setups (for example, VLAN filtering) you should use the port isolation feature instead.</p>
+</div>
+<h4 id="multiple-switch-groups">Multiple switch groups</h4>
+<p>The CRS1xx/2xx series switches allow you to use multiple bridges with hardware offloading; this allows you to easily isolate multiple switch groups. This can be done by simply creating multiple bridges and enabling hardware offloading.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Multiple hardware offloaded bridge configuration is designed as a fast and simple port isolation solution, but it limits a part of the VLAN functionality supported by the CRS switch chip. For advanced configurations use one bridge within the CRS switch chip for all ports, configure VLANs, and isolate port groups with port isolation profile configuration.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>CRS1xx/2xx series switches can run multiple hardware offloaded bridges with (R)STP enabled, but it is not recommended since the device is not designed to run multiple (R)STP instances on a hardware level. To isolate multiple switch groups and have (R)STP enabled you should isolate port groups with port isolation profile configuration.</p>
+</div>
+<h2 id="management-access-configuration">Management access configuration</h2>
+<hr />
+<p>In general, switches are only supposed to forward packets by using the built-in switch chip, but not allow access to the device itself for security reasons. It is possible to use the device's serial port for management access, but in most cases, such an access method is not desired and access using an IP address is more suitable. In such cases, you will need to configure management access.</p>
+<p>In all types of management access, it is assumed that ports must be switched together. Use the following commands to switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether3 hw=yes
+add bridge=bridge1 interface=ether4 hw=yes
+add bridge=bridge1 interface=ether5 hw=yes
+</code></pre>
+<p>You should also assign an IP address to the bridge interface so the device is reachable using an IP address (the device is also reachable using a MAC address):</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.88.1/24 interface=bridge1
+</code></pre>
+<h3 id="untagged">Untagged</h3>
+<p>If invalid VLAN filtering is not enabled, management access to the device using tagged or untagged (<strong>VLAN 0</strong>) traffic is already allowed from any port, though this is not a good practice; this can cause security issues and can cause the device's CPU to be overloaded in certain situations (most commonly with a broadcast type of traffic).</p>
+<p>If you intend to use invalid VLAN filtering (which you should), then ports from which you are going to access the switch must be added to the VLAN table for untagged (<strong>VLAN 0</strong>) traffic, for example, in case you want to access the switch from <strong>ether2</strong>:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add vlan-id=0 ports=ether2,switch1-cpu  
+</code></pre>
+<h3 id="tagged">Tagged</h3>
+<p>Allowing only tagged traffic to have management access to the device through a specific port is a much better practice. For example, to allow only <strong>VLAN99</strong> to access the device through <strong>ether2</strong>, you should first add an entry to the VLAN table, which will allow the selected port and the CPU port (<strong>switch1-cpu</strong>) to forward the selected VLAN ID, therefore allowing management access:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=ether2,switch1-cpu vlan-id=99
+</code></pre>
+<p>Packets that will be sent out from the CPU, for example, ping replies, will not have a VLAN tag, to solve this you need to specify which ports should always send out packets with a VLAN tag for a specific VLAN ID:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether2,switch1-cpu vlan-id=99
+</code></pre>
+<p>After a valid VLAN99 configuration has been set up, you can enable unknown/invalid VLAN filtering, which will not allow management access through different ports than specified in the VLAN table:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether2,ether3,ether4,ether5
+</code></pre>
+<p>In this example VLAN99 will be used to access the device. A VLAN interface on the bridge must be created and an IP address must be assigned to it.</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=bridge1 name=MGMT vlan-id=99
+/ip/address
+add address=192.168.99.1/24 interface=MGMT
+</code></pre>
+<h2 id="vlan">VLAN</h2>
+<hr />
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Risk of Lockout.
+It is highly recommended to have a Serial Console cable tested and ready before configuring VLANs. Misconfigurations can easily lock you out of the CPU or your connected port.</p>
+</div>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Troubleshooting Cached MAC Addresses.
+Some changes may appear delayed because of already-learned MAC addresses. If traffic isn't flowing as expected after a change, flush the Unicast Forwarding Database:
+<code>/interface/ethernet/switch/unicast-fdb/flush</code></p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Architectural Best Practice.
+Using multiple hardware-offloaded bridges is a fast way to achieve simple port isolation, but it limits advanced VLAN functionality on the CRS switch-chip. For advanced setups, use a <strong>single bridge</strong> for all ports, configure your VLANs, and isolate port groups using port isolation profiles.</p>
+</div>
+<h3 id="port-based-vlan">Port Based VLAN</h3>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>For CRS3xx series devices, you must use bridge VLAN filtering; you can read more about it in the <a href="../index.md#bridge-vlan-filtering">Bridge VLAN Filtering</a> section.</p>
+</div>
+<h4 id="example-1-trunk-and-access-ports">Example 1 (Trunk and Access ports)</h4>
+<p><em>[gambar: Access Ports]</em></p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Specify the VLAN ID that the switch must set on untagged (VLAN0) traffic for each access port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-vlan-translation
+add ports=ether6 customer-vid=0 new-customer-vid=200
+add ports=ether7 customer-vid=0 new-customer-vid=300
+add ports=ether8 customer-vid=0 new-customer-vid=400
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When an entry is created under <code>/interface/ethernet/switch/ingress-vlan-translation</code>, the switch chip will add a VLAN tag on ingress frames on the specified port. To remove the VLAN tag on the same port for egress frames, an <code>/interface/ethernet/switch/egress-vlan-tag</code> entry should be created for the same VLAN ID where only tagged ports are specified. If a specific VLAN is forwarded only between access ports, the <code>/interface/ethernet/switch/egress-vlan-tag</code> entry should still be created without any tagged ports. Another option is to create extra entries under the <code>/interface/ethernet/switch/egress-vlan-translation</code> menu to set untagged (VLAN0) traffic.</p>
+</div>
+<p>You must also specify which VLANs should be sent out to the trunk port with a VLAN tag. Use the tagged-ports property to set up a trunk port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether2 vlan-id=200
+add tagged-ports=ether2 vlan-id=300
+add tagged-ports=ether2 vlan-id=400
+</code></pre>
+<p>Add entries to the VLAN table to specify VLAN memberships for each port and each VLAN ID:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=ether2,ether6 vlan-id=200
+add ports=ether2,ether7 vlan-id=300
+add ports=ether2,ether8 vlan-id=400
+</code></pre>
+<p>After a valid VLAN configuration has been set up, you can enable unknown/invalid VLAN filtering:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether2,ether6,ether7,ether8
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>It is possible to use the built-in switch chip and the CPU at the same time to create a Switch-Router setup, where a device acts as a switch and as a router simultaneously.</p>
+</div>
+<h4 id="example-2-trunk-and-hybrid-ports">Example 2 (Trunk and Hybrid Ports)</h4>
+<p><em>[gambar: Hybrid Ports]</em></p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Specify the VLAN ID that the switch must set on untagged (VLAN0) traffic for each access port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-vlan-translation
+add ports=ether6 customer-vid=0 new-customer-vid=200
+add ports=ether7 customer-vid=0 new-customer-vid=300
+add ports=ether8 customer-vid=0 new-customer-vid=400
+</code></pre>
+<p>By specifying ports as tagged-ports, the switch will always send out packets as tagged packets with the corresponding VLAN ID. Add appropriate entries according to the diagram above:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether2,ether7,ether8 vlan-id=200
+add tagged-ports=ether2,ether6,ether8 vlan-id=300
+add tagged-ports=ether2,ether6,ether7 vlan-id=400
+</code></pre>
+<p>Add entries to the VLAN table to specify VLAN memberships for each port and each VLAN ID:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=ether2,ether6,ether7,ether8 vlan-id=200 learn=yes
+add ports=ether2,ether6,ether7,ether8 vlan-id=300 learn=yes
+add ports=ether2,ether6,ether7,ether8 vlan-id=400 learn=yes
+</code></pre>
+<p>After a valid VLAN configuration has been set up, you can enable unknown/invalid VLAN filtering:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether2,ether6,ether7,ether8
+</code></pre>
+<h3 id="protocol-based-vlan">Protocol Based VLAN</h3>
+<p><em>[gambar: Protocol Based VLAN]</em></p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Set VLAN for IP and ARP protocols:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/protocol-based-vlan
+add port=ether2 protocol=arp set-customer-vid-for=all new-customer-vid=0
+add port=ether6 protocol=arp set-customer-vid-for=all new-customer-vid=200
+add port=ether2 protocol=ip set-customer-vid-for=all new-customer-vid=0
+add port=ether6 protocol=ip set-customer-vid-for=all new-customer-vid=200
+</code></pre>
+<p>Set VLAN for IPX protocol:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/protocol-based-vlan
+add port=ether2 protocol=ipx set-customer-vid-for=all new-customer-vid=0
+add port=ether7 protocol=ipx set-customer-vid-for=all new-customer-vid=300
+</code></pre>
+<p>Set VLAN for AppleTalk AARP and AppleTalk DDP protocols:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/protocol-based-vlan
+add port=ether2 protocol=0x80F3 set-customer-vid-for=all new-customer-vid=0
+add port=ether8 protocol=0x80F3 set-customer-vid-for=all new-customer-vid=400
+add port=ether2 protocol=0x809B set-customer-vid-for=all new-customer-vid=0
+add port=ether8 protocol=0x809B set-customer-vid-for=all new-customer-vid=400
+</code></pre>
+<h3 id="mac-based-vlan">MAC Based VLAN</h3>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Internally, all MAC addresses in MAC-based VLANs are hashed. Certain MAC addresses can have the same hash, which will prevent a MAC address from being loaded into the switch chip if the hash matches with a hash from a MAC address that has been already loaded, for this reason, it is recommended to use Port-based VLANs in combination with MAC-based VLANs. This is a hardware limitation.</p>
+</div>
+<p><em>[gambar: MAC Based VLAN]</em></p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+</code></pre>
+<p>Enable MAC-based VLAN translation on an access port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether7 allow-fdb-based-vlan-translate=yes
+</code></pre>
+<p>Add MAC-to-VLAN mapping entries in the MAC-based VLAN table:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/mac-based-vlan
+add src-mac=A4:12:6D:77:94:43 new-customer-vid=200
+add src-mac=84:37:62:DF:04:20 new-customer-vid=300
+add src-mac=E7:16:34:A1:CD:18 new-customer-vid=400
+</code></pre>
+<p>Add VLAN200, VLAN300, and VLAN400 tagging on the ether2 port to create it as a VLAN trunk port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether2 vlan-id=200
+add tagged-ports=ether2 vlan-id=300
+add tagged-ports=ether2 vlan-id=400
+</code></pre>
+<p>Additionally, add entries to the VLAN table, specify VLAN membership for each port, and enable unknown/invalid VLAN filtering, see an example below - Unknown/Invalid VLAN filtering. This is required for network setups where more interfaces are added to the bridge, as it allows defining VLAN boundaries.</p>
+<h3 id="intervlan-routing">InterVLAN Routing</h3>
+<p><em>[gambar: VLAN Routing]</em></p>
+<p>InterVLAN routing configuration consists of two main parts – VLAN tagging in switch-chip and routing in RouterOS. This configuration can be used in many applications by combining it with a DHCP server, Hotspot, PPP, and other features for each VLAN.</p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Set VLAN tagging on the CPU port for all VLANs to make packets tagged before they are routed:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=switch1-cpu vlan-id=200
+add tagged-ports=switch1-cpu vlan-id=300
+add tagged-ports=switch1-cpu vlan-id=400
+</code></pre>
+<p>Add ingress VLAN translation rules to ensure that the correct VLAN ID assignment is done on access ports:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-vlan-translation
+add ports=ether6 customer-vid=0 new-customer-vid=200
+add ports=ether7 customer-vid=0 new-customer-vid=300
+add ports=ether8 customer-vid=0 new-customer-vid=400
+</code></pre>
+<p>Create the VLAN interfaces on top of the bridge interface:</p>
+<pre><code class="language-ros">/interface/vlan
+add name=VLAN200 interface=bridge1 vlan-id=200
+add name=VLAN300 interface=bridge1 vlan-id=300
+add name=VLAN400 interface=bridge1 vlan-id=400
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Make sure the VLAN interfaces are created on top of the bridge interface instead of any of the physical interfaces. If the VLAN interfaces are created on a slave interface, then the packet might not be received correctly, and therefore routing might fail. More detailed information can be found in the <a href="layer2-misconfiguration.md#vlan-interface-on-a-slave-interface">VLAN interface on a slave interface</a> manual page.</p>
+</div>
+<p>Add IP addresses on created VLAN interfaces. In this example, three 192.168.x.1 addresses are added to VLAN200, VLAN300, and VLAN400 interfaces:</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.20.1/24 interface=VLAN200
+add address=192.168.30.1/24 interface=VLAN300
+add address=192.168.40.1/24 interface=VLAN400
+</code></pre>
+<h3 id="unknowninvalid-vlan-filtering">Unknown/Invalid VLAN filtering</h3>
+<p>VLAN membership is defined in the VLAN table. Adding entries with VLAN ID and ports makes that VLAN traffic valid on those ports. After a valid VLAN configuration has been set up, unknown/invalid VLAN filtering can be enabled. This VLAN filtering configuration example applies to the InterVLAN Routing setup.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=switch1-cpu,ether6 vlan-id=200
+add ports=switch1-cpu,ether7 vlan-id=300
+add ports=switch1-cpu,ether8 vlan-id=400
+</code></pre>
+<ul>
+<li>Option 1: disable invalid VLAN forwarding on specific ports (more common).</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether6,ether7,ether8
+</code></pre>
+<ul>
+<li>Option 2: disable invalid VLAN forwarding on all ports.</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch
+set forward-unknown-vlan=no
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Using multiple bridges on a single switch chip with enabled unknown/invalid VLAN filtering can cause unexpected behavior. You should always use a single bridge configuration whenever using VLAN filtering. If port isolation is required, then the port isolation feature should be used instead of using multiple bridges.</p>
+</div>
+<h3 id="vlan-tunneling-q-in-q">VLAN Tunneling (Q-in-Q)</h3>
+<p>This example covers a typical VLAN tunneling use case where service provider devices add another VLAN tag for independent forwarding while allowing customers to use their own VLANs.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>This example contains only the Service VLAN tagging part. It is recommended to additionally set Unknown/Invalid VLAN filtering configuration on ports.</p>
+</div>
+<p><em>[gambar: QinQ]</em></p>
+<p><strong>CRS-1</strong>: The first switch on the edge of the service provider network has to properly identify traffic from the customer VLAN ID on port and assign a new service VLAN ID with ingress VLAN translation rules. VLAN trunk port configuration for service provider VLAN tags is in the same <code>egress-vlan-tag</code> table. The main difference from basic Port-Based VLAN configuration is that the CRS switch-chip has to be set to do forwarding according to service (<em>outer</em>) VLAN ID instead of customer (<em>inner</em>) VLAN ID.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 hw=yes
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether9 hw=yes
+
+/interface/ethernet/switch/ingress-vlan-translation
+add customer-vid=200 new-service-vid=400 ports=ether1
+add customer-vid=300 new-service-vid=500 ports=ether2
+
+/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether9 vlan-id=400
+add tagged-ports=ether9 vlan-id=500
+
+/interface/ethernet/switch
+set bridge-type=service-vid-used-as-lookup-vid
+</code></pre>
+<p><strong>CRS-2</strong>: The second switch in the service provider network requires only switched ports to do forwarding according to the service (<em>outer</em>) VLAN ID instead of the customer (<em>inner</em>) VLAN ID.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether9 hw=yes
+add bridge=bridge1 interface=ether10 hw=yes
+
+/interface/ethernet/switch
+set bridge-type=service-vid-used-as-lookup-vid
+</code></pre>
+<p><strong>CRS-3</strong>: The third switch has a similar configuration to CRS-1:</p>
+<ul>
+<li>Ports in a switch group using a bridge.</li>
+<li>Ingress VLAN translation rules to define new service VLAN assignments on ports.</li>
+<li>tagged-ports for service provider VLAN trunks.</li>
+<li>CRS switch-chip set to use service VLAN ID in switching lookup.</li>
+</ul>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether3 hw=yes
+add bridge=bridge1 interface=ether4 hw=yes
+add bridge=bridge1 interface=ether10 hw=yes
+
+/interface/ethernet/switch/ingress-vlan-translation
+add customer-vid=200 new-service-vid=400 ports=ether3
+add customer-vid=300 new-service-vid=500 ports=ether4
+
+/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether10 vlan-id=400
+add tagged-ports=ether10 vlan-id=500
+
+/interface/ethernet/switch
+set bridge-type=service-vid-used-as-lookup-vid
+</code></pre>
+<h3 id="cvid-stacking">CVID Stacking</h3>
+<p>It is possible to use CRS1xx/CRS2xx series switches for CVID Stacking setups. CRS1xx/CRS2xx series switches are capable of VLAN filtering based on the outer tag of tagged packets that have two CVID tags (double CVID tag). These switches are also capable of adding another CVID tag on top of an existing CVID tag (CVID Stacking). For example, in a setup where <strong>ether1</strong> is receiving tagged packets with CVID 10, but it is required that <strong>ether2</strong> sends out these packets with another tag CVID 20 (VLAN10 inside VLAN20) while filtering out any other VLANs, the following must be configured:</p>
+<p>Switch together <strong>ether1</strong> and <strong>ether2</strong>:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 hw=yes
+add bridge=bridge1 interface=ether2 hw=yes
+</code></pre>
+<p>Set the switch to filter VLANs based on the service tag (0x88a8):</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set bridge-type=service-vid-used-as-lookup-vid
+</code></pre>
+<p>Add a service tag SVID 20 to packets that have a CVID 10 tag on <strong>ether1</strong>:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-vlan-translation
+add customer-vid=10 new-service-vid=20 ports=ether1
+</code></pre>
+<p>Specify <strong>ether2</strong> as the tagged/trunk port for SVID 20:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/egress-vlan-tag
+add tagged-ports=ether2 vlan-id=20
+</code></pre>
+<p>Allow <strong>ether1</strong> and <strong>ether2</strong> to forward SVID 20:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=ether1,ether2 vlan-id=20
+</code></pre>
+<p>Override the SVID EtherType (0x88a8) to CVID EtherType (0x8100) on <strong>ether2</strong>:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether2 egress-service-tpid-override=0x8100 ingress-service-tpid-override=0x8100
+</code></pre>
+<p>Enable unknown/invalid VLAN filtering:</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set drop-if-invalid-or-src-port-not-member-of-vlan-on-ports=ether1,ether2
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Since the switch is set to look up VLAN ID based on the service tag, which is overridden with a different EtherType, VLAN filtering is only done on the outer tag of a packet; the inner tag is not checked.</p>
+</div>
+<h2 id="mirroring">Mirroring</h2>
+<hr />
+<p><em>[gambar: Mirroring]</em></p>
+<p>The Cloud Router Switches support three types of mirroring. Port-based mirroring can be applied to any switch-chip ports, VLAN-based mirroring works for all specified VLANs regardless of switch-chip ports, and MAC-based mirroring copies traffic sent or received from a specific device reachable from the port configured in the Unicast Forwarding Database.</p>
+<h3 id="port-based-mirroring">Port-Based Mirroring</h3>
+<p>The first configuration sets the ether5 port as a mirror0 analyzer port for both ingress and egress mirroring. Mirrored traffic will be sent to this port. Port-based ingress and egress mirroring are enabled from the ether6 port.</p>
+<pre><code class="language-ros">/interface/ethernet/switch
+set ingress-mirror0=ether5 egress-mirror0=ether5
+
+/interface/ethernet/switch/port
+set ether6 ingress-mirror-to=mirror0 egress-mirror-to=mirror0
+</code></pre>
+<h3 id="vlan-based-mirroring">VLAN Based Mirroring</h3>
+<p>The second example requires ports to be switched in a group. Mirroring configuration sets the ether5 port as a mirror0 analyzer port and sets the mirror0 port to be used when mirroring from VLAN occurs. VLAN table entry enables mirroring only for VLAN 300 traffic between ether2 and ether7 ports.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+
+/interface/ethernet/switch
+set ingress-mirror0=ether5 vlan-uses=mirror0
+
+/interface/ethernet/switch/vlan
+add ports=ether2,ether7 vlan-id=300 learn=yes ingress-mirror=yes
+</code></pre>
+<h3 id="mac-based-mirroring">MAC Based Mirroring</h3>
+<p>The third configuration also requires ports to be switched as a group. Mirroring configuration sets the ether5 port as a mirror0 analyzer port and sets the mirror0 port to be used when mirroring from the Unicast Forwarding database occurs. The entry from the Unicast Forwarding database enables mirroring for packets with source or destination MAC address E7:16:34:A1:CD:18 from ether8 port.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+
+/interface/ethernet/switch
+set ingress-mirror0=ether5 fdb-uses=mirror0
+
+/interface/ethernet/switch/unicast-fdb
+add port=ether8 mirror=yes svl=yes mac-address=E7:16:34:A1:CD:18
+</code></pre>
+<h2 id="trunking">Trunking</h2>
+<hr />
+<p><em>[gambar: Trunking 3]</em></p>
+<p>Trunking in the Cloud Router Switches provides static link aggregation groups with hardware automatic failover and load balancing. The IEEE802.3ad and IEEE802.1ax compatible Link Aggregation Control Protocol is not supported yet. Up to 8 Trunk groups are supported with up to 8 Trunk member ports per Trunk group.</p>
+<p>Configuration requires a group of switched ports and an entry in the Trunk table:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 protocol-mode=none
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+
+/interface/ethernet/switch/trunk
+add name=trunk1 member-ports=ether6,ether7,ether8
+</code></pre>
+<p>This example also shows proper bonding configuration in RouterOS on the other end:</p>
+<pre><code class="language-ros">/interface/bonding
+add name=bonding1 slaves=ether2,ether3,ether4 mode=balance-xor transmit-hash-policy=layer-2-and-3
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Bridge (R)STP is not aware of the underlying switch trunking configuration and some trunk ports can move to a discarding or blocking state. When trunking member ports are connected to other bridges, you should either disable the (R)STP or filter out any BPDU between trunked devices (e.g. with ACL rules).</p>
+</div>
+<h2 id="limited-mac-access-per-port">Limited MAC Access per Port</h2>
+<hr />
+<p>Disabling MAC learning and configuring static MAC addresses gives the ability to control what exact devices can communicate with CRS1xx/2xx switches and through them.</p>
+<p>Configuration requires a group of switched ports, disabled MAC learning on those ports, and static FDB entries:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes learn=no unknown-unicast-flood=no
+add bridge=bridge1 interface=ether7 hw=yes learn=no unknown-unicast-flood=no
+
+/interface/ethernet/switch/unicast-fdb
+add mac-address=4C:5E:0C:00:00:01 port=ether6 svl=yes
+add mac-address=D4:CA:6D:00:00:02 port=ether7 svl=yes
+
+/interface/ethernet/switch/acl
+add action=drop src-mac-addr-state=sa-not-found src-ports=ether6,ether7 table=egress
+add action=drop src-mac-addr-state=static-station-move src-ports=ether6,ether7 table=egress
+</code></pre>
+<p>CRS1xx/2xx switches also allow learning one dynamic MAC per port to ensure only one end-user device is connected no matter its MAC address:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether6 learn-limit=1
+set ether7 learn-limit=1
+</code></pre>
+<h2 id="isolation">Isolation</h2>
+<hr />
+<h3 id="port-level-isolation">Port Level Isolation</h3>
+<p><em>[gambar: Port Level Isolation]</em></p>
+<p>Port-level isolation is often used for Private VLAN, where:</p>
+<ul>
+<li>One or multiple uplink ports are shared among all users for accessing the gateway or router.</li>
+<li>Port group Isolated Ports is for guest users. Communication is through the uplink ports only.</li>
+<li>Port group Community 0 is for department A. Communication is allowed between the group members and through uplink ports.</li>
+<li>Port group Community X is for department X. Communication is allowed between the group members and through uplink ports.</li>
+</ul>
+<p>The Cloud Router Switches use port-level isolation profiles for Private VLAN implementation:</p>
+<ul>
+<li>Uplink ports – port-level isolation profile 0</li>
+<li>Isolated ports – port-level isolation profile 1</li>
+<li>Community 0 ports - port-level isolation profile 2</li>
+<li>Community X (X \&lt;= 30) ports - port-level isolation profile X</li>
+</ul>
+<p><strong>This example requires a group of switched ports. Assume that all ports used in this example are in one switch group.</strong></p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+add bridge=bridge1 interface=ether9 hw=yes
+add bridge=bridge1 interface=ether10 hw=yes
+</code></pre>
+<p>The first part of port isolation configuration is setting the Uplink port – set a port profile to 0 for ether2:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether2 isolation-leakage-profile-override=0
+</code></pre>
+<p>Then continue with setting isolation profile 1 on all isolated ports and adding the communication port for port isolation profile 1:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether5 isolation-leakage-profile-override=1
+set ether6 isolation-leakage-profile-override=1
+
+/interface/ethernet/switch/port-isolation
+add port-profile=1 ports=ether2 type=dst
+</code></pre>
+<p>Configuration to set Community 2 and Community 3 ports is similar:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether7 isolation-leakage-profile-override=2
+set ether8 isolation-leakage-profile-override=2
+
+/interface/ethernet/switch/port-isolation
+add port-profile=2 ports=ether2,ether7,ether8 type=dst
+
+/interface/ethernet/switch/port
+set ether9 isolation-leakage-profile-override=3
+set ether10 isolation-leakage-profile-override=3
+
+/interface/ethernet/switch/port-isolation
+add port-profile=3 ports=ether2,ether9,ether10 type=dst
+</code></pre>
+<h3 id="protocol-level-isolation">Protocol Level Isolation</h3>
+<p><em>[gambar: Protocol Level Isolation]</em></p>
+<p>Protocol level isolation on CRS switches can be used to enhance network security. For example, restricting DHCP traffic between the users (ether2, ether3, ether4, ether5) and allowing it only to trusted DHCP server ports (ether1) can prevent security risks like DHCP spoofing attacks. The following example shows how to configure it on CRS.</p>
+<p>Switch together the required ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 hw=yes
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether3 hw=yes
+add bridge=bridge1 interface=ether4 hw=yes
+add bridge=bridge1 interface=ether5 hw=yes
+</code></pre>
+<p>Set the same Community port profile for all DHCP client ports. Community port profile numbers are from 2 to 30.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether2 isolation-leakage-profile-override=2
+set ether3 isolation-leakage-profile-override=2
+set ether4 isolation-leakage-profile-override=2
+set ether5 isolation-leakage-profile-override=2
+</code></pre>
+<p>And configure port isolation/leakage profile for selected Community (2) to allow DHCP traffic destined only to the port where the trusted DHCP server is located. Registration status and traffic-type properties have to be set empty to apply restrictions only for DHCP protocol.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port-isolation
+add port-profile=2 protocol-type=dhcpv4 type=dst forwarding-type=bridged ports=ether1 registration-status=&quot;&quot; traffic-type=&quot;&quot;
+</code></pre>
+<h2 id="quality-of-service-qos">Quality of Service (QoS)</h2>
+<hr />
+<p><strong>QoS configuration schemes</strong></p>
+<p>MAC-based traffic scheduling and shaping: [MAC address in UFDB] -&gt; [QoS Group] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper]</p>
+<p>VLAN based traffic scheduling and shaping: [VLAN id in VLAN table] -&gt; [QoS Group] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper]</p>
+<p>Protocol based traffic scheduling and shaping: [Protocol in Protocol VLAN table] -&gt; [QoS Group] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper]</p>
+<p>PCP/DEI based traffic scheduling and shaping: [Switch port PCP/DEI mapping] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper]</p>
+<p>DSCP based traffic scheduling and shaping: [QoS DSCP mapping] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper]</p>
+<h3 id="mac-based-traffic-scheduling-using-internal-priority">MAC-based traffic scheduling using internal Priority</h3>
+<p>In Strict Priority scheduling mode, the highest priority queue is served first. The queue number represents the priority, and the queue with the highest queue number has the highest priority. Traffic is transmitted from the highest priority queue until the queue is empty, and then moves to the next highest priority queue, and so on. If no congestion is present at the egress port, a packet is transmitted as soon as it is received. If congestion occurs in the port where high-priority traffic keeps coming, the lower-priority queues starve.</p>
+<p>On all CRS switches, the scheme where MAC-based egress traffic scheduling is done according to internal Priority would be the following: [MAC address] -&gt; [QoS Group] -&gt; [Priority] -&gt; [Queue];<br />
+In this example, host1 (E7:16:34:00:00:01) and host2 (E7:16:34:00:00:02) will have higher priority 1 and the rest of the hosts will have lower priority 0 for transmitted traffic on port ether7. Note that CRS has a maximum of 8 queues per port.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Create a QoS group for use in UFDB:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos-group
+add name=group1 priority=1
+</code></pre>
+<p>Add UFDB entries to match specific MACs on ether7 and apply the QoS group1:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/unicast-fdb
+add mac-address=E7:16:34:00:00:01 port=ether7 qos-group=group1 svl=yes
+add mac-address=E7:16:34:00:00:02 port=ether7 qos-group=group1 svl=yes
+</code></pre>
+<p>Configure ether7 port queues to work according to Strict Priority and QoS scheme only for the destination address:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether7 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot; priority-to-queue=0:0,1:1 qos-scheme-precedence=da-based
+</code></pre>
+<h3 id="mac-based-traffic-shaping-using-internal-priority">MAC-based traffic shaping using internal Priority</h3>
+<p>The scheme where MAC-based traffic shaping is done according to internal Priority would be as follows: [MAC address] -&gt; [QoS Group] -&gt; [Priority] -&gt; [Queue] -&gt; [Shaper];<br />
+In this example, unlimited traffic will have priority 0 and limited traffic will have priority 1 with a bandwidth limit of 10Mbit. Note that CRS has a maximum of 8 queues per port.</p>
+<p>Create a group of ports for switching:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Create a QoS group for use in UFDB:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos-group
+add name=group1 priority=1
+</code></pre>
+<p>Add a UFDB entry to match a specific MAC on ether8 and apply QoS group1:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/unicast-fdb
+add mac-address=E7:16:34:A1:CD:18 port=ether8 qos-group=group1 svl=yes
+</code></pre>
+<p>Configure ether8 port queues to work according to Strict Priority and QoS scheme only for the destination address:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether8 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot; priority-to-queue=0:0,1:1 qos-scheme-precedence=da-based
+</code></pre>
+<p>Apply bandwidth limit for queue1 on ether8:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/shaper
+add port=ether8 rate=10M target=queue1
+</code></pre>
+<p>If the CRS switch supports Access Control Lists, this configuration is simpler:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/acl/policer
+add name=policer1 yellow-burst=100k yellow-rate=10M
+
+/interface/ethernet/switch/acl
+add mac-dst-address=E7:16:34:A1:CD:18 policer=policer1
+</code></pre>
+<h3 id="vlan-based-traffic-scheduling-shaping-using-internal-priorities">VLAN-based traffic scheduling + shaping using internal Priorities</h3>
+<p>The best practice is to assign lower internal QoS Priority for traffic limited by shaper to also make it less important in the Strict Priority scheduler. (Higher priority should be more important and unlimited)</p>
+<p>In this example:<br />
+Switch port ether6 is using a shaper to limit the traffic that comes from ether7 and ether8.<br />
+When the link has reached its capacity, the traffic with the highest priority will be sent out first.<br />
+VLAN10 -&gt; QoS group0 = lowest priority<br />
+VLAN20 -&gt; QoS group1 = normal priority<br />
+VLAN30 -&gt; QoS group2 = highest priority</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether6 hw=yes
+add bridge=bridge1 interface=ether7 hw=yes
+add bridge=bridge1 interface=ether8 hw=yes
+</code></pre>
+<p>Create QoS groups for use in the VLAN table.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/qos-group
+add name=group0 priority=0
+add name=group1 priority=1
+add name=group2 priority=2
+</code></pre>
+<p>Add VLAN entries to apply QoS groups for certain VLANs.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/vlan
+add ports=ether6,ether7,ether8 qos-group=group0 vlan-id=10
+add ports=ether6,ether7,ether8 qos-group=group1 vlan-id=20
+add ports=ether6,ether7,ether8 qos-group=group2 vlan-id=30
+</code></pre>
+<p>Configure ether6, ether7, and ether8 port queues to work according to Strict Priority and QoS schemes only for VLAN-based QoS.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether6 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot; priority-to-queue=0:0,1:1,2:2 qos-scheme-precedence=vlan-based
+set ether7 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot; priority-to-queue=0:0,1:1,2:2 qos-scheme-precedence=vlan-based
+set ether8 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot; priority-to-queue=0:0,1:1,2:2 qos-scheme-precedence=vlan-based
+</code></pre>
+<p>Apply a bandwidth limit on ether6.</p>
+<pre><code class="language-ros">/interface/ethernet/switch/shaper
+add port=ether6 rate=10M
+</code></pre>
+<h3 id="pcp-based-traffic-scheduling">PCP-based traffic scheduling</h3>
+<p>By default, CRS1xx/CRS2xx series devices will ignore the PCP/CoS/802.1p value and forward packets in a FIFO (First-In-First-Out) manner. When the device's internal queue is not full, then packets are sent in a FIFO manner, but as soon as a queue is filled, then higher-priority traffic can be sent out first. Let us consider a scenario where <strong>ether1</strong> and <strong>ether2</strong> are forwarding data to <strong>ether3</strong>, but when <strong>ether3</strong> is congested, then packets are going to be scheduled. We can configure the switch to hold the lowest priority packets until all higher priority packets are sent out. This is a very common scenario for VoIP type setups, where some traffic needs to be prioritized.</p>
+<p>To achieve such a behavior, switch together <strong>ether1</strong>, <strong>ether2,</strong> and <strong>ether3</strong> ports:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 hw=yes
+add bridge=bridge1 interface=ether2 hw=yes
+add bridge=bridge1 interface=ether3 hw=yes
+</code></pre>
+<p>Enable <strong>Strict Policy</strong> for each internal queue on each port:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether1,ether2,ether3 per-queue-scheduling=&quot;strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0,strict-priority:0&quot;
+</code></pre>
+<p>Map each PCP value to an internal priority value, for convenience reasons, simply map PCP to an internal priority 1-to-1:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether1,ether2,ether3 pcp-based-qos-priority-mapping=0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7
+</code></pre>
+<p>Since the switch will empty the largest queue first and you need the highest priority to be served first, you can assign this internal priority to a queue 1-to-1:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether1,ether2,ether3 priority-to-queue=0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7
+</code></pre>
+<p>Finally, set each switch port to schedule packets based on the PCP value:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/port
+set ether1,ether2,ether3 qos-scheme-precedence=pcp-based
+</code></pre>
+<h2 id="bandwidth-limiting">Bandwidth Limiting</h2>
+<hr />
+<p>Both Ingress Port policer and Shaper provide bandwidth-limiting features for CRS switches.</p>
+<ul>
+<li>Ingress Port Policer sets RX limit on port:</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-port-policer
+add port=ether5 meter-unit=bit rate=10M
+</code></pre>
+<ul>
+<li>Shaper sets TX limit on a port.</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch/shaper
+add port=ether5 meter-unit=bit rate=10M
+</code></pre>
+<h2 id="traffic-storm-control">Traffic Storm Control</h2>
+<hr />
+<p>The same Ingress Port policer also can be used for traffic storm control to prevent disruptions on Layer 2 ports caused by broadcast, multicast, or unicast traffic storms.</p>
+<ul>
+<li>Broadcast storm control example on the ether5 port with a 500 packet limit per second:</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-port-policer
+add port=ether5 rate=500 meter-unit=packet packet-types=broadcast  
+</code></pre>
+<ul>
+<li>Example with multiple packet types which include ARP and ND protocols and unregistered multicast traffic. Unregistered multicast is traffic that is not defined in the Multicast Forwarding Database.</li>
+</ul>
+<pre><code class="language-ros">/interface/ethernet/switch/ingress-port-policer
+add port=ether5 rate=5k meter-unit=packet packet-types=broadcast,arp-or-nd,unregistered-multicast
+</code></pre>
+<h2 id="see-also">See also</h2>
+<hr />
+<ul>
+<li><a href="./basic-vlan-switching.md">Basic VLAN switching</a></li>
+<li><a href="../#bridge-hardware-offloading">Bridge Hardware Offloading</a></li>
+<li><a href="./spanning-tree-protocol.md">Spanning Tree Protocol</a></li>
+<li><a href="./bridge-igmp-mld-snooping.md">IGMP Snooping</a></li>
+<li><a href="../#dhcp-snooping-and-dhcp-option-82">DHCP Snooping and Option 82</a></li>
+<li><a href="../../hardware/mtu-in-routeros.md">MTU on RouterBOARD</a></li>
+<li><a href="./layer2-misconfiguration.md">Layer2 misconfiguration</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

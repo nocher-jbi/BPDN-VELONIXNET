@@ -1,0 +1,2465 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPsec · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Virtual Private Networks</p>
+      <h1 id="ipsec">IPsec</h1>
+<h1 id="ipsec_1">IPsec</h1>
+<blockquote>
+<p>IPsec in RouterOS: what the menus do, which setup to choose, how IKE and its two phases work, Diffie-Hellman groups, AH and ESP, tunnel and transport mode, the supported algorithms and hardware acceleration.</p>
+</blockquote>
+<h1 id="ipsec_2">IPsec</h1>
+<p>Internet Protocol Security (IPsec) is a set of protocols of the Internet Engineering Task Force (IETF) that protect IP packets on networks that are not trusted, such as the internet. It encrypts and authenticates the traffic between two routers, or between a router and a remote device, and it works with the devices of most vendors.</p>
+<p>The protocols are in three groups:</p>
+<ul>
+<li><strong>Internet Key Exchange (IKE)</strong> makes and renews the keys.</li>
+<li><strong>Encapsulating Security Payload (ESP)</strong>, RFC 4303, encrypts and authenticates the packets.</li>
+<li><strong>Authentication Header (AH)</strong>, RFC 4302, only authenticates the packets.</li>
+</ul>
+<h2 id="choose-a-setup">Choose a setup</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">You want to</th>
+<th style="text-align: left;">See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Connect the networks of two offices</td>
+<td style="text-align: left;"><a href="site-to-site">Site-to-site tunnel</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Run dynamic routing over the tunnel, or route traffic into it</td>
+<td style="text-align: left;"><a href="route-based-ipsec-xfrm">Route-based IPsec with XFRM</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Let remote computers and phones connect with certificates</td>
+<td style="text-align: left;"><a href="road-warrior-ikev2-certificates">Road warrior with certificates</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Let remote users connect with a user name and a password</td>
+<td style="text-align: left;"><a href="road-warrior-ikev2-eap">Road warrior with EAP and User Manager</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Protect an L2TP, GRE, IPIP or EoIP tunnel with a shared key</td>
+<td style="text-align: left;"><code>ipsec-secret</code> of the tunnel: see <a href="../l2tp/">L2TP</a>, <a href="../gre">GRE</a>, <a href="../ipip">IPIP</a>, <a href="../eoip">EoIP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Allow only encrypted traffic, or use a certain WAN address</td>
+<td style="text-align: left;"><a href="firewall-and-routing">Firewall and routing for IPsec</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Find why a tunnel does not work</td>
+<td style="text-align: left;"><a href="troubleshooting">Troubleshooting</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Connect to NordVPN</td>
+<td style="text-align: left;"><a href="ikev2-eap-between-nordvpn-and-routeros">IKEv2 EAP between NordVPN and RouterOS</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Add a post-quantum pre-shared key (PPK) with quantum key distribution</td>
+<td style="text-align: left;"><a href="qkd-integration-in-routeros-ipsec-ppk">QKD integration in RouterOS IPsec</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-configuration-menus">The configuration menus</h2>
+<p>An IPsec connection in RouterOS is built from several entries under <code>/ip/ipsec</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">What it has</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/profile"><code>profile</code></a></td>
+<td style="text-align: left;">The algorithms and timers of the IKE connection (phase 1).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/proposal"><code>proposal</code></a></td>
+<td style="text-align: left;">The algorithms and the lifetime of the encrypted traffic (phase 2).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/peer"><code>peer</code></a></td>
+<td style="text-align: left;">The other side: its address, the IKE version (<code>exchange-mode</code>) and the profile. A peer with <code>passive=yes</code> waits for connections.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/identity"><code>identity</code></a></td>
+<td style="text-align: left;">How the two sides authenticate each other: a pre-shared key, certificates or EAP. It also selects the mode config and the policy group for the peer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/policy/"><code>policy</code></a></td>
+<td style="text-align: left;">Which traffic is encrypted: source and destination addresses, and the peer. A policy with <code>template=yes</code> is a pattern for the policies that are made dynamically.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/policy/group"><code>policy/group</code></a></td>
+<td style="text-align: left;">A name that connects policy templates to identities.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/mode-config"><code>mode-config</code></a></td>
+<td style="text-align: left;">Addresses, DNS servers and networks that a server gives to remote clients, or that a client asks for.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/active-peers/"><code>active-peers</code></a></td>
+<td style="text-align: left;">The IKE connections that exist now.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../../cli-reference/ip/ipsec/installed-sa/"><code>installed-sa</code></a></td>
+<td style="text-align: left;">The security associations (SAs) that encrypt traffic now.</td>
+</tr>
+</tbody>
+</table>
+<p>The entries <code>default</code> of the profile, the proposal and the policy template exist after installation. The examples add their own entries, so that a change for one connection does not affect another.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>IPsec is sensitive to time changes. If the clocks of the two sides change in different ways, tunnels break and must be made again. Use an NTP client on both sides.</p>
+</div>
+<h2 id="how-ike-works">How IKE works</h2>
+<p>IKE authenticates the two sides and manages the security associations automatically. The IKE service does nothing most of the time. It starts to work in two cases:</p>
+<ul>
+<li>Traffic matches a policy that has no SA yet. The router then connects to the peer of the policy.</li>
+<li>A remote peer connects.</li>
+</ul>
+<p>In both cases the peers make a connection in two phases:</p>
+<ul>
+<li><strong>Phase 1.</strong> The peers agree on the algorithms for the IKE messages and authenticate each other. They also make the keying material for all SAs. These settings must match on both sides:</li>
+<li>authentication method</li>
+<li>DH group</li>
+<li>encryption algorithm</li>
+<li>exchange mode</li>
+<li>hash algorithm</li>
+<li>NAT-T</li>
+<li>DPD and lifetime (optional)</li>
+<li><strong>Phase 2.</strong> The peers make one or more SAs that IPsec uses to encrypt data. These settings must match:</li>
+<li>IPsec protocol</li>
+<li>mode (tunnel or transport)</li>
+<li>authentication method</li>
+<li>PFS (DH) group</li>
+<li>lifetime</li>
+</ul>
+<p>Each SA has a lifetime: a time, an amount of data, or both. There are two limits. At the soft lifetime, the IKE service makes a new SA to replace the old one. At the hard lifetime, the SA is removed.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<ul>
+<li>Phase 1 is not re-keyed when the lifetime ends if DPD is disabled; only phase 2 is re-keyed. To re-key phase 1, enable DPD.</li>
+<li>Authentication with a pre-shared key (PSK) is open to offline attacks. This was known for the <code>aggressive</code> exchange mode, and it is also possible in the <code>main</code> and <code>ike2</code> modes. Avoid pre-shared keys where you can and use certificates. If you use a key, make it long and random.</li>
+</ul>
+</div>
+<p>IKE can provide Perfect Forward Secrecy (PFS): new keying material is made for each phase 2, so that someone who gets the long-term phase 1 key cannot read all the data of the SAs made with it. Making keying material is expensive for the CPU. A <code>modp8192</code> exchange can take several seconds even on a very fast computer. Without PFS this happens once for each phase 1; with PFS it happens for each phase 2 as well.</p>
+<p>To avoid problems with IKE packets that would match a policy before its SA exists, packets that the router sends from UDP port 500, and packets to UDP port 500 of the router, are not checked against the policies.</p>
+<h3 id="diffie-hellman-groups">Diffie-Hellman groups</h3>
+<p>The Diffie-Hellman (DH) key exchange lets two sides without a shared secret make one securely. RouterOS supports these Modular Exponential (MODP) and ECP groups, also known as Oakley groups:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Diffie-Hellman Group</th>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Group 1</td>
+<td style="text-align: left;">768-bit MODP group</td>
+<td style="text-align: left;">RFC 2409</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 2</td>
+<td style="text-align: left;">1024-bit MODP group</td>
+<td style="text-align: left;">RFC 2409</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 5</td>
+<td style="text-align: left;">1536-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 14</td>
+<td style="text-align: left;">2048-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 15</td>
+<td style="text-align: left;">3072-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 16</td>
+<td style="text-align: left;">4096-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 17</td>
+<td style="text-align: left;">6144-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 18</td>
+<td style="text-align: left;">8192-bit MODP group</td>
+<td style="text-align: left;">RFC 3526</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 19</td>
+<td style="text-align: left;">256-bit random ECP group</td>
+<td style="text-align: left;">RFC 5903</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 20</td>
+<td style="text-align: left;">384-bit random ECP group</td>
+<td style="text-align: left;">RFC 5903</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group 21</td>
+<td style="text-align: left;">521-bit random ECP group</td>
+<td style="text-align: left;">RFC 5903</td>
+</tr>
+</tbody>
+</table>
+<p>The profile also accepts <code>x25519</code>. The <a href="https://www.iana.org/assignments/ipsec-registry/ipsec-registry.xhtml">IANA registry</a> has more about the standards.</p>
+<p>Larger groups are more secure but need more CPU:</p>
+<ul>
+<li><strong>Group 19</strong> (256-bit ECP, <code>ecp256</code>) is fast and secure. Use it when both sides support it.</li>
+<li><strong>Group 14</strong> (2048-bit MODP) is a practical balance of security and CPU use and is widely supported.</li>
+<li><strong>Group 5</strong> (1536-bit) is a little less secure than group 14 and needs less CPU.</li>
+<li><strong>Group 2</strong> (1024-bit) is the least secure of the common groups. Do not use it for new setups; use it only where an old device needs it.</li>
+</ul>
+<p>To choose algorithms for a required security level, see <a href="https://www.keylength.com/en/4/">https://www.keylength.com/en/4/</a>.</p>
+<h3 id="eap-authentication-methods">EAP authentication methods</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Outer Auth</th>
+<th style="text-align: left;">Inner Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EAP-GTC</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-MD5</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-MSCHAPv2</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-PEAPv0</td>
+<td style="text-align: left;">EAP-MSCHAPv2 EAP-GPSK EAP-GTC EAP-MD5 EAP-TLS</td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-SIM</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-TLS</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">EAP-TTLS</td>
+<td style="text-align: left;">PAP  CHAP  MS-CHAP  MS-CHAPv2  EAP-MSCHAPv2 EAP-GTC EAP-MD5 EAP-TLS</td>
+</tr>
+</tbody>
+</table>
+<p>EAP-TLS on Windows is called "Smart Card or other certificates".</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<ul>
+<li>AES-GCM is not supported for the encryption of the IKEv2 connection itself (phase 1).</li>
+<li>A certificate for IPsec must be an X.509 version 3 certificate with the SubjectKeyIdentifier extension.</li>
+<li>Authentication with ed25519 is not supported.</li>
+</ul>
+</div>
+<h2 id="authentication-header-ah">Authentication Header (AH)</h2>
+<p>AH adds a header with a value that is calculated from the contents of the packet. The receiver can check that the packet was not changed, but the packet is not encrypted: AH gives authentication without privacy. ESP is usually the better choice, because it encrypts and can also authenticate.</p>
+<p>RouterOS supports these authentication algorithms for AH: SHA2 (256, 512), SHA1 and MD5.</p>
+<ul>
+<li>In <strong>transport mode</strong>, the AH header is put after the IP header. The IP data and the header are used for the calculation. IP fields that can change on the way, such as the TTL, are set to zero for the calculation.</li>
+<li>In <strong>tunnel mode</strong>, the original IP packet is put into a new IP packet, and the whole original packet is authenticated.</li>
+</ul>
+<h2 id="encapsulating-security-payload-esp">Encapsulating Security Payload (ESP)</h2>
+<p>ESP encrypts the data with a shared key, and it can authenticate the packet in the same way as AH. ESP adds three parts to a packet:</p>
+<ul>
+<li><strong>ESP header</strong> - before the encrypted data. Its place depends on the mode.</li>
+<li><strong>ESP trailer</strong> - after the encrypted data. It has the padding that aligns the data.</li>
+<li><strong>ESP authentication data</strong> - the Integrity Check Value (ICV), when authentication is used.</li>
+</ul>
+<p>In <strong>transport mode</strong>, the ESP header is put after the original IP header, and the trailer and the authentication value are added at the end. Only the IP payload is encrypted and authenticated; the IP header is not protected.</p>
+<p><em>[gambar: An ESP packet in transport mode: the original IP header, the ESP header, the encrypted payload, the ESP trailer and the authentication data]</em></p>
+<p>In <strong>tunnel mode</strong>, the original IP packet is put into a new IP packet, so the payload and the original IP header are both protected.</p>
+<p><em>[gambar: An ESP packet in tunnel mode: a new IP header, the ESP header, the encrypted original packet, the ESP trailer and the authentication data]</em></p>
+<h3 id="algorithms">Algorithms</h3>
+<p>Authentication:</p>
+<ul>
+<li>MD5</li>
+<li>SHA1</li>
+<li>SHA2 (256-bit, 512-bit; also 384-bit for the IKE connection)</li>
+</ul>
+<p>Encryption:</p>
+<ul>
+<li><strong>AES</strong> - AES-CBC, AES-CTR and AES-GCM with 128-bit, 192-bit and 256-bit keys. AES-GCM authenticates the packets itself: a proposal with an AES-GCM algorithm needs <code>auth-algorithms=""</code>.</li>
+<li><strong>ChaCha20-Poly1305</strong></li>
+<li><strong>Blowfish</strong></li>
+<li><strong>Twofish</strong></li>
+<li><strong>Camellia</strong> - 128-bit, 192-bit and 256-bit keys.</li>
+<li><strong>DES</strong> - 56-bit DES-CBC.</li>
+<li><strong>3DES</strong> - 168-bit (3 x 56-bit) DES.</li>
+</ul>
+<p>DES, 3DES, Blowfish and MD5 are old algorithms. Use them only for devices that support nothing else.</p>
+<h2 id="hardware-acceleration">Hardware acceleration</h2>
+<p>Hardware acceleration enables faster encryption with a built-in encryption engine inside the CPU.</p>
+<p>A list of devices with hardware acceleration is on the <a href="https://mikrotik.com/products?filter&amp;s=c&amp;f=%5B%22ipsec%22%5D">MikroTik products page</a>.</p>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">CPU</th>
+<th style="text-align: left;">DES and 3DES</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">AES-CBC</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">AES-CTR</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">AES-GCM</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MD5</td>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">MD5</td>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">MD5</td>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">MD5</td>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">SHA512</td>
+</tr>
+<tr>
+<td style="text-align: left;">88F7040</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">AL21400</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">AL32400</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">AL52400</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">AL73400</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPQ-4018 / IPQ-4019</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPQ-5018</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPQ-6010</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPQ-8064</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">yes*</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">IPQ-8072</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+</tr>
+<tr>
+<td style="text-align: left;">MT7621A</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">EN7562CT</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">yes****</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">P1023NSN5CFB</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes**</td>
+<td style="text-align: left;">yes**</td>
+<td style="text-align: left;">yes**</td>
+<td style="text-align: left;">yes**</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">P202ASSE2KFB</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">PPC460GT</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">TLR4 (TILE)</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;">x86 (AES-NI)</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+<td style="text-align: left;">yes***</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<p>* supported only for 128 bit and 256 bit key sizes</p>
+<p>** Only manufactured since 2016, serial numbers that begin with numbers 5 and 7</p>
+<p>*** AES-CBC and AES-CTR encryption only is accelerated, hashing done in software</p>
+<p>**** DES is not supported, only 3DES and/or AES-CBC</p>
+<p>IPsec throughput results of various encryption and hash algorithm combinations are published on the <a href="https://mikrotik.com/products">MikroTik products page</a>.</p>
+<h2 id="in-this-section">In this section</h2>
+<hr />
+<h1 id="site-to-site-tunnel">Site-to-site tunnel</h1>
+<blockquote>
+<p>Site-to-site IPsec in RouterOS: connect the networks of two offices with an IKEv2 tunnel, keep NAT and FastTrack away from the tunnel traffic, open the firewall, and carry a GRE tunnel over IPsec when one office has...</p>
+</blockquote>
+<h1 id="site-to-site-tunnel_1">Site-to-site tunnel</h1>
+<p>A site-to-site tunnel connects the local networks of two offices over the internet. Each router encrypts the traffic for the other network and sends it to the other router. This page shows a tunnel between two routers with static public addresses, and a GRE tunnel over IPsec for an office without a static address.</p>
+<p><em>[gambar: Two office routers connected through the internet, each with its own local network]</em></p>
+<p>In the examples, Office 1 has the public address 203.0.113.1 and the network 10.1.202.0/24. Office 2 has 203.0.113.2 and 10.1.101.0/24. The two offices must have different networks: if both use 192.168.88.0/24, change one of them first.</p>
+<h2 id="connect-two-offices">Connect two offices</h2>
+<h3 id="office-1">Office 1</h3>
+<p>Add a phase 1 profile and a phase 2 proposal. The algorithms must be the same on both routers. Use separate entries for each tunnel, so that you can change one tunnel later without an effect on the others:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=office2 hash-algorithm=sha256 \
+    enc-algorithm=aes-256 dh-group=ecp256
+/ip/ipsec/proposal/add name=office2 auth-algorithms=sha256 \
+    enc-algorithms=aes-256-cbc pfs-group=ecp256
+</code></pre>
+<p>Add the peer with the address of the other router, and an identity with the pre-shared key:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=office2 address=203.0.113.2/32 \
+    exchange-mode=ike2 profile=office2
+/ip/ipsec/identity/add peer=office2 secret=Example-psk-1
+</code></pre>
+<p>Add a policy for the traffic between the two networks:</p>
+<pre><code class="language-ros">/ip/ipsec/policy/add peer=office2 tunnel=yes \
+    src-address=10.1.202.0/24 dst-address=10.1.101.0/24 \
+    proposal=office2
+</code></pre>
+<h3 id="office-2">Office 2</h3>
+<p>The configuration is the same with the addresses changed:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=office1 hash-algorithm=sha256 \
+    enc-algorithm=aes-256 dh-group=ecp256
+/ip/ipsec/proposal/add name=office1 auth-algorithms=sha256 \
+    enc-algorithms=aes-256-cbc pfs-group=ecp256
+/ip/ipsec/peer/add name=office1 address=203.0.113.1/32 \
+    exchange-mode=ike2 profile=office1
+/ip/ipsec/identity/add peer=office1 secret=Example-psk-1
+/ip/ipsec/policy/add peer=office1 tunnel=yes \
+    src-address=10.1.101.0/24 dst-address=10.1.202.0/24 \
+    proposal=office1
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A pre-shared key is only as strong as the key itself. Use a long random key. For better security, use certificates (<code>auth-method=digital-signature</code>).</p>
+</div>
+<h3 id="check-the-tunnel">Check the tunnel</h3>
+<p>The peer is <code>established</code>, and there is one security association (SA) for each direction:</p>
+<pre><code class="language-ros">[admin@Office1] &gt; /ip/ipsec/active-peers/print
+Columns: ID, STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS
+# ID           STATE        UPTIME  PH2-TOTAL  REMOTE-ADDRESS
+0 203.0.113.2  established  15s             1  203.0.113.2   
+
+[admin@Office1] &gt; /ip/ipsec/installed-sa/print
+Flags: S - SEEN-TRAFFIC; E - ESP
+Columns: SPI, STATE, SRC-ADDRESS, DST-ADDRESS, AUTH-ALGORITHM, ENC-ALGORITHM, 
+         ENC-KEY-SIZE
+#    SPI         STATE   SRC-ADDRESS  DST-ADDRESS  AUTH-A  ENC-ALGORITHM  ENC
+0 SE 0xAAD44FE4  mature  203.0.113.2  203.0.113.1  sha256  aes-cbc        256
+1 SE 0x990D4C75  mature  203.0.113.1  203.0.113.2  sha256  aes-cbc        256
+</code></pre>
+<p>If the peer does not become <code>established</code>, the firewall of the router that answers can be the reason: see "Allow IPsec in the firewall" on this page. The flag <code>S</code> shows that the SA has carried traffic. To test from a router, ping an address of the other network from an address of the local network: <code>/ping 10.1.101.1 src-address=10.1.202.1</code>. A ping without <code>src-address</code> leaves from the public address and does not match the policy.</p>
+<h2 id="keep-nat-away-from-the-tunnel-traffic">Keep NAT away from the tunnel traffic</h2>
+<p>A source NAT rule changes the source address of the packets before IPsec sees them. They then no longer match the policy and are not encrypted: the tunnel is up, but no traffic passes.</p>
+<p>The masquerade rule of the default configuration has <code>ipsec-policy=out,none</code>, so it leaves the traffic of IPsec policies alone and nothing more is needed. A masquerade rule without this matcher, for example <code>chain=srcnat action=masquerade out-interface=ether1</code>, needs a rule before it that accepts the traffic between the two networks. On the Office 1 router:</p>
+<pre><code class="language-ros">/ip/firewall/nat/add chain=srcnat action=accept place-before=0 \
+    src-address=10.1.202.0/24 dst-address=10.1.101.0/24
+</code></pre>
+<p>On the Office 2 router:</p>
+<pre><code class="language-ros">/ip/firewall/nat/add chain=srcnat action=accept place-before=0 \
+    src-address=10.1.101.0/24 dst-address=10.1.202.0/24
+</code></pre>
+<ul>
+<li>The rule must be before all other source NAT rules.</li>
+<li>Connections that were tried before the rule was added keep their NAT. Remove them with <code>/ip/firewall/connection/remove [find dst-address~"10.1.101."]</code> (on Office 1), or restart both routers.</li>
+</ul>
+<h2 id="keep-fasttrack-away-from-the-tunnel-traffic">Keep FastTrack away from the tunnel traffic</h2>
+<p>FastTracked packets do not pass the IPsec policies, so connections over the tunnel are slow or lose packets when FastTrack takes them.</p>
+<p>The default configuration is safe: it has two rules that accept forwarded traffic of IPsec policies (<code>ipsec-policy=in,ipsec</code> and <code>ipsec-policy=out,ipsec</code>) before its FastTrack rule, so the connections of the tunnel are not FastTracked. A firewall that has a FastTrack rule without these two rules before it needs one of the following.</p>
+<p>Accept the established connections of the tunnel before the FastTrack rule, on both routers:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept connection-state=established,related \
+    src-address=10.1.101.0/24 dst-address=10.1.202.0/24 \
+    place-before=[find action=fasttrack-connection]
+add chain=forward action=accept connection-state=established,related \
+    src-address=10.1.202.0/24 dst-address=10.1.101.0/24 \
+    place-before=[find action=fasttrack-connection]
+</code></pre>
+<p>With many tunnels and much traffic, these rules add load to the CPU. The other way is to leave the tunnel traffic out of connection tracking. Then the filter rules are not needed, and the CPU load is about 30% lower:</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=prerouting action=notrack \
+    src-address=10.1.101.0/24 dst-address=10.1.202.0/24
+add chain=prerouting action=notrack \
+    src-address=10.1.202.0/24 dst-address=10.1.101.0/24
+</code></pre>
+<h2 id="allow-ipsec-in-the-firewall">Allow IPsec in the firewall</h2>
+<p>The default firewall drops connections that come from the internet. A router that starts the IKE connection gets the answers, but a router that waits for it does not get the first packet. Accept IKE (UDP port 500, and 4500 when there is NAT between the routers) and ESP from the other router, before the default drop rule, on both routers:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept protocol=udp dst-port=500,4500 \
+    src-address=203.0.113.2 comment=&quot;accept IKE&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept protocol=ipsec-esp \
+    src-address=203.0.113.2 comment=&quot;accept IPsec ESP&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>The default configuration already accepts forwarded traffic that comes out of or goes into an IPsec tunnel (the rules with <code>ipsec-policy</code>).</p>
+<h2 id="gre-tunnel-over-ipsec-for-an-office-without-a-static-address">GRE tunnel over IPsec for an office without a static address</h2>
+<p>A GRE tunnel over IPsec gives each router an interface for the other office. You can then use routes, and the traffic of the tunnel needs no IPsec policy for each pair of networks. In this example only the server office needs an address that the other one can find: a static address, or a DNS name such as the one of <a href="../../network-management/cloud/">IP Cloud</a>.</p>
+<p><em>[gambar: Two routers with a GRE tunnel between loopback addresses, protected by IPsec]</em></p>
+<p>The server gives the client the address 192.168.99.2 with mode config. The GRE tunnel runs between this address and the address 192.168.99.1 of the server, and IPsec protects exactly this pair of addresses.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>When both offices have static addresses, <code>ipsec-secret</code> of the GRE interface is a shorter way to protect a GRE tunnel with IPsec: see <a href="../gre">GRE</a> and its <a href="../../cli-reference/interface/gre">reference</a>.</p>
+</div>
+<h3 id="server">Server</h3>
+<p>Add a bridge without ports as a loopback interface, with the address for the GRE tunnel:</p>
+<pre><code class="language-ros">/interface/bridge/add name=loopback
+/ip/address/add address=192.168.99.1 interface=loopback
+</code></pre>
+<p>Add the profile and the proposal. The peer of this example listens for all IKEv2 connections, so other IKEv2 setups on the router, for example road warriors, use the same profile:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=ike2 dh-group=ecp256,modp2048 \
+    enc-algorithm=aes-256,aes-192,aes-128
+/ip/ipsec/proposal/add name=ike2-gre auth-algorithms=&quot;&quot; \
+    enc-algorithms=aes-128-gcm pfs-group=none
+</code></pre>
+<p>An AES-GCM proposal needs <code>auth-algorithms=""</code>: the algorithm authenticates the packets itself.</p>
+<p>Add a mode config that gives the client its address and the address of the server loopback, a policy group, and a policy template for this pair of addresses:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/add name=ike2-gre address=192.168.99.2 \
+    address-prefix-length=32 split-include=192.168.99.1/32 \
+    system-dns=no
+/ip/ipsec/policy/group/add name=ike2-gre
+/ip/ipsec/policy/add template=yes group=ike2-gre \
+    proposal=ike2-gre src-address=192.168.99.1/32 \
+    dst-address=192.168.99.2/32
+</code></pre>
+<p>Add the peer that listens for IKEv2 connections (skip this if the router already has one) and the identity. The client has no fixed address, so the firewall rules for IKE and ESP on the server must not have <code>src-address</code>:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=ike2 exchange-mode=ike2 passive=yes \
+    profile=ike2
+/ip/ipsec/identity/add peer=ike2 secret=Example-psk-1 \
+    generate-policy=port-strict mode-config=ike2-gre \
+    policy-template-group=ike2-gre
+</code></pre>
+<p>Add the GRE interface, an address on it, and a route to the network of the other office:</p>
+<pre><code class="language-ros">/interface/gre/add name=gre-tunnel1 local-address=192.168.99.1 \
+    remote-address=192.168.99.2
+/ip/address/add address=172.16.1.1/30 interface=gre-tunnel1
+/ip/route/add dst-address=10.1.101.0/24 gateway=172.16.1.2
+</code></pre>
+<h3 id="client">Client</h3>
+<p>The client connects to the server, so its profile can name the exact algorithms. They must be in the list of the server:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=ike2-gre dh-group=ecp256 \
+    enc-algorithm=aes-256
+/ip/ipsec/proposal/add name=ike2-gre auth-algorithms=&quot;&quot; \
+    enc-algorithms=aes-128-gcm pfs-group=none
+</code></pre>
+<p>Add a mode config that asks the server for the settings, a policy group and a template:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/add name=ike2-gre responder=no
+/ip/ipsec/policy/group/add name=ike2-gre
+/ip/ipsec/policy/add template=yes group=ike2-gre \
+    proposal=ike2-gre src-address=192.168.99.2/32 \
+    dst-address=192.168.99.1/32
+</code></pre>
+<p>Add the peer with the DNS name or the address of the server, and the identity. With a DNS name, <code>address</code> is for example <code>address=example.sn.mynetname.net</code>:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=office1 address=203.0.113.1 \
+    exchange-mode=ike2 profile=ike2-gre
+/ip/ipsec/identity/add peer=office1 secret=Example-psk-1 \
+    generate-policy=port-strict mode-config=ike2-gre \
+    policy-template-group=ike2-gre
+</code></pre>
+<p>When the connection is made, the client has the address 192.168.99.2, and <code>/ip/ipsec/policy/print detail</code> shows a dynamic policy from 192.168.99.2/32 to 192.168.99.1/32 with <code>ph2-state=established</code>.</p>
+<p>Add the GRE interface, an address and a route:</p>
+<pre><code class="language-ros">/interface/gre/add name=gre-tunnel1 local-address=192.168.99.2 \
+    remote-address=192.168.99.1
+/ip/address/add address=172.16.1.2/30 interface=gre-tunnel1
+/ip/route/add dst-address=10.1.202.0/24 gateway=172.16.1.1
+</code></pre>
+<p>The two offices now reach each other through the GRE tunnel, and IPsec encrypts the GRE packets.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="route-based-ipsec-xfrm">Route-based IPsec with XFRM</a></li>
+<li><a href="firewall-and-routing">Firewall and routing for IPsec</a></li>
+<li><a href="troubleshooting">Troubleshooting</a></li>
+<li><a href="../gre">GRE</a></li>
+</ul>
+<hr />
+<h1 id="road-warrior-with-certificates">Road warrior with certificates</h1>
+<blockquote>
+<p>IKEv2 road warrior server with certificates in RouterOS: create the certificates, configure the server, give clients addresses and routes with mode config, and connect RouterOS, Windows, macOS, iOS, Android and Linux...</p>
+</blockquote>
+<h1 id="road-warrior-with-certificates_1">Road warrior with certificates</h1>
+<p>A road warrior is a remote device, such as a laptop, a phone or a small router, that connects to the office from any place on the internet. This page sets up a RouterOS IKEv2 server that authenticates the clients with certificates, and the clients for RouterOS and other systems.</p>
+<p><em>[gambar: A remote client connects through the internet to the office router and reaches the networks behind it]</em></p>
+<p>In the examples, the office router has the public address 203.0.113.1 and the network 10.1.202.0/24 behind it. The clients get addresses from 192.168.77.0/24.</p>
+<p>To let users log in with a user name and a password in place of a certificate for each device, see <a href="road-warrior-ikev2-eap">Road warrior with EAP and User Manager</a>.</p>
+<h2 id="server_1">Server</h2>
+<h3 id="certificates">Certificates</h3>
+<p>The server needs a certificate, and each client needs one. This example makes them on the router with its own certificate authority (CA); you can also use a separate CA. <a href="../../authentication-authorization-accounting/certificates">Certificates</a> explains the commands.</p>
+<p>The server certificate must meet these conditions, or some clients do not connect:</p>
+<ul>
+<li>The common name is the IP address or the DNS name of the server.</li>
+<li>The subject alternative name (SAN) has the IP address or the DNS name of the server.</li>
+<li>The key usage has <code>tls-server</code>. A client certificate has <code>tls-client</code>.</li>
+</ul>
+<pre><code class="language-ros">/certificate
+add name=ca common-name=ca key-usage=key-cert-sign,crl-sign
+sign ca ca-crl-host=203.0.113.1
+add name=server1 common-name=203.0.113.1 \
+    subject-alt-name=IP:203.0.113.1 key-usage=tls-server
+sign server1 ca=ca
+add name=rw-client1 common-name=rw-client1 key-usage=tls-client
+sign rw-client1 ca=ca
+</code></pre>
+<h3 id="ipsec-configuration">IPsec configuration</h3>
+<p>Add a profile and a proposal. <code>pfs-group=none</code> avoids problems with clients of other vendors:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=ike2
+/ip/ipsec/proposal/add name=ike2 pfs-group=none
+</code></pre>
+<p>Add a pool for the client addresses and a mode config that gives each client an address from it:</p>
+<pre><code class="language-ros">/ip/pool/add name=ike2-pool ranges=192.168.77.2-192.168.77.254
+/ip/ipsec/mode-config/add name=ike2-conf address-pool=ike2-pool \
+    address-prefix-length=32
+</code></pre>
+<p>Add a policy group and a policy template. The template limits the dynamic policies to the client addresses:</p>
+<pre><code class="language-ros">/ip/ipsec/policy/group/add name=ike2-policies
+/ip/ipsec/policy/add template=yes group=ike2-policies \
+    proposal=ike2 src-address=0.0.0.0/0 dst-address=192.168.77.0/24
+</code></pre>
+<p>Add a peer that listens for all IKEv2 connections, and an identity that accepts every client with a certificate that the CA signed:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=ike2 exchange-mode=ike2 passive=yes \
+    profile=ike2
+/ip/ipsec/identity/add peer=ike2 auth-method=digital-signature \
+    certificate=server1 generate-policy=port-strict \
+    mode-config=ike2-conf policy-template-group=ike2-policies
+</code></pre>
+<p>In the firewall, accept IKE and ESP from the internet: see <a href="firewall-and-routing">Firewall and routing for IPsec</a> for the rules.</p>
+<p>When a client is connected, the server shows it with the name of its certificate and the address that it got:</p>
+<pre><code class="language-ros">[admin@Office1] &gt; /ip/ipsec/active-peers/print
+Flags: R - RESPONDER
+Columns: ID, STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS, DYNAMIC-ADDRESS
+#   ID             STATE        UPTIME  P  REMOTE-ADDRESS  DYNAMIC-ADDRESS
+0 R CN=rw-client1  established  2m16s   1  203.0.113.2     192.168.77.254 
+</code></pre>
+<h3 id="different-settings-for-one-client">Different settings for one client</h3>
+<p>An identity can match one client and give it other settings. This example gives the client with the certificate <code>rw-client1</code> a fixed address and access to one network. Add a mode config and a policy template for the address:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/add name=usr-a address=192.168.66.2 \
+    address-prefix-length=32 split-include=10.1.202.0/24 \
+    system-dns=no
+/ip/ipsec/policy/add template=yes group=ike2-policies \
+    proposal=ike2 src-address=0.0.0.0/0 dst-address=192.168.66.0/24
+</code></pre>
+<p>Add an identity that matches the certificate:</p>
+<pre><code class="language-ros">/ip/ipsec/identity/add peer=ike2 auth-method=digital-signature \
+    certificate=server1 generate-policy=port-strict \
+    match-by=certificate remote-certificate=rw-client1 \
+    mode-config=usr-a policy-template-group=ike2-policies
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the ID that a client sends (ID_i) does not match its certificate, the server finds no identity for it. See <code>remote-id</code> in the <a href="../../cli-reference/ip/ipsec/identity">identity reference</a>.</p>
+</div>
+<h3 id="split-tunnel-and-dns">Split tunnel and DNS</h3>
+<p>By default a client sends all its traffic through the tunnel. With a split tunnel, the client sends only the traffic for the office networks through the tunnel and the rest directly to the internet. Set the office networks in <code>split-include</code> of the mode config:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/set [find name=ike2-conf] \
+    split-include=10.1.202.0/24
+</code></pre>
+<p>The server also sends DNS servers to the client. With <code>system-dns=yes</code> (the default) these are the DNS servers of the router. To send another one:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/set [find name=ike2-conf] system-dns=no \
+    static-dns=10.1.202.1
+</code></pre>
+<p>A split tunnel is not a security measure: a client can still ask for other networks in phase 2. Do not narrow the policy template to the split networks, because this breaks clients of some vendors. Limit the access with the firewall:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=forward action=drop \
+    src-address=192.168.77.0/24 dst-address=!10.1.202.0/24 \
+    place-before=[find comment=&quot;defconf: accept in ipsec policy&quot;]
+</code></pre>
+<p>The rule must be before the rule of the default configuration that accepts all traffic from IPsec policies, or it never matches. For a client with its own address, such as 192.168.66.2 in the example of one client, add a rule of the same kind with that address. To allow one server only, use its address in <code>dst-address</code>, for example <code>dst-address=!10.1.202.10</code>.</p>
+<h3 id="export-the-client-certificates">Export the client certificates</h3>
+<p>Most clients take a PKCS12 file, which has the certificate and its private key:</p>
+<pre><code class="language-ros">/certificate/export-certificate rw-client1 type=pkcs12 \
+    export-passphrase=Example-p12-pass-1 file-name=rw-client1
+</code></pre>
+<p>The file <code>rw-client1.p12</code> is now in the <a href="../../system-information-and-utilities/files">files</a> of the router. A PKCS12 file also has the CA certificate, but some systems do not install it from there. Export the CA certificate separately for them:</p>
+<pre><code class="language-ros">/certificate/export-certificate ca file-name=ca
+</code></pre>
+<p>For software that does not take PKCS12, export the client certificate in PEM format. This writes a <code>.crt</code> file and a <code>.key</code> file:</p>
+<pre><code class="language-ros">/certificate/export-certificate rw-client1 \
+    export-passphrase=Example-p12-pass-1 file-name=rw-client1
+</code></pre>
+<p>Send the files to the client in a safe way: they have the private key of the client.</p>
+<h3 id="known-limits-of-clients">Known limits of clients</h3>
+<ul>
+<li>Windows ignores the networks of <code>split-include</code> and asks for a policy to 0.0.0.0/0. After the SA is made, Windows asks for DHCP option 249, and RouterOS answers with the <code>split-include</code> networks.</li>
+<li>macOS and iOS accept only the first <code>split-include</code> network.</li>
+<li>macOS and iOS use the DNS servers of <code>system-dns</code> and <code>static-dns</code> only when <code>split-include</code> is 0.0.0.0/0.</li>
+<li>Some clients can use another PFS group in phase 2. Use <code>pfs-group=none</code> in the proposal to avoid problems.</li>
+</ul>
+<h2 id="routeros-client">RouterOS client</h2>
+<p>Copy the PKCS12 file to the client router and import it:</p>
+<pre><code class="language-ros">/certificate/import file-name=rw-client1.p12 name=rw-client1 \
+    passphrase=Example-p12-pass-1
+</code></pre>
+<p>The import adds two certificates with the same name: the client certificate (flag <code>K</code>, it has the private key) and the CA certificate. Give the CA another name, or the identity can select the wrong one and the connection fails with <code>can't get private key</code> in the log:</p>
+<pre><code class="language-ros">/certificate/set [find common-name=ca] name=ca
+</code></pre>
+<p>Add a profile, a proposal, a policy group and a template of their own, so that this connection does not depend on other IPsec configuration of the router:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=ike2-rw
+/ip/ipsec/proposal/add name=ike2-rw pfs-group=none
+/ip/ipsec/policy/group/add name=ike2-rw
+/ip/ipsec/policy/add template=yes group=ike2-rw proposal=ike2-rw
+</code></pre>
+<p>Add a mode config that asks the server for the settings, the peer and the identity:</p>
+<pre><code class="language-ros">/ip/ipsec/mode-config/add name=ike2-rw responder=no
+/ip/ipsec/peer/add name=office address=203.0.113.1/32 \
+    exchange-mode=ike2 profile=ike2-rw
+/ip/ipsec/identity/add peer=office auth-method=digital-signature \
+    certificate=rw-client1 generate-policy=port-strict \
+    mode-config=ike2-rw policy-template-group=ike2-rw
+</code></pre>
+<p>The client is connected when the peer is <code>established</code>:</p>
+<pre><code class="language-ros">[admin@Office2] &gt; /ip/ipsec/active-peers/print
+Columns: ID, STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS
+# ID           STATE        UPTIME  PH2-TOTAL  REMOTE-ADDRESS
+0 203.0.113.1  established  2m16s           1  203.0.113.1   
+</code></pre>
+<p>The client has the address from the server, and a dynamic policy from this address to each network that the server sent:</p>
+<pre><code class="language-ros">[admin@Office2] &gt; /ip/ipsec/policy/print detail
+Flags: T - TEMPLATE; D - DYNAMIC, A - ACTIVE; * - DEFAULT
+0  T * group=default src-address=::/0 dst-address=::/0 protocol=all
+       proposal=default template=yes
+
+1  T   group=ike2-rw src-address=::/0 dst-address=::/0 protocol=all
+       proposal=ike2-rw template=yes
+
+2   D  peer=office tunnel=yes group=ike2-rw src-address=192.168.77.254/32
+       src-port=any dst-address=10.1.202.0/24 dst-port=any protocol=all
+       action=encrypt level=unique ipsec-protocols=esp
+       sa-src-address=203.0.113.2 sa-dst-address=203.0.113.1 proposal=ike2-rw
+       ph2-count=1 ph2-state=established
+</code></pre>
+<h3 id="let-the-network-behind-the-client-use-the-tunnel">Let the network behind the client use the tunnel</h3>
+<p>The dynamic policy matches only packets from the address that the server gave, 192.168.77.254 in this example. The devices of the network behind the client router have other addresses, so their packets do not match. The address from the server can change, so a static source NAT rule does not help.</p>
+<p>RouterOS can add the source NAT rule dynamically. Put the local networks into an address list and name the list in the mode config:</p>
+<p><em>[gambar: The devices behind the client router reach the office through the tunnel with the address that the server gave]</em></p>
+<pre><code class="language-ros">/ip/firewall/address-list/add address=10.1.101.0/24 list=local
+/ip/ipsec/mode-config/set [find name=ike2-rw] src-address-list=local
+</code></pre>
+<p>When the tunnel is made again, a dynamic rule changes the source address of the packets from the list to the address from the server, for each network of the tunnel:</p>
+<pre><code class="language-ros">[admin@Office2] &gt; /ip/firewall/nat/print
+Flags: D - DYNAMIC
+0 D ;;; ipsec mode-config
+    chain=srcnat action=src-nat to-addresses=192.168.77.254
+    dst-address=10.1.202.0/24 src-address-list=local dst-address-list=!local
+
+1   chain=srcnat action=masquerade out-interface=ether2
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The address that the server gives must not be inside a local network of the client.</p>
+</div>
+<h2 id="windows-client">Windows client</h2>
+<p>Open the PKCS12 file on the Windows computer and follow the steps to install the certificate. Select the <strong>Local Machine</strong> store.</p>
+<p><em>[gambar: The Windows certificate import wizard with the Local Machine store selected]</em></p>
+<p>In <strong>Network and Internet</strong> settings, open <strong>VPN</strong> and add a connection: give it a name, the address of the server, and select <strong>IKEv2</strong> as the VPN type. Then open the properties of the connection in the <strong>Network and Sharing Center</strong>, and on the <strong>Security</strong> tab select <strong>Use machine certificates</strong>.</p>
+<p><em>[gambar: The Security tab of the VPN connection with Use machine certificates selected]</em></p>
+<p>Windows 10 is compatible with the following Phase 1 (profiles) and Phase 2 (proposals) proposal sets:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 1</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">DH Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-192-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-192-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-GCM</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-128-GCM</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-256-GCM</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-GCM</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 2</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">PFS Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">DES</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">none</td>
+</tr>
+</tbody>
+</table>
+<h2 id="macos-client">macOS client</h2>
+<p>Open the PKCS12 file on the Mac and install the certificate in the <strong>System</strong> keychain. The CA certificate is self-signed, so mark it as trusted by hand: in the Keychain Access application, find the certificate under <strong>System</strong> and set it to <strong>Always Trust</strong>.</p>
+<p><em>[gambar: The CA certificate in Keychain Access set to Always Trust]</em></p>
+<p>In <strong>System Preferences</strong>, open <strong>Network</strong> and add a configuration with the <strong>+</strong> button: interface <strong>VPN</strong>, VPN type <strong>IKEv2</strong>. <strong>Remote ID</strong> must be the common name or the subject alternative name of the server certificate. <strong>Local ID</strong> can be empty. In <strong>Authentication Settings</strong> select <strong>None</strong> and choose the client certificate.</p>
+<p><em>[gambar: The macOS VPN settings with the server address, the remote ID and the client certificate]</em></p>
+<p>macOS is compatible with the following Phase 1 (profiles) and Phase 2 (proposals) proposal sets:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 1</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">DH Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp2048</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">ecp256</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp1536</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 2</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">PFS Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">none</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ios-client">iOS client</h2>
+<p>iOS does not install the CA certificate from a PKCS12 file, so send the CA certificate to the device as a separate PEM file. Open both files on the device and install the certificates. Then mark the CA certificate as trusted in <strong>Settings</strong>, <strong>General</strong>, <strong>About</strong>, <strong>Certificate Trust Settings</strong>. Check in <strong>Settings</strong>, <strong>General</strong>, <strong>Profiles</strong> that both certificates are shown as verified.</p>
+<p><em>[gambar: The installed certificates on iOS shown as verified]</em></p>
+<p>In <strong>Settings</strong>, <strong>General</strong>, <strong>VPN</strong>, add a configuration. <strong>Remote ID</strong> must be the common name or the subject alternative name of the server certificate. <strong>Local ID</strong> can be empty.</p>
+<p><em>[gambar: The iOS VPN configuration with the server, the remote ID and the certificate]</em></p>
+<p>iOS is compatible with the following Phase 1 (profiles) and Phase 2 (proposals) proposal sets:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 1</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">DH Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp2048</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">ecp256</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">modp1536</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">modp1024</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 2</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">PFS Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">3DES</td>
+<td style="text-align: left;">none</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>An iOS device that is connected to the VPN over Wi-Fi can go to sleep and disconnect from the network.</p>
+</div>
+<h2 id="android-client-strongswan">Android client (strongSwan)</h2>
+<p>Use the strongSwan application from the Google Play Store. Copy the PKCS12 file to the device. In strongSwan, add a VPN profile, enter the address of the server and select <strong>IKEv2 Certificate</strong> as the VPN type. For the user certificate, press <strong>Install</strong> and select the PKCS12 file. Save the profile and press it to connect.</p>
+<p><em>[gambar: The strongSwan VPN profile on Android with the server address and the certificate]</em></p>
+<p>You can specify custom encryption settings in strongSwan by ticking the "Show advanced settings" checkbox. StrongSwan by default is compatible with the following Phase 1 (profiles) and Phase 2 (proposals) proposal sets:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 1</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">DH Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">modp2048</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">ecp256</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">ecp384</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">ecp521</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">modp3072</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">modp4096</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">modp6144</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-CBC</td>
+<td style="text-align: left;">modp8192</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">modp2048</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">ecp256</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">ecp384</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">ecp521</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">modp3072</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">modp4096</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">modp6144</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA*</td>
+<td style="text-align: left;">AES-*-GCM</td>
+<td style="text-align: left;">modp8192</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase 2</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Hash Algorithm</td>
+<td style="text-align: left;">Encryption Algorithm</td>
+<td style="text-align: left;">PFS Group</td>
+</tr>
+<tr>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">AES-256-GCM</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">AES-128-GCM</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-256-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-192-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">AES-192-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-192-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA256</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA512</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;">SHA1</td>
+<td style="text-align: left;">AES-128-CBC</td>
+<td style="text-align: left;">none</td>
+</tr>
+</tbody>
+</table>
+<h2 id="linux-client-strongswan">Linux client (strongSwan)</h2>
+<p>Copy the PKCS12 file to the directory <code>/etc/ipsec.d/private</code>.</p>
+<p>Add the passphrase of the file to <code>/etc/ipsec.secrets</code>. In this line <code>strongSwan_client.p12</code> is the file name:</p>
+<pre><code class="language-bash">: P12 strongSwan_client.p12 &quot;Example-p12-pass-1&quot;
+</code></pre>
+<p>Add a connection to <code>/etc/ipsec.conf</code>:</p>
+<pre><code class="language-bash">conn &quot;ikev2&quot;
+keyexchange=ikev2
+ike=aes128-sha1-modp2048
+esp=aes128-sha1
+leftsourceip=%modeconfig
+leftcert=strongSwan_client.p12
+leftfirewall=yes
+right=203.0.113.1
+rightid=&quot;CN=203.0.113.1&quot;
+rightsubnet=0.0.0.0/0
+auto=add
+</code></pre>
+<p>Restart the IPsec service and start the connection:</p>
+<pre><code class="language-bash">ipsec restart
+ipsec up ikev2
+</code></pre>
+<p>RouterOS does not support IKEv2 reauthentication (RFC 4478). If strongSwan shows <code>initiator did not reauthenticate as requested</code>, disable reauthentication in strongSwan.</p>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="road-warrior-ikev2-eap">Road warrior with EAP and User Manager</a></li>
+<li><a href="../../authentication-authorization-accounting/certificates">Certificates</a></li>
+<li><a href="troubleshooting">Troubleshooting</a></li>
+</ul>
+<hr />
+<h1 id="road-warrior-with-eap-and-user-manager">Road warrior with EAP and User Manager</h1>
+<blockquote>
+<p>IKEv2 road warrior server with EAP-MSCHAPv2 in RouterOS: users log in with a user name and a password that User Manager or another RADIUS server checks, with a Let's Encrypt certificate on the server, static...</p>
+</blockquote>
+<h1 id="road-warrior-with-eap-and-user-manager_1">Road warrior with EAP and User Manager</h1>
+<p>With EAP, the users of an IKEv2 server log in with a user name and a password. The router passes the authentication to a RADIUS server. This page uses <a href="../../authentication-authorization-accounting/user-manager">User Manager</a>, the RADIUS server of RouterOS, on the same router. The computers and phones of the users need no client certificate, and their built-in IKEv2 clients work.</p>
+<p><em>[gambar: A remote client connects through the internet to the office router and reaches the networks behind it]</em></p>
+<h2 id="what-you-need">What you need</h2>
+<ol>
+<li>A DNS name for the public address of the router. <a href="../../network-management/cloud/">IP Cloud</a> gives one.</li>
+<li>TCP port 80 of the router reachable from the internet, for the certificate. If the router is behind NAT, forward the port.</li>
+<li>The <code>user-manager</code> package on the router.</li>
+</ol>
+<h2 id="get-a-certificate">Get a certificate</h2>
+<p>EAP-MSCHAPv2 needs a TLS handshake, so the server needs a certificate that the clients can check. A Let's Encrypt certificate is checked by most systems without any setup on the client. Get one with <a href="../../cli-reference/certificate/add-acme"><code>/certificate/add-acme</code></a> for the DNS name of the router: <a href="../../authentication-authorization-accounting/certificates">Certificates</a> describes the command. The certificate authority checks the name through TCP port 80 of the router, so this port must be open from the internet while the certificate is made and renewed, and it is the port of the <code>www</code> service: do not leave management access open to the internet on it.</p>
+<p>The certificate then exists in the certificate store:</p>
+<pre><code class="language-ros">/certificate/print detail where name~&quot;letsencrypt&quot;
+</code></pre>
+<h2 id="set-up-user-manager">Set up User Manager</h2>
+<p>Let the router itself send RADIUS requests to User Manager, enable User Manager with the certificate, and add a user. Use the name of the certificate on your router:</p>
+<pre><code class="language-ros">/user-manager/router/add name=local address=127.0.0.1 \
+    shared-secret=Radius-Secret-2
+/user-manager/set enabled=yes \
+    certificate=&quot;letsencrypt_2021-04-09T07:10:55Z&quot;
+/user-manager/user/add name=user1 password=Example-pass-1
+</code></pre>
+<p>Add the RADIUS client for IPsec with the same secret:</p>
+<pre><code class="language-ros">/radius/add address=127.0.0.1 secret=Radius-Secret-2 service=ipsec
+</code></pre>
+<h2 id="set-up-the-ikev2-server">Set up the IKEv2 server</h2>
+<p>The profile, the proposal, the pool, the mode config, the policy template and the peer are the same as for certificates:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=ike2
+/ip/ipsec/proposal/add name=ike2 pfs-group=none
+/ip/pool/add name=ike2-pool ranges=192.168.77.2-192.168.77.254
+/ip/ipsec/mode-config/add name=ike2-conf address-pool=ike2-pool \
+    address-prefix-length=32
+/ip/ipsec/policy/group/add name=ike2-policies
+/ip/ipsec/policy/add template=yes group=ike2-policies \
+    proposal=ike2 src-address=0.0.0.0/0 dst-address=192.168.77.0/24
+/ip/ipsec/peer/add name=ike2 exchange-mode=ike2 passive=yes \
+    profile=ike2
+</code></pre>
+<p>The identity uses <code>auth-method=eap-radius</code> and the certificate of the server:</p>
+<pre><code class="language-ros">/ip/ipsec/identity/add peer=ike2 auth-method=eap-radius \
+    certificate=&quot;letsencrypt_2021-04-09T07:10:55Z&quot; \
+    generate-policy=port-strict mode-config=ike2-conf \
+    policy-template-group=ike2-policies
+</code></pre>
+<p>In the firewall, accept IKE and ESP from the internet: see <a href="firewall-and-routing">Firewall and routing for IPsec</a> for the rules.</p>
+<p>When a user is connected, the server shows the user name and the address of the client. In this output the user is <code>tst</code>:</p>
+<pre><code class="language-ros">[admin@Office1] &gt; /ip/ipsec/active-peers/print
+Flags: R - RESPONDER
+Columns: ID, STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS, DYNAMIC-ADDRESS
+#   ID   STATE        UPTIME  PH2-TOTAL  REMOTE-ADDRESS  DYNAMIC-ADDRESS
+0 R tst  established  5s              1  203.0.113.2     192.168.77.253 
+</code></pre>
+<p>For a split tunnel and DNS servers, see <a href="road-warrior-ikev2-certificates">Road warrior with certificates</a>: the mode config settings are the same.</p>
+<h2 id="connect-a-routeros-client">Connect a RouterOS client</h2>
+<p>A RouterOS router can also be the client. It needs the CA that signed the server certificate as a trusted <a href="../../authentication-authorization-accounting/certificates">certificate</a>; in this example the CA certificate has the name <code>ca</code> on the client. The profile, the proposal, the policy group, the template, the mode config and the peer are the same as for a client with a certificate; the identity has the user name and the password:</p>
+<pre><code class="language-ros">/ip/ipsec/identity/add peer=office auth-method=eap \
+    eap-methods=eap-mschapv2 username=user1 \
+    password=Example-pass-1 certificate=ca \
+    generate-policy=port-strict mode-config=ike2-rw \
+    policy-template-group=ike2-rw
+</code></pre>
+<p>The log of the client has <code>EAP authorized</code> and <code>peer authorized</code> when the login succeeds.</p>
+<h2 id="give-a-user-a-fixed-address">Give a user a fixed address</h2>
+<p>The RADIUS attribute Framed-IP-Address gives a user a fixed address:</p>
+<pre><code class="language-ros">/user-manager/user/set [find name=user1] shared-users=1 \
+    attributes=Framed-IP-Address:192.168.77.100
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Take the fixed address out of the pool of the other users, and keep <code>shared-users=1</code> for this user: two sessions cannot have the same address.</p>
+</div>
+<h2 id="send-accounting">Send accounting</h2>
+<p>The router sends RADIUS accounting for IPsec users by default. To also record the traffic while a session is open, set an interval for the updates. With many sessions, use a longer interval to save CPU:</p>
+<pre><code class="language-ros">/ip/ipsec/settings/set interim-update=1m
+</code></pre>
+<h2 id="read-more_2">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="road-warrior-ikev2-certificates">Road warrior with certificates</a>: split tunnel, DNS, clients of other systems</li>
+<li><a href="../../authentication-authorization-accounting/user-manager">User Manager</a></li>
+<li><a href="../../authentication-authorization-accounting/radius">RADIUS</a></li>
+<li><a href="troubleshooting">Troubleshooting</a></li>
+</ul>
+<hr />
+<h1 id="route-based-ipsec-with-xfrm">Route-based IPsec with XFRM</h1>
+<blockquote>
+<p>Route-based IPsec in RouterOS with XFRM interfaces: bind a policy group to an interface, route traffic into the tunnel, and run OSPF over it.</p>
+</blockquote>
+<h1 id="route-based-ipsec-with-xfrm_1">Route-based IPsec with XFRM</h1>
+<p>Policy-based IPsec selects traffic by the source and destination addresses of the policies. An XFRM interface adds a route-based mode: a policy group is bound to a virtual interface, and the traffic that is routed into this interface uses the policies of the group. The routing table then decides which traffic enters the tunnel, and dynamic routing protocols can run over it.</p>
+<p>An XFRM interface behaves like other interfaces: it has an IP address, an MTU and a running state. It is configured in <a href="../../cli-reference/interface/xfrm"><code>/interface/xfrm</code></a>.</p>
+<p>Use it for:</p>
+<ul>
+<li><strong>Dynamic routing over IPsec.</strong> A branch office has several networks and gets new ones over time. With policy-based IPsec, each pair of local and remote networks needs a policy. With an XFRM interface, the branch runs OSPF over the tunnel, and new networks are reachable without new policies.</li>
+<li><strong>Several WAN links and policy routing.</strong> The tunnel is a route, so routing marks or a VRF can send selected traffic into it, and the tunnel can move between WAN links without a change of the policies.</li>
+</ul>
+<p>In the example, R1 has the public address 203.0.113.1, the LAN 192.168.51.0/28 and the XFRM address 192.168.50.1/24. R2 has 203.0.113.2, the LAN 192.168.52.0/28 and 192.168.50.2/24. R1 starts the connection and R2 answers.</p>
+<h2 id="r1">R1</h2>
+<p>Add the LAN bridge, the XFRM interface and their addresses:</p>
+<pre><code class="language-ros">/interface/bridge/add name=lan
+/interface/xfrm/add name=xfrm1
+/ip/address/add address=192.168.51.1/28 interface=lan
+/ip/address/add address=192.168.50.1/24 interface=xfrm1
+</code></pre>
+<p>Add the profile and the proposal. They must be the same on both routers:</p>
+<pre><code class="language-ros">/ip/ipsec/profile/add name=xfrm-example hash-algorithm=sha256 \
+    enc-algorithm=aes-256 dh-group=modp2048
+/ip/ipsec/proposal/add name=xfrm-example auth-algorithms=sha256 \
+    enc-algorithms=aes-256-cbc pfs-group=none
+</code></pre>
+<p>Add a policy group and bind it to the interface. A group of its own keeps these policies apart from the other IPsec policies of the router:</p>
+<pre><code class="language-ros">/ip/ipsec/policy/group/add name=xfrm1-group interface=xfrm1
+</code></pre>
+<p>Add the peer and the identity. The identity must have the same group in <code>policy-template-group</code>:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=xfrm-example address=203.0.113.2/32 \
+    local-address=203.0.113.1 exchange-mode=ike2 \
+    profile=xfrm-example
+/ip/ipsec/identity/add peer=xfrm-example \
+    auth-method=pre-shared-key secret=Example-psk-1 \
+    generate-policy=port-strict policy-template-group=xfrm1-group
+</code></pre>
+<p>Add the policy for the traffic between the LANs, and route the remote LAN through the interface:</p>
+<pre><code class="language-ros">/ip/ipsec/policy/add peer=xfrm-example group=xfrm1-group \
+    tunnel=yes src-address=192.168.51.0/28 \
+    dst-address=192.168.52.0/28 proposal=xfrm-example
+/ip/route/add dst-address=192.168.52.0/28 gateway=xfrm1
+</code></pre>
+<h2 id="r2">R2</h2>
+<p>R2 has the same configuration with the addresses changed, and its peer has <code>passive=yes</code>:</p>
+<pre><code class="language-ros">/interface/bridge/add name=lan
+/interface/xfrm/add name=xfrm1
+/ip/address/add address=192.168.52.1/28 interface=lan
+/ip/address/add address=192.168.50.2/24 interface=xfrm1
+/ip/ipsec/profile/add name=xfrm-example hash-algorithm=sha256 \
+    enc-algorithm=aes-256 dh-group=modp2048
+/ip/ipsec/proposal/add name=xfrm-example auth-algorithms=sha256 \
+    enc-algorithms=aes-256-cbc pfs-group=none
+/ip/ipsec/policy/group/add name=xfrm1-group interface=xfrm1
+/ip/ipsec/peer/add name=xfrm-example address=203.0.113.1/32 \
+    local-address=203.0.113.2 exchange-mode=ike2 passive=yes \
+    profile=xfrm-example
+/ip/ipsec/identity/add peer=xfrm-example \
+    auth-method=pre-shared-key secret=Example-psk-1 \
+    generate-policy=port-strict policy-template-group=xfrm1-group
+/ip/ipsec/policy/add peer=xfrm-example group=xfrm1-group \
+    tunnel=yes src-address=192.168.52.0/28 \
+    dst-address=192.168.51.0/28 proposal=xfrm-example
+/ip/route/add dst-address=192.168.51.0/28 gateway=xfrm1
+</code></pre>
+<h2 id="check">Check</h2>
+<p>The interface has the flag <code>R</code> after an SA that uses it is made. Until then, an IP address on the interface is shown as invalid.</p>
+<pre><code class="language-ros">[admin@R1] &gt; /interface/xfrm/print detail
+Flags: R - RUNNING
+0  R name=&quot;xfrm1&quot; mtu=1400
+</code></pre>
+<p>The policy is active and shows the interface:</p>
+<pre><code class="language-ros">[admin@R1] &gt; /ip/ipsec/policy/print detail where peer=xfrm-example
+Flags: A - ACTIVE
+0 A peer=xfrm-example tunnel=yes group=xfrm1-group src-address=192.168.51.0/28
+    src-port=any dst-address=192.168.52.0/28 dst-port=any protocol=all
+    action=encrypt level=require ipsec-protocols=esp sa-src-address=203.0.113.1
+    sa-dst-address=203.0.113.2 proposal=xfrm-example active-interface=xfrm1
+    ph2-count=1 ph2-state=established
+</code></pre>
+<p>Test the tunnel from the address of one LAN to the other: <code>/ping 192.168.52.1 src-address=192.168.51.1</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the SA is made but the interface does not get the flag <code>R</code> and no traffic passes, re-create the interface or restart the router.</p>
+</div>
+<ul>
+<li>A policy group can be bound to one XFRM interface only.</li>
+<li><code>mtu</code> is the layer 3 MTU of the interface. The default of 1400 bytes leaves room for the ESP overhead. A change of <code>mtu</code> applies at once, and <code>actual-mtu</code> in <code>/interface/print detail</code> shows the value in use. If <code>actual-mtu</code> is not the configured value, set <code>mtu</code> again.</li>
+<li>The example uses a pre-shared key. Use certificates in production.</li>
+<li>With the default firewall, the XFRM interface is not in the <code>LAN</code> interface list, so the router drops what arrives through it for the router itself, for example OSPF packets. Add the interface to the list or add accept rules for it.</li>
+</ul>
+<h2 id="ospf-over-xfrm">OSPF over XFRM</h2>
+<p>OSPF can run over the XFRM interface, and its routes replace the static routes of the first example. The policy must then match the OSPF packets too, also the multicast hello packets, so replace the LAN-to-LAN policy with a policy for all addresses in the XFRM group. The policy applies only to the traffic that is routed into the interface.</p>
+<p>On R1:</p>
+<pre><code class="language-ros">/ip/route/remove [find gateway=xfrm1]
+/ip/ipsec/policy/remove [find peer=xfrm-example]
+/ip/ipsec/policy/add peer=xfrm-example group=xfrm1-group \
+    tunnel=yes src-address=0.0.0.0/0 dst-address=0.0.0.0/0 \
+    proposal=xfrm-example
+/routing/ospf/instance/add name=xfrm-ospf version=2 \
+    router-id=192.168.50.1
+/routing/ospf/area/add name=backbone instance=xfrm-ospf \
+    area-id=0.0.0.0
+/routing/ospf/interface-template
+add interfaces=xfrm1 area=backbone type=ptp
+add networks=192.168.51.0/28 area=backbone
+</code></pre>
+<p>On R2, the same with its router ID and LAN:</p>
+<pre><code class="language-ros">/ip/route/remove [find gateway=xfrm1]
+/ip/ipsec/policy/remove [find peer=xfrm-example]
+/ip/ipsec/policy/add peer=xfrm-example group=xfrm1-group \
+    tunnel=yes src-address=0.0.0.0/0 dst-address=0.0.0.0/0 \
+    proposal=xfrm-example
+/routing/ospf/instance/add name=xfrm-ospf version=2 \
+    router-id=192.168.50.2
+/routing/ospf/area/add name=backbone instance=xfrm-ospf \
+    area-id=0.0.0.0
+/routing/ospf/interface-template
+add interfaces=xfrm1 area=backbone type=ptp
+add networks=192.168.52.0/28 area=backbone
+</code></pre>
+<p>The neighbor reaches the state <code>Full</code>, and each router learns the LAN of the other one as an OSPF route (<code>/ip/route/print where ospf</code>):</p>
+<pre><code class="language-ros">[admin@R1] &gt; /routing/ospf/neighbor/print
+Flags: D - DYNAMIC
+0 D instance=xfrm-ospf area=backbone interface=xfrm1 address=192.168.50.2
+    router-id=192.168.50.2 state=&quot;Full&quot; state-changes=5 adjacency=45s
+    timeout=35s
+</code></pre>
+<p>Both routers must have the same MTU on the XFRM interface. With different values the OSPF neighbor stays in <code>ExStart</code>. Check <code>actual-mtu</code> with <code>/interface/print detail</code> on both routers.</p>
+<h2 id="read-more_3">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="site-to-site">Site-to-site tunnel</a></li>
+<li><a href="../../user-guides/routing-and-networking-protocols/unicast/ospf/">OSPF</a></li>
+<li><a href="troubleshooting">Troubleshooting</a></li>
+</ul>
+<hr />
+<h1 id="firewall-and-routing-for-ipsec">Firewall and routing for IPsec</h1>
+<blockquote>
+<p>Firewall and routing for IPsec in RouterOS: allow IKE and ESP, accept only traffic that came through IPsec, drop unencrypted traffic with a policy, and make a tunnel use a certain WAN link or public address.</p>
+</blockquote>
+<h1 id="firewall-and-routing-for-ipsec_1">Firewall and routing for IPsec</h1>
+<p>This page has the firewall rules that IPsec needs, the ways to accept only encrypted traffic, and what to do when a router has several WAN links or several public addresses.</p>
+<h2 id="allow-ike-and-esp">Allow IKE and ESP</h2>
+<p>IPsec uses these packets between the two routers:</p>
+<ul>
+<li>UDP port 500 for IKE.</li>
+<li>UDP port 4500 for IKE and the encrypted traffic when there is NAT between the two sides (NAT traversal).</li>
+<li>IP protocol 50 (ESP) for the encrypted traffic without NAT, or protocol 51 (AH).</li>
+</ul>
+<p>The default firewall drops them when they come from the internet. Accept them before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept protocol=udp dst-port=500,4500 \
+    in-interface-list=WAN comment=&quot;accept IKE&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept protocol=ipsec-esp \
+    in-interface-list=WAN comment=&quot;accept IPsec ESP&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>For a tunnel to one known router, add <code>src-address</code> with its address to both rules.</p>
+<h2 id="accept-only-traffic-that-came-through-ipsec">Accept only traffic that came through IPsec</h2>
+<p>Sometimes a service must be reachable only through IPsec. For example, an L2TP server with IPsec must not accept L2TP connections without encryption. There are three ways:</p>
+<ul>
+<li>The IPsec policy matcher of the firewall.</li>
+<li>An IPsec policy with the action <code>discard</code> below the dynamic policies. This suits road warrior setups, where the policies are made dynamically.</li>
+<li>A DSCP value or a priority that is set in mangle before encryption and matched in the firewall after decryption.</li>
+</ul>
+<h3 id="ipsec-policy-matcher">IPsec policy matcher</h3>
+<p>The matcher <code>ipsec-policy</code> has a direction and a policy: <code>in,ipsec</code> matches packets that arrived through IPsec and were decrypted, and <code>in,none</code> matches packets that did not. The firewall sees the packet after decryption, so the other matchers apply to the inner packet.</p>
+<p>These rules accept everything that arrived through IPsec and drop the rest:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept in-interface-list=WAN \
+    ipsec-policy=in,ipsec comment=&quot;accept IPsec traffic&quot;
+add chain=input action=drop in-interface-list=WAN log=yes \
+    comment=&quot;drop all&quot;
+</code></pre>
+<p>Put the rules for IKE and ESP before these rules, or the tunnel cannot be made. With the default firewall, add the accept rule with <code>place-before=[find comment="defconf: drop all not coming from LAN"]</code>; the drop rule of the default configuration then does the dropping.</p>
+<p>To accept only GRE packets from one address through IPsec, and drop the rest:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept in-interface-list=WAN \
+    ipsec-policy=in,ipsec protocol=gre src-address=192.168.33.1
+add chain=input action=drop in-interface-list=WAN log=yes \
+    comment=&quot;drop all&quot;
+</code></pre>
+<p>For an L2TP server, <code>use-ipsec=required</code> of the server does this without firewall rules: see <a href="../l2tp/">L2TP</a>. With firewall rules, to accept L2TP only through IPsec:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept in-interface-list=WAN \
+    ipsec-policy=in,ipsec protocol=udp dst-port=1701 \
+    comment=&quot;accept L2TP over IPsec&quot;
+add chain=input action=drop in-interface-list=WAN protocol=udp \
+    dst-port=1701 log=yes comment=&quot;drop L2TP without IPsec&quot;
+</code></pre>
+<p>The default configuration has the same matcher in the <code>forward</code> chain: its rules accept forwarded traffic that comes out of or goes into an IPsec tunnel.</p>
+<h3 id="discard-policy">Discard policy</h3>
+<p>A policy with <code>action=discard</code> drops the packets that match it. Dynamic policies are above it and have priority, so traffic of a connected client is encrypted, and the same kind of traffic without a tunnel is dropped. This example is for an L2TP server with IPsec on the public address 203.0.113.1. The router then drops L2TP traffic that is not encrypted:</p>
+<pre><code class="language-ros">/ip/ipsec/policy/add src-address=203.0.113.1 dst-address=0.0.0.0/0 \
+    sa-src-address=203.0.113.1 protocol=udp src-port=1701 \
+    tunnel=yes action=discard
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The order of the policies is important. The discard policy must be below the dynamic policies: move it below the policy template if necessary.</p>
+</div>
+<p>When a client is connected, its dynamic policy is above the discard policy. This output is from a server with the address 1.1.1.1:</p>
+<pre><code class="language-ros">[admin@rack2_10g1] /ip/ipsec/policy&gt; print
+Flags: T - template, X - disabled, D - dynamic, I - inactive, * - default
+0 T * group=default src-address=::/0 dst-address=::/0 protocol=all
+proposal=default template=yes
+
+1 D src-address=1.1.1.1/32 src-port=1701 dst-address=10.5.130.71/32
+dst-port=any protocol=udp action=encrypt level=require
+ipsec-protocols=esp tunnel=no sa-src-address=1.1.1.1
+sa-dst-address=10.5.130.71
+
+2 src-address=1.1.1.1/32 src-port=1701 dst-address=0.0.0.0/0
+dst-port=any protocol=udp action=discard level=unique
+ipsec-protocols=esp tunnel=yes sa-src-address=1.1.1.1
+sa-dst-address=0.0.0.0 proposal=default manual-sa=none
+</code></pre>
+<h2 id="use-a-certain-wan-link-or-address">Use a certain WAN link or address</h2>
+<p><code>local-address</code> of a peer sets the source address of the tunnel. It does not select the route: IPsec, as other services of the router, uses the main routing table. On a router with several WAN links or several addresses, more configuration is needed. Without it the log shows <code>phase1 negotiation failed due to time up</code>.</p>
+<h3 id="another-routing-table">Another routing table</h3>
+<p>In this example the router has two default routes, one in the main table and one in the table <code>backup</code>, and the tunnel must use the backup link:</p>
+<pre><code class="language-ros">[admin@pair_r1] &gt; /ip/route/print detail 
+Flags: X - disabled, A - active, D - dynamic, C - connect, S - static, r - rip, b - bgp, o - ospf, m - mme, B - blackhole, U - unreachable, P - prohibit 
+0 A S dst-address=0.0.0.0/0 gateway=10.155.107.1 gateway-status=10.155.107.1 reachable via ether1 distance=1 scope=30 target-scope=10 routing-mark=backup 
+
+1 A S dst-address=0.0.0.0/0 gateway=172.22.2.115 gateway-status=172.22.2.115 reachable via ether2 distance=1 scope=30 target-scope=10 
+
+2 ADC dst-address=10.155.107.0/25 pref-src=10.155.107.8 gateway=ether1 gateway-status=ether1 reachable distance=0 scope=10 
+
+3 ADC dst-address=172.22.2.0/24 pref-src=172.22.2.114 gateway=ether2 gateway-status=ether2 reachable distance=0 scope=10 
+
+4 ADC dst-address=192.168.1.0/24 pref-src=192.168.1.1 gateway=bridge-local gateway-status=ether2 reachable distance=0 scope=10 
+
+[admin@pair_r1] &gt; /ip/firewall/nat/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+0 chain=srcnat action=masquerade out-interface=ether1 log=no log-prefix=&quot;&quot; 
+
+1 chain=srcnat action=masquerade out-interface=ether2 log=no log-prefix=&quot;&quot; 
+</code></pre>
+<p>The peer, the policy and the NAT bypass rule use the address of the backup link:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=site2 address=10.155.130.136/32 \
+    local-address=10.155.107.8
+/ip/ipsec/identity/add peer=site2 secret=Example-psk-1
+/ip/ipsec/policy/add peer=site2 tunnel=yes \
+    src-address=192.168.1.0/24 dst-address=172.16.0.0/24
+/ip/firewall/nat/add chain=srcnat action=accept place-before=0 \
+    src-address=192.168.1.0/24 dst-address=172.16.0.0/24
+</code></pre>
+<p>The router still sends the IKE packets through the main table, with a source address that does not fit the link. Mark the IKE and ESP packets to the peer with mangle rules, so that they use the table <code>backup</code>:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=output action=mark-connection connection-mark=no-mark \
+    dst-address=10.155.130.136 protocol=udp dst-port=500,4500 \
+    new-connection-mark=ipsec passthrough=yes
+add chain=output action=mark-connection connection-mark=no-mark \
+    dst-address=10.155.130.136 protocol=ipsec-esp \
+    new-connection-mark=ipsec passthrough=yes
+add chain=output action=mark-routing connection-mark=ipsec \
+    new-routing-mark=backup passthrough=no
+</code></pre>
+<h3 id="several-addresses-on-one-interface">Several addresses on one interface</h3>
+<p>In this example the public interface has several addresses of one network, and a masquerade rule for the interface. The tunnel must use one of the addresses:</p>
+<pre><code class="language-ros">[admin@pair_r1] &gt; /ip/address/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+# ADDRESS NETWORK INTERFACE
+0 192.168.1.1/24 192.168.1.0 bridge-local
+1 172.22.2.1/24 172.22.2.0 ether1
+2 172.22.2.2/24 172.22.2.0 ether1
+3 172.22.2.3/24 172.22.2.0 ether1
+
+[admin@pair_r1] &gt; /ip/route/print 
+Flags: X - disabled, A - active, D - dynamic, C - connect, S - static, r - rip, b - bgp, o - ospf, m - mme, B - blackhole, U - unreachable, P - prohibit 
+# DST-ADDRESS PREF-SRC GATEWAY DISTANCE
+1 A S 0.0.0.0/0 172.22.2.115 1
+3 ADC 172.22.2.0/24 172.22.2.1 ether1 0
+4 ADC 192.168.1.0/24 192.168.1.1 bridge-local 0
+
+[admin@pair_r1] /ip/firewall/nat&gt; print 
+Flags: X - disabled, I - invalid, D - dynamic 
+0 chain=srcnat action=masquerade out-interface=ether1 log=no log-prefix=&quot;&quot; 
+</code></pre>
+<p>The peer and the policy use that address:</p>
+<pre><code class="language-ros">/ip/ipsec/peer/add name=site2 address=10.155.130.136/32 \
+    local-address=172.22.2.3
+/ip/ipsec/identity/add peer=site2 secret=Example-psk-1
+/ip/ipsec/policy/add peer=site2 tunnel=yes \
+    src-address=192.168.1.0/24 dst-address=172.16.0.0/24
+/ip/firewall/nat/add chain=srcnat action=accept place-before=0 \
+    src-address=192.168.1.0/24 dst-address=172.16.0.0/24
+</code></pre>
+<p>The masquerade rule changes the source address of the IKE connection to the preferred source address of the connected route, which is another address than the one in <code>local-address</code>. Leave the IKE packets out of masquerade:</p>
+<pre><code class="language-ros">/ip/firewall/nat/add chain=srcnat action=accept protocol=udp \
+    src-port=500,4500 place-before=0
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The route and address outputs of this section are in an older print format.</p>
+</div>
+<h2 id="read-more_4">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="site-to-site">Site-to-site tunnel</a>: NAT bypass and FastTrack</li>
+<li><a href="../../firewall-and-quality-of-service/firewall/filter">Filter</a></li>
+<li><a href="troubleshooting">Troubleshooting</a></li>
+</ul>
+<hr />
+<h1 id="troubleshooting">Troubleshooting</h1>
+<blockquote>
+<p>Troubleshooting IPsec in RouterOS: where to look, what the log messages mean, and how to solve tunnels that do not come up, tunnels without traffic, slow connections and XFRM problems.</p>
+</blockquote>
+<h1 id="troubleshooting_1">Troubleshooting</h1>
+<h2 id="where-to-look">Where to look</h2>
+<p>Check a tunnel in this order:</p>
+<ol>
+<li><code>/ip/ipsec/active-peers/print</code> - is the IKE connection (phase 1) <code>established</code>? <code>PH2-TOTAL</code> shows the number of phase 2 SAs.</li>
+<li><code>/ip/ipsec/installed-sa/print</code> - are there SAs for both directions? The flag <code>S</code> shows that an SA has carried traffic.</li>
+<li><code>/ip/ipsec/policy/print detail</code> - does a policy exist for the traffic? A dynamic policy shows <code>ph2-state=established</code>.</li>
+<li><code>/ip/ipsec/statistics/print</code> - counters of the errors of the encryption itself.</li>
+<li><code>/log/print where topics~"ipsec"</code> - what happened and why.</li>
+</ol>
+<p>The log has more detail when all messages of the <code>ipsec</code> topic except the debug messages are logged. Remove the rule when you are done:</p>
+<pre><code class="language-ros">/system/logging/add topics=ipsec,!debug
+/system/logging/remove [find topics~&quot;ipsec&quot;]
+</code></pre>
+<h2 id="messages-in-the-log">Messages in the log</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Message</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>got fatal error: AUTHENTICATION_FAILED</code> on one side, <code>peer failed to authorize</code> on the other</td>
+<td style="text-align: left;">The pre-shared keys are different.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>no proposal chosen</code></td>
+<td style="text-align: left;">The algorithms of the two sides do not match. The peer is <code>established</code> and <code>PH2-TOTAL</code> is empty: compare the proposals (phase 2): encryption, authentication and PFS group.</td>
+</tr>
+<tr>
+<td style="text-align: left;">No clear message, and the peer is never <code>established</code></td>
+<td style="text-align: left;">Compare the profiles (phase 1): encryption, hash and DH group must have a common value on both sides.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>can't get private key</code></td>
+<td style="text-align: left;">The certificate of the identity has no private key on this router. Check that the identity names the right certificate: after the import of a PKCS12 file, the client certificate and the CA certificate can have the same name.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>phase1 negotiation failed due to time up</code></td>
+<td style="text-align: left;">The two sides cannot talk to each other. See the section about it on this page.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fatal NO-PROPOSAL-CHOSEN notify message</code></td>
+<td style="text-align: left;">The other side cannot accept the proposed algorithms. Look at the log or the configuration of the other side, and check that both have the same set of algorithms.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="no-valid-proposal-with-ikev1">No valid proposal with IKEv1</h3>
+<p>With the exchange modes of IKEv1, a phase 1 mismatch looks like this:</p>
+<pre><code class="language-ros">[admin@MikroTik] /log&gt; print
+(..)
+17:12:32 ipsec,error no suitable proposal found. 
+17:12:32 ipsec,error 10.5.107.112 failed to get valid proposal. 
+17:12:32 ipsec,error 10.5.107.112 failed to pre-process ph1 packet (side: 1, status 1). 
+17:12:32 ipsec,error 10.5.107.112 phase1 negotiation failed. 
+(..)
+</code></pre>
+<p>With the IPsec debug messages logged, the log shows which settings were refused:</p>
+<pre><code class="language-ros">[admin@MikroTik] /log&gt; print
+(..)
+17:21:08 ipsec rejected hashtype: DB(prop#1:trns#1):Peer(prop#1:trns#1) = MD5:SHA 
+17:21:08 ipsec rejected enctype: DB(prop#1:trns#2):Peer(prop#1:trns#1) = 3DES-CBC:AES-CBC 
+17:21:08 ipsec rejected hashtype: DB(prop#1:trns#2):Peer(prop#1:trns#1) = MD5:SHA 
+17:21:08 ipsec rejected enctype: DB(prop#1:trns#1):Peer(prop#1:trns#2) = AES-CBC:3DES-CBC 
+17:21:08 ipsec rejected hashtype: DB(prop#1:trns#1):Peer(prop#1:trns#2) = MD5:SHA 
+17:21:08 ipsec rejected hashtype: DB(prop#1:trns#2):Peer(prop#1:trns#2) = MD5:SHA 
+17:21:08 ipsec,error no suitable proposal found. 
+17:21:08 ipsec,error 10.5.107.112 failed to get valid proposal. 
+17:21:08 ipsec,error 10.5.107.112 failed to pre-process ph1 packet (side: 1, status 1). 
+17:21:08 ipsec,error 10.5.107.112 phase1 negotiation failed. 
+(..)
+</code></pre>
+<p>In this example the other side requires SHA1 as the hash algorithm, but MD5 is configured on the local router. In each pair, the value before the colon (:) is the local setting and the value after it is the setting of the other side.</p>
+<h2 id="the-tunnel-does-not-come-up">The tunnel does not come up</h2>
+<h3 id="phase1-negotiation-failed-due-to-time-up">"phase1 negotiation failed due to time up"</h3>
+<p>The two sides cannot exchange IKE packets. Possible causes:</p>
+<ul>
+<li>The address of the peer is wrong.</li>
+<li>A firewall drops UDP port 500 or 4500: see <a href="firewall-and-routing">Firewall and routing for IPsec</a>.</li>
+<li>NAT between the two sides does not pass the IKE packets correctly.</li>
+<li><code>local-address</code> of the peer does not fit the link that the packets leave on: see <a href="firewall-and-routing">Firewall and routing for IPsec</a>.</li>
+</ul>
+<h3 id="how-to-use-ikev2">How to use IKEv2</h3>
+<p>Set <code>exchange-mode=ike2</code> in the peer on both sides.</p>
+<h3 id="strongswan-initiator-did-not-reauthenticate-as-requested">strongSwan: "initiator did not reauthenticate as requested"</h3>
+<p>RouterOS does not support IKEv2 reauthentication (RFC 4478). Disable reauthentication in strongSwan.</p>
+<h2 id="the-tunnel-is-up-but-traffic-does-not-pass">The tunnel is up, but traffic does not pass</h2>
+<h3 id="no-traffic-at-all">No traffic at all</h3>
+<p>Check that NAT does not change the packets before IPsec sees them. With a masquerade rule and no bypass rule, the peer is <code>established</code> but the packets do not match the policy: see <a href="site-to-site">Site-to-site tunnel</a>.</p>
+<p>When you test from the router itself, ping from an address of the local network (<code>src-address</code>). A ping from the public address of the router does not match a policy between two local networks.</p>
+<h3 id="ping-works-in-one-direction-only">Ping works in one direction only</h3>
+<p>A firewall accepts new connections in one direction only. Check the filter rules, or accept all traffic that comes out of and goes into the tunnel (<code>ipsec-policy=in,ipsec</code> and <code>ipsec-policy=out,ipsec</code>).</p>
+<h3 id="packets-are-lost-or-connections-are-very-slow-and-the-packet-sniffer-or-torch-makes-the-problem-go-away">Packets are lost or connections are very slow, and the packet sniffer or Torch makes the problem go away</h3>
+<p>FastTrack or FastPath takes the packets before they are encrypted, so they do not pass the IPsec policies. Leave the traffic of the tunnel out of FastTrack: see <a href="site-to-site">Site-to-site tunnel</a>.</p>
+<h3 id="only-encrypted-traffic-must-be-accepted">Only encrypted traffic must be accepted</h3>
+<p>See <a href="firewall-and-routing">Firewall and routing for IPsec</a>.</p>
+<h2 id="xfrm-interfaces">XFRM interfaces</h2>
+<h3 id="the-xfrm-interface-does-not-come-up">The XFRM interface does not come up</h3>
+<p>The flag <code>R</code> appears only after an SA that uses the interface is made. If the SA is made but the interface stays down, re-create the interface or restart the router. An IP address on the interface is shown as invalid until the interface runs.</p>
+<h3 id="the-xfrm-policy-stays-in-no-phase2">The XFRM policy stays in no-phase2</h3>
+<p>Check that the policy group is bound to the XFRM interface, that the identity has the same group in <code>policy-template-group</code>, and that the traffic is routed through the XFRM interface. If you use the default policy group, check that no other policy of the group takes the traffic.</p>
+<h3 id="ospf-over-xfrm-stays-in-exstart">OSPF over XFRM stays in ExStart</h3>
+<p>The XFRM interfaces of both routers must have the same MTU. Check <code>actual-mtu</code> with <code>/interface/print detail</code> on both routers and set <code>mtu</code> again if the values differ. With different values, the OSPF database description exchange cannot finish.</p>
+<h2 id="read-more_5">Read more</h2>
+<ul>
+<li><a href="./">IPsec</a>: how IKE works, the menus, the algorithms</li>
+<li><a href="site-to-site">Site-to-site tunnel</a></li>
+<li><a href="firewall-and-routing">Firewall and routing for IPsec</a></li>
+<li><a href="route-based-ipsec-xfrm">Route-based IPsec with XFRM</a></li>
+</ul>
+<hr />
+<h1 id="ikev2-eap-between-nordvpn-and-routeros">IKEv2 EAP between NordVPN and RouterOS</h1>
+<blockquote>
+<p>This page guides users through configuring an IKEv2 secured tunnel to NordVPN servers using EAP authentication in RouterOS v6.45+, covering root CA installation, server hostname lookup, IPsec tunnel setup with Phase...</p>
+</blockquote>
+<h1 id="ikev2-eap-between-nordvpn-and-routeros_1">IKEv2 EAP between NordVPN and RouterOS</h1>
+<p>Starting from RouterOS v6.45, it is possible to establish an IKEv2 secured tunnel to NordVPN servers using EAP authentication. This manual page explains how to configure it.</p>
+<h3 id="installing-the-root-ca">Installing the root CA</h3>
+<p>Start off by downloading and importing the NordVPN root CA certificate.</p>
+<pre><code>/tool/fetch url=&quot;https://downloads.nordvpn.com/certificates/root.der&quot;
+/certificate/import file-name=root.der
+
+</code></pre>
+<p>There should now be the trusted NordVPN Root CA certificate in the System/Certificates menu.</p>
+<pre><code>[admin@MikroTik] &gt; /certificate/print where name~&quot;root.der&quot;
+Flags: K - private-key, L - crl, C - smart-card-key, A - authority, I - issued, R - revoked, E - expired, T - trusted 
+ #         NAME            COMMON-NAME            SUBJECT-ALT-NAME                                         FINGERPRINT           
+ 0       T root.der_0      NordVPN Root CA                                                                 8b5a495db498a6c2c8c...
+
+</code></pre>
+<h3 id="finding-out-the-servers-hostname">Finding out the server's hostname</h3>
+<p>Navigate to <a href="https://nordvpn.com/servers/tools/">https://nordvpn.com/servers/tools/</a> and find out the recommended server's hostname. In this case, it is lv20.nordvpn.com.</p>
+<h3 id="setting-up-the-ipsec-tunnel">Setting up the IPsec tunnel</h3>
+<p>It is advised to create a separate Phase 1 profile and Phase 2 proposal configurations to not interfere with any existing or future IPsec configuration.</p>
+<pre><code>/ip/ipsec/profile
+add name=NordVPN
+/ip/ipsec/proposal
+add name=NordVPN pfs-group=none
+
+</code></pre>
+<p>While it is possible to use the default policy template for policy generation, it is better to create a new policy group and template to separate this configuration from any other IPsec configuration.</p>
+<pre><code>/ip/ipsec/policy/group
+add name=NordVPN
+/ip/ipsec/policy
+add dst-address=0.0.0.0/0 group=NordVPN proposal=NordVPN src-address=0.0.0.0/0 template=yes
+
+</code></pre>
+<p>Create a new mode config entry with responder=no that will request configuration parameters from the server.</p>
+<pre><code>/ip/ipsec/mode-config
+add name=NordVPN responder=no
+
+</code></pre>
+<p>Lastly, create peer and identity configurations. Specify your NordVPN credentials in the username and password parameters.</p>
+<pre><code>/ip/ipsec/peer
+add address=lv20.nordvpn.com exchange-mode=ike2 name=NordVPN profile=NordVPN
+/ip/ipsec/identity
+add auth-method=eap certificate=&quot;&quot; eap-methods=eap-mschapv2 generate-policy=port-strict mode-config=NordVPN peer=NordVPN policy-template-group=NordVPN username=support@mikrotik.com password=secret
+
+</code></pre>
+<p>Verify that the connection is successfully established.</p>
+<pre><code>/ip/ipsec
+active-peers print
+installed-sa print
+
+</code></pre>
+<h3 id="choosing-what-to-send-over-the-tunnel">Choosing what to send over the tunnel</h3>
+<p>If we look at the generated dynamic policies, we see that only traffic with a specific (received by mode config) source address will be sent through the tunnel. But a router in most cases will need to route a specific device or network through the tunnel. In such a case, we can use source NAT to change the source address of packets to match the mode config address. Since the mode config address is dynamic, it is impossible to create a static source NAT rule. In RouterOS it is possible to generate dynamic source NAT rules for mode config clients.</p>
+<h4 id="option-1-sending-all-traffic-over-the-tunnel">Option 1: Sending all traffic over the tunnel</h4>
+<p>In this example, we have a local network 10.5.8.0/24 behind the router and we want all traffic from this network to be sent over the tunnel. First of all, we have to make a new IP/Firewall/Address list which consists of our local network.</p>
+<pre><code>/ip/firewall/address-list
+add address=10.5.8.0/24 list=local
+</code></pre>
+<p>It is also possible to specify only single hosts from which all traffic will be sent over the tunnel. Example:</p>
+<pre><code>/ip/firewall/address-list
+add address=10.5.8.120 list=local
+add address=10.5.8.23 list=local
+
+</code></pre>
+<p>When it is done, we can assign the newly created IP/Firewall/Address list to mode config configuration.</p>
+<pre><code>/ip/ipsec/mode-config
+set [ find name=NordVPN ] src-address-list=local
+</code></pre>
+<p>Verify correct source NAT rule is dynamically generated when the tunnel is established.</p>
+<pre><code>[admin@MikroTik] &gt; /ip/firewall/nat/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D ;;; ipsec mode-config
+      chain=srcnat action=src-nat to-addresses=192.168.77.254 src-address-list=local dst-address-list=!local
+
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Warning</p>
+<p>Make sure the dynamic mode config address is not a part of the local network.</p>
+<p><strong>Important:</strong> It is also possible to combine both options (1 and 2) to allow access to specific addresses only for specific local addresses/networks.</p>
+</div>
+<h4 id="option-2-accessing-certain-addresses-over-the-tunnel">Option 2: Accessing certain addresses over the tunnel</h4>
+<p>It is also possible to send only specific traffic over the tunnel by using the connection-mark parameter in the Mangle firewall. It works similarly to Option 1 - a dynamic NAT rule is generated based on the configured connection-mark parameter under mode config.</p>
+<p>First of all, set the connection-mark under your mode config configuration.</p>
+<pre><code>/ip/ipsec/mode-config
+set [ find name=NordVPN ] connection-mark=NordVPN
+
+</code></pre>
+<p>When it is done, a NAT rule is generated with the dynamic address provided by the server:</p>
+<pre><code>[admin@MikroTik] &gt; /ip/firewall/nat/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D ;;; ipsec mode-config
+      chain=srcnat action=src-nat to-addresses=192.168.77.254 connection-mark=NordVPN 
+
+</code></pre>
+<p>After that, it is possible to apply this connection-mark to any traffic using the Mangle firewall. In this example, access to <a href="http://mikrotik.com">mikrotik.com</a> and 8.8.8.8 is granted over the tunnel.</p>
+<p>Create a new address list:</p>
+<pre><code>/ip/firewall/address-list
+add address=mikrotik.com list=VPN
+add address=8.8.8.8 list=VPN
+
+</code></pre>
+<p>Apply connection-mark to traffic matching the created address list:</p>
+<pre><code>/ip/firewall/mangle
+add action=mark-connection chain=prerouting dst-address-list=VPN new-connection-mark=NordVPN passthrough=yes
+
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>It is also possible to combine both options (1 and 2) to allow access to specific addresses only for specific local addresses/networks</p>
+</div>
+<hr />
+<h1 id="qkd-integration-in-routeros-ipsec-ppk">QKD Integration in RouterOS IPsec (PPK)</h1>
+<blockquote>
+<p>This page introduces RouterOS IPsec's Post-Quantum Pre-shared Key (PPK) feature, detailing its integration with Quantum Key Distribution (QKD), supported key sources (static, PSK, QKD), security recommendations, and...</p>
+</blockquote>
+<h1 id="qkd-integration-in-routeros-ipsec-ppk_1">QKD Integration in RouterOS IPsec (PPK)</h1>
+<h3 id="1-introduction">1. Introduction</h3>
+<p>This manual describes the Post-Quantum Pre-shared Key (RFC9867) feature in RouterOS IPsec and its integration with Quantum Key Distribution (QKD).</p>
+<p>PPK provides forward security against quantum attacks by using keys that are either dynamically distributed or statically configured. All PPK types (static, PSK, QKD) benefit from RFC 8784 recommendations: keys should have at least 256 bits of entropy to provide ~128 bits of post-quantum security.</p>
+<p>RouterOS supports three PPK sources:</p>
+<ul>
+<li>Static PPK — manually configured per-peer secret.</li>
+<li>PSK (Pre-shared Key) — one-time generated keys, optionally usable only for initial IKE SA.</li>
+<li>QKD — dynamically distributed keys from a QKD server.</li>
+</ul>
+<p>Dynamic keys (PSK/QKD) are consumed and invalidated after use. Static keys remain valid across sessions but offer weaker security if reused.</p>
+<h3 id="_1"></h3>
+<h3 id="2-concepts">2. Concepts</h3>
+<ul>
+<li><strong>PPK (Post-Quantum Pre-shared Key):</strong> An additional secret shared during IKE negotiation to resist quantum attacks.</li>
+<li><strong>QKD:</strong> Quantum-based key distribution providing fresh symmetric keys via a Key Management Entity (KME).</li>
+</ul>
+<h4 id="ike-sa-vs-esp-sa">IKE SA vs ESP SA</h4>
+<ul>
+<li>IKE SA: Controls tunnel negotiation.</li>
+<li>ESP SA: Carries encrypted user data.</li>
+</ul>
+<h4 id="static-vs-dynamic-keys">Static vs Dynamic keys</h4>
+<ul>
+<li>Dynamic: ephemeral PSK or QKD-distributed secrets, used once and discarded.</li>
+<li>Static: manually set per peer, persistent across sessions.</li>
+</ul>
+<h4 id="21-routeros-ppk-sources">2.1 RouterOS PPK Sources</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">PPK Source</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Static</td>
+<td style="text-align: left;">Persistent, manually configured secret.</td>
+</tr>
+<tr>
+<td style="text-align: left;">PSK</td>
+<td style="text-align: left;">One-time dynamically generated pre-shared keys. Can optionally be used only for initial IKE SA (<code>psk-ike-initial</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;">QKD</td>
+<td style="text-align: left;">Keys pulled dynamically from a QKD server, consumed after use.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-security-recommendations">3. Security Recommendations</h3>
+<ul>
+<li>All PPK keys should meet RFC 8784 recommendations: ≥256 bits of entropy.</li>
+<li>Static PPK keys improve post-quantum protection if sufficiently long, but re-use reduces security.</li>
+<li>Dynamic keys (PSK/QKD) offer stronger security since they are one-time use. Synchronization failure may cause key desynchronization.</li>
+</ul>
+<h3 id="4-two-device-setup-overview">4. Two-Device Setup Overview</h3>
+<p>This manual focuses on a minimal setup with two devices:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Role</th>
+<th style="text-align: left;">Device</th>
+<th style="text-align: left;">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Server</td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">Hosts an IPsec tunnel; provides a QKD/PPK key</td>
+</tr>
+<tr>
+<td style="text-align: left;">Client</td>
+<td style="text-align: left;">ROS/LibreSwan</td>
+<td style="text-align: left;">Connects to the server using QKD/PPK</td>
+</tr>
+</tbody>
+</table>
+<p>The RouterOS server may act as a QKD client to a KME, so no third device is required.</p>
+<pre><code class="language-routeros"># Example of pushing a configuration to a remote peer (IPsec)
+/ip ipsec peer
+add address=192.168.88.1/32 name=Server exchange-mode=ike2
+/ip ipsec proposal
+set [ find default=yes ] auth-algorithms=sha256 enc-algorithms=aes-256-gcm
+</code></pre>
+<h3 id="5-configuration-objects">5. Configuration Objects</h3>
+<h4 id="51-certificates">5.1 Certificates</h4>
+<p>QKD requires:</p>
+<ul>
+<li>CA certificate (to validate the server).</li>
+<li>SAE client certificate (for authentication to the QKD server).</li>
+</ul>
+<pre><code>/certificate/import file-name=ca.crt.pem
+/certificate/import file-name=sae-server.crt.pem
+/certificate/import file-name=sae-server.key.pem
+
+</code></pre>
+<h4 id="52-psk-example">5.2 PSK Example</h4>
+<p>Generate one-time PSKs for PPK use:</p>
+<pre><code>/ip/ipsec/key/psk/generate count=10 key-size=32
+
+</code></pre>
+<ul>
+<li><strong>count</strong> → number of PSKs to generate.</li>
+<li><strong>key-size</strong> → size of each key in bytes (32 bytes = 256 bits).</li>
+</ul>
+<h4 id="53-qkd-key-manager">5.3 QKD Key Manager</h4>
+<p>RouterOS server can act as a QKD client:</p>
+<pre><code>/ip/ipsec/key/qkd/set address=10.2.3.4:8020 \
+    cache-size=1 \
+    certificate=sae-server \
+    key-size=32 \
+    kme-id=server-kme-id \
+    peer-sae-id=client-sae-id
+
+</code></pre>
+<p>Parameter descriptions:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">cache-size</td>
+<td style="text-align: left;">Number of keys IPsec will prefetch from the QKD server.</td>
+</tr>
+<tr>
+<td style="text-align: left;">cache-state</td>
+<td style="text-align: left;">Current number of keys cached and available.</td>
+</tr>
+<tr>
+<td style="text-align: left;">key-size</td>
+<td style="text-align: left;">Requested size of each key in bytes (e.g., 32 bytes = 256 bits).</td>
+</tr>
+<tr>
+<td style="text-align: left;">kme-id</td>
+<td style="text-align: left;">Used for certificate validation. If not specified, the KME identity will not be validated.</td>
+</tr>
+<tr>
+<td style="text-align: left;">peer-sae-id</td>
+<td style="text-align: left;">Identifier for the peer SAE.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="54-profiles-and-peers">5.4 Profiles and Peers</h4>
+<pre><code>/ip/ipsec/profile/add name=qkd-profile ppk=qkd
+/ip/ipsec/peer/add address=10.2.1.2 exchange-mode=ike2 \
+    name=peer-client profile=qkd-profile proposal-check=obey
+/ip/ipsec/identity/add peer=peer-client profile=qkd-profile
+
+</code></pre>
+<p>PPK options for profiles:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">PPK disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;">psk</td>
+<td style="text-align: left;">One-time PSK used for IKE and ESP rekey.</td>
+</tr>
+<tr>
+<td style="text-align: left;">psk-ike-initial</td>
+<td style="text-align: left;">PSK used only for the initial IKE SA (renamed from <code>psk-ike-only</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;">qkd</td>
+<td style="text-align: left;">Keys retrieved from a QKD server.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="55-proposal-policy">5.5 Proposal / Policy</h4>
+<pre><code>/ip/ipsec/proposal/add name=qkd-proposal auth-algorithms=sha256 \
+    enc-algorithms=aes-256-gcm pfs-group=modp2048
+/ip/ipsec/policy/add src-address=10.1.0.0/24 dst-address=10.2.0.0/24 \
+    peer=peer-client proposal=qkd-proposal tunnel=yes
+
+</code></pre>
+<h3 id="6-behaviour">6. Behaviour</h3>
+<ul>
+<li>Dynamic keys: Pulled from <code>/ip/ipsec/key/psk/</code> or QKD server, consumed once, then deleted.</li>
+<li>Static key: Configured per peer, used repeatedly.</li>
+<li>One-time dynamic keys ensure the strongest protection but require synchronization.</li>
+<li>Static fallback guarantees tunnel establishment but should be long enough (≥256 bits entropy).</li>
+<li>PPK usage can optionally be restricted to IKE SA only (<code>psk-ike-initial</code>) to reduce key consumption.</li>
+</ul>
+<h3 id="7-debugging-and-troubleshooting">7. Debugging and Troubleshooting</h3>
+<p>To verify QKD integration and key retrieval, enable IPsec debug logging:</p>
+<pre><code>/system/logging/add topics=ipsec,debug action=memory
+
+</code></pre>
+<p>Sample debug output showing QKD key retrieval:</p>
+<pre><code>2025-10-11 17:32:38 ipsec,debug,packet POST
+2025-10-11 17:32:38 ipsec,debug,packet Host: 10.2.3.4\r\n
+2025-10-11 17:32:38 ipsec,debug,packet {&quot;number&quot;:1,&quot;size&quot;:16}
+2025-10-11 17:32:38 ipsec,debug,packet HTTP/1.1 200 OK\r\n
+2025-10-11 17:32:38 ipsec,debug,packet {&quot;keys&quot;:[{&quot;key_ID&quot;:&quot;37f4c842-dd82-4c49-8dfc-52a3793e5331&quot;,&quot;key&quot;:&quot;m/JIEIUCzAE=&quot;}]}
+2025-10-11 17:32:38 ipsec,debug,packet qkd: add to cache key 37f4c842-dd82-4c49-8dfc-52a3793e5331: 9bf24
+</code></pre>
+<p>If keys are not being added to the cache, check network connectivity to the KME, certificate validation, and correct <code>kme-id</code> and <code>peer-sae-id</code> configuration.</p>
+<h3 id="8-example-export-two-device-setup">8. Example Export (Two-Device Setup)</h3>
+<h4 id="routeros-server">RouterOS Server</h4>
+<pre><code>/ip/ipsec/key/qkd
+set address=10.2.3.4:8020 cache-size=1 certificate=sae-server key-size=32 \
+    kme-id=server-kme-id peer-sae-id=client-sae-id
+/ip/ipsec/profile/add name=qkd-profile ppk=qkd
+/ip/ipsec/proposal/add name=qkd-proposal auth-algorithms=sha256 enc-algorithms=aes-256-gcm pfs-group=modp2048
+/ip/ipsec/peer/add address=10.2.1.2 exchange-mode=ike2 name=peer-client profile=qkd-profile proposal-check=obey
+/ip/ipsec/identity/add peer=peer-client profile=qkd-profile
+/ip/ipsec/policy/add src-address=10.1.0.0/24 dst-address=10.2.0.0/24 peer=peer-client proposal=qkd-proposal tunnel=yes
+
+</code></pre>
+<h4 id="client-device">Client Device</h4>
+<pre><code>/ip/ipsec/key/qkd
+set address=10.2.3.4:8020 cache-size=1 certificate=sae-client key-size=32 \
+    kme-id=client-kme-id peer-sae-id=server-sae-id
+/ip/ipsec/profile/add name=qkd-profile ppk=qkd
+/ip/ipsec/proposal/add name=qkd-proposal auth-algorithms=sha256 enc-algorithms=aes-256-gcm pfs-group=modp2048
+/ip/ipsec/peer/add address=10.2.1.1 exchange-mode=ike2 name=peer-server profile=qkd-profile proposal-check=obey
+/ip/ipsec/identity/add peer=peer-server profile=qkd-profile
+/ip/ipsec/policy/add src-address=10.2.0.0/24 dst-address=10.1.0.0/24 peer=peer-server proposal=qkd-proposal tunnel=yes
+
+</code></pre>
+<h3 id="9-references">9. References</h3>
+<ul>
+<li>IETF Draft: IKEv2 Post-Quantum PPK: <a href="https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-qr-alt/">https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-qr-alt/</a></li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc9867">https://datatracker.ietf.org/doc/html/rfc9867</a></li>
+</ul>
+<h3 id="notes">Notes</h3>
+<h4 id="qkd-as-a-distribution-mechanism">QKD as a Distribution Mechanism</h4>
+<ul>
+<li>QKD in RouterOS is not a new encryption method itself - it’s a <strong>key distribution mechanism</strong>.</li>
+<li>It provides dynamically generated keys via the <strong>Key Management Entity (KME)</strong>, which both peers retrieve securely.</li>
+</ul>
+<h4 id="dynamic-vs-static-sources">Dynamic vs Static Sources</h4>
+<ul>
+<li><em>Dynamic sources</em>: QKD-distributed keys, one-time PSKs from <code>/ip/ipsec/key/psk/</code>.</li>
+<li><em>Static sources</em>: Per-peer configured static PPK secret.</li>
+<li>Recommendation: prefer <strong>dynamic keys</strong> for long-term security; keep a <strong>static fallback</strong> to prevent tunnel drops if dynamic keys run out.</li>
+</ul>
+<h4 id="security-guidelines-rfc-8784">Security Guidelines (RFC 8784)</h4>
+<ul>
+<li>Post-quantum preshared keys should contain <strong>at least 256 bits of entropy</strong> to provide 128-bit post-quantum security.</li>
+<li>Using only one static key for IKE SA protection is possible, but carries risk if reused.</li>
+</ul>
+<h4 id="operational-considerations">Operational Considerations</h4>
+<ul>
+<li><strong>Key exhaustion</strong>: one-time PSKs are consumed quickly during aggressive rekeying (IKE + ESP). QKD avoids this by continuously providing fresh keys.</li>
+<li><strong>Hub-and-spoke topologies</strong>: dynamic PSKs need peer association to avoid desynchronization between spokes.</li>
+<li><strong>Fallback behavior</strong>: ensure the system can gracefully switch to static PPK if dynamic keys are unavailable.</li>
+</ul>
+<h4 id="compatibility-notes">Compatibility Notes</h4>
+<ul>
+<li><strong>RouterOS - RouterOS</strong>: supports both PSK and QKD PPK.</li>
+<li><strong>RouterOS - LibreSwan</strong>: works with static PPK; dynamic PSK may require custom builds.</li>
+<li><strong>RouterOS - StrongSwan</strong>: requires adaptation, as identifiers differ between draft versions.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>console · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="console">console</h1>
+<h1 id="inspect">inspect</h1>
+<blockquote>
+<p>RouterOS command reference for /console/inspect.</p>
+</blockquote>
+<hr />
+<h2 id="consoleinspect">console/inspect</h2>
+<p><strong>Type:</strong> Command
+Returns the command tree, built-in help, tab-completion candidates and syntax highlighting data that the console uses. Scripts and tools use it to discover menus, commands, arguments and value types, or to check a command line before running it. For request details and examples, see <a href="../../developer-guides/scripting/console-inspect">Console inspect</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>request</strong> <code>ubit (self, child, completion, highlight, syntax, error)</code> — Request to perform. Combine values with commas, for example <code>child,completion</code>. Each returned row has a <code>type</code> field that names the request that produced it.</li>
+<li><strong>path</strong> <code>multi { name: string
+ }</code> — Menu or command path as a comma-separated list of names, for example <code>ip,address,add</code>. Omit it for the root menu. Do not use slashes or a leading slash.</li>
+<li><strong>input</strong> <code>string</code> — Command line to analyze for <code>completion</code>, <code>highlight</code>, and <code>syntax</code> requests. Use an absolute path such as <code>/ip/address/print</code>, or a path relative to <code>path</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (self | child | completion | highlight | syntax | error)</code> — Request that produced the row: <code>self</code>, <code>child</code>, <code>completion</code>, <code>highlight</code>, <code>syntax</code>, or <code>error</code>.</li>
+<li><strong>name</strong> <code>string</code> — Name of the menu, command, or argument. Returned for <code>self</code> and <code>child</code> rows.</li>
+<li><strong>node-type</strong> <code>enum (path | dir | cmd | arg)</code> — Kind of node: <code>path</code> for a top-level menu path, <code>dir</code> for a menu directory, <code>cmd</code> for a command, and <code>arg</code> for an argument.</li>
+<li><strong>completion</strong> <code>string</code> — Text to insert for a completion candidate.</li>
+<li><strong>style</strong> <code>enum (none | syntax-meta | syntax-nonterminal | syntax-value | syntax-obsolete | error | ambiguous | comment | escaped | variable | variable-undefined | variable-global | variable-local | variable-auto | variable-parameter | dir | cmd | arg | arg-scope | arg-dot | obj-disabled | obj-inactive | obj-dynamic | obj-running | obj-wildcard | obj-decode-error | about | prompt-nosafe | prompt-safe | prompt-user | prompt-host | prompt-path | prompt-hotlock | line-more | line-number | hud-key | flag-title | flag-hints | flag | brief-header | detail-arg-name | detail-arg-equals | gradient-0 | gradient-1 | gradient-2 | gradient-3 | gradient-4 | gradient-5 | gradient-6 | gradient-7)</code> — Style class of a completion candidate or of a highlighted character. Common values are <code>dir</code>, <code>cmd</code>, <code>arg</code>, <code>none</code>, and <code>syntax-meta</code>. The values <code>error</code>, <code>obj-inactive</code>, and <code>syntax-obsolete</code> mark input the console cannot use.</li>
+<li><strong>offset</strong> <code>num</code> — Zero-based character position in <code>input</code> where the completion applies or where the highlighted character starts.</li>
+<li><strong>preference</strong> <code>num</code> — Ordering weight of a completion candidate. Higher values are offered before lower values.</li>
+<li><strong>show</strong> <code>bool</code> — Whether the completion candidate appears in the interactive Tab list.</li>
+<li><strong>highlight</strong> <code>multi { style: enum (none | syntax-meta | syntax-nonterminal | syntax-value | syntax-obsolete | error | ambiguous | comment | escaped | variable | variable-undefined | variable-global | variable-local | variable-auto | variable-parameter | dir | cmd | arg | arg-scope | arg-dot | obj-disabled | obj-inactive | obj-dynamic | obj-running | obj-wildcard | obj-decode-error | about | prompt-nosafe | prompt-safe | prompt-user | prompt-host | prompt-path | prompt-hotlock | line-more | line-number | hud-key | flag-title | flag-hints | flag | brief-header | detail-arg-name | detail-arg-equals | gradient-0 | gradient-1 | gradient-2 | gradient-3 | gradient-4 | gradient-5 | gradient-6 | gradient-7)
+ }</code> — Style of each character in <code>input</code>, in order. Returned by the <code>highlight</code> request.</li>
+<li><strong>symbol</strong> <code>string</code> — Name of the symbol described by a <code>syntax</code> row, for example an argument name or a value type.</li>
+<li><strong>symbol-type</strong> <code>enum (collection | explanation | definition) { collection:0, explanation:1, definition:2 }</code> — Role of the symbol in the <code>syntax</code> output: <code>collection</code> for the containing list, <code>explanation</code> for menu, command, and argument help, or <code>definition</code> for a value type.</li>
+<li><strong>nested</strong> <code>num</code> — Nesting level of a <code>syntax</code> row. The collection row is <code>0</code>, and its entries start at <code>1</code>.</li>
+<li><strong>nonorm</strong> <code>bool</code> — Console-internal flag. The collection row sets it to <code>true</code>.</li>
+<li><strong>text</strong> <code>string</code> — Description, help text, or value type description.</li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /console/settings.</p>
+</blockquote>
+<hr />
+<h2 id="consolesettings">console/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>sanitize-names</strong> <code>bool</code> — Replaces reserved characters (\ / : * ? |) with underscores in file and script names. Default: <code>no</code>.</li>
+<li><strong>log-script-errors</strong> <code>bool</code> — Writes errors of scripts that run in the background to the log. Default: <code>yes</code>.</li>
+<li><strong>tab-width</strong> <code>num</code> — Tab width in the full-screen editor. Default: <code>4</code>.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

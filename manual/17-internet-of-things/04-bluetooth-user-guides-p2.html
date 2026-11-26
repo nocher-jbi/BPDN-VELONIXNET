@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth / User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Internet of Things</p>
+      <h1 id="bluetooth-user-guides-part-22">Bluetooth / User Guides (part 2/2)</h1>
+<h1 id="mqtthttps-and-aws-configuration">MQTT/HTTPS and AWS configuration</h1>
+<blockquote>
+<p>Forward MikroTik Bluetooth tag data to Amazon AWS using MQTT over HTTPS, covering AWS account setup, certificates, and broker configuration.</p>
+</blockquote>
+<h3 id="introduction">Introduction</h3>
+<p>One of the options, that you can use to monitor information that is broadcasted by the Bluetooth tags is cloud systems, like AWS (Amazon WEB Services). In this article, we will show how to configure both AWS and RouterOS to publish the data using the MQTT and HTTPS protocols. RouterOS, in this scenario, is going to act as a gateway and publish the data that is broadcasted by the BLEtag to the cloud (AWS). AWS, in this scenario, will act as an MQTT broker and MQTT subscriber (server, where data will be posted/shown).</p>
+<p>Before we proceed with the settings, you need to create an account in the AWS system. You can find more information on how to do that following this <a href="https://repost.aws/knowledge-center/create-and-activate-aws-account">link</a>.</p>
+<p>After you have created an account, make sure that the payment card validates under <strong>Your_Username&gt;My account</strong>, or else the account will not be active.</p>
+<p>Go to <strong>Services&gt;Internet of Things&gt;IoT Core</strong>.</p>
+<p>In the <strong>Test</strong> section, you can use a build-in MQTT test client so you can test publishing and subscribe to topics. You have <strong>Subscribe to a topic</strong> and <strong>Publish to a topic</strong> tabs which allows you to check both processes. MQTT test client section can also display HTTPS posts.</p>
+<h3 id="aws-iot-configuration">AWS IoT configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Configuration shown in this section is meant for MQTT publish/subscribe scenario but you can also test HTTPS posting using the same AWS settings.</p>
+</div>
+<h4 id="things">Things</h4>
+<p>Step 1: Navigate to <strong>Manage&gt;Things</strong>. This is the menu where configuration begins (Things menu is the representation of a device or logical entity).</p>
+<p>**</p>
+<p>**</p>
+<p>Press <strong>Create&gt;Create a single thing&gt;</strong>choose a name<strong>&gt;Next&gt;Create certificate.</strong></p>
+<p>Step 2: Download "AmazonRootCA1.pem" certificate (Root CA for AWS), "xxxx.cert.pem" certificate (a certificate for the "thing") and "xxxx.private.key" key (a private key) - the "xxxx"part is unique for each newly created certificate.</p>
+<p>Step 3: You have an option to either finish the setting (by choosing <strong>Done</strong>) or set up a policy (by choosing <strong>Attach a policy</strong>). You need to add policies to the created "thing" but if you are doing it with a fresh account, you might not have any policies to choose from. Do not worry, you can create them manually later.</p>
+<p>There are two other menus that are important - <strong>Secure&gt;Certificates</strong> and <strong>Secure&gt;Policies</strong>.</p>
+<h4 id="certificates">Certificates</h4>
+<p>In the <strong>Certificates</strong> menu, you can create certificates, activate them and attach them to policies. The "Things" configuration should have already created the certificate. Just make sure that the certificate is "activated". To do that, select the certificate, click on "<strong>Actions</strong>" and click "<strong>Activate</strong>".</p>
+<h4 id="policies">Policies</h4>
+<p>Step 1: Create a new policy. Click on "<strong>Create</strong>" and type in the name for the policy. In the "<strong>Create a policy</strong>" tab you have an option to set up "actions". We will be using 4 actions in this example (<code>iot:Publish</code>, <code>iot:Receive</code>, <code>iot:Subscribe</code> and <code>iot:Connect</code>). You can find more information on policies with examples following the <a href="https://docs.aws.amazon.com/iot/latest/developerguide/example-iot-policies.html">link</a>.</p>
+<p>Step 2: Navigate to the "<strong>Add statements</strong>" section. In the "<strong>Action</strong>" field, choose <strong>iot:Publish</strong> and <strong>iot:Receive</strong> actions and separate them with a comma ",". In the "<strong>Resource ARN</strong>" field replace the text "<code>replaceWithATopic</code>" with an actual relevant topic (for example "<code>my/test/topic</code>"). In the "<strong>Effect</strong>" checkbox mark "<strong>Allow</strong>".</p>
+<p>Step 3: Add a new statement by clicking "<strong>Add statement</strong>". Add an action to the statement by choosing <strong>iot:Subscribe</strong> and replace the text in the "<strong>Resource ARN</strong>" field "<code>replaceWithATopicFilter</code>" with an actual relevant topic (for example "<code>my/test/topic</code>"). In the "<strong>Effect</strong>" checkbox mark "<strong>Allow</strong>".</p>
+<p>Step 4: Add the last statement and setup <strong>iot:Connect</strong> action. Change only the "<code>replaceWithAClientId</code>" part with a proper client-id (for example "<code>test-client</code>") and mark the "<strong>Allow</strong>" checkbox. To finish the setup, click "<strong>Create</strong>".</p>
+<p>Step 5: You need to attach the certificate to the newly created policy. In order to do that, go to <strong>Secure&gt;Certificates</strong>, select the certificate, click on "<strong>Actions</strong>" and "<strong>Attach policy</strong>".</p>
+<p>Select the policy and click "<strong>Attach</strong>".</p>
+<p>And with that, the AWS settings are done.</p>
+<h4 id="endpoint-address-brokers-address">Endpoint Address (Broker's address)</h4>
+<p>You can find the <strong>Endpoint</strong> address in the "<strong>Settings</strong>" section (Settings&gt;Device data endpoint). This address should be configured as the broker's IP/FQDN address in the RouterOS settings.</p>
+<h3 id="routeros-configuration">RouterOS configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In order to configure MQTT, make sure that <strong>iot</strong> package is installed beforehand.</p>
+</div>
+<p>In our example, we are using <a href="https://mikrotik.com/product/knot">KNOT</a> as a gateway and a script (created specifically for the KNOT) to publish the data. In your specific application scenario, you can use any RouterOS device (with iot package installed) to post any data that you need.</p>
+<h4 id="certificates_1">Certificates</h4>
+<p>Since AWS uses an SSL connection, we will require previously downloaded certificates and the key.</p>
+<p>Go to the "Files" menu and add to the "File list" <em>AmazonRootCA1.pem</em>, <em>xxxx.cert.pem.crt</em> and <em>xxxx.private.pem.crt</em>.</p>
+<p>Go to System&gt;Certificates and import all 3 files (via the "Import" button - one by one):</p>
+<p>Make sure that both certificates are trusted (T) and that "xxxx.certificate.pem.crt" is with a private key (K).</p>
+<h4 id="mqtt-broker">MQTT Broker</h4>
+<p>Navigate to IoT&gt;MQTT and add a new broker ("+" button).</p>
+<p>Name the broker in the "Name" field (for example, <strong>AWS</strong>).</p>
+<p>Type in/paste AWS address into the "Address" field (you can find it in the AWS settings "<strong>Settings&gt;Device data endpoint</strong>" - <strong>Endpoint address</strong>).</p>
+<p>Configure the port used by the broker in the "Port" field and enable SSL via SSL checkbox (AWS, in this case, uses <strong>8883</strong> and, since we use certificates, it requires to <strong>enable SSL</strong>).</p>
+<p>"Username" and "Password" fields are not required in this scenario (depends on the broker's configuration - skip both fields).</p>
+<p>Set up a client-id in the "Client Id" field (it is the ID that was configured in the AWS policies - in this example, <strong><code>test-client</code></strong>).</p>
+<p>Since SSL is used, the certificate must be selected in the "Certificate" field (select <strong><em>xxxx.certificate.pem.crt</em></strong>).</p>
+<p>Click on "Apply" and "OK" to finish setting up the broker.</p>
+<h4 id="mqtt-publish-with-a-script">MQTT Publish with a script</h4>
+<p>In order to publish data from the Bluetooth tag (in our example, TG-BT5-IN) to AWS, we will be using the script. Script example is shown below.</p>
+<p>Every line that begins with a symbol <code>#</code> is instructional and it describes the parameter that is going to be configured below the line. Change the parameters within quotation marks <code>""</code> that would apply to your specific case.</p>
+<pre><code class="language-ros">## Required packages: iot
+
+################################ Configuration ################################
+## Name of an existing MQTT broker that should be used for publishing
+:local broker &quot;AWS&quot;
+
+## MQTT topic where the message should be published
+:local topic &quot;my/test/topic&quot;
+
+## Interface whose MAC should be used as 'Locator ID'
+:local locatorIface &quot;ether1&quot;
+
+## POSIX regex for filtering advertisement Bluetooth addresses. E.g. &quot;^BC:33:AC&quot;
+## would only include addresses which start with those 3 octets.
+## To disable this filter, set it to &quot;&quot;
+:local addressRegex &quot;&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;-40&quot;
+
+#################################### System ###################################
+:put (&quot;[*] Gathering system info...&quot;)
+:local ifaceMac [/interface get [/interface find name=$locatorIface] mac-address]
+:local cpuLoad [/system resource get cpu-load]
+:local freeMemory [/system resource get free-memory]
+:local usedMemory ([/system resource get total-memory] - $freeMemory)
+:local rosVersion [/system package get value-name=version \
+    [/system package find where name ~ &quot;^routeros&quot;]]
+:local model [/system routerboard get value-name=model]
+:local serialNumber [/system routerboard get value-name=serial-number]
+## Health is a bit iffy since '/system health' does not have 'find' in ROS6
+:local health [/system health print as-value]
+:local supplyVoltage 0
+:local boardTemp 0
+:foreach entry in=$health do={
+    :if ($entry-&gt;&quot;name&quot; = &quot;voltage&quot;) do={:set $supplyVoltage ($entry-&gt;&quot;value&quot;)}
+    :if ($entry-&gt;&quot;name&quot; = &quot;board-temperature1&quot;) do={:set $boardTemp ($entry-&gt;&quot;value&quot;)}
+}
+
+################################## Bluetooth ##################################
+:put (&quot;[*] Gathering Bluetooth info...&quot;)
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local btProcessingStart [/system clock get time]
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advJson &quot;&quot;
+:local advCount 0
+:local advSeparator &quot;&quot;
+:local lastAdvTimestamp 0
+## Remove semicolons from MAC/Bluetooth addresses
+:local minimizeMac do={
+    :local minimized
+    :local lastIdx ([:len $address] - 1)
+    :for idx from=0 to=$lastIdx step=1 do={
+        :local char [:pick $address $idx]
+        :if ($char != &quot;:&quot;) do={
+            :set $minimized &quot;$minimized$char&quot;
+        }
+    }
+    :return $minimized
+}
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local ts ($adv-&gt;&quot;epoch&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local obj &quot;\
+        {\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;ts\&quot;:$ts,\
+            \&quot;rssi\&quot;:$rssi,\
+            \&quot;ed\&quot;:{\
+                \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $ts
+    # Ensure that the last object is not terminated by a comma
+    :set $advJson &quot;$advJson$advSeparator$obj&quot;
+    :if ($advSeparator = &quot;&quot;) do={
+        :set $advSeparator &quot;,&quot;
+    }
+}
+
+:if ($advCount &gt; 0) do={
+
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+
+}
+
+:put (&quot;[*] Found $advCount new advertisements \
+    (processing time: $[([/system clock get time] - $btProcessingStart)])&quot;)
+
+#################################### MQTT #####################################
+:local message \
+    &quot;{\
+        \&quot;clientId\&quot;:\&quot;$[/iot mqtt brokers get value-name=client-id \
+            [/iot mqtt brokers find name=$broker]]\&quot;,\
+        \&quot;t\&quot;:0,\
+        \&quot;v\&quot;:1,\
+        \&quot;OldestAdvertisementTimestamp\&quot;:$btOldestAdvertisementTimestamp,\
+        \&quot;locs\&quot;:[{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$ifaceMac]\&quot;,\
+            \&quot;tags\&quot;:[$advJson],\
+            \&quot;ed\&quot;:{\
+                \&quot;model\&quot;:\&quot;$model\&quot;,\
+                \&quot;sn\&quot;:\&quot;$serialNumber\&quot;,\
+                \&quot;ros\&quot;:\&quot;$rosVersion\&quot;,\
+                \&quot;cpu\&quot;:$cpuLoad,\
+                \&quot;umem\&quot;:$usedMemory,\
+                \&quot;fmem\&quot;:$freeMemory,\
+                \&quot;psu\&quot;:$supplyVoltage,\
+                \&quot;temp\&quot;:$boardTemp\
+            }\
+        }]\
+    }&quot;
+:log info &quot;$message&quot;;
+:put (&quot;[*] Total message size: $[:len $message] bytes&quot;)
+:put (&quot;[*] Sending message to MQTT broker...&quot;)
+/iot mqtt publish broker=$broker topic=$topic message=$message
+:put (&quot;[*] Done&quot;)
+</code></pre>
+<p>2 script lines should be taken into account.</p>
+<pre><code>:local broker &quot;AWS&quot;
+</code></pre>
+<p>line, where you should specify the broker's name within the quotation marks <code>""</code> (in our example, <strong>AWS</strong>).</p>
+<pre><code>:local topic &quot;my/test/topic&quot;
+</code></pre>
+<p>line, where you should specify the correct topic within the quotation marks <code>""</code>. The topic is configured in AWS policies (in our example, <strong>my/test/topic</strong>).</p>
+<p>The rest of the script configuration depends on the overall requirements. The script explains which exact parameters are configured to be published.</p>
+<p>Navigate to System&gt;Scripts, add a new script there, and paste the script that is shown above (name it, for example, script1).</p>
+<p>To run the script, you can use the command line:</p>
+<pre><code>/system script run script1
+</code></pre>
+<h4 id="https-post-with-a-script">HTTPS post with a script</h4>
+<p>Another protocol that can be used to post the data from the gateway to the cloud is - HTTPS. This can be achieved using the <a href="/docs/system-information-and-utilities/fetch">fetch tool</a>. Until 7.1beta6 RouterOS version, fetch did not have an option to select a client certificate for the authentication (meaning HTTPS posting with client certificate was not supported) and in 7.1beta6 a new feature was added that enables this setting/support. HTTPS post examples using CURL and Python (as well as other useful information) are shown in the <a href="https://docs.aws.amazon.com/iot/latest/developerguide/http.html">AWS HTTPS manual</a>.</p>
+<p>In order to post the data from the Bluetooth tag (in our example, TG-BT5-IN) to AWS, we will be using the script. Script example is shown below.</p>
+<p>Every line that begins with a symbol <code>#</code> is instructional and it describes the parameter that is going to be configured below the line. Change the parameters within quotation marks <code>""</code> that would apply to your specific case.</p>
+<pre><code class="language-ros">################################ Configuration ################################
+## Interface whose MAC should be used as 'Locator ID'
+:local locatorIface &quot;ether1&quot;
+
+## POSIX regex for filtering advertisement Bluetooth addresses. E.g. &quot;^BC:33:AC&quot;
+## would only include addresses which start with those 3 octets.
+## To disable this filter, set it to &quot;&quot;
+:local addressRegex &quot;&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;-40&quot;
+
+#################################### System ###################################
+:put (&quot;[*] Gathering system info...&quot;)
+:local ifaceMac [/interface get [/interface find name=$locatorIface] mac-address]
+:local cpuLoad [/system resource get cpu-load]
+:local freeMemory [/system resource get free-memory]
+:local usedMemory ([/system resource get total-memory] - $freeMemory)
+:local rosVersion [/system package get value-name=version \
+    [/system package find where name ~ &quot;^routeros&quot;]]
+:local model [/system routerboard get value-name=model]
+:local serialNumber [/system routerboard get value-name=serial-number]
+## Health is a bit iffy since '/system health' does not have 'find' in ROS6
+:local health [/system health print as-value]
+:local supplyVoltage 0
+:local boardTemp 0
+:foreach entry in=$health do={
+    :if ($entry-&gt;&quot;name&quot; = &quot;voltage&quot;) do={:set $supplyVoltage ($entry-&gt;&quot;value&quot;)}
+    :if ($entry-&gt;&quot;name&quot; = &quot;board-temperature1&quot;) do={:set $boardTemp ($entry-&gt;&quot;value&quot;)}
+}
+
+################################## Bluetooth ##################################
+:put (&quot;[*] Gathering Bluetooth info...&quot;)
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local btProcessingStart [/system clock get time]
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advJson &quot;&quot;
+:local advCount 0
+:local advSeparator &quot;&quot;
+:local lastAdvTimestamp 0
+## Remove semicolons from MAC/Bluetooth addresses
+:local minimizeMac do={
+    :local minimized
+    :local lastIdx ([:len $address] - 1)
+    :for idx from=0 to=$lastIdx step=1 do={
+        :local char [:pick $address $idx]
+        :if ($char != &quot;:&quot;) do={
+            :set $minimized &quot;$minimized$char&quot;
+        }
+    }
+    :return $minimized
+}
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local ts ($adv-&gt;&quot;epoch&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local obj &quot;\
+        {\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;ts\&quot;:$ts,\
+            \&quot;rssi\&quot;:$rssi,\
+            \&quot;ed\&quot;:{\
+                \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $ts
+    # Ensure that the last object is not terminated by a comma
+    :set $advJson &quot;$advJson$advSeparator$obj&quot;
+    :if ($advSeparator = &quot;&quot;) do={
+        :set $advSeparator &quot;,&quot;
+    }
+}
+
+:if ($advCount &gt; 0) do={
+
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+
+}
+
+:put (&quot;[*] Found $advCount new advertisements \
+    (processing time: $[([/system clock get time] - $btProcessingStart)])&quot;)
+
+#################################### MQTT #####################################
+:local message \
+    &quot;{\
+        \&quot;t\&quot;:0,\
+        \&quot;v\&quot;:1,\
+        \&quot;OldestAdvertisementTimestamp\&quot;:$btOldestAdvertisementTimestamp,\
+        \&quot;locs\&quot;:[{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$ifaceMac]\&quot;,\
+            \&quot;tags\&quot;:[$advJson],\
+            \&quot;ed\&quot;:{\
+                \&quot;model\&quot;:\&quot;$model\&quot;,\
+                \&quot;sn\&quot;:\&quot;$serialNumber\&quot;,\
+                \&quot;ros\&quot;:\&quot;$rosVersion\&quot;,\
+                \&quot;cpu\&quot;:$cpuLoad,\
+                \&quot;umem\&quot;:$usedMemory,\
+                \&quot;fmem\&quot;:$freeMemory,\
+                \&quot;psu\&quot;:$supplyVoltage,\
+                \&quot;temp\&quot;:$boardTemp\
+            }\
+        }]\
+    }&quot;
+:log info &quot;$message&quot;;
+:put (&quot;[*] Total message size: $[:len $message] bytes&quot;)
+/tool fetch certificate=f79dda4ec5-certificate.pem.crt.txt_0 http-method=post output=user http-header-field=&quot;Content-Type:application/json&quot; http-data=$message url=&quot;https://xxxxx.iot.us-east-2.amazonaws.com:8443/topics/my/test/topic&quot;
+
+:put (&quot;[*] Done&quot;)
+</code></pre>
+<p>1 script line should be taken into account:</p>
+<pre><code>/tool fetch certificate=f79dda4ec5-certificate.pem.crt.txt_0 http-method=post output=user http-header-field=&quot;Content-Type:application/json&quot; http-data=$message url=&quot;https://xxxxxx.iot.us-east-2.amazonaws.com:8443/topics/my/test/topic&quot;
+</code></pre>
+<p>Change the certificate name and the URL accordingly to your specific case:</p>
+<p><code>url="https://xxxx:8443/topics/yyyy"</code>, where "xxxx" is AWS endpoint address and "yyyy" is the topic that was configured in the AWS policies - steps 2 and 3 (in our example, my/test/topic).</p>
+<p>The rest of the script configuration depends on the overall requirements. The script explains which exact parameters are configured to be published.</p>
+<p>Navigate to System&gt;Scripts, add a new script there, and paste the script that is shown above (name it, for example, script2).</p>
+<p>To run the script, you can use the command line:</p>
+<p><code>/system script run script2</code></p>
+<h3 id="verification">Verification</h3>
+<p>To verify that AWS gets the data, go back to the AWS portal. Navigate to the <strong>Test</strong> page. Use <strong>Subscribe to a topic</strong> option. Type in the topic that was configured in the AWS policies (in our example, <strong>my/test/topic</strong>) in the <strong>Topic filter</strong> field and press <strong>Subscribe</strong>. Below, you should see the <strong>Subscriptions</strong> section where the data is going to be shown. Run the script (in RouterOS) and you should see the collected data in the "<strong>Subscriptions</strong>" tab.</p>
+<p>The same page/tab should display HTTPS posted packets as well.</p>
+<hr />
+<h1 id="sending-temperature-readings-from-the-tg-bt5-out-tag-to-thingsboard">Sending temperature readings from the TG-BT5-OUT tag to ThingsBoard</h1>
+<blockquote>
+<p>Our TG-BT5-OUT Bluetooth tag model has a temperature sensor built in. This means that it can be used to measure the surrounding temperature.</p>
+</blockquote>
+<h3 id="introduction_1">Introduction</h3>
+<p>Our <a href="https://mikrotik.com/product/tg_bt5_out">TG-BT5-OUT</a> Bluetooth tag model has a temperature sensor built in. This means that it can be used to measure the surrounding temperature.</p>
+<p>The temperature's value is "written" into the advertising payload that the tag is going to broadcast over Bluetooth advertising channels. Based on how you configure the tag, the tag can broadcast the payload periodically or/and when a trigger is detected. You can find more information about the tag's configuration options in the <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/">linked section</a>.</p>
+<p>You can see/display the payloads using our <a href="https://mikrotik.com/product/knot">KNOT</a> model under <strong>IoT&gt;Bluetooth&gt;Advertising reports</strong> tab:</p>
+<p>The payloads will be shown in the "Advertisement (hex)" field and they will be in the <strong>hexadecimal</strong> format.</p>
+<p>When the tag is configured in the MikroTik format, the payload's 14th and 15th octets indicate the temperature (ambient temperature in Celsius in <strong>signed 16-bit integer [twos complement] 8.8 fixed point format</strong>) that was "sensed" at the moment of the broadcast.</p>
+<p>An example of the payload in MikroTik's format is shown below:</p>
+<table>
+<thead>
+<tr>
+<th>15ff4f09010032a500000000ffff <code>5019</code> bd5954000061</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Please note that all multi-byte values in the payload are in little-endian. So, if #14 and #15 octets indicate the temperature as "<strong>50 19</strong>" → you will need to switch octets places, to 0x<strong>1950</strong>.</p>
+<p>Positive temperature:</p>
+<p>We've captured the temperature as 0x<strong>1950</strong> (hex.) → <strong>6480</strong> (dec.). To get the actual temperature value, divide the result by 256 → 6480/256=<strong>25.31 C</strong>.</p>
+<p>Negative temperature:</p>
+<p>We've captured the temperature as 0x<strong>FE80</strong> (hex.). Keep in mind that the <strong>twos-complement format is used</strong> → <strong>-384</strong> (decimal from signed 2's complement). To get the actual temperature value, divide the result by 256 → -384/256=<strong>-1.5 C</strong>.</p>
+<p>With this knowledge, we can then utilize RouterOS scripting to structure a message out of the received payloads and send it to the MQTT/HTTP server. It is suggested for the server to be responsible for the data conversion from <strong>hexadecimal</strong> format to <strong>decimal</strong> format. <strong>But!</strong> if you are willing to load the RouterOS device, you can perform <strong>hexadecimal</strong> value conversion to <strong>decimal</strong> format using RouterOS scripting (it will load the device and can affect RouterOS performance → we advise converting values on the server and not on the RouterOS). In this guide, we will achieve the results using MQTT post to <a href="https://thingsboard.io/">ThingsBoard</a>.</p>
+<h3 id="thingsboard-server-and-mqtt-configuration">ThingsBoard server and MQTT configuration</h3>
+<p>You will require to have a ThingsBoard server up and running. You can find useful information on how to set up your server by following the <a href="https://thingsboard.io/docs/installation/">link</a>. You can install the server locally onto a machine or use their cloud solution.</p>
+<p>After you have the server ready, you will need to configure it to be able to receive MQTT messages. Please follow the <a href="/docs/internet-of-things/mqtt/mqtt-and-thingsboard-configuration">ThingsBoard configuration</a> link to set up your "device".</p>
+<h3 id="routeros-configuration_1">RouterOS configuration</h3>
+<p>Please check the <a href="/docs/internet-of-things/mqtt/mqtt-and-thingsboard-configuration">link over here</a> on how you can set up your MQTT broker depending on the device credential used by the ThingsBoard server.</p>
+<p>After setting up your broker, confirm that the Bluetooth tag is broadcasting information as shown in the picture above under the <strong>IoT&gt;Bluetooth&gt;Advertising reports</strong> tab.</p>
+<h4 id="script">Script</h4>
+<p>Paste in the script below (under <strong>System&gt;Scripts&gt;Add</strong>):</p>
+<pre><code class="language-ros">## Required packages: iot
+
+################################ Configuration ################################
+## Name of an existing MQTT broker that should be used for publishing
+ :local broker &quot;tb&quot;
+
+## MQTT topic where the message should be published
+ :local topic &quot;v1/devices/me/telemetry&quot;
+
+ # Interface whose MAC should be used as 'Locator ID'
+:local locatorIface &quot;ether1&quot;
+
+## POSIX regex for filtering advertisement Bluetooth addresses. E.g. &quot;^BC:33:AC&quot;
+## would only include addresses which start with those 3 octets.
+## To disable this filter, set it to &quot;&quot;
+:local addressRegex &quot;2C:C8:1B:4B:BB:0A&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;&quot;
+
+####The lines below are used for the data conversion from hex to dec###
+
+    :global invertU16 do={
+        :local inverted 0
+        :for idx from=0 to=15 step=1 do={
+            :local mask (1 &amp;lt;&amp;lt; $idx)
+            :if ($1 &amp; $mask = 0) do={
+                :set $inverted ($inverted | $mask)
+            }
+        }
+        return $inverted
+    }
+
+    :global le16ToHost do={
+        :local lsb [:pick $1 0 2]
+        :local msb [:pick $1 2 4]
+
+        :return [:tonum &quot;0x$msb$lsb&quot;]
+    }
+    :local from88 do={
+        :global invertU16
+        :global le16ToHost
+        :local num [$le16ToHost $1]
+
+        # Handle negative numbers
+        :if ($num &amp; 0x8000) do={
+            :set num (-1 * ([$invertU16 $num] + 1))
+        }
+
+        # Convert from 8.8. Scale by 1000 since floating point is not supported
+        :return (($num * 125) / 32)
+    }
+
+################################## Bluetooth ##################################
+:put (&quot;[*] Gathering Bluetooth info...&quot;)
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local btProcessingStart [/system clock get time]
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advJson &quot;&quot;
+:local advCount 0
+:local advSeparator &quot;&quot;
+:local lastAdvTimestamp 0
+## Remove semicolons from MAC/Bluetooth addresses
+:local minimizeMac do={
+    :local minimized
+    :local lastIdx ([:len $address] - 1)
+    :for idx from=0 to=$lastIdx step=1 do={
+        :local char [:pick $address $idx]
+        :if ($char != &quot;:&quot;) do={
+            :set $minimized &quot;$minimized$char&quot;
+        }
+    }
+    :return $minimized
+}
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local ts ($adv-&gt;&quot;epoch&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local tempf [:pick ($adv-&gt;&quot;data&quot;) 28 32]
+
+#The line below will set temperature in hexadecimal format, like &quot;0x1950&quot;
+    :local temp ([:pick $tempf 2 4].[:pick $tempf 0 2])
+
+#The line below will set temperature in decimal format, like &quot;25313&quot;. It is commented with &quot;#&quot;, so if you wish to use it instead of the hexadecimal format value, comment the line above and uncomment the line below &gt; remove &quot;#&quot; from the line below and add &quot;#&quot; to the line above.
+
+##    :local temp [$from88 [:pick $ad 28 32]]
+
+    :local obj &quot;{\
+        \
+           \&quot;ts\&quot;:$ts,\
+           \&quot;values\&quot;:{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;rssi\&quot;:\&quot;$rssi\&quot;,\
+            \&quot;temp\&quot;:\&quot;$temp\&quot;,\
+            \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $ts
+    # Ensure that the last object is not terminated by a comma
+    :set $advJson &quot;$advJson$advSeparator$obj&quot;
+    :if ($advSeparator = &quot;&quot;) do={
+        :set $advSeparator &quot;,&quot;}
+}
+
+:if ($advCount &gt; 0) do={
+
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+
+}
+
+:put (&quot;[*] Found $advCount new advertisements \
+    (processing time: $[([/system clock get time] - $btProcessingStart)])&quot;)
+
+#################################### MQTT #####################################
+:local message \
+    &quot;[$advJson]&quot;
+:log info &quot;$message&quot;;
+:put (&quot;[*] Total message size: $[:len $message] bytes&quot;)
+:put (&quot;[*] Sending message to MQTT broker...&quot;)
+/iot mqtt publish broker=$broker topic=$topic message=$message
+:put (&quot;[*] Done&quot;)
+</code></pre>
+<p><strong>Change the broker's name</strong> that you have chosen for the MQTT broker within the quotation marks (in our example, we called it <strong>tb</strong>):</p>
+<pre><code> :local broker &quot;tb&quot;
+</code></pre>
+<p>The default topic used by the ThingsBoard is (you do not have to change it):</p>
+<pre><code> :local topic &quot;v1/devices/me/telemetry&quot;
+</code></pre>
+<p><strong>Change the MAC address</strong> of the tag that you wish to monitor (in our example, we have the MAC address <strong>2C:C8:1B:4B:BB:0A</strong>):</p>
+<pre><code>:local addressRegex &quot;2C:C8:1B:4B:BB:0A&quot;
+</code></pre>
+<p>The lines below will take the payload's 14th and 15th octets and "re-structure" the values from "ABCD" to "CDAB" (per our example from the <strong>Introduction</strong> section, from "<strong>5019</strong>" to "<strong>1950</strong>") → basically structure the message with temperature in <strong>hexadecimal</strong> format:</p>
+<pre><code>    :local tempf [:pick ($adv-&gt;&quot;data&quot;) 28 32]
+    :local temp ([:pick $tempf 2 4].[:pick $tempf 0 2])
+</code></pre>
+<p>Your second option is to convert the temperature from <strong>hexadecimal</strong> to <strong>decimal</strong> format using RouterOS (if you want to keep hexadecimal format - ignore this step). This can be achieved by "commenting" (adding <code>#</code>) to the previous line (or removing it altogether) and "uncommenting" (removing the <code>#</code>) from the upcoming line, like so:</p>
+<pre><code>#  :local temp ([:pick $tempf 2 4].[:pick $tempf 0 2])
+    :local temp [$from88 [:pick $ad 28 32]]
+</code></pre>
+<p>Because of the fact that floating point is not supported → every calculation behind a decimal point will be "rounded up" to a whole number. This is why the script will calculate the temperature <strong>scaled by 1000</strong> (multiplied by <strong>1000</strong>) and as a result, the temperature will look like "<strong>25546</strong>" (that would mean 25.546 C). You can add additional scripting to set up a decimal point (but remember that additional manipulations will load the device) and you can also do it on the server itself.</p>
+<p>The MQTT message that we are posting is structured in the following section (you do not have to change it):</p>
+<pre><code>    :local obj &quot;{\
+        \
+           \&quot;ts\&quot;:$ts,\
+           \&quot;values\&quot;:{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;rssi\&quot;:\&quot;$rssi\&quot;,\
+            \&quot;temp\&quot;:\&quot;$temp\&quot;,\
+            \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+</code></pre>
+<p>The message that is structured per the example above will be displayed in JSON (the only real value we are going to focus on are "timestamp"→ "ts" and "temperature"→ "temp", so feel free to remove additional parameters). If the temperature is calculated in <strong>hexadecimal</strong> format, the message would look like this:</p>
+<pre><code>[
+  {
+    &quot;ts&quot;: 1661333913375,
+    &quot;values&quot;: {
+      &quot;id&quot;: &quot;2CC81B4BBB0A&quot;,
+      &quot;rssi&quot;: &quot;-43&quot;,
+      &quot;temp&quot;: &quot;1939&quot;,
+      &quot;ad&quot;: &quot;15ff4f0901002de0ffff010000003919877c54000061&quot;
+    }
+  }
+]
+</code></pre>
+<p>If the temperature is calculated in <strong>decimal</strong> format, it would look like this:</p>
+<pre><code>[
+  {
+    &quot;ts&quot;: 1661333913375,
+    &quot;values&quot;: {
+      &quot;id&quot;: &quot;2CC81B4BBB0A&quot;,
+      &quot;rssi&quot;: &quot;-43&quot;,
+      &quot;temp&quot;: &quot;25222&quot;,
+      &quot;ad&quot;: &quot;15ff4f0901002de0ffff010000003919877c54000061&quot;
+    }
+  }
+]
+</code></pre>
+<p>Save the script and run it:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; system script run name_of_the_script
+[*] Gathering system info...
+[*] Gathering Bluetooth info...
+[*] Found 1 new advertisements (processing time: 00:00:00)
+[*] Total message size: 134 bytes
+[*] Sending message to MQTT broker...
+
+[*] Done
+[admin@MikroTik] &gt; 
+</code></pre>
+<h4 id="scheduler">Scheduler</h4>
+<p>Apply a scheduler to the script to run it with a required interval. <strong>Please note!</strong> If you have set up a scheduler to run the script, for example, every 2 minutes, it will mean that every received payload (broadcasted by the tag) during the 2-minute interval will be "structured" into the MQTT message. You will, most likely, not need to know the temperature of the tag every 2-5 seconds, so you can either change the MQTT message that is structured to only post the latest temperature reading or just change the <strong>IoT&gt;Bluetooth&gt;Scanners</strong> setting <strong>Filter duplicates</strong> to "<strong>keep-newest</strong>" (that way, the Bluetooth scanner will overwrite every new report from each individual tag's MAC address) and the script will only post 1 payload that was "scanned" at the moment when the script ran.</p>
+<h4 id="results">Results</h4>
+<p>You will be able to verify the results under the <strong>Latest telemetry</strong> section under the device you have created for ThingsBoard (in our example, we called the "device" <strong>KNOT</strong>):</p>
+<p>The result is a successful MQTT post! From the screenshot above, we can see that the <strong>temp</strong> parameter is in <strong>hexadecimal</strong> format.</p>
+<p><strong>But!</strong> we would like to display the temperature (<strong>temp</strong> parameter) in <strong>decimal</strong> format and we would also like to display the data easier to perceive.</p>
+<p>And in case, we have posted the temperature in the <strong>decimal</strong> format, we would like to set up a decimal point.</p>
+<p>This is where <a href="https://thingsboard.io/docs/reference/widgets/widget-library/">Widgets</a> come into play.</p>
+<h3 id="thingsboard-widgets">ThingsBoard widgets</h3>
+<p>After you receive the value under the <strong>Latest telemetry</strong> section, you can show it on the <a href="https://thingsboard.io/docs/reference/widgets/widget-library/"><strong>Widget</strong></a>.</p>
+<p>The Javascripts used in the widgets should be able to convert the data from the hexadecimal format to the decimal format.</p>
+<p>Select the value you wish to display in the widget (in our example, <strong>temp</strong>) and click on the "<strong>Show on widget</strong>" button:</p>
+<p>You will be able to browse the widgets in the window that pops up:</p>
+<p>Click on the "<strong>Add to dashboard</strong>" button:</p>
+<p>Select a new dashboard to be created or choose an existing dashboard that you already have pre-installed/pre-made. Click on "<strong>Add"</strong>.</p>
+<p>By applying the checkbox "<strong>Open dashboard</strong>" you will be redirected to the dashboard menu or you can go there manually.</p>
+<p>We have also added a second table and, as a result, our test dashboard looks like this:</p>
+<h4 id="in-case-we-post-the-date-in-hexadecimal-format">In case we post the date in hexadecimal format</h4>
+<p>Both tables will display the value in the <strong>hexadecimal format</strong> as "17f9" (raw value as we've sent it from the KNOT → the javascript for the table did not convert it to a decimal value yet).</p>
+<p>Because of the fact that the values in our tag's payload are in signed 8.8 fixed point format (keeping in mind the twos-complement format), we will need to add additional javascript code to "convert" the data to the decimal value.</p>
+<p>Enter the "<strong>Edit</strong>" mode and click on the "<strong>Edit widget</strong>" button:</p>
+<p>Click on the "<strong>edit</strong>" button to edit the parameter <strong>temp</strong>:</p>
+<p>In the popup window "<strong>Data key configuration</strong>" enable the checkbox "<strong>Use data post-processing function</strong>" and input the code shown below:</p>
+<p>The code:</p>
+<pre><code>function f(p){
+
+this.p = p;
+
+}
+
+f.prototype.calculate = function(mes){
+
+let intValue = parseInt(mes, 16);
+
+let sign = 1;
+
+if(intValue &amp; 0x8000) {
+
+intValue = (~intValue + 1) &amp; 0xFFFF;
+
+sign = -1;
+
+}
+
+intValue = sign * intValue / Math.pow(2, this.p);
+
+return intValue;
+
+}
+
+let res = new f(8);
+
+return (res.calculate(value));
+</code></pre>
+<p>Save and apply the changes.</p>
+<p>Do the same steps for the second/first table.</p>
+<h4 id="in-case-we-post-the-date-in-decimal-format">In case we post the date in decimal format</h4>
+<p>You will see the results as:</p>
+<p>Do the exact same steps from the example above, but for this scenario, <strong>divide the result by "1000"</strong>:</p>
+<p>Save and apply the changes.</p>
+<h4 id="verification_1">Verification</h4>
+<p>The end result should look like this:</p>
+<p>Now both tables show <strong>decimal temperature</strong>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You can also transform telemetry data before saving it to ThingsBoard. Using this scenario, the data won't be post-processed each time a dashboard is opened.</p>
+<p>The following guide may be used as a general approach to transforming data: <a href="https://thingsboard.io/docs/user-guide/rule-engine-2-0/transformation-nodes/">Transformation nodes</a>.</p>
+</div>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

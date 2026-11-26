@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>user · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="user">user</h1>
+<h1 id="user_1">user</h1>
+<blockquote>
+<p>Router administration user accounts. Each user belongs to exactly one group that grants the rights (policies) the user has. See User for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="user_2">user</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Router administration user accounts. Each user belongs to exactly one <a href="group">group</a> that grants the rights (policies) the user has. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>E</strong> <code>expired</code> — Password expired with <a href="expire-password"><code>/user/expire-password</code></a>. At the next interactive login the user is asked to set a new password; setting a new password clears the flag.</li>
+<li><strong>X</strong> <code>disabled</code> — User account is disabled and cannot log in.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Login user name. Letters, digits and the characters <code>_</code> <code>.</code> <code>#</code> <code>-</code> <code>@</code> are allowed; the name must end with a letter or a digit and cannot start with <code>.</code> or <code>-</code>.</li>
+<li><strong>group</strong> <code>enum</code> — User group that grants the rights (policies) the user has.</li>
+<li><strong>password</strong> <code>string</code> — Login password. Any characters are accepted, including spaces, symbols and UTF-8. An explicitly empty value (<code>password=""</code>) allows logging in with a blank password. The complexity policy from <a href="settings"><code>/user/settings</code></a> applies when set.</li>
+<li><strong>inactivity-timeout</strong> <code>time</code> — Idle time after which <code>inactivity-policy</code> is applied to an interactive console session. Range 00:01:00 to 1d00:00:00. Default: 10m.</li>
+<li><strong>inactivity-policy</strong> <code>enum (none | logout | lockscreen)</code> — Action taken when <code>inactivity-timeout</code> expires: - <code>none</code> (default) - The idle session keeps running. - <code>logout</code> - Closes the idle session with the message "<code>&lt;name&gt;</code> was logged out due to inactivity". - <code>lockscreen</code> - Locks the session ("Session is locked (Ctrl-D to Quit)") and asks for the user's password to resume; wrong passwords print "Sorry, try again.".</li>
+<li><strong>address</strong> <code>object { address: alt { address: ipPrefix
+, address: ip6Prefix
+ }
+ }</code> — IP address with mask or IPv6 prefix. When set, the user may log in only from matching source addresses; logins from other addresses are refused.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>last-logged-in</strong> <code>date</code> — Date and time of the user's last login.</li>
+</ul>
+<hr />
+<h1 id="aaa">aaa</h1>
+<blockquote>
+<p>AAA settings for management logins: authentication against a RADIUS server and RADIUS accounting of management sessions. See User for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="useraaa">user/aaa</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>AAA settings for management logins: authentication against a RADIUS server and RADIUS accounting of management sessions. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>use-radius</strong> <code>bool</code> — Authenticate management logins against a RADIUS server; a <a href="../radius/"><code>/radius</code></a> entry with <code>service=login</code> must exist. The local user database is consulted first — RADIUS is used only for user names not found locally. A <code>Mikrotik-Group</code> attribute in the Access-Accept selects the local group. Password authentication over RADIUS for SSH logins uses MS-CHAPv2. Default: no.</li>
+<li><strong>accounting</strong> <code>bool</code> — Send RADIUS accounting Start and Stop messages when a management session logs in and out. Management-session accounting carries no bandwidth counters. Default: yes.</li>
+<li><strong>interim-update</strong> <code>time</code> — Interval between Interim-Update accounting messages for active sessions. Default: 0s.</li>
+<li><strong>default-group</strong> <code>enum</code> — Group assigned to RADIUS-authenticated users when the server sends no group, or when the sent group is listed in <code>exclude-groups</code>. Default: read.</li>
+<li><strong>exclude-groups</strong> <code>multi { group: enum
+ }</code> — Groups never accepted from the RADIUS server. If the server sends one of them, the user receives <code>default-group</code> instead; this protects against a rogue RADIUS server granting full rights. Default: none.</li>
+</ul>
+<hr />
+<h1 id="active">active</h1>
+<blockquote>
+<p>Currently logged-in management sessions. All properties are read-only. Terminate a session with /user/active/remove. See User for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="useractive">user/active</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Currently logged-in management sessions. All properties are read-only. Terminate a session with <code>/user/active/remove</code>. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>R</strong> <code>radius</code> — User authenticated through RADIUS (see <a href="aaa"><code>/user/aaa</code></a>).</li>
+<li><strong>M</strong> <code>by-romon</code> — Session came through RoMON; <code>by-romon</code> holds the MAC address of the RoMON agent.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>when</strong> <code>date</code> — Date and time the session logged in.</li>
+<li><strong>name</strong> <code>string</code> — Name of the logged-in user from <a href="."><code>/user</code></a>.</li>
+<li><strong>address</strong> <code>alt { ip: ipAddr
+, ip6: ip6Addr
+, address: macAddr
+ }</code> — Source address of the session: IP, IPv6 or MAC address.</li>
+<li><strong>by-romon</strong> <code>macAddr</code> — MAC address of the RoMON agent the session came through; set only for RoMON sessions (flag <code>M</code>).</li>
+<li><strong>via</strong> <code>enum (unknown | winbox | console | telnet | ftp | web | ssh | mac-telnet | bandwidth-test | api | romon | rest-api) { unknown:0, winbox:1, console:2, telnet:3, ftp:4, web:5, ssh:6, mac-telnet:7, bandwidth-test:8, api:9, romon:10, rest-api:13 }</code> — Management service the session connected through: <code>unknown</code>, <code>winbox</code>, <code>console</code>, <code>telnet</code>, <code>ftp</code>, <code>web</code>, <code>ssh</code>, <code>mac-telnet</code>, <code>bandwidth-test</code>, <code>api</code>, <code>romon</code> or <code>rest-api</code>.</li>
+<li><strong>group</strong> <code>enum</code> — Group of the logged-in user, which grants the session's rights.</li>
+</ul>
+<hr />
+<h1 id="expire-password">expire-password</h1>
+<blockquote>
+<p>Expires the selected users' passwords (sets the E flag in /user). At the next interactive login the user is asked to set a new password; setting a new password with /user/set also clears the flag. See User for the...</p>
+</blockquote>
+<hr />
+<h2 id="userexpire-password">user/expire-password</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Expires the selected users' passwords (sets the <code>E</code> flag in <a href="."><code>/user</code></a>). At the next interactive login the user is asked to set a new password; setting a new password with <code>/user/set</code> also clears the flag. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<hr />
+<h1 id="group">group</h1>
+<blockquote>
+<p>User groups define the rights (policies) granted to the group members. The built-in groups read, write and full cannot be removed. See User for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="usergroup">user/group</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>User groups define the rights (policies) granted to the group members. The built-in groups <code>read</code>, <code>write</code> and <code>full</code> cannot be removed. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Group name.</li>
+<li><strong>policy</strong> <code>multi { array-id, array-id, policy: super { !
+, policy: enum
+ }
+ }</code> — Rights granted to group members. Prefix a policy with <code>!</code> to revoke it. <code>add</code> revokes every policy it does not list, and a new group created without <code>policy</code> gets every policy negated (no rights). <code>set</code> changes only the policies it lists: <code>set policy=read,rest-api</code> on a group with <code>api</code> keeps <code>api</code>; <code>policy=!api</code> revokes it. Default: none. - <code>local</code> - Log in on the local console. - <code>telnet</code> - Log in through Telnet. - <code>ssh</code> - Log in through SSH. - <code>ftp</code> - Log in through FTP; allows reading, writing and erasing files (use together with <code>read</code> and <code>write</code>). - <code>reboot</code> - Reboot the router. - <code>read</code> - Read access to the router configuration. - <code>write</code> - Write access to the configuration except user management; does not include <code>read</code>. - <code>policy</code> - User management rights (use together with <code>write</code>); also allows seeing script variables created by other users (requires <code>test</code>) and designing WebFig skins (requires <code>sensitive</code>). - <code>test</code> - Run ping, traceroute, bandwidth-test, wireless scan and snooper, fetch, email and other test tools. - <code>winbox</code> - Log in through WinBox and use bandwidth-test authentication. - <code>password</code> - Change the user's own password with <code>/password</code>. - <code>web</code> - Log in through WebFig. - <code>sniff</code> - Use the packet sniffer, torch and traffic generator. - <code>sensitive</code> - See and change sensitive information. - <code>api</code> - Access the router through the API. - <code>romon</code> - Connect to the RoMON server. - <code>rest-api</code> - Access the router through the REST API.</li>
+<li><strong>skin</strong> <code>enum</code> — WebFig skin applied to group members logging in through WebFig. Default: default.</li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>Password complexity policy enforced when adding a user in /user or changing a password with /password. See User for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="usersettings">user/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Password complexity policy enforced when adding a user in <a href="."><code>/user</code></a> or changing a password with <code>/password</code>. See <a href="../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>minimum-password-length</strong> <code>num</code> — Shortest accepted password length, in characters. A shorter password is rejected with "password is too short - must be at least N characters". Range 0 to 4294967295. Default: 0.</li>
+<li><strong>minimum-categories</strong> <code>num</code> — Number of character categories a password must use, out of four: digits, lowercase letters, uppercase letters and symbols. A weaker password is rejected with "password is too weak - it must contain characters from at least N categories (digits, lower and upper case letters, symbols)". Range 0 to 4. Default: 0.</li>
+</ul>
+<hr />
+<h1 id="ssh-keys">ssh-keys</h1>
+<blockquote>
+<p>Public SSH keys assigned to users; the keys authenticate those users' incoming SSH logins. When a user has at least one key assigned, the SSH server refuses password authentication for that user and offers only...</p>
+</blockquote>
+<hr />
+<h2 id="userssh-keys">user/ssh-keys</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Public SSH keys assigned to users; the keys authenticate those users' incoming SSH logins. When a user has at least one key assigned, the SSH server refuses password authentication for that user and offers only public-key authentication. See <a href="../../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>user</strong> <code>enum</code> — System user the key is assigned to.</li>
+<li><strong>info</strong> <code>string</code> — Free-text label for the key. When adding a key with <code>key</code>, a trailing comment in the pasted OpenSSH key string becomes the key's <code>info</code> and overrides this parameter.</li>
+<li><strong>key</strong> <code>string</code> — Public key string, set only when adding a new key. Only the OpenSSH single-line format is accepted; PEM blocks are rejected.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-type</strong> <code>enum (rsa | ed25519 | ed25519-sk)</code> — Type of the key: <code>rsa</code>, <code>ed25519</code> or <code>ed25519-sk</code>.</li>
+<li><strong>bits</strong> <code>num</code> — Key length in bits.</li>
+<li><strong>fingerprint</strong> <code>string</code> — SHA256 fingerprint of the key in base64 (for example <code>SHA256:...</code>).</li>
+</ul>
+<hr />
+<h1 id="import">import</h1>
+<blockquote>
+<p>Imports a public SSH key from a file in the router's root directory and assigns it to a user. Accepted formats: OpenSSH single-line, PKCS#1 PEM ("BEGIN RSA PUBLIC KEY") and PKCS#8/SPKI PEM ("BEGIN PUBLIC KEY"). See...</p>
+</blockquote>
+<hr />
+<h2 id="userssh-keysimport">user/ssh-keys/import</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Imports a public SSH key from a file in the router's root directory and assigns it to a user. Accepted formats: OpenSSH single-line, PKCS#1 PEM ("BEGIN RSA PUBLIC KEY") and PKCS#8/SPKI PEM ("BEGIN PUBLIC KEY"). See <a href="../../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>public-key-file</strong> <code>file</code> — Name of the key file in the router's root directory.</li>
+<li><strong>user</strong> <code>enum</code> — System user to assign the key to.</li>
+<li><strong>info</strong> <code>string</code> — Free-text label for the key.</li>
+</ul>
+<hr />
+<h1 id="private">private</h1>
+<blockquote>
+<p>Private SSH keys that identify the router in outgoing SSH connections to other devices, for example with /system/ssh or /tool/fetch. All properties are read-only; keys are added with /user/ssh-keys/private/import....</p>
+</blockquote>
+<hr />
+<h2 id="userssh-keysprivate">user/ssh-keys/private</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Private SSH keys that identify the router in outgoing SSH connections to other devices, for example with <a href="../../../system/ssh"><code>/system/ssh</code></a> or <a href="../../../tool/fetch"><code>/tool/fetch</code></a>. All properties are read-only; keys are added with <a href="import"><code>/user/ssh-keys/private/import</code></a>. See <a href="../../../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>user</strong> <code>enum</code> — System user that owns the key.</li>
+<li><strong>key-type</strong> <code>enum (rsa | ed25519)</code> — Type of the key: <code>rsa</code> or <code>ed25519</code>.</li>
+<li><strong>bits</strong> <code>num</code> — Key length in bits.</li>
+<li><strong>info</strong> <code>string</code> — Free-text label for the key.</li>
+</ul>
+<hr />
+<h1 id="import_1">import</h1>
+<blockquote>
+<p>Imports a private SSH key from a file in the router's root directory. Accepted formats: PKCS#1 PEM RSA ("BEGIN RSA PRIVATE KEY"), PKCS#8 ("BEGIN PRIVATE KEY") and encrypted PKCS#8 ("BEGIN ENCRYPTED PRIVATE KEY",...</p>
+</blockquote>
+<hr />
+<h2 id="userssh-keysprivateimport">user/ssh-keys/private/import</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Imports a private SSH key from a file in the router's root directory. Accepted formats: PKCS#1 PEM RSA ("BEGIN RSA PRIVATE KEY"), PKCS#8 ("BEGIN PRIVATE KEY") and encrypted PKCS#8 ("BEGIN ENCRYPTED PRIVATE KEY", requires <code>passphrase</code>). OpenSSH-format private keys ("BEGIN OPENSSH PRIVATE KEY") are rejected. See <a href="../../../../authentication-authorization-accounting/user">User</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>private-key-file</strong> <code>file</code> — Name of the key file in the router's root directory.</li>
+<li><strong>user</strong> <code>enum</code> — System user that owns the key.</li>
+<li><strong>passphrase</strong> <code>string</code> — Passphrase of an encrypted key file.</li>
+<li><strong>info</strong> <code>string</code> — Free-text label for the key.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

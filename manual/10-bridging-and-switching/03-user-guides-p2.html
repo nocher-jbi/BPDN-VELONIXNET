@@ -1,0 +1,1943 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Bridging and Switching</p>
+      <h1 id="user-guides-part-23">User Guides (part 2/3)</h1>
+<h1 id="layer2-misconfiguration">Layer2 misconfiguration</h1>
+<blockquote>
+<p>This page addresses Layer2 misconfigurations in MikroTik RouterOS, focusing on issues like improper bridge setups with hardware offloading and port isolation. It explains symptoms such as low throughput, high CPU...</p>
+</blockquote>
+<h1 id="layer2-misconfiguration_1">Layer2 misconfiguration</h1>
+<hr />
+<p>There are certain configurations that are known to have major flaws by design and should be avoided by all means possible. Misconfigured Layer2 can sometimes cause hard-to-detect network errors, random performance drops, certain segments of a network to be unreachable, certain networking services to be malfunctioning, or a complete network failure. This page will contain some common and not so very common configurations that will cause issues in your network.</p>
+<h2 id="bridges-on-a-single-switch-chip">Bridges on a single switch chip</h2>
+<hr />
+<p>Consider the following scenario. You have a device with a built-in switch chip and you need to isolate certain ports from each other. For this reason, you have created multiple bridges and enabled hardware offloading on them. Since each bridge is located on a different Layer2 domain, Layer2 frames will not be forwarded between these bridges. As a result, ports in each bridge are isolated from other ports on a different bridge.</p>
+<h3 id="configuration">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+add name=bridge2
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge2 interface=ether3
+add bridge=bridge2 interface=ether4
+</code></pre>
+<h3 id="problem">Problem</h3>
+<p>After a simple performance test, you might notice that one bridge is capable of forwarding traffic at wire speed while the second, third, etc. bridge is not able to forward as much data as the first bridge. Another symptom might be that there exists a huge latency for packets that need to be routed. After a quick inspection, you might notice that the CPU is always at full load. This is because hardware offloading is not available on all bridges, but is available only on one bridge. By checking the hardware offloading status, you will notice that only one bridge has it active:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload 
+ #     INTERFACE                                 BRIDGE                                 HW
+ 0   H ether1                                    bridge1                                yes
+ 1   H ether2                                    bridge1                                yes
+ 2     ether3                                    bridge2                                yes
+ 3     ether4                                    bridge2                                yes
+</code></pre>
+<p>The reason why only one bridge has the hardware offloading flag available is that the device does not support port isolation. If port isolation is not supported, then only one bridge will be able to offload the traffic to the switch chip.</p>
+<h3 id="symptoms">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Missing "H" flag to bridge ports.</li>
+<li>Low throughput.</li>
+<li>High CPU usage.</li>
+</ul>
+<h3 id="solution">Solution</h3>
+<p>Not all devices support port isolation. Currently only CRS1xx/CRS2xx series devices support it and only 7 isolated and hardware offloaded bridges are supported at the same time. Other devices will have to use the CPU to forward the packets on other bridges. This is usually a hardware limitation and a different device might be required. The Bridge split-horizon parameter is a software feature that disables hardware offloading and when using bridge filter rules you need to enable forwarding of all packets to the CPU, which requires the hardware offloading to be disabled. You can control which bridge will be hardware offloaded with the <code>hw=yes</code> flag and by setting <code>hw=no</code> to other bridges, for example:</p>
+<pre><code class="language-ros">/interface/bridge/port/set [find where bridge=bridge1] hw=no
+/interface/bridge/port/set [find where bridge=bridge2] hw=yes
+</code></pre>
+<p>Sometimes it is possible to restructure a network topology to use VLANs, which is the proper way to isolate Layer2 networks.</p>
+<h2 id="packet-flow-with-hardware-offloading-and-mac-learning">Packet flow with hardware offloading and MAC learning</h2>
+<hr />
+<p>Consider the following scenario: you set up a bridge and have enabled hardware offloading in order to maximize the throughput for your device; as a result, your device is working as a switch, but you want to use <a href="../../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md">Sniffer</a> or <a href="../../diagnostics-monitoring-and-troubleshooting/torch.md">Torch</a> tools for debugging purposes, or maybe you want to implement packet logging.</p>
+<h3 id="configuration_1">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 hw=yes interface=ether1 learn=yes
+add bridge=bridge1 hw=yes interface=ether2 learn=yes
+</code></pre>
+<h3 id="problem_1">Problem</h3>
+<p>When running <a href="../../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md">Sniffer</a> or <a href="../../diagnostics-monitoring-and-troubleshooting/torch.md">Torch</a> tools to capture packets, you might notice that barely any packets are visible, only some unicast packets, but mostly broadcast/multicast packets are captured, while the interfaces report that much larger traffic is flowing through certain interfaces than the traffic that was captured. If you add two or more Ethernet interfaces to a bridge and enable <a href="../#bridge-hardware-offloading">Hardware Offloading</a>, then the switch chip will be used to forward packets between ports. To understand why only some packets are captured, we must first examine how the switch chip is interconnected with the CPU. In this example, we can use a block diagram from a generic 5-Port Ethernet router:</p>
+<p><em>[gambar: Switch Chip Block Diagram]</em></p>
+<p>For this device, each Ethernet port is connected to the switch chip and the switch chip is connected to the CPU using the CPU port (sometimes called the <strong>switch-cpu</strong> port). For packets to be visible in Sniffer or Torch tools, the packet must be sent from an Ethernet port to the CPU port, this means that the packet must be destined to the CPU port (destination MAC address of the packet matches the bridge's MAC address) or the packet's MAC address has not been learnt (packet is flooded to all ports), this behavior is because of <strong>MAC learning</strong>.</p>
+<p>The switch chip keeps a list of MAC addresses and ports called the <strong>Host table</strong>. Whenever a packet needs to be forwarded, the switch chip checks the packet's destination MAC address against the hosts table to find which port it should use to forward the packet. If the switch chip cannot find the destination MAC address, then the packet is flooded to all ports (including the CPU port). In situations where a packet is supposed to be forwarded from, for example, ether1 to ether2 and the MAC address for the device behind ether2 is in the host table, then the packet is never sent to the CPU and therefore will not be visible to Sniffer or Torch tools.</p>
+<h3 id="symptoms_1">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Packets not visible by Sniffer or Torch tool.</li>
+<li>Filter rules not working.</li>
+</ul>
+<h3 id="solution_1">Solution</h3>
+<p>Packets with a destination MAC address that has been learned will not be sent to the CPU since the packets are not being flooded to all ports. If you do need to send certain packets to the CPU for a packet analyzer or a firewall, then it is possible to copy or redirect the packet to the CPU by using ACL rules. Below is an example of how to send a copy of packets that are meant for <strong>4C:5E:0C:4D:12:4B</strong>:</p>
+<pre><code class="language-ros">/interface/ethernet/switch/rule
+add copy-to-cpu=yes dst-mac-address=4C:5E:0C:4D:12:4B/FF:FF:FF:FF:FF:FF ports=ether1 switch=switch1
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the packet is sent to the CPU, then the packet must be processed by the CPU; this increases the CPU load.</p>
+</div>
+<h2 id="lag-interfaces-and-load-balancing">LAG interfaces and load balancing</h2>
+<hr />
+<p>Consider the following scenario: you have created a LAG interface to increase total bandwidth between 2 network nodes; usually, these are switches. For testing purposes to make sure that the LAG interface is working properly, you have attached two servers that transfer data, most commonly the well-known network performance measurement tool <a href="https://en.wikipedia.org/wiki/Iperf">Iperf</a> is used to test such setups. For example, you might have made a LAG interface out of two Gigabit Ethernet ports, which gives you a virtual interface that can load balance traffic over both interfaces and theoretically reach 2Gbps throughput, while the servers are connected using a 10Gbps interface, for example, SFP+.</p>
+<p><em>[gambar: LACP Setup]</em></p>
+<h3 id="configuration_2">Configuration</h3>
+<p>The following configuration is relevant to <strong>SW1</strong> and <strong>SW2</strong>:</p>
+<pre><code class="language-ros">/interface/bonding
+add mode=802.3ad name=bond1 slaves=ether1,ether2
+/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=bond1
+add bridge=bridge1 interface=sfp-sfpplus1
+</code></pre>
+<h3 id="problem_2">Problem</h3>
+<p>After initial tests, you immediately notice that your network throughput never exceeds the 1Gbps limit even though the CPU load on the servers is low as well as on the network nodes (switches in this case), but the throughput is still limited to only 1Gbps. The reason behind this is that LACP (802.ad) uses transmit hash policy in order to determine if traffic can be balanced over multiple LAG members, in this case, a LAG interface does not create a 2Gbps interface, but rather an interface that can balance traffic over multiple slave interfaces whenever it is possible. For each packet a transmit hash is generated, this determines through which LAG member the packet will be sent, this is needed in order to avoid packets being out of order, there is an option to select the transmit hash policy, usually, there is an option to choose between Layer2 (MAC), Layer3 (IP) and Layer4 (Port), in RouterOS, this can be selected by using the <code>transmit-hash-policy</code> parameter. In this case, the transmit hash is the same since you are sending packets to the same destination MAC address, as well as the same IP address and Iperf uses the same port as well, this generates the same transmit hash for all packets and load balancing between LAG members is not possible. Note that packets will not always get balanced over LAG members even though the destination is different, this is because the standardized transmit hash policy can generate the same transmit hash for different destinations, for example, 192.168.0.1/192.168.0.2 will get balanced, but 192.168.0.2/192.168.0.4 will <strong>NOT</strong> get balanced in case <code>layer2-and-3</code> transmit hash policy is used and the destination MAC address is the same.</p>
+<h3 id="symptoms_2">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Traffic going through only one LAG member.</li>
+</ul>
+<h3 id="solution_2">Solution</h3>
+<p>Choose the proper transmit hash policy and test your network's throughput properly. The simplest way to test such setups is to use multiple destinations, for example, instead of sending data to just one server, send data to multiple servers. This will generate a different transmit hash for each packet and will make load balancing across LAG members possible. For some setups, you might want to change the bonding interface mode to increase the total throughput. For UDP traffic <code>balance-rr</code> mode might be sufficient, but can cause issues for TCP traffic. You can read more about selecting the right mode for your setup <a href="../../high-availability-solutions/bonding.md">here</a>.</p>
+<h2 id="vlan-interface-on-a-slave-interface">VLAN interface on a slave interface</h2>
+<hr />
+<p>Consider the following scenario: you have created a bridge and you want a DHCP Server to give out IP addresses only to certain tagged VLAN traffic, for this reason, you have created a VLAN interface, specified a VLAN ID and created a DHCP Server on it, but for some reason, it is not working properly.</p>
+<h3 id="configuration_3">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add interface=ether1 bridge=bridge1
+add interface=ether2 bridge=bridge1
+/interface/vlan
+add name=VLAN99 interface=ether1 vlan-id=99
+/ip/pool
+add name=VLAN99_POOL range=192.168.99.100-192.168.99.200
+/ip/address/add address=192.168.99.1/24 interface=VLAN99
+/ip/dhcp-server
+add interface=VLAN99 address-pool=VLAN99_POOL disabled=no
+/ip/dhcp-server/network
+add address=192.168.99.0/24 gateway=192.168.99.1 dns-server=192.168.99.1
+</code></pre>
+<h3 id="problem_3">Problem</h3>
+<p>When you add an interface to a bridge, the bridge becomes the master interface and all bridge ports become slave ports. This means that all traffic that is received on a bridge port is captured by the bridge interface and all traffic is forwarded to the CPU using the bridge interface instead of the physical interface. As a result, packet reception on a VLAN interface that is created on a slave interface is undefined. The usual side effect is that some DHCP clients receive IP addresses and some don't.</p>
+<p>RouterOS marks such a VLAN interface with a warning and keeps the interface valid:</p>
+<pre><code class="language-ros">/interface/vlan/print
+;;; VLAN interface can not be set on slave interface
+0 R name=&quot;VLAN99&quot; mtu=1500 l2mtu=1588 mac-address=18:FD:74:00:00:01
+     vlan-id=99 interface=ether1
+</code></pre>
+<h3 id="symptoms_3">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>DHCP Client/Server not working properly.</li>
+<li>Device is unreachable.</li>
+<li>The device behind a bridge is unreachable with tagged traffic.</li>
+</ul>
+<h3 id="solution_3">Solution</h3>
+<p>Change the interface on which the VLAN interface will be listening for traffic, and change it to the master interface:</p>
+<pre><code class="language-ros">/interface/vlan/set VLAN99 interface=bridge1
+</code></pre>
+<h2 id="vlan-on-a-bridge-in-a-bridge">VLAN on a bridge in a bridge</h2>
+<hr />
+<p>Consider the following scenario: you have a set of interfaces (don't have to be physical interfaces) and you want all of them to be in the same Layer2 segment. The solution is to add them to a single bridge, but you require that traffic from one port tags all traffic into a certain VLAN. This can be done by creating a VLAN interface on top of the bridge interface and by creating a separate bridge that contains this newly created VLAN interface and an interface that is supposed to add a VLAN tag to all received traffic. A network diagram can be found below:</p>
+<p><em>[gambar: VLAN on Bridge in Bridge]</em></p>
+<h3 id="configuration_4">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+add name=bridge2
+/interface/vlan
+add interface=bridge1 name=VLAN vlan-id=99
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge2 interface=VLAN
+add bridge=bridge2 interface=ether3
+</code></pre>
+<h3 id="problem_4">Problem</h3>
+<p>To better understand the underlying problems, let's first look at the bridge host table.</p>
+<pre><code class="language-ros">[admin@switch] /interface/bridge/host/print where !local 
+Flags: X - disabled, I - invalid, D - dynamic, L - local, E - external 
+ #       MAC-ADDRESS        VID ON-INTERFACE    BRIDGE
+ 0   D   CC:2D:E0:E4:B3:A1      ether1          bridge1
+ 1   D   CC:2D:E0:E4:B3:A2      ether2          bridge1
+ 2   D   CC:2D:E0:E4:B3:A1      VLAN            bridge2
+ 3   D   CC:2D:E0:E4:B3:A2      VLAN            bridge2
+ 4   D   CC:2D:E0:E4:B3:A3      ether3          bridge2
+</code></pre>
+<p>Devices on <strong>ether1</strong> and <strong>ether2</strong> need to send tagged packets with VLAN-ID 99 in order to reach the host on <strong>ether3</strong> (other packets do not get passed towards the VLAN interface and further bridged with ether3). We can see in the host table that <strong>bridge2</strong> has learned these hosts. Packets coming from <strong>ether3</strong> to <strong>ether1</strong> will be correctly sent out tagged and traffic will not be flooded in <strong>bridge1</strong>. But since MAC learning is only possible between bridge ports and not on interfaces that are created on top of the bridge interface, packets sent from <strong>ether2</strong> to <strong>ether3</strong> will be flooded in <strong>bridge1</strong>.</p>
+<p>Also if a device behind <strong>ether3</strong> is using (R)STP, then <strong>ether1</strong> and <strong>ether2</strong> will send out tagged BPDUs which violate the IEEE 802.1W standard. Because of the broken MAC learning functionality and broken (R)STP, this setup and configuration must be avoided. It is also known that in some setups this kind of configuration can prevent you from connecting to the device by using MAC telnet.</p>
+<h3 id="symptoms_4">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Port blocked by RSTP.</li>
+<li>Loops in the network.</li>
+<li>Port flapping.</li>
+<li>Traffic is flooded to all ports.</li>
+<li>MAC telnet is unable to connect.</li>
+<li>Device is inaccessible.</li>
+</ul>
+<h3 id="solution_4">Solution</h3>
+<p>Use bridge VLAN filtering. The proper way to tag traffic is to assign a VLAN ID whenever traffic enters a bridge. This behavior can easily be achieved by specifying a <strong>PVID</strong> value for a bridge port and specifying which ports are <strong>tagged</strong> (trunk) ports and which are <strong>untagged</strong> (access) ports. Below is an example of how such a setup should have been configured:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3 pvid=99
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1,ether2 untagged=ether3 vlan-ids=99
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>By enabling <code>vlan-filtering</code> you will be filtering out traffic destined for the CPU, before enabling VLAN filtering you should make sure that you set up a <a href="../#management-access-configuration">Management port</a>.</p>
+</div>
+<h2 id="vlan-in-a-bridge-with-a-physical-interface">VLAN in a bridge with a physical interface</h2>
+<hr />
+<p>Very similar case to <a href="layer2-misconfiguration.md#vlan-on-a-bridge-in-a-bridge">VLAN on a bridge in a bridge</a>. The most popular use case is when you want to bridge a physical interface with a VLAN (simplified trunk/access port setup). In such a setup you might want to send out tagged traffic on one side and untagged on the other side. To accomplish this, you create a VLAN interface on the trunk port (the tagged side), then create a bridge and add both the VLAN interface and the physical interface (the untagged side) as bridge ports.</p>
+<h3 id="configuration_5">Configuration</h3>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether1 name=VLAN99 vlan-id=99
+/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add interface=ether2 bridge=bridge1
+add interface=VLAN99 bridge=bridge1
+</code></pre>
+<h3 id="problem_5">Problem</h3>
+<p>This setup and configuration will work in most cases, but it violates the IEEE 802.1W standard when (R/M)STP is used. If this is the only device in your Layer2 domain, then this should not cause problems, but problems can arise when there are other vendor switches. The reason for this is that RSTP on a bridge interface is enabled by default, allowing Bridge Protocol Data Units (BPDUs) to be sent from each bridge port. While <strong>ether2</strong> transmits BPDUs correctly without tagging, <strong>VLAN99</strong> interface, being a bridge port, sends tagged BPDUs over ether1. Not all switches can understand tagged BPDUs.  Precautions should be made with this configuration in a more complex network where there are multiple network topologies for certain (group of) VLANs. This is relevant to MSTP and PVSTP(+) with mixed vendor devices. In a ring-like topology with multiple network topologies for certain VLANs, one port from the switch will be blocked, but in MSTP and PVSTP(+) a path can be opened for a certain VLAN, in such a situation it is possible that devices that don't support PVSTP(+) will untag the BPDUs and forward the BPDU, as a result, the switch will receive its own packet, trigger a loop detection and block a port. This can happen to other protocols as well, but (R)STP is the most common case. If a switch is using a BPDU guard function, then this type of configuration can trigger it and cause a port to be blocked by STP. It has been reported that this type of configuration can prevent traffic from being forwarded over certain bridge ports over time when using 6.41 or later. This type of configuration does not only break (R/M)STP, but it can cause loop warnings. This can be caused by MNDP packets or any other packets that are directly sent out from an interface.</p>
+<h3 id="symptoms_5">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Port blocked by RSTP.</li>
+<li>Loops in the network.</li>
+<li>Port flapping.</li>
+<li>Traffic stops forwarding over time.</li>
+<li>BPDUs ignored by other RSTP enabled devices.</li>
+</ul>
+<h3 id="solution_5">Solution</h3>
+<p>To avoid compatibility issues you should use bridge VLAN filtering. Below you can find an example of how the same traffic tagging effect can be achieved with a bridge VLAN filtering configuration:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2 pvid=99
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 untagged=ether2 vlan-ids=99
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>By enabling <code>vlan-filtering</code> you will be filtering out traffic destined to the CPU. Before enabling VLAN filtering you should make sure that you set up a <a href="../#management-access-configuration">Management port</a>.</p>
+</div>
+<h2 id="bridged-vlan-on-physical-interfaces">Bridged VLAN on physical interfaces</h2>
+<hr />
+<p>A very similar case to <a href="layer2-misconfiguration.md#vlan-on-a-bridge-in-a-bridge">VLAN on a bridge in a bridge</a>: consider the following scenario. You have a couple of switches in your network and you are using VLANs to isolate certain Layer2 domains and connect these switches to a router that assigns addresses and routes the traffic to the world. For redundancy, you connect all switches directly to the router and have enabled RSTP, but to be able to set up DHCP Server you decide that you can create a VLAN interface for each VLAN on each physical interface that is connected to a switch and add these VLAN interfaces in a bridge. A network diagram can be found below:</p>
+<p><em>[gambar: Bridged VLANs]</em></p>
+<h3 id="configuration_6">Configuration</h3>
+<p>Only the router part is relevant to this case, switch configuration doesn't really matter as long as ports are switched. Router configuration can be found below:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge10
+add name=bridge20
+/interface/vlan
+add interface=ether1 name=ether1_v10 vlan-id=10
+add interface=ether1 name=ether1_v20 vlan-id=20
+add interface=ether2 name=ether2_v10 vlan-id=10
+add interface=ether2 name=ether2_v20 vlan-id=20
+/interface/bridge/port
+add bridge=bridge10 interface=ether1_v10
+add bridge=bridge10 interface=ether2_v10
+add bridge=bridge20 interface=ether1_v20
+add bridge=bridge20 interface=ether2_v20
+</code></pre>
+<h3 id="problem_6">Problem</h3>
+<p>You might notice that the network is having some weird delays or even the network is unresponsive. You might notice that there is a loop detected (packet received with own MAC address) and some traffic is being generated out of nowhere. The problem occurs because a broadcast packet that is coming from either one of the VLAN interfaces created on the <strong>Router</strong> will be sent out the physical interface, the packet will be forwarded through the physical interface, through a switch and will be received back on a different physical interface, in this case, broadcast packets sent out <strong>ether1_v10</strong> will be received on <strong>ether2</strong>, the packet will be captured by <strong>ether2_v10</strong>, which is bridged with <strong>ether1_v10</strong> and will get forwarded again via the same path (loop). (R)STP might not always detect this loop since (R)STP is not aware of any VLANs. A loop does not exist with untagged traffic, but exists with tagged traffic. In this scenario, it is quite obvious to spot the loop, but in more complex setups it is not always easy to detect the network design flaw. Sometimes this network design flaw might go unnoticed for a very long time if your network does not use broadcast traffic, usually, <a href="../../system-information-and-utilities/neighbor-discovery.md">Neighbor Discovery Protocol</a> is broadcasting packets from the VLAN interface and will usually trigger a loop detection in such a setup. Sometimes it is useful to capture the packet that triggered a loop detection, this can be done by using a sniffer and analyzing the packet capture file:</p>
+<pre><code class="language-ros">/tool/sniffer
+set filter-mac-address=4C:5E:0C:4D:12:44/FF:FF:FF:FF:FF:FF \
+filter-interface=ether1 filter-direction=rx file-name=loop_packet.pcap
+</code></pre>
+<p>Or a more convenient way using logging:</p>
+<pre><code class="language-ros">/interface/bridge/filter
+add action=log chain=forward src-mac-address=4C:5E:0C:4D:12:44/FF:FF:FF:FF:FF:FF
+add action=log chain=input src-mac-address=4C:5E:0C:4D:12:44/FF:FF:FF:FF:FF:FF
+</code></pre>
+<h3 id="symptoms_6">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Port blocked by (R)STP.</li>
+<li>Loops in the network.</li>
+<li>Low throughput.</li>
+<li>Port flapping.</li>
+<li>Network inaccessible.</li>
+</ul>
+<h3 id="solution_6">Solution</h3>
+<p>A solution is to use bridge VLAN filtering in order to make all bridges compatible with IEEE 802.1W and IEEE 802.1Q.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge interface=ether1
+add bridge=bridge interface=ether2
+/interface/bridge/vlan
+add bridge=bridge tagged=ether1,ether2,bridge vlan-ids=10
+add bridge=bridge tagged=ether1,ether2,bridge vlan-ids=20
+/interface/vlan
+add name=vlan10 interface=bridge vlan-id=10
+add name=vlan20 interface=bridge vlan-id=20
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>By enabling <code>vlan-filtering</code> you will be filtering out traffic destined to the CPU. Before enabling VLAN filtering you should make sure that you set up a <a href="../#management-access-configuration">Management port</a>.</p>
+</div>
+<h2 id="bridged-vlan">Bridged VLAN</h2>
+<hr />
+<p>A more simplified scenario of <a href="layer2-misconfiguration.md#bridged-vlan-on-physical-interfaces">Bridged VLAN on physical interfaces</a>, but in this case, you simply want to bridge two or more VLANs together that are created on different physical interfaces. This is a very common type of setup that deserves a separate article since misconfiguring this type of setup has caused multiple network failures. This type of setup is also used for VLAN translation.</p>
+<h3 id="configuration_7">Configuration</h3>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether1 name=ether1_v10 vlan-id=10
+add interface=ether2 name=ether2_v10 vlan-id=10
+/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1_v10
+add bridge=bridge1 interface=ether2_v10
+</code></pre>
+<h3 id="problem_7">Problem</h3>
+<p>You may notice that certain parts of the network are not accessible and/or certain links keep flapping. This is due to (R)STP. This type of configuration forces the device to send out tagged BPDUs that might not be supported by other devices, including RouterOS. Since a device receives a malformed packet (tagged BPDUs should not exist in your network when running (R)STP, which violates IEEE 802.1W and IEEE 802.1Q), the device will not interpret the packet correctly and can have unexpected behavior.</p>
+<h3 id="symptoms_7">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Port blocked by (R)STP.</li>
+<li>Port flapping.</li>
+<li>Network inaccessible.</li>
+</ul>
+<h3 id="solution_7">Solution</h3>
+<p>The easiest solution is to simply disable (R)STP on the bridge:</p>
+<pre><code class="language-ros">/interface/bridge
+set bridge1 protocol-mode=none
+</code></pre>
+<p>Though it is still recommended to rewrite your configuration to use bridge VLAN filtering:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1,ether2 vlan-ids=10
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>By enabling <code>vlan-filtering</code> you will be filtering out traffic destined to the CPU. Before enabling VLAN filtering you should make sure that you set up a <a href="../#management-access-configuration">Management port</a>.</p>
+</div>
+<h2 id="bridge-vlan-filtering-without-hardware-offloading">Bridge VLAN filtering without hardware offloading</h2>
+<hr />
+<p>Consider the following scenario: you found out about the new bridge VLAN filtering feature and you decided to change the configuration on your device. You have a very simple trunk/access port setup and you like the concept of bridge VLAN filtering.</p>
+<h3 id="configuration_8">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2 pvid=20
+add bridge=bridge1 interface=ether3 pvid=30
+add bridge=bridge1 interface=ether4 pvid=40
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1 untagged=ether2 vlan-ids=20
+add bridge=bridge1 tagged=ether1 untagged=ether3 vlan-ids=30
+add bridge=bridge1 tagged=ether1 untagged=ether4 vlan-ids=40
+</code></pre>
+<h3 id="problem_8">Problem</h3>
+<p>For example, you use this configuration on a CRS1xx/CRS2xx series device and you start to notice that the CPU usage is very high and when running a performance test to check the network's throughput, you notice that the total throughput is only a fraction of the wire-speed performance that it should easily reach. The cause of the problem is that not all devices support bridge VLAN filtering on a hardware level. All devices are able to be configured with bridge VLAN filtering, but only a few of them will be able to offload the traffic to the switch chip. If an improper configuration method is used on a device with a built-in switch chip, then the CPU will be used to forward the traffic.</p>
+<h3 id="symptoms_8">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Missing "H" flag on bridge ports.</li>
+<li>Low throughput.</li>
+<li>High CPU usage.</li>
+</ul>
+<h3 id="solution_8">Solution</h3>
+<p>Before using bridge VLAN filtering, check if your device supports it at the hardware level. A table with compatibility can be found at the <a href="../#bridge-hardware-offloading">Bridge Hardware Offloading</a> section. Each type of device currently requires a different configuration method. Below is a list of which configuration should be used on a device in order to use the benefits of hardware offloading:</p>
+<ul>
+<li><a href="../index.md#bridge-vlan-filtering">MikroTik devices with Marvell Prestera switch</a></li>
+<li><a href="./crs1xx-2xx-series-switches-examples.md#vlan">CRS1xx/CRS2xx series devices</a></li>
+<li><a href="../switch-chip-features.md#setup-examples">Other devices with a switch chip</a></li>
+</ul>
+<h2 id="switch-chip-vlans-on-devices-with-several-switch-chips">Switch chip VLANs on devices with several switch chips</h2>
+<hr />
+<p>This section configures VLANs in the switch chip menu, <code>/interface/ethernet/switch</code>, not with the bridge <code>vlan-filtering</code> property. Consider the following scenario: you have a device with two or more switch chips and you have decided to use a single bridge and set up VLANs in the switch chips on a hardware level to be able to reach wire-speed performance on your network. This is very relevant for RB2011 and RB3011 series devices. In this example, let's assume that you want to have a single trunk port and all other ports are access ports, for example, <strong>ether10</strong> is our trunk port and <strong>ether1-ether9</strong> are our access ports.</p>
+<h3 id="configuration_9">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+add bridge=bridge1 interface=ether4
+add bridge=bridge1 interface=ether5
+add bridge=bridge1 interface=ether6
+add bridge=bridge1 interface=ether7
+add bridge=bridge1 interface=ether8
+add bridge=bridge1 interface=ether9
+add bridge=bridge1 interface=ether10
+/interface/vlan
+add interface=bridge1 name=VLAN10 vlan-id=10
+/interface/ethernet/switch/port
+set ether1,ether2,ether3,ether4,ether5,ether6,ether7,ether8,ether9 default-vlan-id=10 vlan-header=always-strip vlan-mode=secure
+set ether10 vlan-header=add-if-missing vlan-mode=secure
+set switch1-cpu,switch2-cpu vlan-mode=secure
+/interface/ethernet/switch/vlan
+add ports=ether1,ether2,ether3,ether4,ether5,switch1-cpu switch=switch1 vlan-id=10
+add ports=ether6,ether7,ether8,ether9,ether10,switch2-cpu switch=switch2 vlan-id=10
+</code></pre>
+<h3 id="problem_9">Problem</h3>
+<p>After running a few tests you might notice that packets from <strong>ether6-ether10</strong> are forwarded as expected, but packets from <strong>ether1-ether5</strong> are not always forwarded correctly (especially through the trunk port). The most noticeable issue would be that packets from <strong>ether1-ether5</strong> through <strong>ether10</strong> are simply dropped. This is because these ports are located on a different switch chip. This means that VLAN filtering is not possible on a hardware level since the switch chip is not aware of the VLAN table's contents on a different switch chip. Packets that are being forwarded between ports that are located on different switch chips are also processed by the CPU, which means you won't be able to achieve wire-speed performance.</p>
+<h3 id="symptoms_9">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Packets being dropped.</li>
+<li>Low throughput.</li>
+</ul>
+<h3 id="solution_9">Solution</h3>
+<p>The proper solution is to take into account this hardware design and plan your network topology accordingly. To solve this issue you must create two separate bridges and configure VLAN filtering on each switch chip. This limits the possibility to forward packets between switch chips, though it is possible to configure routing between both bridges (if devices that are connected on each switch chip are using different network subnets).</p>
+<p>There is a way to configure the device to have all ports switch together and yet be able to use VLAN filtering on a hardware level, though this solution has some caveats. The idea is to sacrifice a single Ethernet port on each switch chip that will act as a trunk port to forward packets between switch chips, this can be done by plugging an Ethernet cable between both switch chips, for example, let's plug in an Ethernet cable between <strong>ether5</strong> and <strong>ether6</strong> then reconfigure your device assuming that these ports are trunk ports:</p>
+<pre><code class="language-ros">/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+add bridge=bridge1 interface=ether4
+add bridge=bridge1 interface=ether5
+add bridge=bridge2 interface=ether6
+add bridge=bridge2 interface=ether7
+add bridge=bridge2 interface=ether8
+add bridge=bridge2 interface=ether9
+add bridge=bridge2 interface=ether10
+/interface/ethernet/switch/port
+set ether1,ether2,ether3,ether4,ether7,ether8,ether9 default-vlan-id=10 vlan-header=always-strip vlan-mode=secure
+set ether5,ether6,ether10 vlan-header=add-if-missing vlan-mode=secure default-vlan-id=auto
+set switch1-cpu,switch2-cpu vlan-mode=secure
+/interface/ethernet/switch/vlan
+add ports=ether1,ether2,ether3,ether4,ether5,switch1-cpu switch=switch1 vlan-id=10
+add ports=ether6,ether7,ether8,ether9,ether10,switch2-cpu switch=switch2 vlan-id=10
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>For 100Mbps switch chips, use <code>default-vlan-id=0</code> instead of <code>default-vlan-id=auto</code></p>
+</div>
+<h2 id="vlan-filtering-with-simplified-bridge-vlan-table">VLAN filtering with simplified bridge VLAN table</h2>
+<hr />
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This issue has been resolved since <strong>RouterOS v7.15</strong>. Dynamic VLANs are now always created as separate entries and no longer merge with statically configured ones.</p>
+</div>
+<p>You need to create a network setup where multiple clients are connected to separate access ports and isolated by different VLANs. This traffic should be tagged and sent to the appropriate trunk port. Access ports are configured using a pvid property. As the trunk port is used on both VLANs, you decide to simplify configuration by adding a single bridge VLAN table entry and separating VLANs by a comma. This is especially useful when tagged trunk ports are used across large numbers of VLANs or even certain VLAN ranges (e.g. vlan-id=100-200). See the network diagram and configuration below.</p>
+<p><em>[gambar: Switch Multiple Untagged]</em></p>
+<h3 id="configuration_10">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3 pvid=10
+add bridge=bridge1 interface=ether4 pvid=20
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether2 vlan-ids=10,20
+</code></pre>
+<h3 id="problem_10">Problem</h3>
+<p>Traffic is correctly forwarded and tagged from access ports to trunk port, but you might notice that some broadcast or multicast packets are actually flooded between both untagged access ports, although they should be on different VLANs. Furthermore, broadcast and multicast traffic from the tagged port is also flooded to both access ports. This might raise some security concerns as traffic from different networks can be sniffed. When you look at the bridge VLAN table, you notice that a single entry has been created for VLANs 10 and 20, and both untagged ports are part of the same VLAN group.</p>
+<pre><code class="language-ros">[admin@SW1] /interface/bridge/vlan/print where tagged=ether2
+Columns: BRIDGE, VLAN-IDS, CURRENT-TAGGED, CURRENT-UNTAGGED
+# BRIDGE   VLAN-IDS  CURRENT-TAGGED  CURRENT-UNTAGGED
+;;; port with pvid added to untagged group which might cause problems, consider adding a separate VLAN entry
+0 bridge1        10  ether2          ether3          
+                 20                  ether4     
+</code></pre>
+<h3 id="symptoms_10">Symptoms</h3>
+<ul>
+<li>Traffic is flooded between different VLANs</li>
+<li>Red warning: <code>port with pvid added to untagged group which might cause problems, consider adding a separate VLAN entry</code></li>
+</ul>
+<h3 id="solution_10">Solution</h3>
+<p>When access ports have been configured using the pvid property, they get dynamically added to the appropriate VLAN entry. After creating a static VLAN entry with multiple VLANs or a VLAN range, the untagged access port with a matching pvid also gets included in the same VLAN group or range. It might be useful to define a large number of VLANs using a single configuration line, but extra caution should be taken when access ports are configured. For this example, separate VLAN entries should be created:</p>
+<pre><code class="language-ros">/interface/bridge/vlan
+add bridge=bridge1 tagged=ether2 untagged=ether3 vlan-ids=10
+add bridge=bridge1 tagged=ether2 untagged=ether4 vlan-ids=20
+</code></pre>
+<h2 id="mtu-on-the-master-interface">MTU on the master interface</h2>
+<hr />
+<p>Consider the following scenario: you have created a bridge, added a few interfaces to it and created a VLAN interface on top of the bridge interface, but you need to increase the MTU size on the VLAN interface in order to receive larger packets.</p>
+<h3 id="configuration_11">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+/interface/vlan
+add interface=bridge1 name=VLAN99 vlan-id=99
+</code></pre>
+<h3 id="problem_11">Problem</h3>
+<p>As soon as you try to increase the MTU size on the VLAN interface, you receive an error that RouterOS <strong>Could not set MTU</strong>. This can happen when you are trying to set MTU larger than the L2MTU. In this case, you need to increase the L2MTU size on all slave interfaces, which will update the L2MTU size on the bridge interface. After this has been done, you will be able to set a larger MTU on the VLAN interface. The same principle applies to bond interfaces. You can increase the MTU on interfaces like VLAN, MPLS, VPLS, Bonding and other interfaces only when all physical slave interfaces have the proper L2MTU set.</p>
+<h3 id="symptoms_11">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Cannot change MTU.</li>
+</ul>
+<h3 id="solution_11">Solution</h3>
+<p>Increase the L2MTU on slave interfaces before changing the MTU on a master interface.</p>
+<pre><code class="language-ros">/interface/ethernet
+set ether1,ether2 l2mtu=9018
+/interface/vlan
+set VLAN99 mtu=9000
+</code></pre>
+<h2 id="mtu-inconsistency">MTU inconsistency</h2>
+<hr />
+<p>Consider the following scenario: you have multiple devices in your network. Most of them are used as a switch/bridge in your network, and there are certain endpoints that are supposed to receive and process traffic. To decrease the overhead in your network, you have decided to increase the MTU size, so you set a larger MTU size on both endpoints, but you start to notice that some packets are being dropped.</p>
+<p><em>[gambar: MTU Issues]</em></p>
+<h3 id="configuration_12">Configuration</h3>
+<p>In this case, both endpoints can be any type of device, we will assume that they are both Linux servers that are supposed to transfer a large amount of data. In such a scenario, you would have probably set interface MTU to 9000 on <strong>ServerA</strong> and <strong>ServerB</strong> and on your <strong>Switch</strong> you have probably set something similar to this:</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add interface=ether1 bridge=bridge1
+add interface=ether2 bridge=bridge1
+</code></pre>
+<h3 id="problem_12">Problem</h3>
+<p>This is a very simple problem, but in larger networks, it can be hard to detect. For instance, ping might be working since a generic ping packet will be 70 bytes long (14 bytes for Ethernet header, 20 bytes for IPv4 header, 8 bytes for ICMP header, 28 bytes for ICMP payload), but data transfer might not work properly. The reason why some packets might not get forwarded is that MikroTik devices running RouterOS by default have the MTU set to 1500 and L2MTU set to something around 1580 bytes (depending on the device), but the Ethernet interface will silently drop anything that does not fit into the L2MTU size. Note that the L2MTU parameter is not relevant to x86 or CHR devices. For a device that is only supposed to forward packets, there is no need to increase the MTU size; it is only required to increase the L2MTU size. RouterOS will not allow you to increase the MTU size larger than the L2MTU size. If you require the packet to be received on the interface and the device needs to process this packet rather than just forwarding it, for example, in the case of routing, then it is required to increase the L2MTU and the MTU size, but you can leave the MTU size on the interface to the default value if you are using only IP traffic (that supports packet fragmentation) and don't mind that packets are being fragmented. You can use the ping utility to make sure that all devices are able to forward jumbo frames:</p>
+<pre><code class="language-ros">/ping 192.168.88.1 size=9000 do-not-fragment
+</code></pre>
+<p>Remember that the L2MTU and MTU size needs to be larger than or equal to the ping packet size on the device from which and to which you are sending a ping packet since ping (ICMP) is IP traffic that is sent out from an interface over Layer3.</p>
+<h3 id="symptoms_12">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Web pages are not able to load up, but ping works properly.</li>
+<li>Tunnels dropping traffic.</li>
+<li>Specific protocols are broken.</li>
+<li>Large packet loss.</li>
+</ul>
+<h3 id="solution_12">Solution</h3>
+<p>Increase the L2MTU size on your <strong>Switch</strong>:</p>
+<pre><code class="language-ros">/interface/ethernet
+set ether1,ether2 l2mtu=9000
+</code></pre>
+<p>In case your traffic is encapsulated (VLAN, VPN, MPLS, VPLS, or other), then you might need to consider setting an even larger L2MTU size. In this scenario, it is not needed to increase the MTU size for the reason described above.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Full frame MTU is not the same as L2MTU. L2MTU size does not include the Ethernet header (14 bytes) and the CRC checksum (FCS) field. The FCS field is stripped by the Ethernet driver and RouterOS will never show the extra 4 bytes to any packet. For example, if you set MTU and L2MTU to 9000, then the full-frame MTU is 9014 bytes long. This can also be observed when sniffing packets with "<code>/tool/sniffer/quick"</code> command.</p>
+</div>
+<h2 id="bridge-and-reserved-mac-addresses">Bridge and reserved MAC addresses</h2>
+<hr />
+<p>Consider the following scenario: you want to transparently bridge two network segments together, either those are tunnel interfaces like EoIP, Wireless interfaces, Ethernet interface, or any other kind of interfaces that can be added to a bridge. Such a setup allows you to seamlessly connect two devices together like there was only a physical cable between them. This is sometimes called a <strong>transparent bridge</strong> from <strong>DeviceA</strong> to <strong>DeviceB</strong>.</p>
+<h3 id="configuration_13">Configuration</h3>
+<p>For both devices <strong>DeviceA</strong> and <strong>DeviceB</strong> there should be a very similar configuration.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 protocol-mode=rstp
+/interface/bridge/port
+add interface=ether1 bridge=bridge1
+add interface=eoip1 bridge=bridge1
+</code></pre>
+<h3 id="problem_13">Problem</h3>
+<p>Both devices are able to communicate with each other, but some protocols do not work properly. The reason is that as soon as you use any STP variant (STP, RSTP, MSTP), you make the bridge compliant with IEEE 802.1D and IEEE 802.1Q. These standards recommend that packets that are destined to <strong>01:80:C2:00:00:0X</strong> should <strong>NOT</strong> be forwarded. In cases where there are only 2 ports added to a bridge, (R/M)STP should not be used since a loop cannot occur from 2 interfaces and if a loop does occur, the cause is elsewhere and should be fixed on a different bridge. Since (R/M)STP is not needed in transparent bridge setups, it can be disabled. As soon as (R/M)STP is disabled, the RouterOS bridge is not compliant with IEEE 802.1D and IEEE 802.1Q and therefore will forward packets that are destined to <strong>01:80:C2:00:00:0X</strong>.</p>
+<h3 id="symptoms_13">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>LLDP neighbors not showing up.</li>
+<li>802.1x authentication (dot1x) not working.</li>
+<li>LACP interface not passing traffic.</li>
+</ul>
+<h3 id="solution_13">Solution</h3>
+<p>It is possible to partly disable compliance with IEEE 802.1D and IEEE 802.1Q; this can be done by changing the bridge protocol mode.</p>
+<pre><code class="language-ros">/interface/bridge
+set bridge1 protocol-mode=none
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>The IEEE 802.1x standard is meant to be used between a switch and a client directly. If it is possible to connect a device between the switch and the client, then this creates a security threat. For this reason, it is not recommended to disable compliance with IEEE 802.1D and IEEE 802.1Q, but rather to design a proper network topology.</p>
+</div>
+<h2 id="bonding-between-wireless-links">Bonding between Wireless links</h2>
+<hr />
+<p>Consider the following scenario: you have set up multiple Wireless links and to achieve maximum throughput and yet to achieve redundancy you have decided to place Ethernet interfaces into a bond and depending on the traffic that is being forwarded you have chosen a certain bonding mode. This scenario can be applied to any case where a bonding interface is created between links that are not directly connected to each other.</p>
+<p><em>[gambar: LACP over WLAN]</em></p>
+<h3 id="configuration_14">Configuration</h3>
+<p>The following configuration is relevant to <strong>R1</strong> and <strong>R2</strong>:</p>
+<pre><code class="language-ros">/interface/bonding
+add mode=802.3ad name=bond1 slaves=ether1,ether2 transmit-hash-policy=layer-2-and-3
+/ip/address
+add address=192.168.1.X/24 interface=bond1
+</code></pre>
+<p>The following configuration is relevant to <strong>AP1</strong>, <strong>AP2</strong>, <strong>ST1,</strong> and <strong>ST2</strong>, where <strong>X</strong> corresponds to an IP address for each device.</p>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1 protocol-mode=none
+/interface/bridge/port
+add interface=ether1 bridge=bridge1
+add interface=wlan1 bridge=bridge1
+/ip/address
+add address=192.168.1.X/24 interface=bridge1
+</code></pre>
+<h3 id="problem_14">Problem</h3>
+<p>While traffic is being forwarded properly between <strong>R1</strong> and <strong>R2</strong>, load balancing, link failover are working properly as well, but devices between <strong>R1</strong> and <strong>R2</strong> are not always accessible or some of them are completely inaccessible (in most cases <strong>AP2</strong> and <strong>ST2</strong> are inaccessible). After examining the problem you might notice that packets do not always get forwarded over the required bonding slave and as a result, are never received by the device you are trying to access. This is a network design and bonding protocol limitation. As soon as a packet needs to be sent out through a bonding interface (in this case you might be trying to send ICMP packets to <strong>AP2</strong> or <strong>ST2</strong>), the bonding interface will create a hash based on the selected bonding mode and transmit-hash-policy and will select an interface, through which to send the packet out, regardless of whether the destination is only reachable through a certain interface. Some devices will be accessible because the generated hash matches the interface, on which the device is located, but it might not choose the needed interface as well, which will result in an inaccessible device. Only broadcast bonding mode does not have this kind of protocol limitation, but this bonding mode has a very limited use case.</p>
+<h3 id="symptoms_14">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Limited connectivity</li>
+<li>Unstable links (in case of balance-rr)</li>
+</ul>
+<h3 id="solution_14">Solution</h3>
+<p>Bonding interfaces are not supposed to be connected using indirect links, but it is still possible to create a workaround. The idea behind this workaround is to find a way to bypass packets being sent out using the bonding interface. There are multiple ways to force a packet not to be sent out using the bonding interface, but essentially the solution is to create new interfaces on top of physical interfaces and add these newly created interfaces to a bond instead of the physical interfaces. One way to achieve this is to create EoIP tunnels on each physical interface, but that creates a huge overhead and will reduce overall throughput. You should create a VLAN interface on top of each physical interface instead. This creates a much smaller overhead and will not impact overall performance noticeably. Here is an example of how <strong>R1</strong> and <strong>R2</strong> should be reconfigured:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether1 name=VLAN_ether1 vlan-id=999
+add interface=ether2 name=VLAN_ether2 vlan-id=999
+/interface/bonding
+add mode=balance-xor name=bond1 slaves=VLAN_ether1,VLAN_ether2 transmit-hash-policy=layer-2-and-3
+/ip/address
+add address=192.168.1.X/24 interface=bond1
+add address=192.168.11.X/24 interface=ether1
+add address=192.168.22.X/24 interface=ether2
+</code></pre>
+<p><strong>AP1</strong> and <strong>ST1</strong> only need updated IP addresses to the correct subnet:</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.11.X/24 interface=bridge1
+</code></pre>
+<p>The same changes must be applied to <strong>AP2</strong> and <strong>ST2</strong> (make sure to use the correct subnet):</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.22.X/24 interface=bridge1
+</code></pre>
+<p>With this approach, you create the least overhead and the fewest configuration changes are required.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>LACP (802.3ad) is not meant to be used in setups, where devices' bonding slaves are not directly connected, in this case, it is not recommended to use LACP if there are Wireless links between both routers. LACP requires both bonding slaves to be at the same link speeds, Wireless links can change their rates at any time, which will decrease overall performance and stability. Other bonding modes should be used instead.</p>
+</div>
+<h2 id="bandwidth-testing">Bandwidth testing</h2>
+<hr />
+<p>Consider the following scenario: you set up a link between two devices. This can be any link, an Ethernet cable, a wireless link, a tunnel or any other connection. You decide that you want to test the link's bandwidth, but for convenience reasons, you decide to start testing the link with the same devices that are running the link.</p>
+<p><em>[gambar: Bad Bandwidth Setup]</em></p>
+<h3 id="problem_15">Problem</h3>
+<p>As soon as you start <a href="../../diagnostics-monitoring-and-troubleshooting/bandwidth-test.md">Bandwidth test</a> or <a href="../../diagnostics-monitoring-and-troubleshooting/traffic-generator.md">Traffic generator</a> you notice that the throughput is much smaller than expected. For very powerful routers, which should be able to forward many Gigabits per second (Gbps), you notice that only a few Gigabits per second get forwarded. The reason why this is happening is because of the testing method you are using. You should never test throughput on a router while using the same router for generating traffic because you are adding an additional load on the CPU that reduces the total throughput.</p>
+<h3 id="symptoms_15">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Low throughput.</li>
+<li>High CPU usage.</li>
+</ul>
+<h3 id="solution_15">Solution</h3>
+<p>Use a proper testing method. Don't use Bandwidth-test to test large capacity links and don't run any tool that generates traffic on the same device you are testing. Design your network properly so you can attach devices that will generate and receive traffic on both ends. If you are familiar with <strong>Iperf</strong>, then this concept should be clear. Remember that in the real world, a router or a switch does not generate large amounts of traffic (at least it shouldn't, otherwise, it might indicate an existing security issue), a server/client generates the traffic while a router/switch forwards the traffic (and does some manipulations to the traffic in appropriate cases).</p>
+<p><em>[gambar: Good Bandwidth Setup]</em></p>
+<h2 id="bridge-split-horizon-usage">Bridge split-horizon usage</h2>
+<hr />
+<p>Consider the following scenario: you have a bridge and you need to isolate certain bridge ports from each other. There are options to use a built-in switch chip to isolate certain ports on certain switch chips, you can use bridge firewall rules to prevent certain ports from being able to send any traffic to other ports, you can isolate ports in a PVLAN type of setup using port isolation, but there is also a software-based solution to use bridge split-horizon (which disables hardware offloading on all switch chips).</p>
+<h3 id="configuration_15">Configuration</h3>
+<pre><code class="language-ros">/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 horizon=1 hw=no interface=ether1
+add bridge=bridge1 horizon=2 hw=no interface=ether2
+add bridge=bridge1 horizon=3 hw=no interface=ether3
+add bridge=bridge1 horizon=4 hw=no interface=ether4
+</code></pre>
+<h3 id="problem_16">Problem</h3>
+<p>After setting the bridge split-horizon on each port, you start to notice that ports are still able to send data to each other. The reason for this is the misuse of bridge split-horizon. A bridge port is only not able to communicate with ports that are in the same horizon, for example, horizon=1 is not able to communicate with horizon=1, but is able to communicate with horizon=2, horizon=3, and so on.</p>
+<h3 id="symptoms_16">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>Traffic is being forwarded on different bridge split-horizons.</li>
+</ul>
+<h3 id="solution_16">Solution</h3>
+<p>Set a proper value as the bridge split-horizon. In case you want to isolate ports from each other (a common scenario for PPPoE setups) and each port is only able to communicate with the bridge itself, then all ports must be in the same bridge split-horizon.</p>
+<pre><code class="language-ros">/interface/bridge/port
+set [f] horizon=1
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Setting all bridge ports in the same bridge split-horizon will result in traffic only being able to reach the bridge interface itself, then packets can only be routed. This is useful when you want other devices to filter out certain traffic. Similar behavior can be achieved using bridge filter rules.</p>
+</div>
+<h2 id="unsupported-sfp-modules">Unsupported SFP modules</h2>
+<hr />
+<p>Consider the following scenario: you have decided to use optical fiber cables to connect your devices together by using SFP or SFP+ optical modules, but for convenience reasons, you have decided to use SFP optical modules that were available.</p>
+<h3 id="problem_17">Problem</h3>
+<p>As soon as you configure your devices to have connectivity on the ports that are using these SFP optical modules, you might notice that the link is either working properly or experiencing random connectivity issues. There are many vendors that manufacture SFP optical modules, but not all vendors strictly follow SFP MSA, SFF, and IEEE 802.3 standards, which can lead to unpredictable compatibility issues, which is a very common issue when using not well-known or unsupported SFP optical modules in MikroTik devices.</p>
+<h3 id="symptoms_17">Symptoms</h3>
+<p>Below is a list of possible symptoms that might be a result of this kind of misconfiguration:</p>
+<ul>
+<li>SFP interface does not link up.</li>
+<li>Random packet drop.</li>
+<li>Unstable link (flapping).</li>
+<li>SFP module is not running after a reboot.</li>
+<li>SFP module is not running after a power-cycle.</li>
+<li>SFP module is running only on one side.</li>
+</ul>
+<h3 id="solution_17">Solution</h3>
+<p>You should only use supported SFP modules. Always check the <a href="../../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP compatibility table</a> if you are intending to use SFP modules manufactured by MikroTik. There are other SFP modules that do work with MikroTik devices as well. Check the <a href="../../hardware/peripherals.mdx#sfp-modules">Supported peripherals table</a> to find other SFP modules that have been confirmed to work with MikroTik devices. Some unsupported modules might not be working properly at certain speeds and with auto-negotiation. You might want to try to disable it and manually set a link speed.</p>
+<hr />
+<h1 id="loop-protect">Loop Protect</h1>
+<blockquote>
+<p>Loop Protect prevents Layer2 loops by detecting and disabling interfaces receiving their own loop-protect packets, with configurable intervals and disable times. It supports Ethernet, VLAN, EoIP, and VxLAN...</p>
+</blockquote>
+<h1 id="loop-protect_1">Loop Protect</h1>
+<p>The loop protect feature can prevent Layer2 loops by sending loop protect protocol packets and shutting down interfaces in case they receive loop protect packets originating from themselves. The feature works by checking the source MAC address of the received loop-protect packet against the MAC addresses of loop-protect enabled interfaces. If the match is found, loop protect disables the interface that received the loop protect packet. A log message warns about this event and the interface is marked with a loop protect comment by the system. The RouterOS loop protect feature can be used on bridged interfaces as well as on Ethernet interfaces which are set for switching in RouterBoard switch chips.</p>
+<p>Loop Protect works on Ethernet, VLAN, EoIP, VxLAN interfaces and its packets are encapsulated with EtherType 0x9003.<br />
+The loop protect packet interval and interface disable time can be adjusted. Configuration changes or expiration of disable time resets loop protection on an interface.</p>
+<p>On a switch chip that supports ACL rules, loop protect on an Ethernet interface adds a dynamic ACL rule that redirects loop protect packets to the CPU.</p>
+<p>Enable loop protect on untrusted access ports, where the connected end devices can create a loop. Examples are unmanaged switches and hosts that bridge their Ethernet and Wi-Fi interfaces. These devices usually do not run STP, so the bridge cannot detect the loop.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Even though loop-protect can work on interfaces that are added to a bridge, it is still recommended to use (R/M)STP rather than loop-protect since (R/M)STP is compatible with most switches, and STP variants provide many more configuration options to fine-tune your network.</p>
+</div>
+<p><strong>Sub-menu:</strong> <code>/interface/ethernet, /interface/vlan, /interface/eoip, /interface/eoipv6, /interface/vxlan</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>loop-protect</strong> (<em>on | off | default</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Enables or disables loop protect on the selected interface. <strong>default</strong> works as turned off.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>loop-protect-send-interval</strong> (<em>time interval</em>; Default: <strong>5s</strong>)</td>
+<td style="text-align: left;">Sets how often loop protect packets are sent on the selected interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>loop-protect-disable-time</strong> (<em>time interval | 0</em>; Default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Sets how long the selected interface is disabled when a loop is detected. <strong>0</strong> - forever.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only-properties">Read-only properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>loop-protect-status</strong> (<em>on | off | disabled</em>)</td>
+<td style="text-align: left;">on - loop-protect feature is turned on, the interface is sending and listening for loop protect packetsoff - loop-protect feature is turned offdisabled - loop-protect feature is turned on, the interface has received a loop protect packet and disabled itself to prevent a loop.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="nvidia-dgx-spark-clusters">NVIDIA DGX Spark clusters</h1>
+<blockquote>
+<p>Plan an NVIDIA DGX Spark cluster with a MikroTik switch: choose the hardware, see what performance to expect, and follow example configurations to run a local coding assistant for a small team.</p>
+</blockquote>
+<h1 id="nvidia-dgx-spark-clusters_1">NVIDIA DGX Spark clusters</h1>
+<p>NVIDIA DGX Spark is a desktop AI computer with 128 GB of memory. Connect several units into a cluster to run a model too large for one unit, or to share a local AI assistant with a team. A model that fits on one unit can also answer faster when several units share the work.</p>
+<p>A MikroTik switch configured as on this page runs a model across several units as fast as direct cables between the units, and adds what direct cables cannot. Every unit reaches every other unit through one high-speed cable, so you can add units or split them into separate model servers without recabling. The same network can distribute model files, carry other transfers while the model runs, and connect the units to a storage server or router if you leave ports available.</p>
+<p>This page helps you choose the number of units and a switch, and shows what performance to expect. It then walks through two four-unit setups: a CRS504 at 100 Gbit/s per unit and a CRS804 at 200 Gbit/s per unit. Both lead to the same practical example: DeepSeek V4.1 Flash as a coding assistant for a small team, with the source code kept in the office. A later section shows a faster model server for the same example, with a more complex setup.</p>
+<h2 id="plan-the-cluster">Plan the cluster</h2>
+<p>Choose enough units to hold the model you want to run, then decide how to share them among users. The model server is the software that runs the model and answers requests; one server can use several units.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Goal</th>
+<th style="text-align: left;">Units</th>
+<th style="text-align: left;">Switch example</th>
+<th style="text-align: left;">Model server</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Run a model too large for one unit</td>
+<td style="text-align: left;">2 to 4, depending on the model's memory needs</td>
+<td style="text-align: left;">CRS504 or CRS804</td>
+<td style="text-align: left;">One server across all units</td>
+</tr>
+<tr>
+<td style="text-align: left;">Faster replies for one or a few users</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">CRS504 or CRS804</td>
+<td style="text-align: left;">One server across all four units</td>
+</tr>
+<tr>
+<td style="text-align: left;">Increase total throughput with many users</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">CRS504 or CRS804</td>
+<td style="text-align: left;">Consider two servers of two units each, for a model that fits two units</td>
+</tr>
+<tr>
+<td style="text-align: left;">Copy large files between units while the model runs</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">CRS804</td>
+<td style="text-align: left;">Keep the model's traffic separate from bulk traffic</td>
+</tr>
+</tbody>
+</table>
+<p>For example, DeepSeek V4 Flash (167 GB) runs on two units. The larger DeepSeek V4.1 Flash (510 GB) does not fit on two; the walkthrough uses four units, with a copy of the model on each unit's disk.</p>
+<h3 id="cluster-size-and-server-layout">Cluster size and server layout</h3>
+<p>For a model that fits on two units, four units can run either one shared server or two separate servers:</p>
+<ul>
+<li>One four-unit server can give faster replies to individual users. For example, DeepSeek V4 Flash generates about 54 tok/s for one user on two units and 82 tok/s on four.</li>
+<li>With many simultaneous requests, two two-unit servers can generate more text in total. The point at which this helps depends on the model, prompt lengths and server settings; compare both layouts with your workload.</li>
+<li>Check the server's request limit (<code>--max-num-seqs</code>) before deciding to split the cluster. Requests beyond this limit wait in a queue. Raising the limit can help a shared server serve more users, provided it has enough memory for their contexts.</li>
+</ul>
+<h2 id="choose-a-switch">Choose a switch</h2>
+<p>The CRS504 suits four units on a network that carries only the cluster's traffic. The CRS804 gives each unit 200 Gbit/s and suits a network that also carries bulk transfers.</p>
+<p>The examples on this page use four units on a CRS504 or CRS804. The table lists how many units each switch connects at the stated link speed.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Switch</th>
+<th style="text-align: left;">Ports for the units</th>
+<th style="text-align: left;">Units connected at the listed speed</th>
+<th style="text-align: left;">Link per unit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CRS504-4XQ-IN</td>
+<td style="text-align: left;">4 × 100G QSFP28</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">100 Gbit/s</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS520-4XS-16XQ-RM</td>
+<td style="text-align: left;">16 × 100G QSFP28</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">100 Gbit/s</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS804-4DDQ-hRM</td>
+<td style="text-align: left;">4 × 400G QSFP56-DD</td>
+<td style="text-align: left;">4, or 8 with 400G to 2 × 200G breakout cables</td>
+<td style="text-align: left;">200 Gbit/s</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS812-8DS-2DQ-2DDQ-RM</td>
+<td style="text-align: left;">2 × 400G QSFP56-DD, 2 × 200G QSFP56</td>
+<td style="text-align: left;">6, with breakout cables on the 400G ports</td>
+<td style="text-align: left;">200 Gbit/s</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Text generation:</strong> the walkthrough's model server runs at similar speeds at 100 and 200 Gbit/s. A faster network link does not by itself mean faster answers. The faster <a href="#faster-deepseek-v41-flash-with-spark-ds41f">spark-ds41f</a> server reads long prompts about 13% faster at 200 Gbit/s, and serves 16 requests at the same time 8 to 13% faster.</li>
+<li><strong>Network capacity:</strong> a 200 Gbit/s link gives twice the capacity for model loading, storage traffic and long prompts. How much faster a task finishes depends on the workload. NVIDIA's switched DGX Spark setup specifies 200 Gbit/s per unit.</li>
+<li><strong>Other devices:</strong> count a port for a storage server or a link to another switch. Four units use all four QSFP ports of a CRS504.</li>
+<li><strong>Cables:</strong> one QSFP cable from each unit to the switch, at the speed of the switch port (see <a href="#cables-and-links">Cables and links</a>). The breakout options in the table split one 400 Gbit/s switch port into two 200 Gbit/s connections, one per unit. Also allow for each unit's separate Ethernet connection to the office network and access to the switch's management port.</li>
+<li><strong>Shared traffic:</strong> both the CRS504 and CRS804 support Priority-based Flow Control (PFC), which protects model traffic on a network shared with bulk transfers. A 100 Gbit/s network for the cluster alone needs no flow control, as in the CRS504 example. The CRS804 example uses PFC. The CRS812 has the same switch chip as the CRS804 (98DX7335). See <a href="../quality-of-service#qos-device-support">QoS device support</a> for support across switch models.</li>
+</ul>
+<h2 id="what-performance-to-expect">What performance to expect</h2>
+<p>These figures are examples for the model and settings shown; performance varies with prompt length, concurrent requests and reuse of cached context.</p>
+<p>The DeepSeek V4.1 Flash example runs one model server across four units. It generates text at 75 to 80 tokens per second (tok/s) for one user, about 40 tok/s per user for four users, and about 26 tok/s per user for eight users. These rates include the model's thinking tokens, so they do not tell you how soon a complete answer arrives.</p>
+<p>The model can generate internal reasoning ("thinking") before it answers. Turning thinking off shortens the wait for a complete answer:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Coding session</th>
+<th style="text-align: right;">Complete answer with thinking on, median</th>
+<th style="text-align: right;">Complete answer with thinking off, median</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">One user</td>
+<td style="text-align: right;">18–19 s</td>
+<td style="text-align: right;">4–7 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Three users at the same time</td>
+<td style="text-align: right;">30–31 s</td>
+<td style="text-align: right;">9 s</td>
+</tr>
+</tbody>
+</table>
+<p>The first turn takes longer because the server must read the new prompt. For one user with 30,000 tokens of source code, the first token arrives after about 9 to 10 s. Later turns reuse the cached context and start after about 1 s. Very long prompts take longer and can slow the replies to other users.</p>
+<p>Both switch configurations give similar results for this example. The "Example results" section has more detail.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<p>Each DGX Spark has a ConnectX-7 network adapter with two QSFP ports. The cluster network is also called the fabric; the examples keep it separate from the office network.</p>
+<ul>
+<li>Each unit has one cable from its first QSFP port, the one with the interfaces <code>enp1s0f0np0</code> and <code>enP2p1s0f0np0</code>, to the switch.</li>
+<li>Both network interfaces of the connected port have persistent IPv4 addresses in NetworkManager profiles.</li>
+<li>Management traffic (SSH, model downloads, users of the model server) uses another network port of the units, not the cluster fabric.</li>
+<li>The commands on this page use <code>nmcli</code>, <code>mlnx_qos</code>, <code>ethtool</code>, <code>show_gids</code> and <code>ib_write_bw</code>. DGX OS includes them.</li>
+<li>The switch's QSFP ports carry no other configuration, and you reach the switch through its management port.</li>
+</ul>
+<p>For fresh units, follow NVIDIA's <a href="https://build.nvidia.com/spark/connect-multiple-sparks/advance">manual cluster setup</a> and choose a switched topology. Create the bridge described in the switch example before running NVIDIA's setup helper. The following table shows the addresses used throughout this page. If your setup assigns different addresses, substitute them in the network checks, model-copy commands and server scripts, including their subnet ranges.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Unit</th>
+<th style="text-align: left;"><code>enp1s0f0np0</code> (RDMA device <code>rocep1s0f0</code>)</th>
+<th style="text-align: left;"><code>enP2p1s0f0np0</code> (RDMA device <code>roceP2p1s0f0</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">192.168.100.21/24</td>
+<td style="text-align: left;">192.168.101.21/24</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">192.168.100.22/24</td>
+<td style="text-align: left;">192.168.101.22/24</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">192.168.100.23/24</td>
+<td style="text-align: left;">192.168.101.23/24</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">192.168.100.24/24</td>
+<td style="text-align: left;">192.168.101.24/24</td>
+</tr>
+</tbody>
+</table>
+<p>The two interfaces are two PCIe functions of the same QSFP port, so one cable carries both. Each interface reaches about 100 Gbit/s. On a 100 Gbit/s link, the first interface alone reaches the link rate. On a 200 Gbit/s link, the application must use both.</p>
+<pre><code class="language-mermaid">graph TB
+    lan[&quot;Office LAN switchSSH, model downloads,model server users&quot;]
+    s1[&quot;DGX Spark 1192.168.100.21192.168.101.21&quot;]
+    s2[&quot;DGX Spark 2192.168.100.22192.168.101.22&quot;]
+    s3[&quot;DGX Spark 3192.168.100.23192.168.101.23&quot;]
+    s4[&quot;DGX Spark 4192.168.100.24192.168.101.24&quot;]
+    sw[&quot;MikroTik switch: cluster fabricbridge1, jumbo frames,PFC on the CRS804&quot;]
+    lan -.- s1 &amp; s2 &amp; s3 &amp; s4
+    s1 &amp; s2 &amp; s3 &amp; s4 --- sw
+</code></pre>
+<p>The solid lines are the QSFP cables of the cluster fabric. The dotted lines are the units' Ethernet connections to the office network, through the office's own switch. The two networks stay separate: the fabric carries only traffic between the units.</p>
+<h3 id="cables-and-links">Cables and links</h3>
+<p>A DGX Spark QSFP port takes up to 200 Gbit/s. Connect each unit to the switch with a direct attach copper (DAC) cable that matches the speed of the switch port:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Switch</th>
+<th style="text-align: left;">Link per unit</th>
+<th style="text-align: left;">Cable for each unit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CRS504, CRS520</td>
+<td style="text-align: left;">100 Gbit/s</td>
+<td style="text-align: left;">100G QSFP28 DAC, such as MikroTik XQ+DA0001 (1 m) or XQ+DA0003 (3 m)</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS804, CRS812</td>
+<td style="text-align: left;">200 Gbit/s</td>
+<td style="text-align: left;">200G QSFP56 DAC (200GBASE-CR4), or a 400G QSFP56-DD to 2 × 200G QSFP56 breakout cable for two units on one switch port</td>
+</tr>
+</tbody>
+</table>
+<p>A 100G QSFP28 cable also fits the 400G ports of the CRS804 and CRS812, and the unit then connects at 100 Gbit/s.</p>
+<p>The switch and the units bring up the links by themselves. After cabling, check each switch port that connects a unit, for example:</p>
+<pre><code class="language-routeros">/interface/ethernet/monitor qsfp28-1-1 once
+</code></pre>
+<p>A working link shows <code>status: link-ok</code> and <code>rate: 100Gbps</code>, or <code>200Gbps</code> on the CRS804. The <code>sfp-vendor-part-number</code> line names the cable. On the unit, <code>ethtool enp1s0f0np0</code> shows the same speed and <code>Link detected: yes</code>. If a link does not come up, see <a href="#troubleshoot">Troubleshoot</a>.</p>
+<h3 id="how-the-cluster-network-works">How the cluster network works</h3>
+<p>The units exchange data with remote direct memory access (RDMA) over Converged Ethernet version 2 (RoCEv2). RoCEv2 recovers lost packets, but slowly: when several units send bulk traffic to one at the same time, a switch without flow control drops packets and the transfer slows down sharply.</p>
+<p>A model server's own traffic stays far below the link rate (see <a href="#network-load-of-a-model-server">Network load of a model server</a>), so a fabric that carries only the cluster's inference traffic needs no flow control. The CRS504 example uses jumbo frames alone. Priority-based Flow Control (PFC) pauses the senders of one traffic class instead of dropping their packets, and leaves other classes alone. The CRS804 example uses PFC with ECN to keep the inference traffic lossless and fast at 200 Gbit/s, also next to bulk transfers.</p>
+<h2 id="connect-four-units-to-a-crs504-at-100-gbits">Connect four units to a CRS504 at 100 Gbit/s</h2>
+<p>A team runs a coding assistant on four DGX Spark units, with one 100 Gbit/s cable from each unit to a CRS504-4XQ. The fabric carries only the cluster's inference traffic, so the configuration needs no flow control: a hardware-offloaded bridge, jumbo frames and forward error correction. To carry storage or other bulk transfers on the same fabric, use PFC as in the CRS804 example.</p>
+<h3 id="configure-the-switch">Configure the switch</h3>
+<p>Add the four ports that connect to the units to one bridge. Hardware offloading forwards their traffic at line rate. Keep all ports of the cluster in this one bridge: on this switch, only one bridge is hardware offloaded (see <a href="./layer2-misconfiguration#bridges-on-a-single-switch-chip">Bridges on a single switch chip</a>). If the switch already has a bridge with these ports, skip this step.</p>
+<pre><code class="language-routeros">/interface/bridge/add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=qsfp28-1-1
+add bridge=bridge1 interface=qsfp28-2-1
+add bridge=bridge1 interface=qsfp28-3-1
+add bridge=bridge1 interface=qsfp28-4-1
+</code></pre>
+<p>Set the L2MTU for jumbo frames, and turn on Reed-Solomon forward error correction (RS-FEC) on the four ports:</p>
+<pre><code class="language-routeros">/interface/ethernet
+set [find name~&quot;qsfp28-&quot;] l2mtu=9500
+set [find name~&quot;qsfp28-.-1&quot;] fec-mode=fec91
+</code></pre>
+<p>With the default <code>fec-mode=auto</code>, a 100 Gbit/s port runs without forward error correction. The units connect that way too, but the link then corrupts some packets, so set <code>fec91</code> on the switch; the units follow it by themselves. At 200 Gbit/s, as on the CRS804, the switch and the units agree on RS-FEC by themselves.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A change of <code>l2mtu</code> or <code>fec-mode</code> restarts the link for a few seconds. Make the change before you start the model servers.</p>
+</div>
+<h3 id="configure-the-units">Configure the units</h3>
+<p>Set the MTU to 9000 on both network interfaces of the connected port. The commands set it in the NetworkManager profile of each interface, so that it stays after a restart, and bind each profile to its interface:</p>
+<pre><code class="language-bash">for i in enp1s0f0np0 enP2p1s0f0np0; do
+  c=$(nmcli -g GENERAL.CONNECTION device show $i)
+  sudo nmcli connection modify &quot;$c&quot; 802-3-ethernet.mtu 9000 \
+      connection.interface-name $i
+  sudo ip link set $i mtu 9000
+done
+</code></pre>
+<p>At 100 Gbit/s, the model server uses the first interface: pass <code>NCCL_IB_HCA=rocep1s0f0</code> to its container.</p>
+<h3 id="check-the-network">Check the network</h3>
+<p>From every unit, send a full-size packet to both addresses of each other unit. The ping fails when a port or a unit on that path has a smaller MTU, so one working pair does not prove the others. For example, from unit 1 to unit 2:</p>
+<pre><code class="language-bash">ping -c 3 -M do -s 8972 192.168.100.22
+ping -c 3 -M do -s 8972 192.168.101.22
+</code></pre>
+<p>On the switch, check that the four bridge ports have the <code>H</code> (hardware offloaded) flag:</p>
+<pre><code class="language-routeros">/interface/bridge/port/print
+</code></pre>
+<h2 id="connect-four-units-to-a-crs804-at-200-gbits-with-pfc">Connect four units to a CRS804 at 200 Gbit/s with PFC</h2>
+<p>The same team also copies model files between the units and runs a second job on the cluster. The four units connect to a CRS804-4DDQ, one 200 Gbit/s cable each. PFC keeps the inference traffic lossless in traffic class 3 and pauses only the units that send to a busy port. Explicit Congestion Notification (ECN) makes those units slow down before the switch has to pause them, so the queues stay short and the inference traffic does not wait behind bulk data. Bulk RDMA transfers can share traffic class 3: they lose no packets, and text generation keeps most of its speed (see <a href="#bulk-transfers-and-text-generation">Bulk transfers and text generation</a>). Leave other bulk traffic, such as file copies over TCP, in the default class: the switch drops it under congestion, and its protocols recover. All traffic still shares the link bandwidth and the units' network adapters. It costs a QoS configuration on the switch and on each unit, and the model servers must mark their RDMA traffic.</p>
+<p>PFC works in both directions. The switch pauses the units that send to a busy port, and a receiving unit pauses the switch: each of its two network interfaces takes about 100 Gbit/s, so it cannot always take a 200 Gbit/s burst on one interface. Without PFC, for example with ECN alone, the receiving unit drops packets in its network adapter. Use ECN together with PFC, not instead of it.</p>
+<p>Other devices on the fabric bridge, such as a router or a storage server, send their traffic in the default class. A few Gbit/s of such traffic has little effect on text generation. If these devices send multicast, enable IGMP snooping, so that the bridge does not flood it to every unit and to the switch CPU (see <a href="./bridge-igmp-mld-snooping">Bridge IGMP/MLD snooping</a>).</p>
+<h3 id="configure-the-switch_1">Configure the switch</h3>
+<p>Add the four ports to one bridge and set the L2MTU for jumbo frames, as on the CRS504:</p>
+<pre><code class="language-routeros">/interface/bridge/add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=qsfp56-dd-1-1
+add bridge=bridge1 interface=qsfp56-dd-2-1
+add bridge=bridge1 interface=qsfp56-dd-3-1
+add bridge=bridge1 interface=qsfp56-dd-4-1
+/interface/ethernet
+set [find name~&quot;qsfp56-dd-&quot;] l2mtu=9500
+</code></pre>
+<p>Map RoCEv2 traffic (DSCP 26) to traffic class 3 and congestion notification packets (DSCP 48) to traffic class 6. Create a PFC profile for traffic class 3 with a pause threshold of 10% and a resume threshold of 5%, and apply it to the four ports. The ports trust the DSCP value of the packets (<code>trust-l3=keep</code>). Turn on ECN marking for traffic class 3, with the high WRED threshold.</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/profile
+add dscp=26 name=roce traffic-class=3
+add dscp=48 name=cnp traffic-class=6
+/interface/ethernet/switch/qos/priority-flow-control
+add name=pfc-tc3 rx=yes traffic-class=3 tx=yes \
+    pause-threshold=10% resume-threshold=5%
+/interface/ethernet/switch/qos/port
+set [find name~&quot;qsfp56-dd-.-1&quot;] pfc=pfc-tc3 trust-l3=keep
+/interface/ethernet/switch/qos/tx-manager/queue
+set [find traffic-class=3] ecn=yes
+/interface/ethernet/switch/qos/settings
+set wred-threshold=high
+</code></pre>
+<p>When the queue of traffic class 3 grows, the switch marks its packets with ECN. The receiving unit answers with congestion notification packets, and the senders slow down before their data reaches the pause threshold. PFC pauses a unit that sends to a busy port only when a burst comes faster: at 10% of the free lossless buffer, and it lets the unit send again 5% below that. The other units keep sending. PFC receive also needs the egress rate of queue 3, which the switch sets on these ports by itself. See <a href="#pfc-thresholds-and-ecn">PFC thresholds and ECN</a> for other values.</p>
+<h3 id="configure-the-units_1">Configure the units</h3>
+<p>Set the MTU to 9000 on both interfaces as for the CRS504. Then make each unit trust the DSCP value, run PFC on priority 3 and stop 802.3x pause frames. A unit maps DSCP 26 to priority 3. The units answer ECN marks and slow down by themselves: their RoCE congestion control is on by default.</p>
+<p>These settings do not stay after a restart, so a service applies them at every start of the unit, before Docker starts. Create and start the service on every unit:</p>
+<pre><code class="language-bash">sudo tee /etc/systemd/system/fabric-qos.service &gt; /dev/null &lt;&lt;EOF
+[Unit]
+Description=PFC on priority 3 for the cluster fabric
+Requires=sys-subsystem-net-devices-enp1s0f0np0.device
+After=sys-subsystem-net-devices-enp1s0f0np0.device
+Requires=sys-subsystem-net-devices-enP2p1s0f0np0.device
+After=sys-subsystem-net-devices-enP2p1s0f0np0.device
+Before=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=mlnx_qos -i enp1s0f0np0 --trust=dscp --pfc=0,0,0,1,0,0,0,0
+ExecStart=mlnx_qos -i enP2p1s0f0np0 --trust=dscp --pfc=0,0,0,1,0,0,0,0
+ExecStart=-ethtool -A enp1s0f0np0 rx off tx off
+ExecStart=-ethtool -A enP2p1s0f0np0 rx off tx off
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable --now fabric-qos
+</code></pre>
+<p>Check that <code>mlnx_qos -i enp1s0f0np0</code> prints <code>Priority trust state: dscp</code> and, in its PFC section, <code>enabled 0 0 0 1 0 0 0 0</code>.</p>
+<h3 id="mark-the-traffic-and-use-both-interfaces">Mark the traffic and use both interfaces</h3>
+<p>Pass these settings to the model server's container on every unit, for example with <code>docker run -e</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>NCCL_IB_HCA</code></td>
+<td style="text-align: left;"><code>rocep1s0f0,roceP2p1s0f0</code></td>
+<td style="text-align: left;">NCCL uses both RDMA devices of the port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>NCCL_IB_MERGE_NICS</code></td>
+<td style="text-align: left;"><code>1</code></td>
+<td style="text-align: left;">NCCL combines the two devices into one 200 Gbit/s connection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>NCCL_IB_TC</code></td>
+<td style="text-align: left;"><code>106</code></td>
+<td style="text-align: left;">NCCL marks its RDMA traffic with DSCP 26.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>B12X_ROCE_TRAFFIC_CLASS</code></td>
+<td style="text-align: left;"><code>106</code></td>
+<td style="text-align: left;">NVIDIA's RDMA all-reduce in the vLLM image of the DeepSeek V4.1 Flash example marks its traffic the same way.</td>
+</tr>
+</tbody>
+</table>
+<p>The value 106 is DSCP 26 with the ECN-capable bits set, which the switch maps to traffic class 3. Other RDMA software, also for bulk transfers, has its own traffic class setting; set it to 106 too. Leave other bulk traffic unmarked.</p>
+<h3 id="check-the-network_1">Check the network</h3>
+<p>Check jumbo frames and the bridge as for the CRS504. Then print the QoS port settings:</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/port/print
+</code></pre>
+<p>A <code>;;;</code> comment line under a port names a setting that the port is missing.</p>
+<h3 id="test-pfc-under-load">Test PFC under load</h3>
+<p>Pause frames appear only under congestion: with no traffic, or with one sender for each receiver, the pause counters stay at 0. This test creates congestion on purpose. Units 2 and 3 send to unit 1 at the same time on both interfaces, so that unit 1's port receives twice its link rate, and the switch must pause the senders instead of dropping their packets. The test traffic is marked for the lossless class (<code>--tclass=106 -S 3</code>).</p>
+<ol>
+<li>Reset the counters on the switch:</li>
+</ol>
+<p><code>routeros
+   /interface/ethernet/reset-counters [find name~"qsfp56-dd-.-1"]</code></p>
+<ol start="2">
+<li>On each unit, find the RoCEv2 GID index of both RDMA devices: the line of <code>show_gids</code> with <code>v2</code> and the IPv4 address of the interface. Use the index of <code>rocep1s0f0</code> as <code>&lt;GID1&gt;</code> and that of <code>roceP2p1s0f0</code> as <code>&lt;GID2&gt;</code> in the following commands.</li>
+<li>On unit 1, start one receiver for each sender on each interface:</li>
+</ol>
+<p><code>bash
+   for p in 18601 18602; do
+     ib_write_bw -d rocep1s0f0 -x &lt;GID1&gt; -F --report_gbits \
+         --tclass=106 -S 3 -s 65536 -q 4 -D 10 -p $p &amp;
+   done
+   for p in 18603 18604; do
+     ib_write_bw -d roceP2p1s0f0 -x &lt;GID2&gt; -F --report_gbits \
+         --tclass=106 -S 3 -s 65536 -q 4 -D 10 -p $p &amp;
+   done
+   wait</code></p>
+<ol start="4">
+<li>On units 2 and 3, start the senders at the same time. Unit 2 uses ports 18601 and 18603, as here; unit 3 uses 18602 and 18604:</li>
+</ol>
+<p><code>bash
+   ib_write_bw -d rocep1s0f0 -x &lt;GID1&gt; -F --report_gbits \
+       --tclass=106 -S 3 -s 65536 -q 4 -D 10 -p 18601 192.168.100.21 &amp;
+   ib_write_bw -d roceP2p1s0f0 -x &lt;GID2&gt; -F --report_gbits \
+       --tclass=106 -S 3 -s 65536 -q 4 -D 10 -p 18603 192.168.101.21 &amp;
+   wait</code></p>
+<ol start="5">
+<li>Read the counters on the switch:</li>
+</ol>
+<p><code>routeros
+   /interface/ethernet/print stats where name~"qsfp56-dd-.-1"</code></p>
+<p>On a working configuration, the receivers on unit 1 together report about 196 Gbit/s, <code>tx-pause</code> grows on the ports of units 2 and 3 and stays at 0 on the ports of units 1 and 4, and <code>tx-drop-queue3-packet</code> stays at 0. <code>rx-pause</code> can also grow on the port of unit 1: unit 1 pauses the switch when one of its interfaces receives faster than it can take. On units 2 and 3, <code>rx_prio3_pause</code> grows:</p>
+<pre><code class="language-bash">ethtool -S enp1s0f0np0 | grep prio3_pause
+</code></pre>
+<p>On unit 1, the count of ECN-marked packets grows:</p>
+<pre><code class="language-bash">cat /sys/class/infiniband/rocep1s0f0/ports/1/hw_counters/np_ecn_marked_roce_packets
+</code></pre>
+<p>The drop counters of both interfaces of unit 1 do not grow:</p>
+<pre><code class="language-bash">for i in enp1s0f0np0 enP2p1s0f0np0; do
+  ethtool -S $i | grep -e rx_discards_phy -e rx_out_of_buffer
+done
+</code></pre>
+<p>While the senders run, the switch's lossless buffer holds a few hundred KiB, far below its capacity:</p>
+<pre><code class="language-routeros">/interface/ethernet/switch/qos/monitor once
+</code></pre>
+<p>A <code>lossless-pool-byte-use</code> above 1 MiB means higher thresholds than those of the example.</p>
+<h2 id="recommended-settings">Recommended settings</h2>
+<h3 id="network-settings">Network settings</h3>
+<p>The two switch examples apply these settings:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Choice</th>
+<th style="text-align: left;">Recommended setting</th>
+<th style="text-align: left;">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Flow control on a 100 Gbit/s fabric with only the cluster's inference traffic</td>
+<td style="text-align: left;">None, as in the CRS504 example</td>
+<td style="text-align: left;">The model server's traffic stays far below the link rate.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Flow control on a CRS804, or on a fabric shared with bulk transfers</td>
+<td style="text-align: left;">PFC on traffic class 3 with a 10% pause threshold and a 5% resume threshold, and ECN on traffic class 3 with <code>wred-threshold=high</code></td>
+<td style="text-align: left;">The senders slow down before the switch has to pause them, so the queues stay short and inference traffic keeps most of its speed next to bulk transfers.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Frame size</td>
+<td style="text-align: left;">MTU 9000 on the units, <code>l2mtu=9500</code> on the switch</td>
+<td style="text-align: left;">RDMA sends the same data in fewer, larger packets.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="model-server-settings-for-deepseek-v41-flash">Model server settings for DeepSeek V4.1 Flash</h3>
+<p>These settings apply to the model and vLLM build used in the walkthrough, which applies them to the model server and client requests.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Choice</th>
+<th style="text-align: left;">Recommended setting</th>
+<th style="text-align: left;">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Model servers</td>
+<td style="text-align: left;">One server across all four units</td>
+<td style="text-align: left;">Two units cannot hold the model.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Data exchange between the units</td>
+<td style="text-align: left;">NVIDIA's RDMA all-reduce (<code>VLLM_ENABLE_ROCE_ALLREDUCE=1</code>) on the first interface</td>
+<td style="text-align: left;">With DeepSeek V4 Flash and a 27-billion-parameter model, text generation was about one sixth faster than with NCCL.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Speculative decoding</td>
+<td style="text-align: left;">The model's own draft model with 5 draft tokens</td>
+<td style="text-align: left;">It roughly doubles the speed for one user. 5 draft tokens also serve 8 to 16 users best.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Requests served at the same time</td>
+<td style="text-align: left;"><code>--max-num-seqs 16</code></td>
+<td style="text-align: left;">Allows up to 16 active requests; further requests wait in a queue. With up to eight users, this setting gives similar speed to a limit of eight.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Context cache</td>
+<td style="text-align: left;"><code>--kv-cache-memory-bytes 6G</code></td>
+<td style="text-align: left;">Leaves memory available while the server reads long prompts. Without the option, the cache takes all the GPU memory the model leaves.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prompts that wait</td>
+<td style="text-align: left;"><code>--max-parallel-prefills auto --prefill-policy decode-aware</code></td>
+<td style="text-align: left;">The server reads several waiting prompts at the same time, a part of each in every step. A short request does not wait until another user's long prompt is read.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prompts that arrive while others receive text</td>
+<td style="text-align: left;"><code>--prefill-schedule-interval 8</code></td>
+<td style="text-align: left;">The server reads prompts in every eighth step, reducing interruptions to replies already in progress.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Thinking</td>
+<td style="text-align: left;">Set by each request: off for quick edits, with a thinking budget otherwise</td>
+<td style="text-align: left;">With thinking on, most of the wait for an answer is thinking.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="run-deepseek-v41-flash-for-a-small-team">Run DeepSeek V4.1 Flash for a small team</h2>
+<p>A team of four developers wants a coding assistant that runs in the office and keeps the source code there. Four DGX Spark units on one of the networks of this page serve DeepSeek V4.1 Flash, and each developer connects a coding agent to it. Each developer gets 40 to 75 tok/s, depending on how many are active at once. The server runs on all four units, and each unit keeps a 510 GB copy of the model on its disk.</p>
+<p>The steps use the vLLM image <code>eugr/spark-vllm-b12x:nightly-20261015</code>, the model checkpoint <code>DeepSeek-V4.1-Flash-1017</code> and Pi 0.87.</p>
+<p>Prerequisites:</p>
+<ul>
+<li>The four units are connected, configured and checked as in the CRS504 or the CRS804 section.</li>
+<li>Each unit has 540 GB of free disk space.</li>
+<li>The commands use Docker with the NVIDIA Container Toolkit. DGX OS includes them. Your user is a member of the <code>docker</code> group.</li>
+<li>Your user on unit 1 reaches the other units with an SSH key.</li>
+</ul>
+<h3 id="get-the-image-and-the-model">Get the image and the model</h3>
+<p>On every unit, download the model server image and create the model folder:</p>
+<pre><code class="language-bash">docker pull eugr/spark-vllm-b12x:nightly-20261015
+sudo mkdir -p /opt/models
+sudo chown $USER /opt/models
+</code></pre>
+<p>Check that you have the build this page uses. The command prints <code>eugr/spark-vllm-b12x@sha256:03a956544e9f9b4b7ba91690469fbe7848bdbef29a7d2e0f5788368467bb3595</code>.</p>
+<pre><code class="language-bash">docker image inspect --format '{{index .RepoDigests 0}}' \
+    eugr/spark-vllm-b12x:nightly-20261015
+</code></pre>
+<p>On unit 1, download the model with the <code>hf</code> tool of the image. If the download stops, run the command again: it continues where it stopped.</p>
+<pre><code class="language-bash">docker run --rm --network host -v /opt/models:/opt/models \
+    --entrypoint hf eugr/spark-vllm-b12x:nightly-20261015 \
+    download deepseek-ai/DeepSeek-V4.1-Flash-1017 \
+    --revision 08c8657f02291e11b6f6b63e0e16014f8e748518 \
+    --local-dir /opt/models/DeepSeek-V4.1-Flash-1017
+</code></pre>
+<p>Copy the model from unit 1 to the other units through the cluster fabric:</p>
+<pre><code class="language-bash">for u in 192.168.100.22 192.168.100.23 192.168.100.24; do
+  rsync -a --exclude .cache \
+      /opt/models/DeepSeek-V4.1-Flash-1017 $u:/opt/models/ &amp;
+done
+wait
+</code></pre>
+<p>The download takes about 70 minutes on a 1 Gbit/s internet connection. The copy to the three other units takes about 20 minutes: SSH encryption limits its speed, not the link.</p>
+<h3 id="start-the-model-server">Start the model server</h3>
+<p>On unit 1, create an API key. Clients send it with every request.</p>
+<pre><code class="language-bash">openssl rand -hex 24 &gt; ~/dgx-spark.key
+chmod 600 ~/dgx-spark.key
+</code></pre>
+<p>On each unit, create the file <code>~/start-vllm.sh</code>. It begins with three values of that unit:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Unit</th>
+<th style="text-align: left;"><code>RANK</code></th>
+<th style="text-align: left;"><code>IP</code></th>
+<th style="text-align: left;"><code>HEADLESS</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>0</code></td>
+<td style="text-align: left;"><code>192.168.100.21</code></td>
+<td style="text-align: left;">Empty</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;"><code>1</code></td>
+<td style="text-align: left;"><code>192.168.100.22</code></td>
+<td style="text-align: left;"><code>--headless</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><code>2</code></td>
+<td style="text-align: left;"><code>192.168.100.23</code></td>
+<td style="text-align: left;"><code>--headless</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"><code>3</code></td>
+<td style="text-align: left;"><code>192.168.100.24</code></td>
+<td style="text-align: left;"><code>--headless</code></td>
+</tr>
+</tbody>
+</table>
+<p>For example, the file begins like this on unit 1, where <code>HEADLESS</code> stays empty:</p>
+<pre><code class="language-bash">RANK=0
+IP=192.168.100.21
+HEADLESS=
+</code></pre>
+<p>The rest of the file is the same on every unit. It finds the RoCEv2 GID index of the unit's first interface, stops if the unit has none, and starts the server with the settings of the previous section.</p>
+<pre><code class="language-bash">[ -f ~/dgx-spark.key ] &amp;&amp; export VLLM_API_KEY=$(cat ~/dgx-spark.key)
+docker rm -f vllm &gt; /dev/null 2&gt;&amp;1
+GID=$(show_gids rocep1s0f0 | awk -v ip=$IP \
+    '$5 == ip &amp;&amp; $6 == &quot;v2&quot; {print $3}')
+[ -n &quot;$GID&quot; ] || { echo &quot;No RoCEv2 GID for $IP&quot;; exit 1; }
+DRAFT='{&quot;method&quot;:&quot;dspark&quot;,&quot;num_speculative_tokens&quot;:5,
+  &quot;draft_tensor_parallel_size&quot;:4,&quot;attention_backend&quot;:&quot;B12X&quot;,
+  &quot;draft_sample_method&quot;:&quot;probabilistic&quot;,
+  &quot;rejection_sample_method&quot;:&quot;standard&quot;,
+  &quot;enable_adaptive_verification&quot;:true}'
+docker run -d --name vllm --network host --ipc host \
+    --privileged --shm-size=16g --ulimit memlock=-1 \
+    --ulimit nofile=1048576:1048576 \
+    --device nvidia.com/gpu=all --device /dev/infiniband \
+    -v /opt/models:/opt/models -v $HOME/.cache:/root/.cache \
+    -e VLLM_API_KEY -e VLLM_HOST_IP=$IP \
+    -e VLLM_ENABLE_ROCE_ALLREDUCE=1 \
+    -e VLLM_ROCE_ALLREDUCE_MAX_SIZE=2MB \
+    -e VLLM_USE_V2_MODEL_RUNNER=1 \
+    -e VLLM_USE_BREAKABLE_CUDAGRAPH=0 \
+    -e VLLM_MXFP8_LM_HEAD=1 \
+    -e VLLM_ENGINE_READY_TIMEOUT_S=3600 \
+    -e B12X_COMPILE_WORKERS=4 -e CUTE_DSL_ARCH=sm_121a \
+    -e B12X_ROCE_SPIN_LIMIT=1200000000 \
+    -e B12X_ROCE_HCA=rocep1s0f0 -e B12X_ROCE_GID_INDEX=$GID \
+    -e NCCL_IB_HCA=rocep1s0f0 -e NCCL_IB_ROCE_VERSION_NUM=2 \
+    -e NCCL_IB_ADDR_RANGE=192.168.100.0/24 \
+    -e NCCL_SOCKET_IFNAME=enp1s0f0np0 \
+    -e GLOO_SOCKET_IFNAME=enp1s0f0np0 \
+    --entrypoint vllm eugr/spark-vllm-b12x:nightly-20261015 \
+    serve /opt/models/DeepSeek-V4.1-Flash-1017 \
+    --host 0.0.0.0 --port 8000 \
+    --served-model-name deepseek-v4.1-flash \
+    --tensor-parallel-size 4 --nnodes 4 --node-rank $RANK \
+    --master-addr 192.168.100.21 --master-port 29501 $HEADLESS \
+    --dtype bfloat16 --load-format b12x --linear-backend b12x \
+    --moe-backend b12x --attention-backend b12x \
+    --tokenizer-mode deepseek_v41 \
+    --reasoning-parser deepseek_v41 \
+    --tool-call-parser deepseek_v41 --enable-auto-tool-choice \
+    --limit-mm-per-prompt '{&quot;image&quot;:1}' \
+    --engram-config '{&quot;cpu_offload&quot;:false,&quot;table_memory&quot;:&quot;disk&quot;}' \
+    --speculative-config &quot;$DRAFT&quot; \
+    --block-size 256 --enable-prefix-caching \
+    --enable-prompt-tokens-details --max-model-len auto \
+    --max-num-seqs 16 --max-num-batched-tokens 4096 \
+    --max-cudagraph-capture-size 96 \
+    --gpu-memory-utilization 0.87 --kv-cache-memory-bytes 6G \
+    --max-parallel-prefills auto --prefill-policy decode-aware \
+    --prefill-schedule-interval 8
+</code></pre>
+<ul>
+<li><code>-e VLLM_API_KEY</code> passes the key of unit 1 to the server. The other units have no key file.</li>
+<li>Unit 1 serves the API on port 8000 of all its addresses. The API is plain HTTP, so the API key, the prompts and the source code in them cross the network unencrypted. Let only networks you trust reach the port, or connect through an SSH tunnel as described under "Connect the Pi coding agent".</li>
+</ul>
+<p>On the CRS804 configuration, replace the two lines that set <code>NCCL_IB_HCA</code> and <code>NCCL_IB_ADDR_RANGE</code> with the following lines. They add the settings of "Mark the traffic and use both interfaces", and the address range covers both networks.</p>
+<pre><code class="language-bash">    -e NCCL_IB_HCA=rocep1s0f0,roceP2p1s0f0 -e NCCL_IB_MERGE_NICS=1 \
+    -e NCCL_IB_ROCE_VERSION_NUM=2 -e NCCL_IB_TC=106 \
+    -e B12X_ROCE_TRAFFIC_CLASS=106 \
+    -e NCCL_IB_ADDR_RANGE=192.168.100.0/23 \
+</code></pre>
+<p>Start the server on every unit, unit 1 first:</p>
+<pre><code class="language-bash">bash ~/start-vllm.sh
+</code></pre>
+<p>The first start takes 13 to 30 minutes: the server compiles and tunes its GPU code, and keeps the result in <code>~/.cache</code>. Later starts take about four minutes. On unit 1, wait until the server answers:</p>
+<pre><code class="language-bash">until curl -sf -o /dev/null localhost:8000/health; do
+  sleep 10
+done
+</code></pre>
+<p>To stop the server, run <code>docker rm -f vllm</code> on every unit.</p>
+<h3 id="check-the-server">Check the server</h3>
+<p>On unit 1, ask a question with thinking off:</p>
+<pre><code class="language-bash">curl -s localhost:8000/v1/chat/completions \
+    -H &quot;Authorization: Bearer $(cat ~/dgx-spark.key)&quot; \
+    -H &quot;Content-Type: application/json&quot; \
+    -d '{&quot;model&quot;: &quot;deepseek-v4.1-flash&quot;, &quot;max_tokens&quot;: 300,
+         &quot;chat_template_kwargs&quot;: {&quot;thinking&quot;: false},
+         &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;:
+           &quot;Reverse the words of a sentence in Python.&quot;}]}'
+</code></pre>
+<p>The reply is a JSON object with the answer in <code>choices[0].message.content</code> and the number of generated tokens in <code>usage.completion_tokens</code>. A request without the key gets HTTP 401.</p>
+<h3 id="connect-the-pi-coding-agent">Connect the Pi coding agent</h3>
+<p><a href="https://pi.dev">Pi</a> is a coding agent for the terminal. Each developer installs it as its documentation describes, and then adds the cluster as a model provider.</p>
+<p>Copy the API key from unit 1 with your SSH login there. In these commands, 192.168.88.21 is the address of unit 1 on the office network:</p>
+<pre><code class="language-bash">mkdir -p ~/.pi/agent
+scp 192.168.88.21:dgx-spark.key ~/.pi/agent/dgx-spark.key
+chmod 600 ~/.pi/agent/dgx-spark.key
+</code></pre>
+<p>Create the file <code>~/.pi/agent/models.json</code>. If the file exists, add the <code>dgx-spark</code> object to its <code>providers</code>.</p>
+<pre><code class="language-json">{
+  &quot;providers&quot;: {
+    &quot;dgx-spark&quot;: {
+      &quot;baseUrl&quot;: &quot;http://192.168.88.21:8000/v1&quot;,
+      &quot;api&quot;: &quot;openai-completions&quot;,
+      &quot;apiKey&quot;: &quot;!cat ~/.pi/agent/dgx-spark.key&quot;,
+      &quot;compat&quot;: {
+        &quot;supportsStore&quot;: false,
+        &quot;supportsDeveloperRole&quot;: false,
+        &quot;supportsReasoningEffort&quot;: false,
+        &quot;supportsUsageInStreaming&quot;: true,
+        &quot;supportsStrictMode&quot;: false,
+        &quot;supportsLongCacheRetention&quot;: false,
+        &quot;maxTokensField&quot;: &quot;max_tokens&quot;,
+        &quot;thinkingFormat&quot;: &quot;chat-template&quot;,
+        &quot;chatTemplateKwargs&quot;: {
+          &quot;thinking&quot;: { &quot;$var&quot;: &quot;thinking.enabled&quot; },
+          &quot;reasoning_effort&quot;: {
+            &quot;$var&quot;: &quot;thinking.effort&quot;,
+            &quot;omitWhenOff&quot;: true
+          }
+        },
+        &quot;thinkingTokenBudgetField&quot;: &quot;thinking_token_budget&quot;
+      },
+      &quot;models&quot;: [
+        {
+          &quot;id&quot;: &quot;deepseek-v4.1-flash&quot;,
+          &quot;name&quot;: &quot;DeepSeek V4.1 Flash (DGX Spark cluster)&quot;,
+          &quot;reasoning&quot;: true,
+          &quot;thinkingLevelMap&quot;: {
+            &quot;minimal&quot;: &quot;low&quot;,
+            &quot;low&quot;: &quot;low&quot;,
+            &quot;medium&quot;: &quot;high&quot;,
+            &quot;high&quot;: &quot;high&quot;,
+            &quot;xhigh&quot;: &quot;max&quot;,
+            &quot;max&quot;: &quot;max&quot;
+          },
+          &quot;input&quot;: [&quot;text&quot;, &quot;image&quot;],
+          &quot;contextWindow&quot;: 262144,
+          &quot;maxTokens&quot;: 32768,
+          &quot;cost&quot;: {
+            &quot;input&quot;: 0,
+            &quot;output&quot;: 0,
+            &quot;cacheRead&quot;: 0,
+            &quot;cacheWrite&quot;: 0
+          }
+        }
+      ]
+    }
+  }
+}
+</code></pre>
+<p>Start Pi with the model in the folder of a project:</p>
+<pre><code class="language-bash">pi --model dgx-spark/deepseek-v4.1-flash
+</code></pre>
+<ul>
+<li>Pi reads the key from the file for each request, so the key is not in the configuration.</li>
+<li>The thinking levels of Pi map to the values the server accepts: <code>off</code> turns thinking off, <code>minimal</code> and <code>low</code> send <code>low</code>, <code>medium</code> and <code>high</code> send <code>high</code>, and <code>xhigh</code> sends <code>max</code>. With each level Pi also sends a thinking budget.</li>
+<li>The configuration limits a session to 262,144 tokens of context.</li>
+<li>To encrypt the traffic on the office network, keep <code>ssh -N -L 8000:localhost:8000 192.168.88.21</code> running, and set <code>baseUrl</code> to <code>http://localhost:8000/v1</code>. Pi then reaches the server through SSH.</li>
+</ul>
+<p>Other clients connect to the same address with the OpenAI chat completions API. The server also answers requests in the Anthropic format at <code>/v1/messages</code>. For any client:</p>
+<ul>
+<li><strong>Thinking is set by each request.</strong> <code>"chat_template_kwargs": {"thinking": false}</code> turns it off, and so does <code>"reasoning_effort": "none"</code> for clients that only have the OpenAI field. With thinking on, the effort is <code>low</code>, <code>high</code>, <code>max</code> or a number from 1 to 100.</li>
+<li><strong>The server rejects the effort values <code>medium</code> and <code>minimal</code></strong> with HTTP 400. Some clients send <code>medium</code> by default.</li>
+<li><strong>A thinking budget caps the thinking.</strong> <code>"thinking_token_budget": 2000</code> in a request stops the thinking after 2,000 tokens. Without a budget, the model can spend the whole output limit on thinking and return no answer. Keep the budget lower than the output limit, so that the answer has room.</li>
+<li><strong>A client that sends no sampling settings gets DeepSeek's:</strong> temperature 1.0 and top-p 1.0.</li>
+</ul>
+<h3 id="keep-the-server-running">Keep the server running</h3>
+<p>A unit keeps its network settings over a restart: the MTU, the addresses and, on the CRS804 configuration, the PFC settings of the <code>fabric-qos</code> service. The model server does not start by itself, and it needs all four units. When one unit restarts, the server on the other three stops answering requests, although <code>/health</code> still returns 200. To recover, run <code>bash ~/start-vllm.sh</code> on all four units again.</p>
+<p>A script on unit 1 does that by itself. Every minute it asks the server a one-token question. When three questions in a row get no answer, it waits until the other units are up, and starts the server on all four. Create the file <code>~/watch-vllm.sh</code> on unit 1:</p>
+<pre><code class="language-bash">#!/bin/bash
+OTHERS=&quot;192.168.100.22 192.168.100.23 192.168.100.24&quot;
+ask() {
+  curl -sf -m 60 -o /dev/null localhost:8000/v1/chat/completions \
+      -H &quot;Authorization: Bearer $(cat ~/dgx-spark.key)&quot; \
+      -H &quot;Content-Type: application/json&quot; \
+      -d '{&quot;model&quot;: &quot;deepseek-v4.1-flash&quot;, &quot;max_tokens&quot;: 1,
+           &quot;chat_template_kwargs&quot;: {&quot;thinking&quot;: false},
+           &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;hi&quot;}]}'
+}
+while true; do
+  if ! ask &amp;&amp; ! ask &amp;&amp; ! ask; then
+    echo &quot;No answer from the server: starting it on all units&quot;
+    for u in $OTHERS; do
+      until ssh -o BatchMode=yes -o ConnectTimeout=5 $u true; do
+        sleep 5
+      done
+    done
+    bash ~/start-vllm.sh
+    for u in $OTHERS; do
+      ssh -o BatchMode=yes $u 'bash ~/start-vllm.sh'
+    done
+    for i in $(seq 360); do
+      curl -sf -o /dev/null localhost:8000/health &amp;&amp; break
+      sleep 10
+    done
+  fi
+  sleep 60
+done
+</code></pre>
+<p>Run the script as a service that starts with unit 1:</p>
+<pre><code class="language-bash">sudo tee /etc/systemd/system/vllm-watch.service &gt; /dev/null &lt;&lt;EOF
+[Unit]
+Description=Start the model server when it does not answer
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=$USER
+ExecStart=/bin/bash $HOME/watch-vllm.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable --now vllm-watch
+</code></pre>
+<p>Allow several minutes for recovery after a unit restarts: the CRS504 example recovered in 4 to 8 minutes. <code>journalctl -u vllm-watch</code> shows each time the script started the server. On the CRS804 configuration, the <code>fabric-qos</code> service sets PFC before Docker starts, so a restarted unit rejoins the server with its PFC settings.</p>
+<p>To stop or restart the server by hand, stop the script first, or it starts the server again within a minute: run <code>sudo systemctl stop vllm-watch</code> on unit 1, then <code>docker rm -f vllm</code> on every unit. <code>sudo systemctl start vllm-watch</code> starts the script again.</p>
+<h2 id="example-results-deepseek-v41-flash">Example results: DeepSeek V4.1 Flash</h2>
+<p>The following examples use the server configuration of the previous section on both networks.</p>
+<h3 id="speed-for-each-user">Speed for each user</h3>
+<p>For individual coding questions from NVIDIA's SPEED-Bench, with thinking on:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Users at the same time</th>
+<th style="text-align: right;">Speed per user</th>
+<th style="text-align: right;">First token</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">75–80 tok/s</td>
+<td style="text-align: right;">0.3 s</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">56–58 tok/s</td>
+<td style="text-align: right;">0.6 s</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">40 tok/s</td>
+<td style="text-align: right;">0.7–0.8 s</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">26 tok/s</td>
+<td style="text-align: right;">1.0–1.1 s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Speed per user</strong> is the rate at which one request receives tokens after its first token, including thinking tokens. <strong>First token</strong> is the median time from the request to its first token.</p>
+<h3 id="time-to-an-answer">Time to an answer</h3>
+<p>These working sessions start with 36,000 tokens of instructions and source code and include follow-up questions. Each reply has an output limit of 4,000 tokens. Turning thinking off shortens the wait for an answer.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Working session</th>
+<th style="text-align: left;">Thinking</th>
+<th style="text-align: right;">Complete answer, median</th>
+<th style="text-align: right;">First token, first turn</th>
+<th style="text-align: right;">First token, later turns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1 user</td>
+<td style="text-align: left;">On</td>
+<td style="text-align: right;">18–19 s</td>
+<td style="text-align: right;">9–10 s</td>
+<td style="text-align: right;">1.0 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">1 user</td>
+<td style="text-align: left;">Off</td>
+<td style="text-align: right;">4–7 s</td>
+<td style="text-align: right;">9–10 s</td>
+<td style="text-align: right;">1.0 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">3 users at the same time</td>
+<td style="text-align: left;">On</td>
+<td style="text-align: right;">30–31 s</td>
+<td style="text-align: right;">23–24 s</td>
+<td style="text-align: right;">1.2–1.5 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">3 users at the same time</td>
+<td style="text-align: left;">Off</td>
+<td style="text-align: right;">9 s</td>
+<td style="text-align: right;">20–23 s</td>
+<td style="text-align: right;">1.2–1.3 s</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The first turn of a session is slow, later turns are not.</strong> The server reads a new prompt at about 3,400 tok/s: 2 s for 8,000 tokens, 9 s for 31,000 and 38 s for 125,000. It keeps what it has read, so on later turns it reads only the new part.</li>
+<li><strong>With thinking on, most of the wait is thinking.</strong> The model writes 1,400 to 2,500 thinking tokens before a short answer, and the amount varies a lot from turn to turn. With thinking off, the answer starts with the first token.</li>
+<li><strong>Thinking can use the whole output limit.</strong> With a 4,000-token limit, some turns end in thinking with no answer. A thinking budget lower than the output limit leaves room for the answer.</li>
+</ul>
+<h3 id="long-prompts-on-a-shared-server">Long prompts on a shared server</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Situation</th>
+<th style="text-align: right;">Recommended settings</th>
+<th style="text-align: right;">Without them</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">First token of a short request, sent 3 s after another user's new 90,000-token prompt</td>
+<td style="text-align: right;">2.4–2.9 s</td>
+<td style="text-align: right;">26 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Speed of the other users while the server reads two new 140,000-token prompts</td>
+<td style="text-align: right;">33–47%</td>
+<td style="text-align: right;">5–10%</td>
+</tr>
+<tr>
+<td style="text-align: left;">Free memory on each unit after long prompts</td>
+<td style="text-align: right;">18–20 GB</td>
+<td style="text-align: right;">2–3 GB</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>A single new prompt of 90,000 tokens gets its first token after 26 to 28 s.</li>
+<li>Two long prompts that arrive together take longer: 2 to 3.5 minutes each for 130,000 to 240,000 tokens.</li>
+<li>A new session that starts while the server reads two long prompts waits 40 to 65 s for its first token. A turn of a session in progress waits 5 to 7 s.</li>
+</ul>
+<h2 id="faster-deepseek-v41-flash-with-spark-ds41f">Faster DeepSeek V4.1 Flash with spark-ds41f</h2>
+<p><a href="https://github.com/christopherowen/spark-ds41f">spark-ds41f</a> is an open-source project that tunes vLLM for DeepSeek V4.1 Flash on DGX Spark units: its own GPU kernels, larger prompt batches, and an RDMA data exchange over both interfaces of each unit's port. On the same four units and switches, it reads long prompts 2.5 to 3 times faster than the walkthrough's server and generates text about a fifth faster. It suits a team that wants the most from its units and accepts a more complex setup:</p>
+<ul>
+<li><strong>No ready-made image:</strong> you build the image on unit 1 from source and copy it to the other units. The build downloads pinned components from GitHub, PyPI, NVIDIA and download.pytorch.org.</li>
+<li><strong>Changes to every unit:</strong> one user account with passwordless SSH and <code>sudo</code> on all four units, and units that start without a desktop session.</li>
+<li><strong>Frequent releases:</strong> the project publishes a new release every few days. This section uses release 1122 (commit <code>945d95d0</code>). For another release, check its setup guide for changes.</li>
+</ul>
+<p>The project's <a href="https://github.com/christopherowen/spark-ds41f/blob/main/docs/setup.md">setup guide</a> describes every stage, how to check it and how to undo it. Follow it with the choices in this section. The units keep the network configuration of the CRS504 or CRS804 section.</p>
+<h3 id="configure-spark-ds41f-for-the-switch">Configure spark-ds41f for the switch</h3>
+<p>The project calls four units on a switch the <code>tp4-switched</code> shape. On unit 1, in the project folder <code>~/projects/spark-ds41f</code>, describe the units in <code>config/nodes-switched.local.json</code>. List both interfaces of each unit's port as rails, each in its own subnet, as in the address table of this page. Set <code>ssh_user</code> to the account you use on all four units, <code>management_ip</code> to each unit's address on the office network, and <code>roce_gid_index</code> to the RoCE v2 IPv4 index that <code>show_gids</code> prints:</p>
+<pre><code class="language-json">{
+  &quot;schema_version&quot;: 1,
+  &quot;ssh_user&quot;: &quot;spark&quot;,
+  &quot;nodes&quot;: [
+    {&quot;name&quot;: &quot;spark1&quot;, &quot;rank&quot;: 0, &quot;head&quot;: true, &quot;management_ip&quot;: &quot;192.168.88.21&quot;,
+     &quot;management_interface&quot;: &quot;enP7s7&quot;, &quot;roce_gid_index&quot;: 3,
+     &quot;roce_hcas&quot;: [&quot;rocep1s0f0&quot;, &quot;roceP2p1s0f0&quot;],
+     &quot;roce_subnets&quot;: {&quot;rocep1s0f0&quot;: &quot;192.168.100.0/24&quot;, &quot;roceP2p1s0f0&quot;: &quot;192.168.101.0/24&quot;}},
+    {&quot;name&quot;: &quot;spark2&quot;, &quot;rank&quot;: 1, &quot;head&quot;: false, &quot;management_ip&quot;: &quot;192.168.88.22&quot;,
+     &quot;management_interface&quot;: &quot;enP7s7&quot;, &quot;roce_gid_index&quot;: 3,
+     &quot;roce_hcas&quot;: [&quot;rocep1s0f0&quot;, &quot;roceP2p1s0f0&quot;],
+     &quot;roce_subnets&quot;: {&quot;rocep1s0f0&quot;: &quot;192.168.100.0/24&quot;, &quot;roceP2p1s0f0&quot;: &quot;192.168.101.0/24&quot;}},
+    {&quot;name&quot;: &quot;spark3&quot;, &quot;rank&quot;: 2, &quot;head&quot;: false, &quot;management_ip&quot;: &quot;192.168.88.23&quot;,
+     &quot;management_interface&quot;: &quot;enP7s7&quot;, &quot;roce_gid_index&quot;: 3,
+     &quot;roce_hcas&quot;: [&quot;rocep1s0f0&quot;, &quot;roceP2p1s0f0&quot;],
+     &quot;roce_subnets&quot;: {&quot;rocep1s0f0&quot;: &quot;192.168.100.0/24&quot;, &quot;roceP2p1s0f0&quot;: &quot;192.168.101.0/24&quot;}},
+    {&quot;name&quot;: &quot;spark4&quot;, &quot;rank&quot;: 3, &quot;head&quot;: false, &quot;management_ip&quot;: &quot;192.168.88.24&quot;,
+     &quot;management_interface&quot;: &quot;enP7s7&quot;, &quot;roce_gid_index&quot;: 3,
+     &quot;roce_hcas&quot;: [&quot;rocep1s0f0&quot;, &quot;roceP2p1s0f0&quot;],
+     &quot;roce_subnets&quot;: {&quot;rocep1s0f0&quot;: &quot;192.168.100.0/24&quot;, &quot;roceP2p1s0f0&quot;: &quot;192.168.101.0/24&quot;}}
+  ]
+}
+</code></pre>
+<p>The project connects to every unit by its <code>name</code>, with SSH from unit 1. On unit 1, add the names to <code>~/.ssh/config</code>, and check that each one logs in without a password, unit 1 included:</p>
+<pre><code class="language-bash">cat &gt;&gt; ~/.ssh/config &lt;&lt;'EOF'
+Host spark1
+  HostName 192.168.88.21
+Host spark2
+  HostName 192.168.88.22
+Host spark3
+  HostName 192.168.88.23
+Host spark4
+  HostName 192.168.88.24
+EOF
+for h in spark1 spark2 spark3 spark4; do ssh $h hostname; done
+</code></pre>
+<p>The project's recipe marks its RDMA traffic with IP traffic class 106 (DSCP 26), the class that the CRS804 example keeps lossless. The CRS504 example needs no change for it.</p>
+<p>The project qualifies its switched shapes on a kernel with 64 KiB memory pages and its own memory-saver module (stage 2 of its guide). On the stock DGX OS kernel, start the same shape from an overlay. The overlay also leaves out a second, steered variant of the model, which needs a file from a gated repository. Save it as <code>config/switch-4k.local.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;notes&quot;: &quot;tp4-switched on the stock 4 KiB kernel, without the steered second model&quot;,
+  &quot;extends&quot;: {&quot;config&quot;: &quot;config/cluster.json&quot;, &quot;shape&quot;: &quot;tp4-switched&quot;},
+  &quot;set&quot;: {&quot;host&quot;: {&quot;kernel&quot;: {&quot;release&quot;: &quot;7.0.0-1025-nvidia&quot;, &quot;page_size&quot;: 4096, &quot;memory_saver_required&quot;: false}}},
+  &quot;unset&quot;: [&quot;glp&quot;]
+}
+</code></pre>
+<p>Set <code>release</code> to the kernel that <code>uname -r</code> prints on your units.</p>
+<p>The server answers without an API key. To require the key of the walkthrough, add a second overlay. Its server checks readiness at <code>/health</code>, because <code>/v1/models</code> then needs the key:</p>
+<pre><code class="language-bash">cd ~/projects/spark-ds41f
+umask 077
+cat &gt; config/endpoint.local.json &lt;&lt;EOF
+{
+  &quot;extends&quot;: {&quot;config&quot;: &quot;config/switch-4k.local.json&quot;},
+  &quot;set&quot;: {
+    &quot;environment&quot;: {&quot;VLLM_API_KEY&quot;: &quot;$(cat ~/dgx-spark.key)&quot;},
+    &quot;deployment&quot;: {&quot;ready_url&quot;: &quot;http://127.0.0.1:8000/health&quot;}
+  }
+}
+EOF
+</code></pre>
+<p>The project reads these files on every unit. Copy them to the same folder on the other units:</p>
+<pre><code class="language-bash">for u in 192.168.100.22 192.168.100.23 192.168.100.24; do
+  ssh $u mkdir -p projects/spark-ds41f/config
+  scp config/nodes-switched.local.json config/switch-4k.local.json \
+      config/endpoint.local.json $u:projects/spark-ds41f/config/
+done
+</code></pre>
+<p>Stage 5 of the project's guide downloads the model again, 476 GiB on every unit. If the units hold the walkthrough's copy, link its files into the cache the project uses instead. The model files are the same; the project expects them under its pinned revision. Run on every unit:</p>
+<pre><code class="language-bash">SRC=/opt/models/DeepSeek-V4.1-Flash-1017
+REV=1bae0e1088993b9b82de08f59de5be5a34e42170
+HUB=~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4.1-Flash-1017
+mkdir -p $HUB/snapshots/$REV $HUB/refs
+echo -n $REV &gt; $HUB/refs/main
+cd $SRC
+find . -type d -not -path &quot;./.cache*&quot; -exec mkdir -p &quot;$HUB/snapshots/$REV/{}&quot; \;
+find . -type f -not -path &quot;./.cache/*&quot; -not -name chat_template.jinja \
+    -exec ln {} &quot;$HUB/snapshots/$REV/{}&quot; \;
+</code></pre>
+<p>The links take no disk space. They need the model folder and the home folder on the same file system, as on DGX OS.</p>
+<p>Stop the walkthrough's server as described in <a href="#keep-the-server-running">Keep the server running</a>, and start this one on unit 1:</p>
+<pre><code class="language-bash">cd ~/projects/spark-ds41f
+bin/spark --cluster-config config/endpoint.local.json cluster start --apply
+</code></pre>
+<p>The command checks the units first and does not start if a check fails. <code>bin/spark doctor</code> prints a command that fixes each failed check. The first start compiles the project's GPU code and takes about 20 minutes. Later starts take about 2 minutes. To stop the server, run the same command with <code>cluster stop --apply</code>.</p>
+<p>The server answers at the same address and port, with the same model name and key. Clients such as Pi work without a change. The server also accepts the thinking efforts <code>medium</code> and <code>minimal</code>.</p>
+<h3 id="speed-with-spark-ds41f">Speed with spark-ds41f</h3>
+<p>The following examples use the same tests as the walkthrough's results, on the CRS504 and the CRS804:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: right;">Walkthrough server</th>
+<th style="text-align: right;">spark-ds41f</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Speed per user, 1 / 2 / 4 / 8 users</td>
+<td style="text-align: right;">75–80 / 56–58 / 40 / 26 tok/s</td>
+<td style="text-align: right;">97–99 / 70–71 / 47–49 / 32–33 tok/s</td>
+</tr>
+<tr>
+<td style="text-align: left;">First token, 1 to 8 users</td>
+<td style="text-align: right;">0.3–1.1 s</td>
+<td style="text-align: right;">0.24–0.41 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prompt reading</td>
+<td style="text-align: right;">3,400 tok/s</td>
+<td style="text-align: right;">9,000–9,250 tok/s at 100 Gbit/s, 10,000–10,500 tok/s at 200 Gbit/s</td>
+</tr>
+<tr>
+<td style="text-align: left;">First token of a new 125,000-token prompt</td>
+<td style="text-align: right;">38 s</td>
+<td style="text-align: right;">12–14 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Working session of one user, complete answer, median, thinking on / off</td>
+<td style="text-align: right;">18–19 s / 4–7 s</td>
+<td style="text-align: right;">13 s / 3.5–3.7 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Working session, first token, first turn / later turns</td>
+<td style="text-align: right;">9–10 s / 1.0 s</td>
+<td style="text-align: right;">3.5–6 s / 0.5–0.6 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Two new prompts of 130,000 to 240,000 tokens at the same time, first token</td>
+<td style="text-align: right;">2 to 3.5 minutes</td>
+<td style="text-align: right;">15 to 51 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">Speed of the other users while the server reads them</td>
+<td style="text-align: right;">33–47%</td>
+<td style="text-align: right;">about 10%</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Long prompts finish sooner and slow the others more.</strong> The server reads a long prompt in large batches, so the other users' replies slow to about a tenth while it reads, for 15 to 50 s. The walkthrough's server keeps them at a third or more for two minutes or longer.</li>
+<li><strong>The server serves more at once:</strong> up to 32 requests, with contexts up to 1,048,576 tokens.</li>
+<li><strong>Link speed shows.</strong> While the server reads a long prompt, each unit sends about 25 Gbit/s to the others on average, in bursts. On 200 Gbit/s links it reads long prompts about 13% faster than on 100 Gbit/s links, and with 16 requests at the same time it generates text 8 to 13% faster. With one to eight users, both link speeds give the same speed.</li>
+<li><strong>The CRS804 settings carry the bursts.</strong> All units send at once while the server reads a prompt. On the CRS804, ECN slows the senders and PFC pauses them when needed, and no packets are lost.</li>
+</ul>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<ul>
+<li><strong>A switch port shows <code>status: no-link</code>:</strong> check that the monitor output shows <code>sfp-module-present: yes</code>, and that the cable is in the unit's first QSFP port: <code>ip -br link</code> on the unit shows <code>NO-CARRIER</code> on the interfaces of the port without a cable. If the cable is in the other port (<code>enp1s0f1np1</code>), move it. If a 100 Gbit/s link still does not come up, set the link speed of the switch port by hand: <code>/interface/ethernet/set qsfp28-1-1 auto-negotiation=no speed=100G-baseCR4</code>. Keep auto-negotiation on for the 200 Gbit/s links of the CRS804.</li>
+<li><strong>A CRS804 port runs at 100 Gbit/s:</strong> the cable is a 100G QSFP28 cable. Use a 200G QSFP56 cable.</li>
+<li><strong>The full-size ping fails:</strong> a switch port has an <code>l2mtu</code> lower than 9000, or a unit has a different MTU.</li>
+<li><strong>The pause counters stay at 0 on the CRS804:</strong> pause frames appear only when several units send to one. Run the <a href="#test-pfc-under-load">PFC test</a>.</li>
+<li><strong><code>rx-fcs-error</code> grows on a 100 Gbit/s port:</strong> set <code>fec-mode=fec91</code> on that port. Without forward error correction, the link comes up but corrupts some packets.</li>
+<li><strong>A 200 Gbit/s link carries only about 100 Gbit/s:</strong> the application uses one interface. Give it both RDMA devices (<code>NCCL_IB_HCA</code>, <code>NCCL_IB_MERGE_NICS</code>).</li>
+<li><strong>NCCL finds no RoCE device after a link restart:</strong> check with <code>ip -br addr</code> that each address is on its own interface. A NetworkManager profile that is not bound to its interface can come up on the other interface of the port; the MTU commands bind each profile.</li>
+<li><strong><code>tx-drop-queue3-packet</code> grows on the CRS804:</strong> check that the units trust DSCP and run PFC on priority 3 (<code>mlnx_qos -i enp1s0f0np0</code>, <code>systemctl status fabric-qos</code>), and that the QoS port print shows no comment line.</li>
+<li><strong>Text generation almost stops while a large transfer runs:</strong> the transfer is marked for the lossless class, and ECN is off on queue 3 or the PFC profile uses higher thresholds than the CRS804 example. Use the PFC and ECN settings of the CRS804 example.</li>
+<li><strong>The model server starts again after <code>docker rm -f vllm</code>:</strong> the <code>vllm-watch</code> script starts it. Stop the script first with <code>sudo systemctl stop vllm-watch</code>.</li>
+<li><strong>The first start of the model server takes half an hour:</strong> the server compiles and tunes its GPU code on the first start, and keeps the result in <code>~/.cache</code> for later starts.</li>
+<li><strong>A client gets HTTP 400 from the model server:</strong> the client sends the thinking effort <code>medium</code> or <code>minimal</code>. Set the effort to <code>low</code>, <code>high</code> or <code>max</code>, or map the levels of the client as in the Pi configuration.</li>
+<li><strong>A reply has thinking and no answer:</strong> the thinking used the whole output limit of the request. Set a thinking budget, raise the output limit, or turn thinking off for the request.</li>
+<li><strong>The first answer of a session takes many seconds:</strong> the server reads a new prompt at about 3,400 tok/s, and keeps what it has read for the later turns.</li>
+<li><strong>Text arrives slower while another user sends a long prompt:</strong> the server reads the prompt between the steps of text generation. With the recommended settings, the other users keep 33 to 47% of their speed.</li>
+<li><strong>A client shows about 25 tok/s for one user:</strong> the client counts stream chunks as tokens. The server sends one chunk with 3 to 4 tokens for each step. The token counts in <code>usage</code> at the end of a reply are exact.</li>
+</ul>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="traffic-classes">Traffic classes</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Traffic</th>
+<th style="text-align: right;">DSCP</th>
+<th style="text-align: right;">IP traffic class</th>
+<th style="text-align: right;">Switch traffic class</th>
+<th style="text-align: right;">Unit priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">RoCEv2 data</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">106</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">Congestion notification packets</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">192</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr>
+<td style="text-align: left;">Other traffic</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">default</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p>The IP traffic class is the whole IP header byte: DSCP 26 shifted by two bits (104) plus the ECN-capable bits (2).</p>
+<h3 id="pfc-thresholds-and-ecn">PFC thresholds and ECN</h3>
+<p>A pause threshold is set in bytes, for example <code>pause-threshold=128KiB</code>, or as a share of the free lossless buffer, as in the CRS804 example. With the default, <code>auto</code>, RouterOS chooses the thresholds. The switch rounds the value to one of a few steps, so close values behave the same. The resume threshold is the distance below the pause threshold at which a paused unit may send again.</p>
+<p>Every threshold keeps the class lossless and pauses only the units that send to a busy port. Without ECN, the switch holds the paused units' data up to the threshold, and inference traffic that shares the class with a bulk transfer waits behind it: the higher the threshold, the slower text generation gets. With ECN, the senders slow down before they reach the threshold, the queues stay short, and the threshold matters much less. ECN does not replace PFC: without PFC, the receiving units drop packets.</p>
+<p>The size of the lossless buffer (<code>lossless-buffers</code> in <code>/interface/ethernet/switch/qos/settings</code>) and cut-through forwarding can stay at their defaults.</p>
+<h3 id="bulk-transfers-and-text-generation">Bulk transfers and text generation</h3>
+<p>This example uses a 27-billion-parameter model on four units connected to a CRS804. While two units send bulk RDMA traffic into a third at about 200 Gbit/s, text generation keeps the following share of its speed without the transfer:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Bulk traffic</th>
+<th style="text-align: left;">Flow control</th>
+<th style="text-align: right;">One user</th>
+<th style="text-align: right;">Eight users</th>
+<th style="text-align: left;">Bulk packets lost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">PFC 10% / 5% and ECN, as in the CRS804 example</td>
+<td style="text-align: right;">95%</td>
+<td style="text-align: right;">89%</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">PFC 128 KiB / 64 KiB and ECN</td>
+<td style="text-align: right;">94%</td>
+<td style="text-align: right;">84%</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Unmarked (default class)</td>
+<td style="text-align: left;">PFC</td>
+<td style="text-align: right;">92%</td>
+<td style="text-align: right;">68%</td>
+<td style="text-align: left;">Yes, recovered by the senders</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">PFC 128 KiB / 64 KiB, no ECN</td>
+<td style="text-align: right;">88%</td>
+<td style="text-align: right;">54%</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">PFC 10% / 5%, no ECN</td>
+<td style="text-align: right;">71%</td>
+<td style="text-align: right;">35%</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">PFC 25% / 12%, no ECN</td>
+<td style="text-align: right;">30%</td>
+<td style="text-align: right;">15%</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marked (traffic class 3)</td>
+<td style="text-align: left;">ECN, no PFC</td>
+<td style="text-align: right;">9%</td>
+<td style="text-align: right;">2%</td>
+<td style="text-align: left;">Some</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>With PFC and ECN, marked bulk traffic loses nothing and costs text generation the least: the senders slow down before the switch pauses them, so the inference traffic does not wait behind bulk data.</li>
+<li>Unmarked bulk traffic loses packets under congestion. The senders resend what the switch drops.</li>
+<li>With PFC alone, the switch pauses the senders, and their inference traffic waits behind their own bulk traffic. The higher the pause threshold, the more bulk traffic waits in the switch, and the slower text generation gets.</li>
+<li>With ECN alone, the receiving units drop packets, and the units slow down the inference traffic together with the bulk traffic.</li>
+</ul>
+<h3 id="network-load-of-a-model-server">Network load of a model server</h3>
+<p>The vLLM example uses NVIDIA's RDMA all-reduce, which requires each unit to communicate directly with every other unit over the cluster network. The switch provides that connectivity through one cable per unit.</p>
+<p>A model server split across units exchanges many small messages for each generated token. The traffic stays low: on average a few Gbit/s per unit for one user, and less than 40 Gbit/s per unit for 16 users with speculative decoding. RDMA latency between two units through the switch is under 3 µs, which is a small part of the time each token takes. Link speed and switch latency therefore have little effect on text generation speed. Model loading and storage use the full link.</p>
+<p>Long prompts send more: DeepSeek V4.1 Flash with the settings of the example sends 18 to 20 Gbit/s per unit while it reads a 100,000-token prompt, well within a 100 Gbit/s link.</p>
+<p>With these settings, long prompts are read at a similar speed at 100 and 200 Gbit/s. A server that mostly reads long prompts can use prompt batches four times larger (<code>--max-num-batched-tokens 16384</code>): it then reads them 9 to 16% faster on 200 Gbit/s links than on 100 Gbit/s links, but with several users it pauses the text of the others for 4 to 7 s.</p>
+<h3 id="deepseek-v41-flash-on-four-units">DeepSeek V4.1 Flash on four units</h3>
+<ul>
+<li><strong>Precision:</strong> the checkpoint is DeepSeek's own release, as published. The routed experts are in FP4 with a scale for every 32 values, the other weights in FP8, and a few small tensors in BF16. Neither model server on this page quantizes it further.</li>
+<li><strong>Memory:</strong> each unit keeps 74 GiB of the model's weights in GPU memory. The model's lookup tables, 203 GB, stay on disk, and each unit reads them from its own copy. That is why every unit stores the whole checkpoint.</li>
+<li><strong>Two units cannot hold the model:</strong> without the lookup tables its weights are 307 GB, more than the 256 GB of two units.</li>
+<li><strong>Speculative decoding:</strong> in each step, the draft model proposes 5 tokens and the model keeps the ones it agrees with, 3 to 4 on average. One user gets about 23 steps per second. Without the draft model, the same server generates 44 tok/s for one user.</li>
+<li><strong>Stream chunks:</strong> the server sends one chunk for each step, with all the tokens of that step. A client that counts chunks as tokens shows a third to a quarter of the real speed.</li>
+<li><strong>Start-up:</strong> the first start compiles and tunes the GPU code for the chosen settings. A change of <code>--max-num-seqs</code> or of the number of draft tokens tunes again, for several minutes.</li>
+</ul>
+<h3 id="lldp-and-dcbx">LLDP and DCBX</h3>
+<p>With <code>lldp-dcbx=yes</code>, the default, the switch announces its PFC, ETS and RoCEv2 application priority settings to the units over LLDP. Set the QoS of the units by hand, as in the CRS804 example.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../quality-of-service">Quality of Service</a></li>
+<li><a href="./layer2-misconfiguration#bridges-on-a-single-switch-chip">Bridges on a single switch chip</a></li>
+<li><a href="../../hardware/mtu-in-routeros">MTU in RouterOS</a></li>
+</ul>
+<p>For all properties, see the CLI reference for <a href="../../cli-reference/interface/ethernet/switch/qos/priority-flow-control"><code>/interface/ethernet/switch/qos/priority-flow-control</code></a>, <a href="../../cli-reference/interface/ethernet/switch/qos/port/"><code>/interface/ethernet/switch/qos/port</code></a> and <a href="../../cli-reference/interface/ethernet/switch/qos/profile"><code>/interface/ethernet/switch/qos/profile</code></a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

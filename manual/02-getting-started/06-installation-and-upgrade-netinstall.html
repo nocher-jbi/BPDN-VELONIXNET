@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation and Upgrade / Netinstall · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Getting Started</p>
+      <h1 id="installation-and-upgrade-netinstall">Installation and Upgrade / Netinstall</h1>
+<h1 id="netinstall">Netinstall</h1>
+<blockquote>
+<p>This page introduces Netinstall, the MikroTik utility for installing and reinstalling RouterOS, helps choose between the Windows, Linux, and Netinstall package methods, and describes the common device installation...</p>
+</blockquote>
+<h1 id="netinstall_1">Netinstall</h1>
+<p>Netinstall is a utility for installing and reinstalling RouterOS on MikroTik devices. It can be used to recover inaccessible devices, perform clean installations, or reinstall RouterOS when the system is corrupted or misconfigured.</p>
+<p>The tool is available for Windows (graphical interface) and Linux (command-line). Starting with RouterOS 7.24beta1, the <strong>Netinstall package</strong> is available for all MikroTik architectures except SMIPS devices.</p>
+<h2 id="choose-a-netinstall-method">Choose a Netinstall Method</h2>
+<p>Select the installation method that matches your environment:</p>
+<ul>
+<li><a href="./netinstall-windows.md"><strong>Windows Netinstall</strong></a> - Graphical interface for Windows systems.</li>
+<li><a href="./netinstall-linux.md"><strong>Linux Netinstall</strong></a> - Command-line utility for Linux systems.</li>
+<li><a href="./netinstall-package.md"><strong>Netinstall Package</strong></a> - RouterOS package that enables Netinstall functionality directly on supported MikroTik devices.</li>
+</ul>
+<p>You can download Netinstall tools and RouterOS packages from the <a href="https://mikrotik.com/download">MikroTik Downloads</a> page.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Netinstall reformats the system drive, which erases all configuration data and user files.</p>
+<p>Netinstall does not remove the RouterOS license key, nor does it reset RouterBOOT settings. For example, the CPU frequency remains unchanged during reinstallation.</p>
+</div>
+<h2 id="device-installation-workflow-using-netinstall">Device Installation Workflow Using Netinstall</h2>
+<p>The workflow below applies to all Netinstall methods.</p>
+<h3 id="prepare-the-netinstall-host">Prepare the Netinstall host</h3>
+<p>Start Netinstall on a computer or MikroTik router connected to the same Layer 2 (L2) network segment as the device being reinstalled. For best results, use a dedicated network interface and a simple switch or hub to avoid IP, DHCP, or BOOTP conflicts.</p>
+<h3 id="boot-the-device-into-etherboot-mode">Boot the device into Etherboot mode</h3>
+<p>Etherboot mode is a special boot state on MikroTik devices that allows you to reinstall RouterOS using Netinstall.</p>
+<p>Two booter options are available: the <strong>Regular Booter</strong> and the <strong>Backup Booter</strong>. It is recommended to verify both options in case one does not work.</p>
+<ul>
+<li>
+<p><strong>Regular Booter:</strong> To enter etherboot mode using the serial console, press and hold <kbd>Control</kbd>+<kbd>E</kbd>. Alternatively, press the <strong>Reset</strong> button after powering on the device and waiting 1–2 seconds.</p>
+</li>
+<li>
+<p><strong>Backup Booter:</strong> Power off the device. Press and hold the <strong>Reset</strong> button, then power on the device. Wait for the <strong>LED</strong> sequence (blinking → steady → off), then release the button. The device will boot into <strong>BOOTP</strong> mode, ready for RouterOS reinstallation via Netinstall. Depending on the model, this may be indicated by the <strong>USR, USER, System</strong>, or <strong>ACT</strong> LED, or by the SFP port LED.</p>
+</li>
+</ul>
+<h3 id="install-the-device">Install the device</h3>
+<p>Use Netinstall to install RouterOS with the desired packages, parameters, and configuration scripts.</p>
+<h2 id="additional-references">Additional References</h2>
+<ul>
+<li><a href="../../configuration-management/index.md">RouterOS configuration management</a></li>
+<li><a href="../packages.md">RouterOS packages</a></li>
+<li><a href="../routerboot.md">RouterBOOT configuration</a></li>
+<li><a href="https://mikrotik.com/download">MikroTik downloads</a></li>
+</ul>
+<hr />
+<h1 id="netinstall-for-windows">Netinstall for Windows</h1>
+<blockquote>
+<p>This page explains how to install or reinstall RouterOS on MikroTik devices using the Netinstall utility on Windows, covering prerequisites, network preparation with a static IP, booting the device in Etherboot mode,...</p>
+</blockquote>
+<h1 id="netinstall-for-windows_1">Netinstall for Windows</h1>
+<p>This guide explains how to install RouterOS on your MikroTik device using the Netinstall utility on a Windows computer.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Make sure you have set a static IP address on your computer's interface before running the netinstall tool.</p>
+</div>
+<ul>
+<li>Download the <strong>Netinstall</strong> utility (Stable, Testing or Development version) from the <a href="https://mikrotik.com/download">downloads</a> page.</li>
+<li>Download the RouterOS <strong>System Package</strong>, and all extra packages you need or which are mandatory to use on the specific device (e.g. wireless, wifi-qcom, container, etc.) from the <a href="https://mikrotik.com/download">downloads</a> page.</li>
+</ul>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Select a RouterOS version marked as <strong>LongTerm</strong> or <strong>Stable</strong>. Choose the appropriate architecture (ARM64, ARM, MIPSBE, TILE, etc.). If you are unsure, download the RouterOS package for all architectures — Netinstall will automatically select the correct one for your device.</p>
+</div>
+<p>The tool requires the target device to be booted in BOOTP mode in order to be detected and accessed.</p>
+<h3 id="available-actions-and-parameters">Available Actions and Parameters</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Control/Action</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Net booting</strong></td>
+<td style="text-align: left;">Enables, disables, and configures IP addressing for Netinstall's built-in BOOTP and TFTP server. This is required for netbooting a MikroTik device using the Netinstall client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Shutdown</strong></td>
+<td style="text-align: left;">Shuts down the selected MikroTik device that is booted in Netinstall mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Reboot</strong></td>
+<td style="text-align: left;">Reboots the selected MikroTik device that is booted in Netinstall mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Install</strong></td>
+<td style="text-align: left;">Performs a RouterOS installation on the selected MikroTik device using the specified options.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cancel</strong></td>
+<td style="text-align: left;">Cancels the current in-progress installation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Routers/Drives</strong></td>
+<td style="text-align: left;">Displays devices available for installation. A device appears in this list only after it has been started in Netinstall mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Packages</strong></td>
+<td style="text-align: left;">Allows selection of the directory containing RouterOS package files and creation of package sets for use in subsequent installations.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="netinstall-parameters">Netinstall Parameters</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Auto Reboot</strong></td>
+<td style="text-align: left;">Defines the action performed after device installation completes successfully.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Software ID</strong></td>
+<td style="text-align: left;">Displays the current device Software ID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Key</strong></td>
+<td style="text-align: left;">Allows specification and installation of a new license key during installation. By default, Netinstall retains the detected license key from the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Keep Old Configuration</strong></td>
+<td style="text-align: left;">Instructs Netinstall to read and restore the device core configuration (/export; /users) after installation. This option does not retain user files, containers, or similar data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Keep Branding</strong></td>
+<td style="text-align: left;">Instructs Netinstall to retain the device branding package if present on the device. Factory-installed branding packages cannot be discarded and are always preserved.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Apply Default Config</strong></td>
+<td style="text-align: left;">If enabled, the device will apply the default configuration script after installation and reboot. See <code>/system/default-configuration/script/print</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Configure Script</strong></td>
+<td style="text-align: left;">Allows installation of a custom default configuration script on the device during installation. This replaces the RouterOS-supplied default configuration script. See <code>/system/default-configuration/custom-script/print</code>. The script is retained during RouterOS updates and used after subsequent configuration resets until the device is reinstalled with a new script or the script is removed. The script can access factory set passwords with read-only variables <code>$defconfPassword</code> and <code>$defconfWifiPassword</code> starting from RouterOS 7.10beta8.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mode Script</strong></td>
+<td style="text-align: left;">Specifies a one-time custom script that runs on the device's first boot after installation. Use this script to configure <strong>device‑mode</strong>, <strong>protected‑routerboot</strong>, and other settings during device deployment. The mode script executes before any custom or default configuration scripts. Upon completion, the script is automatically removed from the device. If the script modifies the device-mode, the device reboots immediately after execution. <strong>This feature requires RouterOS and Netinstall version 7.22 or newer.</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>IP Address / Gateway / Baudrate</strong></td>
+<td style="text-align: left;">Netinstall auto-creates a Configure script with the specified parameters for initial device configuration using IPv4 connectivity or serial console. This parameter is available only when installing to an empty configuration, meaning no other configuration options are specified.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Configure and Mode scripts are <a href="../../configuration-management/index.md#import-a-configuration">regular/import files</a>, accept valid MikroTik RouterOS CLI commands.</p>
+</blockquote>
+<h2 id="prepare-your-computer-network">Prepare Your Computer Network</h2>
+<ol>
+<li>Disable all network interfaces on your computer (WiFi, Ethernet, LTE, or any other connection) except for the Ethernet interface you will use for installation. Netinstall functions only with one active interface.
+    <div class="adm adm-warning" markdown="1"></li>
+</ol>
+<p><strong>WARNING</strong></p>
+<pre><code>Deactivating all other network interfaces is strongly recommended to ensure Netinstall selects the correct network interface.
+:::
+</code></pre>
+<ol start="2">
+<li>
+<p>Configure a static IP address for your Ethernet interface:</p>
+<ul>
+<li>
+<p>Open <strong>Start</strong> and select <strong>Settings</strong>.</p>
+</li>
+<li>
+<p>Go to <strong>Network &amp; Internet</strong> and select <strong>Change adapter options</strong>.</p>
+</li>
+<li>
+<p>Right-click on your <strong>Ethernet</strong> interface and select <strong>Properties</strong>.</p>
+</li>
+<li>
+<p>Select <strong>Internet Protocol Version 4 (TCP/IPv4)</strong> and click <strong>Properties</strong>.</p>
+</li>
+<li>
+<p>Check <strong>Use the following IP address</strong> and configure: IP address <code>192.168.88.1</code>, Subnet mask <code>255.255.255.0</code>.</p>
+</li>
+</ul>
+</li>
+</ol>
+<p></div>
+tip
+Netinstall can also run on a local network. In such case you could skip setting a static IP address, but it is highly recommended that you set a static IP address if you are not familiar with Netinstall.
+:::</p>
+<h2 id="start-netinstall">Start Netinstall</h2>
+<ol>
+<li>
+<p>Extract the Netinstall <code>.zip</code> file to a convenient location.</p>
+</li>
+<li>
+<p>Ensure your Ethernet interface is connected and launch <code>Netinstall.exe</code>.
+   <div class="adm adm-danger" markdown="block">
+
+**DANGER**
+
+   Netinstall requires administrator rights. Accept the permissions prompt for Netinstall to work properly.
+
+   **Tip:** If you followed this guide precisely, your computer should not have an Internet connection. Windows 10 may display a warning about verifying apps — click **Run** to proceed.
+   :::
+
+3. Allow access for Netinstall in the **Public** network when prompted.
+
+
+
+4. Configure the **Net booting** settings:
+   - Set the **Client IP** address (must be unique and not used by any other device in your network, including your computer).
+   - Use an IP address from the same subnet as your computer's static IP but different from the computer's address.
+
+
+
+## Connect the Device
+
+1. Connect your device to your computer using an Ethernet cable directly (without any other devices in between).
+2. Plug the Ethernet cable into your device's **Ether1** port or the port marked with **BOOT**.
+   :::danger
+   Some computers (especially USB Ethernet adapters) may create extra link flaps, causing Netinstall to fail to detect a device in Etherboot mode. If this occurs, use a switch between your device and computer, or use a RouterOS-powered router in bridge mode. If using a router in bridge mode, disable any DHCP client on the bridge interface and disable the [Detect Internet](../../../diagnostics-monitoring-and-troubleshooting/detect-internet.md) feature.
+
+   Netinstall uses BOOTP packets, which use the same port numbers as DHCP packets. If using a switch, ensure the bridge port is not blocked by other network devices. If you have DHCP snooping enabled, enable "trusted" on the bridge port facing the Netinstall PC.
+   :::
+
+3. Power up your device and put it into Etherboot mode.
+
+## Install RouterOS
+
+1. Wait for the device to appear in Netinstall.
+
+2. Select the device and click **Browse**. Navigate to your RouterOS packages location and press **OK**.
+
+
+
+3. The **"Keep old configuration"** process downloads the configuration database from the router, reinstalls the router (including disk formatting), and uploads the configuration back. This process applies only to the configuration itself and does not affect files, including databases like User Manager database, Dude database, and others.
+
+
+
+4. The **"Keep branding"** option allows you to retain the device's already installed branding package without reinstalling it using Netinstall.
+
+
+
+   :::tip
+   When using the **Configure script** option, it is recommended to introduce a [delay](../../configuration-management/index.md#startup-delay) before configuration execution.
+   :::
+
+5. Select your desired RouterOS packages and press **Install**.
+
+
+
+6. Wait for the installation to complete. Depending on the Netinstall version and device, a manual reboot may be required.
+
+
+   :::warning
+   If you downloaded RouterOS packages for multiple architectures, Netinstall will only display the appropriate architecture packages for your device after selecting it. Unsupported packages will not appear in the window.
+
+   If the installation does not start (progress bar not moving or no status shown), try closing and reopening Netinstall, or put the device into Etherboot mode again. If the issue persists, try using Netinstall on a different computer.
+   :::
+
+## Post-Installation
+
+After using Netinstall, the device resets to defaults (unless you specified not to apply the default configuration or Keep old configuration). For security reasons, some devices are not accessible through the **Ether1** port when using the default configuration. See [Default configuration](../../configuration-management/default-configurations.md) for details.
+
+## Complete Setup
+
+Your device is now ready. Configure your device as needed and reconnect it to your network.
+
+[First Time Configuration](../../first-time-configuration.md)
+
+
+</div></p>
+</li>
+</ol>
+<p>tip
+Looking for a different installation method? See the <a href="./netinstall-linux.md"><strong>Linux</strong></a> or <a href="./netinstall-package.md"><strong>Netinstall Package</strong></a> instructions.
+:::</p>
+<hr />
+<h1 id="netinstall-for-linux">Netinstall for Linux</h1>
+<blockquote>
+<p>This page documents netinstall-cli, the Linux command-line version of the MikroTik Netinstall utility, covering all command-line options for single and multiple device reinstallation, scripting and configuration...</p>
+</blockquote>
+<h1 id="netinstall-for-linux_1">Netinstall for Linux</h1>
+<p>The Linux version of Netinstall, <code>netinstall-cli</code>, is a command-line tool that provides nearly the same functionality as the Windows version.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Make sure you have set a static IP address on your computer's interface before running the netinstall tool.</p>
+<pre><code class="language-bash">sudo ip addr add 192.168.88.2/24 dev &lt;interface&gt;
+sudo ip link set &lt;interface&gt; up
+</code></pre>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This tool requires root privileges. You must run it as root or use <code>sudo</code> to execute it.</p>
+</div>
+<h2 id="netinstall-cli-command-line-options">netinstall-cli Command Line Options</h2>
+<p>The <code>netinstall-cli</code> command syntax is:</p>
+<pre><code class="language-text">netinstall-cli [-r] [-e] [-b] [-m [-o]] [-f] [-c] [-v] [--reboot] [--shutdown] [-k &lt;keyfile&gt;] [-s &lt;userscript&gt;] [-sm &lt;modescript&gt;] [--mac &lt;mac address&gt;] {-i &lt;interface&gt; | -a &lt;client-ip&gt;} [PACKAGE]+ 
+</code></pre>
+<h2 id="general-options">General Options</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>-r</strong></td>
+<td style="text-align: left;">Reinstall the device and apply the default configuration script.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-e</strong></td>
+<td style="text-align: left;">Reinstall the device without applying the default configuration script, leaving the device with an empty configuration.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-b</strong></td>
+<td style="text-align: left;">Discard the currently installed branding package from the device. If not specified, the branding package is preserved. Factory-installed branding packages cannot be discarded and are always preserved.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-f</strong></td>
+<td style="text-align: left;">Ignore storage size constraints. By default, netinstall-cli checks the router's storage capacity. If the total size of selected packages exceeds available storage, an error is displayed: <strong>"Ignoring XX:XX:XX:XX:XX:XX, not enough space (override with -f)"</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-c</strong></td>
+<td style="text-align: left;">Allow multiple Netinstall instances to run simultaneously on the same computer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-v</strong></td>
+<td style="text-align: left;">Enable verbose mode for detailed output.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiple-device-reinstallation-options">Multiple Device Reinstallation Options</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>-m</strong></td>
+<td style="text-align: left;">Enable multiple device reinstallation. The same device will be reinstalled as many times as BOOTP requests are received.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-o</strong></td>
+<td style="text-align: left;">Restrict installation to once per Netinstall run. The tool tracks MAC addresses of successfully installed devices and ignores subsequent BOOTP requests from the same MAC address during the current session.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Combination behavior:</strong></p>
+<ul>
+<li>No <code>-m</code> and no <code>-o</code>: Only one successful installation proceeds, then Netinstall closes.</li>
+<li><code>-m</code> only: Enables multiple reinstallation; the same device reinstalls repeatedly.</li>
+<li><code>-o</code> only: Same as no flags; one installation per run, then close.</li>
+<li>Both <code>-m</code> and <code>-o</code>: Enables multiple reinstallation, but each device installs only once per session.</li>
+</ul>
+<h3 id="script-and-configuration-options">Script and Configuration Options</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>--reboot</strong></td>
+<td style="text-align: left;">Reboots the selected MikroTik device that is booted in Netinstall mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>--shutdown</strong></td>
+<td style="text-align: left;">Shuts down the selected MikroTik device that is booted in Netinstall mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-k \<keyfile></strong></td>
+<td style="text-align: left;">Provide a license key file in .KEY format to the device (optional).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-s \<userscript></strong></td>
+<td style="text-align: left;">Allows installation of a custom default configuration script on the device during installation. This replaces the RouterOS-supplied default configuration script. See <code>/system/default-configuration/custom-script/print</code>. The script is retained during RouterOS updates and used after subsequent configuration resets until the device is reinstalled with a new script or the script is removed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-sm \<modescript></strong></td>
+<td style="text-align: left;">Specifies a one-time custom script that runs on the device's first boot after installation. Use this script to configure <strong>device‑mode</strong>, <strong>protected‑routerboot</strong>, and other settings during device deployment. The mode script executes before any custom or default configuration scripts. Upon completion, the script is automatically removed from the device. If the script modifies the device-mode, the device reboots immediately after execution. <strong>This feature requires RouterOS and Netinstall version 7.22 or newer.</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="network-options">Network Options</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>--mac \<mac address></strong></td>
+<td style="text-align: left;">Specify a MAC address to allow for installation. When provided, all other BOOTP requests are ignored.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-i \<interface></strong></td>
+<td style="text-align: left;">Specify a network interface for the installation (optional, recommended).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>-a \<client-ip></strong></td>
+<td style="text-align: left;">Specify a specific IP address that the Netinstall server assigns to the device. This is mandatory unless using the <code>-i</code> parameter, which allows auto-assignment.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="package-selection">Package Selection</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>PACKAGES</strong></td>
+<td style="text-align: left;">Specify a list of RouterOS packages in .NPK format to install on the device. This parameter is mandatory. The <strong>system package</strong> must be listed first.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p><strong>Configuration Preservation Behavior:</strong></p>
+<p>When neither <code>-r</code> nor <code>-e</code> is specified, netinstall-cli reinstalls RouterOS while preserving the current configuration. It downloads the existing configuration database from the router, reformats the disk during reinstallation, then uploads the configuration back to the device. This matches the <strong>"Keep old configuration"</strong> option in the Netinstall GUI.</p>
+<p>Note: This process applies only to the configuration itself. Files and databases such as User Manager database, Dude database, and other data stored separately are not preserved.</p>
+</div>
+<h2 id="linux-netinstall-example">Linux Netinstall Example</h2>
+<p>Download the tool from the <a href="https://mikrotik.com/download">MikroTik Download Page</a>:</p>
+<pre><code class="language-bash">wget https://download.mikrotik.com/routeros/[VERSION]/netinstall-[VERSION].tar.gz
+</code></pre>
+<p>Extract the archive:</p>
+<pre><code class="language-bash">tar -xzf netinstall-[VERSION].tar.gz
+</code></pre>
+<p>Configure the network interface (replace eth0 with your interface name):</p>
+<pre><code class="language-bash">sudo ip link set eth0 down
+sudo ip addr add 192.168.88.2/24 dev eth0
+sudo ip link set eth0 up
+</code></pre>
+<p>Run the installation. The tool requires root privileges, use sudo:</p>
+<pre><code class="language-bash">sudo ./netinstall-cli [-parameters] [address/interface] routeros-[VERSION]-[architecture].npk
+</code></pre>
+<pre><code class="language-bash">sudo ./netinstall-cli -i eth0 -v -e  routeros-7.23.1-arm64.npk wifi-qcom-7.23.1-arm64.npk container-7.23.1-arm64.npk 
+Version: 7.24beta1(2026-05-26 11:17:51)
+Will apply empty config
+Waiting for Link-UP on eth0
+Using client IP 192.168.88.3
+Waiting for RouterBOARD...
+Received a BOOTP request from 01:23:45:67:89:AA (arm64)
+Assigned 192.168.88.3 to 01:23:45:67:89:AA
+blksize 1452
+Booting device 01:23:45:67:89:AA into setup mode
+Formatting device 01:23:45:67:89:AA
+Sending packages to device 01:23:45:67:89:AA
+Packages sent to device 01:23:45:67:89:AA
+Rebooting device 01:23:45:67:89:AA
+Successfully finished installing device 01:23:45:67:89:AA
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Looking for a different installation method? See the <a href="./netinstall-windows.md"><strong>Windows</strong></a> or <a href="./netinstall-package.md"><strong>Netinstall Package</strong></a> instructions.</p>
+</div>
+<hr />
+<h1 id="netinstall-package">Netinstall package</h1>
+<blockquote>
+<p>This page documents the RouterOS Netinstall package, which allows reinstalling RouterOS on MikroTik devices remotely from another router running RouterOS 7.24beta1 or newer, covering prerequisites, the...</p>
+</blockquote>
+<h1 id="netinstall-package_1">Netinstall package</h1>
+<p>The <strong>Netinstall package</strong> is an extra package, available for all devices running RouterOS starting from version 7.24beta1 and is available for all of the architectures excluding SMIPS.</p>
+<p>This package allows RouterOS to be reinstalled remotely from another MikroTik device running RouterOS.</p>
+<h2 id="prerequisites_1">Prerequisites</h2>
+<ul>
+<li>RouterOS version 7.24beta1 and later.</li>
+<li>Netinstall package enabled.</li>
+<li>Target MikroTik hardware router connected to the same L2 network segment as the device being reinstalled.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>By default, the <strong>Netinstall package</strong> creates a <code>NetinstallCache</code> directory in the root directory. On devices with a <code>flash</code> directory, Netinstall-related files are stored in RAM. On devices without a <code>flash</code> directory, these files are stored on the device's persistent storage.</p>
+<p>Ensure that the <strong>Netinstall</strong> server device has sufficient free storage space or RAM available.</p>
+<p>You can also configure an external storage device to be used as the <code>NetinstallCache/</code> directory in <strong>Netinstall → Settings</strong>.</p>
+</div>
+<blockquote>
+<p>Physically removed files from the <code>Files</code> menu will be automatically redownloaded if they are currently cached. In order to delete cached files, remove them from a <code>Netinstall Cache</code> menu.
+In case files were previously downloaded before the device was rebooted, they will be deleted.</p>
+</blockquote>
+<h2 id="installation-workflow">Installation Workflow</h2>
+<ol>
+<li>
+<p>Install and enable the Netinstall package. The <strong>Netinstall package</strong> is available for WinBox, WebFig GUI and CLI and is located under the <strong>Tools</strong> menu or <code>/tools/netinstall</code> in the CLI.</p>
+</li>
+<li>
+<p>Configure a Netinstall interface. Add a new <strong>Netinstall</strong> interface, set the required parameters and run the device connected to that interface in BOOTP mode.</p>
+</li>
+<li>
+<p>Download or select the required RouterOS packages. The <strong>Netinstall package</strong> automatically installs the appropriate <strong>System</strong> package for the target device architecture.</p>
+</li>
+<li>
+<p>Boot the target device into Etherboot mode.</p>
+</li>
+<li>
+<p>Install RouterOS.</p>
+</li>
+</ol>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>If the <strong>Version</strong> parameter is not set, <strong>Netinstall package</strong> installs the latest RouterOS version available in the <code>Check for Updates</code> channel currently selected on the <strong>Netinstall server</strong>.</p>
+</div>
+<p>Additional packages must be selected explicitly.</p>
+<h2 id="general-configuration-options">General Configuration Options</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Settings</strong></td>
+<td style="text-align: left;">Allows to set the <code>NetinstallCache/</code> path directory. See the <a href="#prerequisites">Prerequisites warning information</a>. Example: <code>/tool/netinstall/settings/set cache-directory=...</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="netinstall-parameters_1">Netinstall Parameters</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>allow-etherboot</strong> (yes / no ; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Allows the BOOTP requests on the selected interface. Will ignore the device if set to no.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>allow-flashfig</strong> (yes / no ; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables the <a href="../../../management-tools/flashfig.md">FlashFig</a> functionality</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>apply-default-configuration</strong> (yes / no ; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If enabled, the device will apply the default configuration script after installation and reboot. See <code>/system/default-configuration/script/print</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>auto-reboot</strong> (none / reboot / shutdown ; Default: <strong>reboot</strong>)</td>
+<td style="text-align: left;">Defines the action performed after device installation completes successfully.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>etherboot-image</strong></td>
+<td style="text-align: left;">Allows to select the previously cached package to be installed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>etherboot-image-arch</strong></td>
+<td style="text-align: left;">Specifies the CPU architecture required for the etherboot image. All other architecture requests will be ignored. If not specified, the detected architecture will be used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extra-packages</strong></td>
+<td style="text-align: left;">Allows to add the extra packages to be installed alongside the <code>system</code> package. The <code>routeros</code> package will be installed by default.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>install-once</strong> (yes / no ; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Restrict installation to once per Netinstall run. The tool tracks <strong>MAC addresses</strong> of successfully installed devices and ignores subsequent <strong>BOOTP</strong> requests from the same <strong>MAC address</strong> during the current session.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong></td>
+<td style="text-align: left;">Specifies the <strong>Netinstall server</strong> network interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-range</strong></td>
+<td style="text-align: left;">Customizes the <strong>BOOTP</strong> ip-range to be used for netinstall process.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep-old-configuration</strong> (yes / no ; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Instructs Netinstall to read and restore the device core configuration (/export; /users) after installation. This option does not retain user files, containers, or similar data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong></td>
+<td style="text-align: left;">Specify a MAC address to allow for installation. When provided, all other BOOTP requests are ignored.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode-file</strong></td>
+<td style="text-align: left;">Similar to <code>Mode script</code>. Specifies a one-time custom script that runs on the device's first boot after installation. Use this script to configure <strong>device‑mode</strong>, <strong>protected‑routerboot</strong>, and other settings during device deployment. The mode script executes before any custom or default configuration scripts. Upon completion, the script is automatically removed from the device. If the script modifies the device-mode, the device reboots immediately after execution. <strong>This feature requires RouterOS and Netinstall version 7.22 or newer.</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>place-before</strong></td>
+<td style="text-align: left;">Insert rule before existing rules</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>remove-branding</strong> (yes / no ; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Discard the currently installed branding package from the device. If not specified, the branding package is preserved. Factory-installed branding packages cannot be discarded and are always preserved.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>script-file</strong></td>
+<td style="text-align: left;">Allows installation of a custom default configuration script on the device during installation. This replaces the RouterOS-supplied default configuration script. See <code>/system/default-configuration/custom-script/print</code>. The script is retained during RouterOS updates and used after subsequent configuration resets until the device is reinstalled with a new script or the script is removed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong></td>
+<td style="text-align: left;">Specifies the RouterOS version to be installed. If the <strong>Version</strong> parameter is not set, <strong>Netinstall</strong> installs the latest RouterOS version available in the <code>Check for Updates</code> channel currently selected on the <strong>Netinstall server</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wait</strong> (yes / no ; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Keeps the device in the etherboot state and wait for user command to start installing.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cache">Cache</h2>
+<p>Available action - <code>Add</code> for both GUI and CLI.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arch</strong></td>
+<td style="text-align: left;">Mandatory parameter. Specifies the CPU architecture of the necessary files to be downloaded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>packages</strong></td>
+<td style="text-align: left;">Allows to add the extra packages list to be downloaded to the <code>NetinstallCache/</code> directory.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong></td>
+<td style="text-align: left;">Specifies the RouterOS version packages to download. If the <strong>Version</strong> parameter is not set, <strong>Netinstall</strong> downloads the latest RouterOS version available in the <code>Check for Updates</code> channel currently selected on the <strong>Netinstall server</strong>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="devices">Devices</h2>
+<p>The <strong>Netinstall Devices</strong> menu displays the list of the netinstalled devices and its states.</p>
+<p>Available actions:</p>
+<ul>
+<li><code>Clear</code> the list.</li>
+<li><code>Install</code> menu. If additional parameters are chosen with an <code>Install</code> menu, all the previously set settings are overridden.</li>
+</ul>
+<p>Available <code>install</code> parameters: <code>auto-reboot</code>, <code>extra-packages</code>, <code>numbers</code>, <code>version</code>.</p>
+<pre><code class="language-bash">/tool/netinstall/devices&gt; install auto-reboot=reboot extra-packages=user-manager version=7.24beta1
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>auto-reboot</strong> (none / reboot / shutdown ; Default: <strong>reboot</strong>)</td>
+<td style="text-align: left;">Defines the action performed after device installation completes successfully.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extra-packages</strong></td>
+<td style="text-align: left;">Allows to add the extra packages to be installed alongside the <code>system</code> package. The <code>routeros</code> package will be installed by default.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>numbers</strong></td>
+<td style="text-align: left;">Allows to Select for which devices from the list the RouterOS to be reinstalled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong></td>
+<td style="text-align: left;">Specifies the RouterOS version packages to download. If the <strong>Version</strong> parameter is not set, <strong>Netinstall</strong> installs the <strong>version</strong> selected for the interface main settings or if not specified, downloads the latest RouterOS version available in the <code>Check for Updates</code> channel currently selected on the <strong>Netinstall server</strong>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-cases">Use cases</h2>
+<p>The <strong>Netinstall package</strong> can be used within the <a href="../../../hardware/routerboard.md#preboot-etherboot">Preboot Etherboot</a> for the scenario when one of the MikroTik routers with a Netinstall package installed is dedicated for remote recovery purposes.
+Set the <code>preboot-etherboot-server=ip_address</code> of the Netinstall server and reinstall the RouterOS remotely in case of any issues with a target device.
+When using <code>preboot-etherboot-server</code>, configure an appropriate <strong>IP range</strong> on the Netinstall server to handle the Etherboot requests.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Remember to disable or strictly filter the rules created not to unintentionally reinstall the system on each reboot.</p>
+</div>
+<h3 id="netinstall-package-example">Netinstall package Example</h3>
+<pre><code class="language-bash">[admin@MikroTik] /tool/netinstall/add interface=bridge1 keep-old-configuration=no apply-default-configuration=yes auto-reboot=reboot mac-address=01:23:45:67:89:BB extra-packages=wifi-qcom,container version=7.23.1 ip-range=192.168.88.10-192.168.88.20
+</code></pre>
+<p>Verify the cached packages:</p>
+<pre><code class="language-bash">[admin@MikroTik] /tool/netinstall/cache/print 
+Columns: PATH, URL, STATUS
+#  PATH                                               URL                                                                                STATUS    
+0  NetinstallCache/container-7.23.1-arm64.npk  https://upgrade.mikrotik.com/routeros/7.23.1/container-7.23.1-arm64.npk  downloaded
+1  NetinstallCache/linux.arm64                 https://upgrade.mikrotik.com/routeros/7.23.1/netinstk/linux.arm64        downloaded
+2  NetinstallCache/linux.arm64-uefi            https://upgrade.mikrotik.com/routeros/7.23.1/netinstk/linux.arm64-uefi   downloaded
+3  NetinstallCache/wifi-qcom-7.23.1-arm64.npk  https://upgrade.mikrotik.com/routeros/7.23.1/wifi-qcom-7.23.1-arm64.npk  downloaded
+</code></pre>
+<p>Check the device state after installation:</p>
+<pre><code class="language-bash">[admin@MikroTik] /tool/netinstall/devices/print 
+Flags: N - NETINSTALL
+Columns: MAC-ADDRESS, INTERFACE, STATE, LAST-STATE-UPDATE, EXTRA-PACKAGES, VERSION, ARCH, MODEL, LAST-STATE, AUTO-REBOOT
+#   MAC-ADDRESS        INTERFACE  STATE    LAST-STATE-UPDATE  EXTRA-PACKAGES  VERSION    ARCH   MODEL       LAST-STATE        AUTO-REBOOT
+0 N 01:23:45:67:89:BB  bridge1    done     58s                container       7.23.1     arm64   L009UiGS   bootp reply sent  reboot     
+                                                              wifi-qcom 
+</code></pre>
+<h3 id="netinstall-package-flashfig-example">Netinstall package FlashFig Example</h3>
+<p>The Netinstall package includes FlashFig functionality, making the batch configuration process much simpler.
+A common setup uses a PoE switch with bridged ports.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Set the bridge <code>protocol-mode=none</code> or <code>/interface/bridge/port set 0,1... edge=yes</code>.</p>
+</div>
+<p>The physical setup:</p>
+<ul>
+<li>Connect the <strong>Netinstall server</strong> (Router1, ether2) to a port on the PoE switch.</li>
+<li>Connect the <strong>target device</strong> to another port on the same PoE switch.</li>
+</ul>
+<pre><code class="language-bash">[admin@MikroTik] /tool/netinstall/devices/print 
+Flags: F - FLASHFIG
+Columns: MAC-ADDRESS, INTERFACE, STATE, LAST-STATE-UPDATE, MODEL, AUTO-REBOOT
+#   MAC-ADDRESS        INTERFACE  STATE                  LAST-STATE-UPDATE  MODEL   AUTO-REBOOT
+0 F 01:23:45:67:89:BB  ether2     done, won't reinstall  21s                952-hb  reboot 
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Looking for a different installation method? See the <a href="./netinstall-windows.md"><strong>Windows</strong></a> or <a href="./netinstall-linux.md"><strong>Linux</strong></a> instructions.</p>
+</div>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

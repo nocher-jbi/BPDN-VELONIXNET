@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI Reference · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="cli-reference">CLI Reference</h1>
+<h1 id="cli-reference_1">CLI Reference</h1>
+<blockquote>
+<p>The CLI reference documents RouterOS command menus and properties by console path. Use this section to look up command syntax, configuration objects, and operational commands for RouterOS features.</p>
+</blockquote>
+<h1 id="cli-reference_2">CLI Reference</h1>
+<p>The CLI reference documents RouterOS command menus and properties by console path. Use this section to look up command syntax, configuration objects, and operational commands for RouterOS features.</p>
+<h2 id="argument-types">Argument types</h2>
+<ul>
+<li><strong>address</strong> — universal address parameter, rendered as <code>address (flags=...)</code>; see <a href="#address-flags">address flags</a> below</li>
+<li><strong>alt</strong> — alternative type, can accept one of several different value types</li>
+<li><strong>as</strong> — autonomous system number (used in BGP routing)</li>
+<li><strong>bool</strong> — boolean value (true/false, yes/no)</li>
+<li><strong>cfg</strong> — configuration entry identifier</li>
+<li><strong>composite</strong> — combination of multiple arguments treated as a group</li>
+<li><strong>date</strong> — date and time value</li>
+<li><strong>enum</strong> — enumerator, has predefined values listed in parentheses</li>
+<li><strong>expr</strong> — expression or condition (used in routing filters and scripting)</li>
+<li><strong>file</strong> — file path or name reference</li>
+<li><strong>iface_enum</strong> — interface selection list, can usually accept an interface name, or predefined values like <code>all</code>, <code>none</code>, <code>dynamic</code>, <code>slave</code>; values listed in braces</li>
+<li><strong>ipAddr</strong> — IPv4 address</li>
+<li><strong>ip6Addr</strong> — IPv6 address</li>
+<li><strong>ipPrefix</strong> — IPv4 address with prefix length</li>
+<li><strong>ip6Prefix</strong> — IPv6 address with prefix length</li>
+<li><strong>ipRange</strong> — IPv4 address range</li>
+<li><strong>macAddr</strong> — MAC address (can specify full address or with wildcards)</li>
+<li><strong>meter</strong> — signal quality level, typically expressed in dBm</li>
+<li><strong>multi</strong> — multi-value argument, accepts multiple values from a defined set</li>
+<li><strong>num</strong> — unsigned integer, can be restricted with a range (e.g. <code>[3 .. 20]</code>, <code>[.. 10]</code>, <code>[4 ..]</code>); 32-bit range if not explicitly specified</li>
+<li><strong>numericon</strong> — numeric value displayed with unit suffix</li>
+<li><strong>object</strong> — structured list of values (e.g. a table of addresses or configuration items)</li>
+<li><strong>pic</strong> — picture/bitmap value</li>
+<li><strong>range</strong> — numeric range (e.g. a set of ports)</li>
+<li><strong>remote</strong> — reference to a remote object (e.g. a routing filter rule)</li>
+<li><strong>script</strong> — script source code; parameters rendered as <code>alt { script: string }</code> accept either the name of an existing script from <code>/system script</code>, or inline script source code</li>
+<li><strong>string</strong> — text string</li>
+<li><strong>super</strong> — composite type accepting multiple different argument types; sub-types are listed in braces, e.g. <code>super { bool, time }</code></li>
+<li><strong>switch</strong> — on/off toggle without an explicit value argument</li>
+<li><strong>time</strong> — time duration or interval, usually in seconds, may include units like <code>s</code>, <code>m</code>, <code>h</code>, <code>d</code></li>
+<li><strong>timezone</strong> — timezone or UTC offset value</li>
+<li><strong>ubit</strong> — bitfield with named bits, supported bit names listed in parentheses, e.g. <code>ubit (ip, ipv6)</code></li>
+<li><strong>value</strong> — standalone value identifier (typically used as part of a composite or enum)</li>
+<li><strong>varName</strong> — variable name reference (used in scripting)</li>
+</ul>
+<p>Argument types can be nested, for example <code>super {num, time, super {bool, ip}}</code>.</p>
+<h2 id="standard-list-entry-properties">Standard list entry properties</h2>
+<p>List menus (menus whose entries can be added, removed and reordered) share a set of properties and commands that behave the same way everywhere, so they are not repeated in the Argument tables of each menu page:</p>
+<ul>
+<li><strong><code>comment</code></strong> — free-form text comment for the entry, limited to 16 KB</li>
+<li><strong><code>disabled</code></strong> — when <code>yes</code>, the entry is inactive but kept in the configuration; such entries are flagged with <code>X</code> in listings. The <code>enable</code> and <code>disable</code> commands toggle this state</li>
+<li><strong><code>copy-from</code></strong> — argument of the <code>add</code> command: creates the new entry as a copy of an existing entry</li>
+<li><strong><code>place-before</code></strong> — argument of the <code>add</code> and <code>move</code> commands: positions the entry before another entry in the list</li>
+</ul>
+<h2 id="standard-print-modifiers">Standard print modifiers</h2>
+<p>The <code>print</code> command accepts output modifiers that are likewise not listed on each menu page:</p>
+<ul>
+<li><strong><code>detail</code></strong> — prints all properties of each entry, instead of the brief summary</li>
+<li><strong><code>as-value</code></strong> — returns the output as values rather than formatted strings, for use in scripts</li>
+</ul>
+<h2 id="address-flags">address-flags</h2>
+<p>The <strong>address</strong> type is rendered as <code>address (flags=...)</code> where the flags define which address formats are accepted:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>IPv4 address</td>
+</tr>
+<tr>
+<td>6</td>
+<td>IPv6 address</td>
+</tr>
+<tr>
+<td>D</td>
+<td>DNS name (hostname)</td>
+</tr>
+<tr>
+<td>i</td>
+<td>Interface name as the value itself, in place of an address (e.g. a point-to-point interface as a route gateway)</td>
+</tr>
+<tr>
+<td>/</td>
+<td>Address with subnet mask (CIDR prefix)</td>
+</tr>
+<tr>
+<td>v</td>
+<td>VRF (Virtual Routing and Forwarding instance)</td>
+</tr>
+<tr>
+<td>%</td>
+<td>Interface suffix on an address (zone specifier), e.g. <code>fe80::1%ether1</code> or <code>00:11:22:33:44:55%ether1</code></td>
+</tr>
+<tr>
+<td>R</td>
+<td>Route distinguisher</td>
+</tr>
+<tr>
+<td>S</td>
+<td>Free-form prefix (e.g. EVPN prefix)</td>
+</tr>
+<tr>
+<td>+</td>
+<td>Address list</td>
+</tr>
+<tr>
+<td>:</td>
+<td>Port or zone specifier</td>
+</tr>
+<tr>
+<td>L</td>
+<td>Link-local address</td>
+</tr>
+<tr>
+<td>m</td>
+<td>multicast address</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>i</code> and <code>%</code> flags differ in where the interface appears. With <code>i</code>, a bare interface name replaces the address. With <code>%</code>, the interface is only a qualifier appended to a complete address, used to disambiguate addresses that are not unique router-wide, such as IPv6 link-local addresses.</p>
+<p>Note that the <code>%interface</code> suffix is part of the IPv6 link-local addressing itself: a link-local address is ambiguous without a zone specification, so any parameter that accepts IPv6 addresses (flag <code>6</code>) accepts <code>link-local%interface</code>, even if its flag list does not include <code>%</code>. The <code>%</code> flag indicates that the parameter supports the suffix more broadly, for example to select the outgoing interface for a MAC ping.</p>
+<hr />
+<h1 id="cli-reference-version-comparison">CLI Reference Version Comparison</h1>
+<blockquote>
+<p>Compare parameters between two RouterOS CLI reference versions.</p>
+</blockquote>
+<p>Every RouterOS release brings a new CLI reference: commands and parameters are
+added, renamed, and removed as features evolve. Select two versions below to
+see which parameters were added and which were removed between them.</p>
+<p><CliCompare /></p>
+<h2 id="how-the-comparison-works">How the comparison works</h2>
+<ul>
+<li>The data is generated from the versioned CLI reference pages in this
+  repository (<code>versioned_docs/version-*/cli-reference</code>), so it reflects the
+  published pages, not the RouterOS source itself.</li>
+<li><strong>Parameters</strong> are the arguments of a command or menu, including read-only
+  arguments. <strong>Flags</strong> are item properties such as <code>disabled</code>, <code>running</code>, and
+  <code>invalid</code>.</li>
+<li>A command or menu is listed under <em>New commands</em> or <em>Removed commands</em> when
+  the whole page is missing from the other version.</li>
+<li>Directory pages (for example <code>ip/firewall</code>) list the parameters of every
+  entry of that menu, so a removed parameter there may actually have moved to
+  a submenu page.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

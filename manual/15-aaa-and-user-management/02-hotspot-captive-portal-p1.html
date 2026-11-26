@@ -1,0 +1,2166 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HotSpot - Captive portal · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">AAA and User Management</p>
+      <h1 id="hotspot-captive-portal-part-12">HotSpot - Captive portal (part 1/2)</h1>
+<h1 id="hotspot-captive-portal">HotSpot - Captive portal</h1>
+<blockquote>
+<p>Set up a HotSpot (captive portal) in RouterOS: run the setup, add users and user profiles with rate and time limits, select the login methods, let selected traffic through without login, and authenticate against a...</p>
+</blockquote>
+<h1 id="hotspot-captive-portal_1">HotSpot - Captive portal</h1>
+<p>A HotSpot asks the users of a network to log in before they get network access. A device that connects to the HotSpot network gets an IP address and can resolve DNS names, but every web page that it opens over HTTP is replaced by the login page of the router, and all other traffic is rejected. After the user logs in, the device has network access until the user logs out or a limit is reached.</p>
+<p>The HotSpot can:</p>
+<ul>
+<li>authenticate users from a list on the router or on a RADIUS server;</li>
+<li>limit each user by time, by traffic amount, and by data rate;</li>
+<li>log in known devices without a login page, by their MAC address;</li>
+<li>give time-limited trial access without an account;</li>
+<li>let selected sites, services, and devices through without login (walled garden and IP bindings);</li>
+<li>show your own login page, see <a href="./hotspot-customisation">HotSpot customisation</a>.</li>
+</ul>
+<h2 id="before-you-start">Before you start</h2>
+<ul>
+<li>HotSpot works with IPv4 only.</li>
+<li><a href="../../system-information-and-utilities/device-mode">Device-mode</a> can block HotSpot. Check that <code>hotspot</code> is <code>yes</code> in <code>/system/device-mode/print</code>.</li>
+<li>One HotSpot server runs on one interface. To serve several ports, put them in a bridge and run the HotSpot on the bridge interface, not on a bridge port. Do not put the interface that leads to the Internet into this bridge.</li>
+<li>A user rate limit creates a simple queue. Simple queues do not limit FastTracked connections, see <a href="../../firewall-and-quality-of-service/queues/simple-queue">Simple queue</a>.</li>
+<li>If you set up the HotSpot on the interface through which you manage the router, you lose access until you log in on the login page. Manage the router through another interface, or add an IP binding for your computer first, as described in the IP bindings section of this page.</li>
+</ul>
+<h2 id="set-up-a-hotspot">Set up a HotSpot</h2>
+<p>The <code>/ip/hotspot/setup</code> command asks a few questions and creates the HotSpot server together with everything that it needs.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Question</th>
+<th style="text-align: left;">What to answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>hotspot interface</code></td>
+<td style="text-align: left;">The interface with the clients. On a router with the default configuration this is <code>bridge</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>local address of network</code></td>
+<td style="text-align: left;">The address of the router on this interface. The address that the interface already has is offered.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>masquerade network</code></td>
+<td style="text-align: left;"><code>yes</code> adds a source NAT rule for the HotSpot network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>address pool of network</code></td>
+<td style="text-align: left;">The addresses for the clients. If the interface has a DHCP server, its pool is offered.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>select certificate</code></td>
+<td style="text-align: left;">Answer <code>none</code>, unless you use the <code>https</code> login method.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ip address of smtp server</code></td>
+<td style="text-align: left;">Keep <code>0.0.0.0</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dns servers</code></td>
+<td style="text-align: left;">The DNS servers that the router itself uses. The answer is written to <code>/ip/dns</code>, so do not enter the address of the router here.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dns name</code></td>
+<td style="text-align: left;">A name for the login page, for example <code>hotspot.lan</code>. The router resolves this name to its own address for the clients. Leave it empty to use the IP address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>name of local hotspot user</code>, <code>password for the user</code></td>
+<td style="text-align: left;">The first user account. These two questions are asked only when the router has no HotSpot user yet.</td>
+</tr>
+</tbody>
+</table>
+<p>On a router with the default configuration, with <code>bridge</code> as the HotSpot interface and <code>hotspot.lan</code> as the DNS name, the setup creates this configuration:</p>
+<pre><code class="language-ros">/ip/hotspot/profile
+add dns-name=hotspot.lan hotspot-address=192.168.88.1 name=hsprof1
+/ip/hotspot
+add address-pool=default-dhcp disabled=no interface=bridge \
+    name=hotspot1 profile=hsprof1
+/ip/hotspot/user
+add name=user1
+/ip/firewall/nat
+add action=masquerade chain=srcnat \
+    comment=&quot;masquerade hotspot network&quot; src-address=192.168.88.0/24
+</code></pre>
+<p>The <code>address-pool</code> of the server does more than name the client addresses. With a pool, the HotSpot also serves a device whose own IP settings do not fit the network, for example a laptop with a static address from another network. The router answers for the gateway that the device expects and translates the address of the device to a free address of the pool; <code>/ip/hotspot/host/print</code> shows that address as <code>to-address</code>. With <code>address-pool=none</code>, the addresses are not translated and such a device gets no answer.</p>
+<p>If the interface has no DHCP server, the setup also creates an IP pool and a DHCP server for it. The existing firewall rules of the router are not changed; the HotSpot adds its own dynamic rules, which are listed at the end of this page.</p>
+<p>Check that the server runs:</p>
+<pre><code class="language-ros">/ip/hotspot/print
+</code></pre>
+<pre><code class="language-ros">Columns: NAME, INTERFACE, ADDRESS-POOL, PROFILE, IDLE-TIMEOUT
+# NAME      INTERFACE  ADDRESS-POOL  PROFILE  IDLE-TIMEOUT
+0 hotspot1  bridge     default-dhcp  hsprof1  5m
+</code></pre>
+<p>Connect a device to the HotSpot network and open an HTTP page, for example <code>http://example.com</code>. The login page of the router opens instead. The device is now in the host list:</p>
+<pre><code class="language-ros">/ip/hotspot/host/print
+</code></pre>
+<pre><code class="language-ros">Flags: H - DHCP
+Columns: MAC-ADDRESS, ADDRESS, TO-ADDRESS, SERVER, IDLE-TIMEOUT
+#   MAC-ADDRESS        ADDRESS         TO-ADDRESS      SERVER    IDLE-TIMEOUT
+0 H 52:54:09:80:02:01  192.168.88.254  192.168.88.254  hotspot1  5m
+1 H 52:54:09:81:02:01  192.168.88.253  192.168.88.253  hotspot1  5m
+</code></pre>
+<p>Log in with the user that you created. The host gets the <code>A</code> (authorized) flag, and the session is in the active list:</p>
+<pre><code class="language-ros">/ip/hotspot/active/print
+</code></pre>
+<pre><code class="language-ros">Columns: USER, ADDRESS, UPTIME
+# USER   ADDRESS         UPTIME
+0 user1  192.168.88.254  2s
+</code></pre>
+<p>To log a user out, remove the session from <code>/ip/hotspot/active</code>. The user can also open the status page, <code>http://hotspot.lan/status</code>, and log out there.</p>
+<h2 id="add-users-and-limits">Add users and limits</h2>
+<p>Users are in <code>/ip/hotspot/user</code>. A user profile in <code>/ip/hotspot/user/profile</code> holds the settings that several users share.</p>
+<p>Add a user:</p>
+<pre><code class="language-ros">/ip/hotspot/user/add name=anna password=ChangeMe-1
+</code></pre>
+<h3 id="limit-the-data-rate-and-the-session-time">Limit the data rate and the session time</h3>
+<p>Create a profile for guests and a user with this profile:</p>
+<pre><code class="language-ros">/ip/hotspot/user/profile/add name=guest rate-limit=512k/2M \
+    session-timeout=1h shared-users=1 address-list=hotspot-guests
+/ip/hotspot/user/add name=guest1 password=ChangeMe-2 profile=guest
+</code></pre>
+<ul>
+<li><code>rate-limit</code> is the upload/download limit of each user of the profile. The first value limits what the user sends, the second what the user receives.</li>
+<li><code>session-timeout</code> logs the user out after this time.</li>
+<li><code>shared-users</code> is the number of devices that can be logged in with the same user name at the same time. A login from one more device fails with the message "no more sessions are allowed for user".</li>
+<li><code>address-list</code> adds the address of each logged-in user to a firewall address list. Use the list in your own firewall, mangle, or queue rules.</li>
+</ul>
+<p>While <code>guest1</code> is logged in, the router has a dynamic simple queue and an address list entry for the user. Both are removed when the user logs out:</p>
+<pre><code class="language-ros">/queue/simple/print where dynamic
+/ip/firewall/address-list/print where list=hotspot-guests
+</code></pre>
+<pre><code class="language-ros">Flags: D - DYNAMIC
+0 D name=&quot;&lt;hotspot-guest1&gt;&quot; target=192.168.88.253/32 parent=none
+    packet-marks=&quot;&quot; priority=8/8 queue=default-small/default-small
+    limit-at=512k/2M max-limit=512k/2M burst-limit=0/0 burst-threshold=0/0
+    burst-time=0s/0s bucket-size=0.1/0.1
+
+Flags: D - DYNAMIC
+Columns: LIST, ADDRESS, CREATION-TIME
+#   LIST            ADDRESS         CREATION-TIME
+0 D hotspot-guests  192.168.88.253  2026-11-13 20:45:06
+</code></pre>
+<h3 id="limit-the-total-time-and-traffic-of-a-user">Limit the total time and traffic of a user</h3>
+<p><code>session-timeout</code> in the profile limits one session, and the user can log in again. The limits of the user itself count over all sessions:</p>
+<pre><code class="language-ros">/ip/hotspot/user/add name=daypass password=ChangeMe-3 limit-uptime=1d \
+    limit-bytes-total=2G
+</code></pre>
+<p>When a limit is reached, the user is logged out. A new login fails with the message "user daypass has reached uptime limit" or "user daypass has reached traffic limit". The counters of the user are in <code>/ip/hotspot/user/print detail</code>. To let the user in again, reset them:</p>
+<pre><code class="language-ros">/ip/hotspot/user/reset-counters daypass
+</code></pre>
+<h3 id="run-a-script-at-login-and-logout">Run a script at login and logout</h3>
+<p>The <code>on-login</code> and <code>on-logout</code> scripts of a user profile run for every user of the profile. This example writes a line to the log:</p>
+<pre><code class="language-ros">/ip/hotspot/user/profile/set guest \
+    on-login=&quot;:log info \&quot;HotSpot login: \$user \$address\&quot;&quot; \
+    on-logout=&quot;:log info \&quot;HotSpot logout: \$user \$cause\&quot;&quot;
+</code></pre>
+<pre><code class="language-ros">/log/print where message~&quot;^HotSpot log&quot;
+</code></pre>
+<pre><code class="language-ros"> 2026-11-13 20:45:47 script,info HotSpot login: guest1 192.168.88.253
+ 2026-11-13 20:45:49 script,info HotSpot logout: guest1 admin reset
+ 2026-11-13 20:51:40 script,info HotSpot login: guest1 192.168.88.254
+ 2026-11-13 20:51:45 script,info HotSpot logout: guest1 user request
+ 2026-11-13 20:51:50 script,info HotSpot login: guest1 192.168.88.254
+ 2026-11-13 20:51:54 script,info HotSpot logout: guest1 admin reset
+</code></pre>
+<p>The scripts can use these variables:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variable</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>$user</code>, <code>$username</code></td>
+<td style="text-align: left;">The user name.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$address</code></td>
+<td style="text-align: left;">The IP address of the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$"mac-address"</code></td>
+<td style="text-align: left;">The MAC address of the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$interface</code></td>
+<td style="text-align: left;">The HotSpot interface. When the HotSpot runs on a bridge, this is the bridge, unless <code>use-ip-firewall</code> is enabled in the bridge settings; then it is the bridge port of the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$cause</code></td>
+<td style="text-align: left;">Only in <code>on-logout</code>: why the session ended, for example <code>user request</code>, <code>session timeout</code>, or <code>traffic limit reached</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$"uptime-secs"</code></td>
+<td style="text-align: left;">Only in <code>on-logout</code>: the session time in seconds.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$"bytes-in"</code>, <code>$"bytes-out"</code>, <code>$"bytes-total"</code></td>
+<td style="text-align: left;">Only in <code>on-logout</code>: the bytes that the user sent and received.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$"packets-in"</code>, <code>$"packets-out"</code>, <code>$"packets-total"</code></td>
+<td style="text-align: left;">Only in <code>on-logout</code>: the packets that the user sent and received.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="select-the-login-methods">Select the login methods</h2>
+<p>The <code>login-by</code> setting of the server profile in <code>/ip/hotspot/profile</code> selects how users can log in. Several methods can be enabled at the same time. The default is <code>cookie,http-chap</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">How the user logs in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>http-chap</code></td>
+<td style="text-align: left;">With a user name and password on the login page. The page does not send the password itself: JavaScript on the page hashes it together with a challenge from the router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>http-pap</code></td>
+<td style="text-align: left;">With a user name and password on the login page. The password is sent as plain text. A login link or an external page that sends the password directly needs this method.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>https</code></td>
+<td style="text-align: left;">As <code>http-pap</code>, but the login page is opened over HTTPS. Set <code>ssl-certificate</code> in the server profile; the certificate has to be valid for the <code>dns-name</code> of the profile. The server then has the <code>S</code> flag in <code>/ip/hotspot/print</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>cookie</code></td>
+<td style="text-align: left;">Automatically, with a browser cookie from an earlier login with a user name and password. The cookie is valid for <code>http-cookie-lifetime</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mac-cookie</code></td>
+<td style="text-align: left;">Automatically, by the MAC address of a device that has logged in before, for example a phone. It is a separate method from <code>cookie</code> and does not use the browser.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mac</code></td>
+<td style="text-align: left;">Automatically, when a user with the MAC address of the device as its name exists.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>trial</code></td>
+<td style="text-align: left;">With a link on the login page, without an account, for a limited time.</td>
+</tr>
+</tbody>
+</table>
+<p>Without <code>http-pap</code>, a login that sends the plain password fails with the message "web browser did not send challenge response (try again, enable JavaScript)".</p>
+<h3 id="log-in-over-https">Log in over HTTPS</h3>
+<p>With the <code>https</code> method, the login page opens over HTTPS, so the user name and the password are encrypted between the device and the router. The certificate of the login page has to meet two conditions:</p>
+<ul>
+<li>It is valid for the DNS name of the login page, which is the <code>dns-name</code> of the server profile.</li>
+<li>The devices of the users trust the authority that issued it. A certificate from a public certificate authority meets this condition without any setup on the devices.</li>
+</ul>
+<p>This example uses the IP Cloud name of the router as the name of the login page, and a Let's Encrypt certificate for that name. The IP Cloud DDNS service has to be enabled; see <a href="../certificates#lets-encrypt-certificate">Let's Encrypt certificate</a>. To use a name of your own domain instead, see <a href="../certificates#certificate-for-your-own-domain-name">Certificate for your own domain name</a>.</p>
+<p>Request the certificate:</p>
+<pre><code class="language-ros">/certificate
+add-acme name=hotspot-cert domain-names=[/ip/cloud/get dns-name]
+</code></pre>
+<p>When the certificate is issued, it has the flags <code>K</code> and <code>a</code> in <code>/certificate/print</code>. Then set the name, the certificate and the login method in the server profile:</p>
+<pre><code class="language-ros">/ip/hotspot/profile
+set hsprof1 dns-name=[/ip/cloud/get dns-name] \
+    ssl-certificate=hotspot-cert login-by=cookie,http-chap,https
+</code></pre>
+<p>The server now has the <code>S</code> flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/hotspot/print
+Flags: S - HTTPS
+Columns: NAME, INTERFACE, ADDRESS-POOL, PROFILE, IDLE-TIMEOUT
+#   NAME      INTERFACE  ADDRESS-POOL  PROFILE  IDLE-TIMEOUT
+0 S hotspot1  bridge     default-dhcp  hsprof1  5m
+</code></pre>
+<p>To check the result, connect a device to the HotSpot network and open an HTTP site. The device is redirected to <code>https://&lt;name&gt;/login</code>, where <code>&lt;name&gt;</code> is the IP Cloud name, and the login page opens without a certificate warning. Users do not type the name: they get to the login page through the redirect.</p>
+<h3 id="remember-devices-with-a-mac-cookie">Remember devices with a MAC cookie</h3>
+<p>With <code>mac-cookie</code>, the user logs in once. After that, the router logs the device in by itself each time it comes back, until the cookie expires. This suits phones, which leave and join the network often.</p>
+<pre><code class="language-ros">/ip/hotspot/profile/set hsprof1 login-by=cookie,http-chap,mac-cookie
+</code></pre>
+<p>The user profile must have <code>add-mac-cookie=yes</code>, which is the default, and <code>mac-cookie-timeout</code> sets how long the cookie is valid. The cookies are in <code>/ip/hotspot/cookie</code>; a MAC cookie has the <code>M</code> flag:</p>
+<pre><code class="language-ros">/ip/hotspot/cookie/print
+</code></pre>
+<pre><code class="language-ros">Flags: M - MAC-COOKIE
+Columns: USER, MAC-ADDRESS, EXPIRES-IN
+#   USER  MAC-ADDRESS        EXPIRES-IN
+0 M anna  52:54:09:80:02:01  2d23h59m58s
+1   anna  52:54:09:80:02:01  2d23h59m58s
+</code></pre>
+<p>The cookie is removed when the user logs out on the status page. To make a device log in again, remove its cookie from this list.</p>
+<h3 id="log-in-devices-by-mac-address">Log in devices by MAC address</h3>
+<p>With <code>mac</code>, a device needs no login page at all. Add a user whose name is the MAC address of the device:</p>
+<pre><code class="language-ros">/ip/hotspot/profile/set hsprof1 login-by=cookie,http-chap,mac
+/ip/hotspot/user/add name=00:00:5E:00:53:10 comment=&quot;reception TV&quot;
+</code></pre>
+<p>A MAC address is easy to copy, so use this method only for devices that cannot show a login page.</p>
+<h3 id="give-trial-access">Give trial access</h3>
+<p>With <code>trial</code>, the login page shows a "Free trial available" link. A user who follows it gets access for <code>trial-uptime-limit</code> and can use the trial again after <code>trial-uptime-reset</code>:</p>
+<pre><code class="language-ros">/ip/hotspot/profile/set hsprof1 login-by=cookie,http-chap,trial \
+    trial-uptime-limit=30m trial-uptime-reset=1d
+</code></pre>
+<p>The router creates a dynamic user named <code>T-</code> and the MAC address of the device for each trial, with the profile set in <code>trial-user-profile</code>. When the time is used up, a new trial login fails with the message "has reached uptime limit" until the reset time passes.</p>
+<h2 id="let-traffic-through-without-login">Let traffic through without login</h2>
+<h3 id="sites-walled-garden">Sites: walled garden</h3>
+<p>The walled garden lists the web sites that a device can open before login, for example your own site or a payment page. Rules in <code>/ip/hotspot/walled-garden</code> match HTTP and HTTPS requests by the host name of the site:</p>
+<pre><code class="language-ros">/ip/hotspot/walled-garden/add dst-host=example.com
+/ip/hotspot/walled-garden/add dst-host=*.example.com
+</code></pre>
+<p><code>dst-host</code> and <code>path</code> must match the whole value. Use <code>*</code> for any number of characters and <code>?</code> for one character. A value that starts with <code>:</code> is a regular expression. It matches any part of the value, unless you anchor it with <code>^</code> at the start and <code>$</code> at the end:</p>
+<pre><code class="language-ros">/ip/hotspot/walled-garden
+add dst-host=&quot;:^example\\.com\$&quot; action=allow
+</code></pre>
+<p>An HTTPS request is matched by its host name only. A rule that has <code>path</code> or <code>method</code> matches HTTP requests and no HTTPS requests.</p>
+<p>Rules in <code>/ip/hotspot/walled-garden/ip</code> match packets by address, protocol, and port, so they also work for services other than the web:</p>
+<pre><code class="language-ros">/ip/hotspot/walled-garden/ip/add action=accept \
+    dst-host=pay.example.com
+/ip/hotspot/walled-garden/ip/add action=accept protocol=tcp \
+    dst-port=443 dst-address=192.0.2.10
+</code></pre>
+<p>With <code>dst-host</code>, the router adds a dynamic rule with the address that the name resolves to.</p>
+<p>The <code>hits</code> counter of a walled garden rule shows that it is used:</p>
+<pre><code class="language-ros">/ip/hotspot/walled-garden/print
+</code></pre>
+<pre><code class="language-ros">Flags: X - DISABLED, D - DYNAMIC
+Columns: DST-HOST, DST-PORT, ACTION, HITS
+#    DST-HOST       DST-PORT  ACTION  HITS
+0 D                      443  allow      0
+;;; place hotspot rules here
+1 X                           allow      0
+2    example.com              allow      2
+3    *.example.com            allow      1
+</code></pre>
+<h3 id="devices-ip-bindings">Devices: IP bindings</h3>
+<p>An IP binding in <code>/ip/hotspot/ip-binding</code> sets how the HotSpot treats one device, selected by its MAC address or IP address:</p>
+<pre><code class="language-ros">/ip/hotspot/ip-binding/add mac-address=00:00:5E:00:53:20 type=bypassed \
+    comment=&quot;office printer&quot;
+/ip/hotspot/ip-binding/add mac-address=00:00:5E:00:53:21 type=blocked
+</code></pre>
+<ul>
+<li><code>bypassed</code> - the device has network access without login. It is in the host list with the <code>P</code> flag and is not in the active list.</li>
+<li><code>blocked</code> - the device has no access at all, also not to the login page.</li>
+<li><code>regular</code> - the device logs in as usual; with <code>to-address</code>, the HotSpot translates its address to this address.</li>
+</ul>
+<p>To create a binding for a device that is already connected, use <code>/ip/hotspot/host/make-binding</code> on its entry in the host list.</p>
+<h2 id="authenticate-users-with-radius">Authenticate users with RADIUS</h2>
+<p>To keep the users on a RADIUS server, add the server for the <code>hotspot</code> service and enable RADIUS in the server profile:</p>
+<pre><code class="language-ros">/radius/add service=hotspot address=192.0.2.5 secret=ChangeMe-4
+/ip/hotspot/profile/set hsprof1 use-radius=yes
+</code></pre>
+<p>Users that exist in <code>/ip/hotspot/user</code> still log in from the local list. A session that RADIUS authenticated has the <code>R</code> flag in <code>/ip/hotspot/active</code>. The reply of the server can set the limits of the session, for example <code>Session-Timeout</code> for the session time and <code>Mikrotik-Rate-Limit</code> for the rate limit. With <code>radius-accounting=yes</code>, which is the default, the router also sends accounting records for each session.</p>
+<p>The attributes are listed on the <a href="../radius">RADIUS</a> page. <a href="../user-manager">User Manager</a> is a RADIUS server that runs on RouterOS.</p>
+<h2 id="how-hotspot-behaves">How HotSpot behaves</h2>
+<h3 id="hosts-and-sessions">Hosts and sessions</h3>
+<ul>
+<li>Every device that sends traffic to the HotSpot interface gets an entry in <code>/ip/hotspot/host</code>. <code>found-by</code> shows the packet that created the entry.</li>
+<li>A logged-in user has an entry in <code>/ip/hotspot/active</code>. The session ends when the user logs out, when a limit or <code>session-timeout</code> is reached, when the device does not answer for the <code>keepalive-timeout</code> of the user profile, or when you remove the entry.</li>
+<li><code>/ip/hotspot/active/login</code> logs a connected device in from the console, without the login page.</li>
+</ul>
+<h3 id="what-a-device-can-do-before-login">What a device can do before login</h3>
+<ul>
+<li>Its DNS requests are answered by the router.</li>
+<li>HTTP requests to a site in the walled garden pass. All other HTTP requests show the login page.</li>
+<li>Everything else is rejected, including ping to the router: TCP with a reset, other protocols with an ICMP "prohibited" message.</li>
+</ul>
+<h3 id="routing-marks">Routing marks</h3>
+<p>The login page is served by the router itself. A mangle rule that puts a routing mark on all traffic from the HotSpot network, for example for load balancing between two uplinks, also marks the requests to the login page, and the page no longer opens. Exclude the traffic to the router from such a rule with <code>dst-address-type=!local</code>.</p>
+<h3 id="firewall-rules-that-hotspot-adds">Firewall rules that HotSpot adds</h3>
+<p>A running HotSpot server adds dynamic rules to the NAT and filter tables. They are placed before your own rules.</p>
+<p>In <code>/ip/firewall/nat</code>, the <code>dstnat</code> chain sends the packets of HotSpot clients to the <code>hotspot</code> chain:</p>
+<pre><code class="language-ros">/ip/firewall/nat/print dynamic
+</code></pre>
+<pre><code class="language-ros">Flags: D - DYNAMIC
+ 0 D chain=dstnat action=jump jump-target=hotspot hotspot=from-client
+
+ 1 D chain=hotspot action=jump jump-target=pre-hotspot
+
+ 2 D chain=hotspot action=redirect to-ports=64872 protocol=udp dst-port=53
+
+ 3 D chain=hotspot action=redirect to-ports=64872 protocol=tcp dst-port=53
+
+ 4 D chain=hotspot action=redirect to-ports=64873 protocol=tcp
+     hotspot=local-dst dst-port=80
+
+ 5 D chain=hotspot action=redirect to-ports=64875 protocol=tcp
+     hotspot=local-dst dst-port=443
+
+ 6 D chain=hotspot action=jump jump-target=hs-unauth protocol=tcp hotspot=!auth
+
+ 7 D chain=hotspot action=jump jump-target=hs-auth protocol=tcp hotspot=auth
+
+ 8 D chain=hs-unauth action=redirect to-ports=64874 protocol=tcp dst-port=80
+
+ 9 D chain=hs-unauth action=redirect to-ports=64874 protocol=tcp dst-port=3128
+
+10 D chain=hs-unauth action=redirect to-ports=64874 protocol=tcp dst-port=8080
+
+11 D chain=hs-unauth action=redirect to-ports=64875 protocol=tcp dst-port=443
+
+12 D chain=hs-unauth action=jump jump-target=hs-smtp protocol=tcp dst-port=25
+
+13 D chain=hs-auth action=redirect to-ports=64874 protocol=tcp hotspot=http
+
+14 D chain=hs-auth action=jump jump-target=hs-smtp protocol=tcp dst-port=25
+</code></pre>
+<p>The rules redirect to four ports of the router, which <code>/ip/service/print where dynamic</code> lists:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Port</th>
+<th style="text-align: left;">Service</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">64872</td>
+<td style="text-align: left;"><code>resolver</code></td>
+<td style="text-align: left;">Answers the DNS requests of the HotSpot clients, also those that a client sends to another DNS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;">64873</td>
+<td style="text-align: left;"><code>hotspot</code></td>
+<td style="text-align: left;">Serves the login page and the other HotSpot pages over HTTP.</td>
+</tr>
+<tr>
+<td style="text-align: left;">64874</td>
+<td style="text-align: left;"><code>wproxy</code></td>
+<td style="text-align: left;">Receives the HTTP requests of clients that are not logged in. It lets the requests to walled garden sites through and answers the others with a redirect to the login page.</td>
+</tr>
+<tr>
+<td style="text-align: left;">64875</td>
+<td style="text-align: left;"><code>wproxy</code></td>
+<td style="text-align: left;">Receives the HTTPS requests of clients that are not logged in and lets the requests to walled garden sites through.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>hotspot</code> redirects DNS requests and the requests to the login page to the HotSpot service, and sends the other TCP packets to <code>hs-unauth</code> (not logged in) or <code>hs-auth</code> (logged in).</li>
+<li><code>hs-unauth</code> redirects HTTP, the proxy ports 3128 and 8080, and HTTPS to the HotSpot service, which checks the walled garden and shows the login page. The rules for ports 3128 and 8080 catch the requests of a browser that is set to use a proxy server.</li>
+<li><code>hs-auth</code> redirects the packets of logged-in users that have the <code>http</code> HotSpot mark to the proxy on port 64874.</li>
+<li><code>hs-smtp</code> is empty until <code>smtp-server</code> is set in the server profile. Then it has a rule that sends the SMTP connections (TCP port 25) of the clients to that server.</li>
+<li>A walled garden IP rule for TCP appears in <code>hs-unauth</code> as a <code>return</code> rule, so the matching packets are not redirected.</li>
+<li><code>pre-hotspot</code> is for your own rules: add rules to this chain to handle packets of HotSpot clients before the HotSpot rules.</li>
+</ul>
+<p>In <code>/ip/firewall/filter</code>, the packets of clients that are not logged in go to their own chains:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print dynamic where chain~&quot;hs-&quot; or hotspot
+</code></pre>
+<pre><code class="language-ros">Flags: D - DYNAMIC
+ 0 D chain=forward action=jump jump-target=hs-unauth hotspot=from-client,!auth
+
+ 1 D chain=forward action=jump jump-target=hs-unauth-to hotspot=to-client,!auth
+
+ 2 D chain=input action=jump jump-target=hs-input hotspot=from-client
+
+ 3 D chain=input action=drop protocol=tcp hotspot=!from-client
+     dst-port=64872-64875
+
+ 4 D chain=hs-input action=jump jump-target=pre-hs-input
+
+ 5 D chain=hs-input action=accept protocol=udp dst-port=64872
+
+ 6 D chain=hs-input action=accept protocol=tcp dst-port=64872-64875
+
+ 7 D chain=hs-input action=jump jump-target=hs-unauth hotspot=!auth
+
+ 8 D chain=hs-unauth action=reject reject-with=tcp-reset protocol=tcp
+
+ 9 D chain=hs-unauth action=reject reject-with=icmp-net-prohibited
+
+10 D chain=hs-unauth-to action=reject reject-with=icmp-host-prohibited
+</code></pre>
+<ul>
+<li><code>hs-unauth</code> handles the packets from clients that are not logged in, and <code>hs-unauth-to</code> the packets to them. Both reject everything that a walled garden IP rule does not allow.</li>
+<li><code>hs-input</code> accepts the connections of clients to the HotSpot service on the router.</li>
+<li>
+<p><code>pre-hs-input</code> is for your own rules for packets from HotSpot clients to the router.</p>
+</li>
+<li>
+<p>Rule 3 drops connections to the HotSpot service ports that do not come from a HotSpot client.</p>
+</li>
+</ul>
+<p>Each rule in <code>/ip/hotspot/walled-garden/ip</code> appears in the filter as two dynamic <code>return</code> rules, one in <code>hs-unauth</code> for the packets to the destination and one in <code>hs-unauth-to</code> for the replies. In the NAT table only the rules for TCP appear.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="./hotspot-customisation">HotSpot customisation</a> - your own login page.</li>
+<li>CLI reference: <a href="../../cli-reference/ip/hotspot"><code>/ip/hotspot</code></a>, <a href="../../cli-reference/ip/hotspot/profile"><code>/ip/hotspot/profile</code></a>, <a href="../../cli-reference/ip/hotspot/user"><code>/ip/hotspot/user</code></a>, <a href="../../cli-reference/ip/hotspot/user/profile"><code>/ip/hotspot/user/profile</code></a>, <a href="../../cli-reference/ip/hotspot/active"><code>/ip/hotspot/active</code></a>, <a href="../../cli-reference/ip/hotspot/host"><code>/ip/hotspot/host</code></a>, <a href="../../cli-reference/ip/hotspot/walled-garden"><code>/ip/hotspot/walled-garden</code></a>, <a href="../../cli-reference/ip/hotspot/walled-garden/ip"><code>/ip/hotspot/walled-garden/ip</code></a>, <a href="../../cli-reference/ip/hotspot/ip-binding"><code>/ip/hotspot/ip-binding</code></a>, <a href="../../cli-reference/ip/hotspot/cookie"><code>/ip/hotspot/cookie</code></a>, <a href="../../cli-reference/ip/hotspot/setup"><code>/ip/hotspot/setup</code></a>.</li>
+</ul>
+<hr />
+<h1 id="hotspot-customisation">Hotspot customisation</h1>
+<blockquote>
+<p>Customise the HotSpot login, status, and logout pages: where the page files are, how to use your own directory, the variables and conditions that the pages can use, error messages, translations, and examples such as...</p>
+</blockquote>
+<h1 id="hotspot-customisation_1">Hotspot customisation</h1>
+<p>The pages that the <a href="./">HotSpot</a> shows to its users are HTML files on the router. You can edit them, or give each HotSpot server profile its own set of pages. The pages contain variables, for example <code>$(username)</code>, which the router replaces with their values when it serves a page.</p>
+<h2 id="where-the-pages-are">Where the pages are</h2>
+<p>A router with a HotSpot server has the <code>hotspot</code> directory in its files, with the default pages. On a router that has a <code>flash</code> folder in its file list, the directory is <code>flash/hotspot</code>. The <code>html-directory</code> setting of the server profile in <code>/ip/hotspot/profile</code> points to this directory.</p>
+<p>To make your own pages:</p>
+<ol>
+<li>Download the <code>hotspot</code> directory from the files of the router to your computer, for example with WinBox, SFTP or FTP.</li>
+<li>Edit the pages. Use a text editor: an HTML editor can remove the variables and the other parts that the HotSpot needs.</li>
+<li>Upload the directory to the router under another name, for example <code>hs-custom</code>. If the file list of the router has a <code>flash</code> folder, upload the directory into <code>flash</code>: files outside it are lost on reboot. See <a href="../../system-information-and-utilities/files">Files</a>.</li>
+<li>Set the directory in the server profile:</li>
+</ol>
+<p><code>ros
+   /ip/hotspot/profile/set hsprof1 html-directory-override=hs-custom</code></p>
+<p>For a directory in the <code>flash</code> folder, set the path with the folder, <code>html-directory-override=flash/hs-custom</code>.</p>
+<p>Open the login page, <code>http://hotspot.lan/login</code>, to check the result. If the directory in <code>html-directory-override</code> does not exist, the HotSpot uses the pages from <code>html-directory</code>.</p>
+<p>To get the default pages back in the <code>html-directory</code> of a server, for example after an edit that broke the login page, run:</p>
+<pre><code class="language-ros">/ip/hotspot/reset-html hotspot1
+</code></pre>
+<h2 id="pages">Pages</h2>
+<p>The pages that the user sees:</p>
+<ul>
+<li><strong>redirect.html</strong> - redirects the user to another URL, for example to the login page.</li>
+<li><strong>login.html</strong> - the login page, which asks for a user name and password. The page accepts these parameters:</li>
+<li><strong>username</strong> - the user name.</li>
+<li><strong>password</strong> - the plain-text password (<code>http-pap</code> and <code>https</code> login), or the MD5 hash of the chap-id variable, the password, and the CHAP challenge (<code>http-chap</code> login). For trial users this value is used as an e-mail address.</li>
+<li><strong>dst</strong> - the URL that the user requested before the redirect. It is opened after a successful login.</li>
+<li><strong>popup</strong> - whether to open the status page in a pop-up window after a successful login.</li>
+<li><strong>radius\<id></strong> - send the attribute with this ID to the RADIUS server as a text string. Only with RADIUS authentication.</li>
+<li><strong>radius\<id>u</strong> - the same, as an unsigned integer.</li>
+<li><strong>radius\<id>-\<vnd-id></strong> - send the attribute with this ID and vendor ID to the RADIUS server as a text string.</li>
+<li><strong>radius\<id>-\<vnd-id>u</strong> - the same, as an unsigned integer.</li>
+<li><strong>md5.js</strong> - JavaScript for the MD5 hash of the password, used by the <code>http-chap</code> login method.</li>
+<li><strong>alogin.html</strong> - shown after a successful login. It opens the status page in a pop-up window and redirects the browser to the page that the user requested.</li>
+<li><strong>status.html</strong> - the status page with the statistics of the session and the logout button. It also opens advertisements.</li>
+<li><strong>logout.html</strong> - shown after logout, with the statistics of the finished session. The page accepts this parameter:</li>
+<li><strong>erase-cookie</strong> - <code>on</code> or <code>true</code> removes the cookie of the user on logout, so the browser is not logged in automatically the next time.</li>
+<li><strong>error.html</strong> - shown on fatal errors.</li>
+<li><strong>errors.txt</strong> - the texts of the error messages.</li>
+</ul>
+<p>Pages for more control. If such a page does not exist, the HotSpot uses the page named in its description:</p>
+<ul>
+<li><strong>rlogin.html</strong> - redirects a user who is not logged in from the requested URL to the login page. The default page answers with the HTTP status 302.</li>
+<li><strong>rstatus.html</strong> - redirects a logged-in user who requests the HotSpot address to the status page. Not in the default set; <code>redirect.html</code> is used.</li>
+<li><strong>radvert.html</strong> - redirects the user to the advertisement that is due.</li>
+<li><strong>flogin.html</strong> - shown instead of <code>login.html</code> after a failed login. Not in the default set; <code>login.html</code> is used.</li>
+<li><strong>fstatus.html</strong> - shown when the status page is requested by a user who is not logged in. Not in the default set; <code>redirect.html</code> is used.</li>
+<li><strong>flogout.html</strong> - shown when the logout page is requested by a user who is not logged in. Not in the default set; <code>redirect.html</code> is used.</li>
+</ul>
+<p>The <code>xml</code> sub-directory holds the pages for WISPr clients, which log in without a browser.</p>
+<h3 id="which-page-is-shown">Which page is shown</h3>
+<p>The HotSpot handles five kinds of requests:</p>
+<ol>
+<li><strong>A request for a remote host</strong>
+   - The user is logged in and an advertisement is due: <code>radvert.html</code>, which redirects to the advertisement.
+   - The user is logged in and no advertisement is due: the requested page.
+   - The user is not logged in and the host is allowed by the walled garden: the requested page.
+   - The user is not logged in and the host is not allowed: <code>rlogin.html</code>, or <code>redirect.html</code> to the login page.</li>
+<li><strong>A request for <code>/</code> on the HotSpot address</strong>
+   - The user is logged in: <code>rstatus.html</code>, or <code>redirect.html</code> to the status page.
+   - The user is not logged in: <code>rlogin.html</code>, or <code>redirect.html</code> to the login page.</li>
+<li><strong>A request for <code>/login</code></strong>
+   - The login succeeded, or the user is already logged in: <code>alogin.html</code>, or <code>redirect.html</code> to the requested page or the status page.
+   - No user name was sent: <code>login.html</code>.
+   - The login failed: <code>flogin.html</code>, or <code>login.html</code>, with the error message.
+   - Fatal error: <code>error.html</code>.</li>
+<li><strong>A request for <code>/status</code></strong>
+   - The user is logged in: <code>status.html</code>.
+   - The user is not logged in: <code>fstatus.html</code>, or <code>redirect.html</code> to the login page.</li>
+<li><strong>A request for <code>/logout</code></strong>
+   - The user is logged in: <code>logout.html</code>.
+   - The user is not logged in: <code>flogout.html</code>, or <code>redirect.html</code> to the login page.</li>
+</ol>
+<h2 id="variables">Variables</h2>
+<p>To insert a value into a page, write <code>$(name)</code>, where <code>name</code> is the name of a variable. The router replaces the variables in the pages requested as <code>/</code>, <code>/login</code>, <code>/status</code>, and <code>/logout</code>, and in the other text and HTML files (<code>.txt</code>, <code>.htm</code>, <code>.html</code>) of the directory. For example, a link to the login page:</p>
+<pre><code class="language-html">login
+</code></pre>
+<p>For a client with the address 192.168.88.254 that requested <code>http://example.com/</code>, on a HotSpot with the DNS name <code>hotspot.lan</code>, this line of a page:</p>
+<pre><code class="language-text">ip=$(ip) mac=$(mac) link-login=$(link-login)
+</code></pre>
+<p>is served as:</p>
+<pre><code class="language-text">ip=192.168.88.254 mac=52:54:09:80:02:01 link-login=http://hotspot.lan/login?dst=http%3A%2F%2Fexample.com%2F
+</code></pre>
+<p>Every variable also exists with the <code>-esc</code> suffix, for example <code>$(mac-esc)</code>. This form is escaped for use inside a URL: <code>52:54:09:80:02:01</code> becomes <code>52%3A54%3A09%3A80%3A02%3A01</code>. Use it when you put a variable into a link. For example, <code>` breaks when the user name is</code>123&amp;456=1 2<code>; with</code>$(mac-esc)<code>and</code>$(username-esc)<code>the user name is sent as</code>123%26456%3D1+2`.</p>
+<p>Some links use <code>http://</code> URLs. If you use HTTPS, build the link yourself, for example <code>https://$(hostname)/$(target-dir)status</code> instead of <code>$(link-status)</code>.</p>
+<h3 id="server">Server</h3>
+<ul>
+<li><strong>hostname</strong> - the DNS name of the HotSpot, or its IP address if no DNS name is set (<code>hotspot.lan</code>).</li>
+<li><strong>identity</strong> - the identity of the router (<code>MikroTik</code>).</li>
+<li><strong>login-by</strong> - the login method that the user used.</li>
+<li><strong>plain-passwd</strong> - <code>yes</code> if the <code>http-pap</code> login method is enabled, otherwise <code>no</code>.</li>
+<li><strong>server-address</strong> - the address and port of the HotSpot server (<code>192.168.88.1:80</code>).</li>
+<li><strong>ssl-login</strong> - <code>yes</code> if the page was requested over HTTPS, otherwise <code>no</code>.</li>
+<li><strong>server-name</strong> - the name of the HotSpot server in <code>/ip/hotspot</code> (<code>hotspot1</code>).</li>
+</ul>
+<h3 id="links">Links</h3>
+<ul>
+<li><strong>link-login</strong> - the login page, with the requested URL (<code>http://hotspot.lan/login?dst=http%3A%2F%2Fexample.com%2F</code>).</li>
+<li><strong>link-login-only</strong> - the login page, without the requested URL (<code>http://hotspot.lan/login</code>).</li>
+<li><strong>link-logout</strong> - the logout page (<code>http://hotspot.lan/logout</code>).</li>
+<li><strong>link-status</strong> - the status page (<code>http://hotspot.lan/status</code>).</li>
+<li><strong>link-orig</strong> - the URL that the user requested (<code>http://example.com/</code>).</li>
+<li><strong>link-redirect</strong> - the URL to which the page redirects the user.</li>
+<li><strong>link-advert</strong> - the advertisement that is due.</li>
+</ul>
+<h3 id="client">Client</h3>
+<ul>
+<li><strong>domain</strong> - the domain name of the user (<code>example.com</code>).</li>
+<li><strong>interface-name</strong> - the name of the HotSpot interface (<code>bridge</code>).</li>
+<li><strong>ip</strong> - the IP address of the client (<code>192.168.88.254</code>).</li>
+<li><strong>logged-in</strong> - <code>yes</code> if the user is logged in, otherwise <code>no</code>.</li>
+<li><strong>mac</strong> - the MAC address of the client (<code>52:54:09:80:02:01</code>).</li>
+<li><strong>trial</strong> - <code>yes</code> if the user can use trial access, otherwise <code>no</code>.</li>
+<li><strong>username</strong> - the name of the user (<code>anna</code>).</li>
+<li><strong>host-ip</strong> - the IP address of the client in <code>/ip/hotspot/host</code>.</li>
+<li><strong>vlan-id</strong> - the ID of the VLAN interface through which the client is connected.</li>
+</ul>
+<h3 id="session">Session</h3>
+<ul>
+<li><strong>idle-timeout</strong> - the idle timeout (<code>20m</code>, or empty if none).</li>
+<li><strong>idle-timeout-secs</strong> - the idle timeout in seconds (<code>88</code>, or <code>0</code> if none).</li>
+<li><strong>limit-bytes-in</strong> - the limit of bytes that the user can send (<code>1000000</code>, or <code>---</code> if none).</li>
+<li><strong>limit-bytes-out</strong> - the limit of bytes that the user can receive (<code>1000000</code>, or <code>---</code> if none).</li>
+<li><strong>refresh-timeout</strong> - the refresh interval of the status page (<code>1m30s</code>, or empty if none).</li>
+<li><strong>refresh-timeout-secs</strong> - the refresh interval of the status page in seconds (<code>90</code>, or <code>0</code> if none).</li>
+<li><strong>session-timeout</strong>, <strong>session-time-left</strong> - the session time that is left (<code>5h</code>, or empty if none).</li>
+<li><strong>session-timeout-secs</strong>, <strong>session-time-left-secs</strong> - the session time that is left, in seconds (<code>3475</code>, or <code>0</code> if none).</li>
+<li><strong>uptime</strong> - the time since login (<code>10h2m33s</code>).</li>
+<li><strong>uptime-secs</strong> - the time since login in seconds (<code>125</code>).</li>
+</ul>
+<h3 id="traffic-counters">Traffic counters</h3>
+<p>These variables have values only on the status and logout pages:</p>
+<ul>
+<li><strong>bytes-in</strong> - the number of bytes received from the user (<code>15423</code>).</li>
+<li><strong>bytes-in-nice</strong> - the same in a readable form.</li>
+<li><strong>bytes-out</strong> - the number of bytes sent to the user (<code>11352</code>).</li>
+<li><strong>bytes-out-nice</strong> - the same in a readable form.</li>
+<li><strong>packets-in</strong> - the number of packets received from the user (<code>251</code>).</li>
+<li><strong>packets-out</strong> - the number of packets sent to the user (<code>211</code>).</li>
+<li><strong>remain-bytes-in</strong> - the bytes left until <code>limit-bytes-in</code> is reached (<code>337465</code>, or <code>---</code> if no limit).</li>
+<li><strong>remain-bytes-out</strong> - the bytes left until <code>limit-bytes-out</code> is reached (<code>124455</code>, or <code>---</code> if no limit).</li>
+<li><strong>remain-bytes-total</strong> - the bytes left until <code>limit-bytes-total</code> is reached.</li>
+</ul>
+<h3 id="other">Other</h3>
+<ul>
+<li><strong>session-id</strong> - the value of the <code>session-id</code> parameter of the last request.</li>
+<li><strong>var</strong> - the value of the <code>var</code> parameter of the last request.</li>
+<li><strong>error</strong> - the error message, if something failed (<code>invalid username or password</code>). Only on the login page.</li>
+<li><strong>error-orig</strong> - the original error message, before it is replaced by the text from <code>errors.txt</code>. Only on the login page.</li>
+<li><strong>chap-id</strong> - the CHAP ID (<code>\371</code>). Only on the login page.</li>
+<li><strong>chap-challenge</strong> - the CHAP challenge (<code>\357\015\330\013\021\234\145\245\303\253\142\246\133\175\375\316</code>). Only on the login page.</li>
+<li><strong>popup</strong> - <code>true</code> or <code>false</code>: whether to open the status pop-up window. Only on the login page.</li>
+<li><strong>advert-pending</strong> - <code>yes</code> if an advertisement is due, otherwise <code>no</code>.</li>
+<li><strong>http-status</strong> - sets the HTTP status code and message, as described in the HTTP status and headers section.</li>
+<li><strong>http-header</strong> - sets an HTTP header.</li>
+</ul>
+<h3 id="radius">RADIUS</h3>
+<ul>
+<li><strong>radius\<id></strong> - the attribute with this ID as a text string. Empty if RADIUS authentication was not used.</li>
+<li><strong>radius\<id>u</strong> - the attribute with this ID as an unsigned integer. <code>0</code> if RADIUS authentication was not used.</li>
+<li><strong>radius\<id>-\<vnd-id></strong> - the attribute with this ID and vendor ID as a text string.</li>
+<li><strong>radius\<id>-\<vnd-id>u</strong> - the attribute with this ID and vendor ID as an unsigned integer.</li>
+</ul>
+<h3 id="request-headers">Request headers</h3>
+<p>The pages can read the HTTP headers of the request with <code>$(header-name)</code>. For example, <code>$(user-agent)</code> is the browser of the user. The last example on this page uses it.</p>
+<h2 id="conditions">Conditions</h2>
+<p>A page can show a part of its content only when a condition is true:</p>
+<ul>
+<li><code>$(if name)</code> - true if the variable is not empty.</li>
+<li><code>$(if name == value)</code> and <code>$(if name != value)</code> - compare the variable with a value.</li>
+<li><code>$(elif name == value)</code>, <code>$(else)</code>, and <code>$(endif)</code> continue and end the condition.</li>
+</ul>
+<pre><code class="language-html">some content, which is always displayed
+$(if username == john)
+Hey, your username is john
+$(elif username == dizzy)
+Hello, Dizzy! How are you? Your administrator.
+$(elif ip == 10.1.2.3)
+You are sitting at that old computer, which is so slow...
+$(elif mac == 00:01:02:03:04:05)
+This is an ethernet card, which was stolen few months ago...
+$(else)
+I don't know who you are, so let's live in peace.
+$(endif)
+other content, which is always displayed
+</code></pre>
+<p>Only one of the parts is shown: the first one whose condition is true.</p>
+<h2 id="http-status-and-headers">HTTP status and headers</h2>
+<p>Two variables are set, not tested, although they are written as conditions. <code>http-status</code> sets the status line of the HTTP response, and <code>http-header</code> adds a header. The default <code>rlogin.html</code> starts with these lines:</p>
+<pre><code class="language-html">$(if http-status == 302)Hotspot login required$(endif)
+$(if http-header == &quot;Location&quot;)$(link-redirect)$(endif)
+</code></pre>
+<p>If <code>$(link-redirect)</code> is <code>http://192.168.88.1/login</code>, the response to the client starts with:</p>
+<pre><code class="language-text">HTTP/1.0 302 Hotspot login required
+&lt;regular HTTP headers&gt;
+Location: http://192.168.88.1/login
+</code></pre>
+<p>The syntax:</p>
+<pre><code class="language-html">$(if http-status == XYZ)HTTP_STATUS_MESSAGE$(endif)
+$(if http-header == HTTP_HEADER_NAME)HTTP_HEADER_VALUE$(endif)
+</code></pre>
+<ul>
+<li><code>XYZ</code> - the status code: three digits, the first one not 0.</li>
+<li><code>HTTP_STATUS_MESSAGE</code> - the text after the status code.</li>
+<li><code>HTTP_HEADER_NAME</code> and <code>HTTP_HEADER_VALUE</code> - the name and the value of the header.</li>
+</ul>
+<p>Variables and conditions inside the message and the header value are processed as usual. If the same header is added several times, the last one is used. This way a page can replace a regular header, for example <code>Content-Type</code> or <code>Cache-Control</code>.</p>
+<h2 id="error-messages">Error messages</h2>
+<p>The texts of the error messages are in the <code>errors.txt</code> file of the directory. Edit the file to change or translate them. The file explains each message, and the messages can use variables. For example, this line:</p>
+<pre><code class="language-text">invalid-username = wrong name or password for $(username) from $(ip)
+</code></pre>
+<p>shows "wrong name or password for anna from 192.168.88.253" on the login page after a failed login.</p>
+<h2 id="several-versions-of-the-pages">Several versions of the pages</h2>
+<p>One HotSpot server can have several sets of pages, for example one for each language. Create a sub-directory in the HTML directory and put the pages that differ into it. For a Latvian version, create the <code>lv</code> sub-directory with the translated <code>login.html</code>, <code>logout.html</code>, <code>status.html</code>, <code>alogin.html</code>, <code>radvert.html</code>, and <code>errors.txt</code>. A page that is not in the sub-directory is taken from the main directory.</p>
+<p>The user selects the version with a link. In the main <code>login.html</code>:</p>
+<pre><code class="language-html">Latviski
+</code></pre>
+<p>and in the Latvian <code>login.html</code>:</p>
+<pre><code class="language-html">English
+</code></pre>
+<p>The <code>target</code> parameter selects the sub-directory as well:</p>
+<pre><code class="language-html">Latviski
+English
+</code></pre>
+<p>After the user selects a version, the link variables contain its path, for example <code>$(link-status)</code> is <code>http://hotspot.lan/lv/status</code>. If the pages use the <code>$(link-...)</code> variables for all links, the user stays in the selected version.</p>
+<h2 id="examples">Examples</h2>
+<p>The examples change the default pages. The lines that they refer to are from the default <code>login.html</code>:</p>
+<pre><code class="language-html">&lt;form name=&quot;login&quot; action=&quot;$(link-login-only)&quot; method=&quot;post&quot; $(if chap-id) onSubmit=&quot;return doLogin()&quot; $(endif)&gt;
+    &lt;input type=&quot;hidden&quot; name=&quot;dst&quot; value=&quot;$(link-orig)&quot; /&gt;
+    &lt;input type=&quot;hidden&quot; name=&quot;popup&quot; value=&quot;true&quot; /&gt;
+    ...
+    &lt;input name=&quot;username&quot; type=&quot;text&quot; value=&quot;$(username)&quot; placeholder=&quot;Username&quot; /&gt;
+    ...
+    &lt;input name=&quot;password&quot; type=&quot;password&quot; placeholder=&quot;Password&quot; /&gt;
+    ...
+    &lt;input type=&quot;submit&quot; value=&quot;Connect&quot; /&gt;
+&lt;/form&gt;
+</code></pre>
+<p>With the <code>http-chap</code> login method, the form calls the <code>doLogin()</code> function, which uses <code>md5.js</code> to hash the password together with <code>$(chap-id)</code> and <code>$(chap-challenge)</code>. Keep this function and the <code>onSubmit</code> attribute in your own login page, or the CHAP login fails.</p>
+<h3 id="change-the-colours">Change the colours</h3>
+<p>The default pages have three colour sets. To select another one, change the <code>&lt;body&gt;</code> tag of the page to one of these:</p>
+<pre><code class="language-html">&lt;body class=&quot;lite&quot;&gt;
+&lt;body class=&quot;dark&quot;&gt;
+</code></pre>
+<h3 id="use-a-fixed-user-name-or-password">Use a fixed user name or password</h3>
+<p>To log every user in with the same user name, replace the user name field with a hidden field:</p>
+<pre><code class="language-html">&lt;input name=&quot;username&quot; type=&quot;hidden&quot; value=&quot;hsuser&quot; /&gt;
+</code></pre>
+<p>To use a fixed password, do the same with the password field:</p>
+<pre><code class="language-html">&lt;input name=&quot;password&quot; type=&quot;hidden&quot; value=&quot;hspass&quot; /&gt;
+</code></pre>
+<h3 id="one-click-login">One-click login</h3>
+<p>With a fixed user name and a fixed password, the login page needs only a button:</p>
+<ol>
+<li>Create a user for this purpose, and a user profile with <code>shared-users</code> set to the number of devices that can be logged in at the same time:</li>
+</ol>
+<p><code>ros
+   /ip/hotspot/user/profile/add name=open shared-users=unlimited
+   /ip/hotspot/user/add name=guest password=guest profile=open</code></p>
+<ol start="2">
+<li>In your copy of <code>login.html</code>, replace the user name and password fields, with their <code>&lt;label&gt;</code> elements, by hidden fields, and change the text of the button:</li>
+</ol>
+<p><code>html
+   &lt;input name="username" type="hidden" value="guest" /&gt;
+   &lt;input name="password" type="hidden" value="guest" /&gt;
+   &lt;input type="submit" value="Proceed to Internet!" /&gt;</code></p>
+<ol start="3">
+<li>Set the directory with the changed page as <code>html-directory-override</code> of the server profile.</li>
+</ol>
+<h3 id="show-a-different-text-on-each-hotspot-server">Show a different text on each HotSpot server</h3>
+<p>One set of pages can serve several HotSpot servers. Use the server name in a condition:</p>
+<pre><code class="language-html">$(if server-name == hotspot1)
+Welcome to the lobby network
+$(else)
+Welcome to the conference network
+$(endif)
+</code></pre>
+<h3 id="show-the-session-values-to-the-user">Show the session values to the user</h3>
+<p>The status page can show any of the session variables. This table row from the default <code>status.html</code> shows the remaining time only for users who have a time limit:</p>
+<pre><code class="language-html">$(if session-time-left)
+    Connected / left$(uptime) / $(session-time-left)
+$(else)
+    Connected$(uptime)
+$(endif)
+</code></pre>
+<h3 id="open-another-page-after-login">Open another page after login</h3>
+<p>After login the browser opens the URL in the <code>dst</code> field, which is the page that the user requested. To open your own page instead, change this line of <code>login.html</code>:</p>
+<pre><code class="language-html">&lt;input type=&quot;hidden&quot; name=&quot;dst&quot; value=&quot;$(link-orig)&quot; /&gt;
+</code></pre>
+<p>to:</p>
+<pre><code class="language-html">&lt;input type=&quot;hidden&quot; name=&quot;dst&quot; value=&quot;http://www.example.com&quot; /&gt;
+</code></pre>
+<h3 id="show-a-banner-after-login">Show a banner after login</h3>
+<p>In <code>alogin.html</code>, after the line <code>$(if popup == 'true')</code>, add:</p>
+<pre><code class="language-html">open('http://www.example.com/your-banner-page.html', 'my-banner-name','');
+</code></pre>
+<h3 id="send-the-mac-address-to-a-registration-server">Send the MAC address to a registration server</h3>
+<p>To send users to a registration page together with the MAC address of their device, add a link to <code>login.html</code>:</p>
+<pre><code class="language-html">Register
+</code></pre>
+<p>Allow the registration server in the walled garden, so that users can open it before login.</p>
+<h3 id="remove-the-cookie-on-logout">Remove the cookie on logout</h3>
+<p>The status page opens the logout page with this line:</p>
+<pre><code class="language-html">open('$(link-logout)', 'hotspot_logout', ...
+</code></pre>
+<p>To remove the cookie of the user on logout, change it to:</p>
+<pre><code class="language-html">open('$(link-logout)?erase-cookie=on', 'hotspot_logout', ...
+</code></pre>
+<p>or add this field to the logout form of the page:</p>
+<pre><code class="language-html">&lt;input type=&quot;hidden&quot; name=&quot;erase-cookie&quot; value=&quot;on&quot;&gt;
+</code></pre>
+<h3 id="external-authentication">External authentication</h3>
+<p>The login page can be on another server, for example on a server that takes a payment before it gives access:</p>
+<ol>
+<li>Allow access to the external server in the walled garden.</li>
+<li>Change the login page of the HotSpot so that it redirects to the external server. The external server changes the RADIUS database as needed.</li>
+<li>The external server logs the user in by sending the browser back to the login page of the HotSpot with the user name and password.</li>
+</ol>
+<p>This login page on the HotSpot router redirects to <code>https://auth.example.com/login.php</code>. Replace it with the address of your server:</p>
+<pre><code class="language-html">&lt;html&gt;
+&lt;title&gt;...&lt;/title&gt;
+&lt;body&gt;
+&lt;form name=&quot;redirect&quot; action=&quot;https://auth.example.com/login.php&quot; method=&quot;post&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;mac&quot; value=&quot;$(mac)&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;ip&quot; value=&quot;$(ip)&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;username&quot; value=&quot;$(username)&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;link-login&quot; value=&quot;$(link-login)&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;link-orig&quot; value=&quot;$(link-orig)&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;error&quot; value=&quot;$(error)&quot;&gt;
+&lt;/form&gt;
+&lt;script language=&quot;JavaScript&quot;&gt;
+&lt;!--
+   document.redirect.submit();
+//--&gt;
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>This page on the external server sends the user back to the HotSpot. Replace <code>https://hotspot.example.com/login</code> with the address of your HotSpot router, and <code>http://www.mikrotik.com/</code> with the page to open after login:</p>
+<pre><code class="language-html">&lt;html&gt;
+&lt;title&gt;Hotspot login page&lt;/title&gt;
+&lt;body&gt;
+&lt;form name=&quot;login&quot; action=&quot;https://hotspot.example.com/login&quot; method=&quot;post&quot;&gt;
+&lt;input type=&quot;text&quot; name=&quot;username&quot; value=&quot;demo&quot;&gt;
+&lt;input type=&quot;password&quot; name=&quot;password&quot; value=&quot;none&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;domain&quot; value=&quot;&quot;&gt;
+&lt;input type=&quot;hidden&quot; name=&quot;dst&quot; value=&quot;http://www.mikrotik.com/&quot;&gt;
+&lt;input type=&quot;submit&quot; name=&quot;login&quot; value=&quot;log in&quot;&gt;
+&lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>The HotSpot asks the RADIUS server whether to allow the login. If the login is allowed, <code>alogin.html</code> is shown. If not, <code>flogin.html</code> or <code>login.html</code> is shown, which sends the user back to the external server.</p>
+<p>The external page sends the password as it is, so the server profile needs the <code>https</code> or <code>http-pap</code> login method. Without it, the login fails with the message "web browser did not send challenge response". As in these examples, use HTTPS and the POST method to protect the password.</p>
+<h3 id="answer-differently-to-one-browser">Answer differently to one browser</h3>
+<p>A page can test a request header and return other content instead of the regular page. For example, these lines at the top of <code>rlogin.html</code> answer "Success" to one browser instead of redirecting it to the login page:</p>
+<pre><code class="language-html">$(if user-agent == &quot;Mozilla/5.0 (Android; Mobile; rv:40.0) Gecko/40.0 Firefox/40.0&quot; )
+&lt;HTML&gt;&lt;HEAD&gt;&lt;TITLE&gt;Success&lt;/TITLE&gt;&lt;/HEAD&gt;&lt;BODY&gt;Success&lt;/BODY&gt;&lt;/HTML&gt;
+$(else)
+---- regular content of rlogin.html page  ----
+$(endif)
+</code></pre>
+<p>This browser no longer opens the login page by itself.</p>
+<hr />
+<h1 id="ppp-aaa">PPP AAA</h1>
+<blockquote>
+<p>PPP users and profiles in RouterOS: create profiles and secrets for PPPoE, L2TP, SSTP and other PPP servers, assign addresses, routes and IPv6 prefixes, limit speed and traffic, filter user traffic, run scripts on...</p>
+</blockquote>
+<h1 id="ppp-aaa_1">PPP AAA</h1>
+<p>All PPP servers of RouterOS (<a href="../virtual-private-networks/pppoe/">PPPoE</a>, <a href="../virtual-private-networks/l2tp/">L2TP</a>, <a href="../virtual-private-networks/sstp">SSTP</a>, <a href="../virtual-private-networks/openvpn">OpenVPN</a>, <a href="../virtual-private-networks/pptp">PPTP</a>) share one user database:</p>
+<ul>
+<li><code>/ppp/secret</code> has the users: a name, a password and the settings of one user.</li>
+<li><code>/ppp/profile</code> has the profiles: settings that many users share, such as the addresses, the DNS server, a rate limit and firewall chains.</li>
+<li><code>/ppp/active</code> lists the users that are connected.</li>
+<li><code>/ppp/aaa</code> hands the authentication over to a <a href="radius">RADIUS</a> server for users that have no secret on the router.</li>
+</ul>
+<p>The examples use an L2TP server. Profiles and secrets are used in the same way with the other PPP servers; the CLI reference names the few settings that do not apply to every server.</p>
+<h2 id="create-a-profile-and-a-user">Create a profile and a user</h2>
+<p>This example gives the router the address 10.0.0.1 inside the tunnels and the users addresses from a pool:</p>
+<pre><code class="language-ros">/ip/pool/add name=vpn-pool ranges=10.0.0.10-10.0.0.100
+/ppp/profile/add name=vpn local-address=10.0.0.1 \
+    remote-address=vpn-pool
+/ppp/secret/add name=alice password=Example-pass-1 profile=vpn \
+    service=l2tp
+</code></pre>
+<p><code>service</code> limits the user to one kind of PPP server. Without it, the user can log in to any of them.</p>
+<p>The users connect to a PPP server, which must be enabled. For L2TP:</p>
+<pre><code class="language-ros">/interface/l2tp-server/server/set enabled=yes default-profile=vpn
+</code></pre>
+<p>The default firewall drops connections that come from the internet, so the users cannot connect until the firewall accepts the port of the server. For L2TP without IPsec this is UDP port 1701:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=udp \
+    dst-port=1701 in-interface-list=WAN comment=&quot;accept L2TP&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p><a href="../virtual-private-networks/l2tp/">L2TP</a> describes the server and IPsec for it.</p>
+<p><code>dns-server</code> in the profile gives the clients one or two DNS servers when the link comes up (the IPCP DNS options of RFC 1877). A client uses them only if it asks for them: a RouterOS PPP client does with <code>use-peer-dns=yes</code>. When the address is the router itself, the router must answer DNS requests (<code>allow-remote-requests=yes</code> in <code>/ip/dns</code>) and its firewall must accept them from the PPP users.</p>
+<p>When the user connects, <code>/ppp/active</code> shows the session, the address the user connected from and the address from the pool:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ppp/active/print
+Columns: NAME, SERVICE, CALLER-ID, ADDRESS, UPTIME, ENCODING
+# NAME   SERVICE  CALLER-ID      ADDRESS    UPTIME  ENCODING
+0 alice  l2tp     172.31.30.195  10.0.0.99  8s      MPPE128 stateless
+</code></pre>
+<h2 id="give-a-user-a-fixed-address-and-a-route">Give a user a fixed address and a route</h2>
+<p>A remote office needs the same address every time, and the router needs a route to the network behind it. Set both in the secret:</p>
+<pre><code class="language-ros">/ppp/secret/set alice remote-address=10.0.0.5 \
+    routes=&quot;192.168.50.0/24 10.0.0.5 1&quot;
+</code></pre>
+<p>The format of a route is <code>dst-address gateway metric</code>. Several routes are separated with commas. The route exists while the user is connected:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/route/print where dst-address=192.168.50.0/24
+Flags: D - DYNAMIC; A - ACTIVE; v - VPN
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+    DST-ADDRESS      GATEWAY   ROUTING-TABLE  DISTANCE
+DAv 192.168.50.0/24  10.0.0.5  main                  1
+</code></pre>
+<p>An address in the secret takes precedence over the address or the pool of the profile. <code>ipv6-routes</code> does the same for IPv6 networks.</p>
+<h2 id="limit-the-speed">Limit the speed</h2>
+<p><code>rate-limit</code> in a profile limits each user of the profile. The first value is the upload of the user and the second the download:</p>
+<pre><code class="language-ros">/ppp/profile/set vpn rate-limit=5M/10M
+</code></pre>
+<p>The limit applies when the user connects again. The router then adds a dynamic simple queue for the interface of the user:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print where dynamic
+Flags: D - DYNAMIC
+0 D name=&quot;&lt;l2tp-alice&gt;&quot; target=&lt;l2tp-alice&gt; parent=none packet-marks=&quot;&quot;
+    priority=8/8 queue=default-small/default-small limit-at=5M/10M
+    max-limit=5M/10M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+    bucket-size=0.1/0.1
+</code></pre>
+<p>While the user sends and receives as much as the link allows, <code>rate</code> of the queue stays at the limits, and <code>dropped</code> counts the packets over the limit:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print stats where dynamic
+Flags: D - DYNAMIC
+0 D name=&quot;&lt;l2tp-alice&gt;&quot; target=&lt;l2tp-alice&gt; rate=5.0Mbps/9.9Mbps
+    total-rate=0bps packet-rate=791/1063 total-packet-rate=0 queued-bytes=0/0
+    total-queued-bytes=0 queued-packets=0/0 total-queued-packets=0
+    bytes=8368364/56349507 total-bytes=0 packets=17379/42613 total-packets=0
+    dropped=3219/2273 total-dropped=0
+</code></pre>
+<p>The default configuration has a FastTrack rule, and simple queues do not limit FastTracked connections. See <a href="../firewall-and-quality-of-service/queues/simple-queue">Simple queue</a> for how to make the queues work with it.</p>
+<p>The value can also set bursts, a priority and a guaranteed rate; the <a href="radius">RADIUS</a> page describes the format. <code>parent-queue</code> makes the queues of the users children of an existing simple queue, <code>queue-type</code> sets the queue types for upload and download, and <code>insert-queue-before</code> sets the place of the queue in the list.</p>
+<h2 id="allow-one-session-for-each-user">Allow one session for each user</h2>
+<p>By default, a user can connect several times with the same name. To refuse a second connection while the first one is active:</p>
+<pre><code class="language-ros">/ppp/profile/set vpn only-one=yes
+</code></pre>
+<p>The second connection fails, and the log of the router has the message <code>user alice is already active</code>.</p>
+<p>The setting counts all PPP servers together: a user who is connected to the L2TP server cannot log in to the SSTP server at the same time. It also applies to users that a RADIUS server authenticates.</p>
+<h2 id="limit-the-traffic-of-a-session">Limit the traffic of a session</h2>
+<p><code>limit-bytes-in</code> is the number of bytes the user can upload in one session, and <code>limit-bytes-out</code> the number the user can download:</p>
+<pre><code class="language-ros">/ppp/secret/set alice limit-bytes-in=1000000000 \
+    limit-bytes-out=10000000000
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ppp/active/print detail
+0  name=&quot;alice&quot; service=l2tp caller-id=&quot;172.31.30.195&quot; address=10.0.0.5
+   uptime=9s encoding=&quot;MPPE128 stateless&quot; session-id=0x81100056
+   limit-bytes-in=1000000000 limit-bytes-out=10000000000
+</code></pre>
+<p>When a limit is reached, the router disconnects the user. The limits count each session separately: a user who connects again gets the full amount again.</p>
+<h2 id="put-the-addresses-of-users-in-an-address-list">Put the addresses of users in an address list</h2>
+<p>With <code>address-list</code>, the router adds the address of each connected user of the profile to a firewall <a href="../firewall-and-quality-of-service/firewall/address-lists">address list</a>. Firewall rules can then match all users of the profile:</p>
+<pre><code class="language-ros">/ppp/profile/set vpn address-list=vpn-users
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/address-list/print where list=vpn-users
+Flags: D - DYNAMIC
+Columns: LIST, ADDRESS, CREATION-TIME
+#   LIST       ADDRESS   CREATION-TIME
+0 D vpn-users  10.0.0.5  2026-11-19 10:13:38
+</code></pre>
+<p><code>interface-list</code> does the same with the interfaces of the users and an interface list.</p>
+<h2 id="filter-the-traffic-of-users">Filter the traffic of users</h2>
+<p><code>incoming-filter</code> and <code>outgoing-filter</code> name firewall filter chains for the packets from and to the users of a profile. The router adds a dynamic jump rule to the chain <code>ppp</code> for each connected user. The firewall reaches the chain <code>ppp</code> only when a rule jumps to it: add a jump rule to each chain that applies the user rules, <code>forward</code> for the traffic through the router and <code>input</code> for the traffic to the router itself. This example stops the users from sending mail directly:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=forward action=jump jump-target=ppp \
+    comment=&quot;PPP user rules&quot;
+/ip/firewall/filter/add chain=vpn-in action=drop protocol=tcp \
+    dst-port=25 comment=&quot;VPN users: no direct SMTP&quot;
+/ppp/profile/set vpn incoming-filter=vpn-in
+</code></pre>
+<p>The example adds the jump rule at the end of the <code>forward</code> chain. With the default firewall this place works: the rules before it accept the packets of established connections, and the chain <code>ppp</code> gets the first packet of each new connection of a user. In a firewall with more rules, put the jump rule before any rule that accepts or drops the new connections of the users.</p>
+<p>With the default firewall, a connected user can reach all devices of the LAN. Of the router itself, the user can only ping the address. To let the users reach one device only, here the file server 192.168.88.10, accept this address and drop the rest:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=vpn-in action=accept \
+    dst-address=192.168.88.10
+/ip/firewall/filter/add chain=vpn-in action=drop
+</code></pre>
+<p>A change of <code>incoming-filter</code> in the profile applies when the user connects again.</p>
+<p>After the user connects again, the chain <code>ppp</code> has the rule for the interface of the user:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/filter/print where chain=ppp
+Flags: D - DYNAMIC
+0 D chain=ppp action=jump jump-target=vpn-in in-interface=&lt;l2tp-alice&gt;
+</code></pre>
+<p>The counters of the drop rule show the blocked packets:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/filter/print stats where chain=vpn-in
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION  BYTES  PACKETS
+;;; VPN users: no direct SMTP
+1 vpn-in  drop      240        4
+</code></pre>
+<h2 id="run-a-script-when-a-user-connects">Run a script when a user connects</h2>
+<p><code>on-up</code> and <code>on-down</code> run a script when a user of the profile connects and disconnects. The script can read the variables <code>user</code>, <code>local-address</code>, <code>remote-address</code>, <code>caller-id</code>, <code>called-id</code> and <code>interface</code>:</p>
+<pre><code class="language-ros">/ppp/profile/set vpn \
+    on-up=&quot;:log info \&quot;PPP user \$user is up\&quot;&quot; \
+    on-down=&quot;:log info \&quot;PPP user \$user is down\&quot;&quot;
+</code></pre>
+<p>The log then has the lines <code>PPP user alice is up</code> and <code>PPP user alice is down</code> under the topic <code>script</code>.</p>
+<h2 id="give-users-ipv6-prefixes">Give users IPv6 prefixes</h2>
+<p><code>remote-ipv6-prefix-pool</code> gives each user a prefix that the router advertises on the interface of the user. <code>dhcpv6-pd-pool</code> adds a DHCPv6 server on the interface that delegates a prefix to the router of the user:</p>
+<pre><code class="language-ros">/ipv6/pool/add name=vpn-v6 prefix=2001:db8:10::/48 prefix-length=64
+/ipv6/pool/add name=vpn-pd prefix=2001:db8:20::/48 prefix-length=56
+/ppp/profile/set vpn remote-ipv6-prefix-pool=vpn-v6 \
+    dhcpv6-pd-pool=vpn-pd
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/nd/prefix/print where dynamic
+Flags: D - DYNAMIC
+0 D prefix=2001:db8:10::/64 6to4-interface=none interface=&lt;l2tp-alice&gt;
+    on-link=yes autonomous=yes dhcp6-pd-preferred=no valid-lifetime=4w2d
+    preferred-lifetime=1w
+</code></pre>
+<p>A user router that runs a DHCPv6 client on the PPP interface gets the delegated prefix:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/print
+Flags: D - DYNAMIC
+Columns: ADDRESS, DUID, SERVER, STATUS
+#   ADDRESS           DUID                    SERVER        STATUS
+0 D 2001:db8:20::/56  0x0003000102ffe1f54851  &lt;l2tp-alice&gt;  bound
+</code></pre>
+<p><code>remote-ipv6-prefix</code> in a secret gives one user a fixed prefix. <a href="../virtual-private-networks/pppoe/ipv6-pd-over-ppp">IPv6 PD over PPP</a> has a complete example.</p>
+<h2 id="restrict-where-a-user-connects-from">Restrict where a user connects from</h2>
+<p><code>caller-id</code> in a secret accepts the user only from one address: an IP address for L2TP and PPTP, a MAC address in capital letters for PPPoE. A login from another address is refused, and the log has <code>user alice called from ..., but was expected from ...</code>.</p>
+<h2 id="see-and-disconnect-users">See and disconnect users</h2>
+<p><code>/ppp/active/print</code> lists the connected users. The <code>R</code> flag marks a user that RADIUS authenticated. To disconnect a user:</p>
+<pre><code class="language-ros">/ppp/active/remove [find name=alice]
+</code></pre>
+<p>The client can connect again immediately. The secret keeps the time, the address and the reason of the last disconnect:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ppp/secret/print detail
+0  name=&quot;alice&quot; service=l2tp caller-id=&quot;&quot; profile=vpn remote-address=10.0.0.5
+   routes=&quot;192.168.50.0/24 10.0.0.5 1&quot; ipv6-routes=&quot;&quot; limit-bytes-in=1000000000
+   limit-bytes-out=10000000000 last-logged-out=2026-11-19 10:15:03
+   last-caller-id=&quot;172.31.30.195&quot; last-disconnect-reason=nas-request
+</code></pre>
+<h2 id="authenticate-users-with-radius_1">Authenticate users with RADIUS</h2>
+<p>With <code>use-radius=yes</code> in <code>/ppp/aaa</code>, the router asks a RADIUS server about each user that has no secret on the router. The server can send the address, the rate limit and most other settings of the profile for each user, and the router reports the sessions to it (<code>accounting</code> and <code>interim-update</code> in <code>/ppp/aaa</code>). A RADIUS user gets the settings that the server does not send from the default profile of the PPP server (<code>default-profile</code> in the settings of the server), or from the profile that the server names in the Mikrotik-Group attribute. See <a href="radius">RADIUS</a> for the setup and the attributes.</p>
+<p>The Framed-MTU attribute of a RADIUS server is not applied: PPP negotiates the MTU with LCP before the authentication.</p>
+<h2 id="how-the-settings-are-combined">How the settings are combined</h2>
+<ul>
+<li>The settings of a user come from three places. The secret has the highest priority, then the profile of the secret, then the default profile of the PPP server that the user connects to.</li>
+<li>A profile setting with the value <code>default</code> takes the value from the default profile of the PPP server.</li>
+<li>A user without <code>profile</code> uses the profile <code>default</code>.</li>
+<li>In a profile, <code>local-address</code> and <code>remote-address</code> accept an address or the name of an IP pool. A secret takes an address only, and that address takes precedence over a pool.</li>
+<li>The two built-in profiles, <code>default</code> and <code>default-encryption</code>, cannot be removed. Both have <code>change-tcp-mss=yes</code>, and <code>default-encryption</code> has <code>use-encryption=yes</code>.</li>
+</ul>
+<h2 id="l2tp-tunnel-secrets">L2TP tunnel secrets</h2>
+<p><code>/ppp/l2tp-secret</code> sets a secret for the L2TP tunnel itself, for clients that connect from the given address or network. A client that does not use this secret cannot connect.</p>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="../cli-reference/ppp/profile"><code>/ppp/profile</code></a>, <a href="../cli-reference/ppp/secret"><code>/ppp/secret</code></a>, <a href="../cli-reference/ppp/active"><code>/ppp/active</code></a>, <a href="../cli-reference/ppp/aaa"><code>/ppp/aaa</code></a>, <a href="../cli-reference/ppp/l2tp-secret"><code>/ppp/l2tp-secret</code></a></li>
+<li><a href="radius">RADIUS</a></li>
+<li><a href="../firewall-and-quality-of-service/queues/simple-queue">Simple queue</a></li>
+<li><a href="../virtual-private-networks/pppoe/">PPPoE</a></li>
+<li><a href="../virtual-private-networks/l2tp/">L2TP</a></li>
+</ul>
+<hr />
+<h1 id="radius_1">RADIUS</h1>
+<blockquote>
+<p>RouterOS RADIUS client: add RADIUS servers, authenticate PPP, router login, DHCP and HotSpot users, send accounting, accept Disconnect and CoA requests, use RadSec, and look up the supported RADIUS attributes.</p>
+</blockquote>
+<h1 id="radius_2">RADIUS</h1>
+<p>RADIUS (Remote Authentication Dial-In User Service) keeps user accounts on a central server. The RouterOS RADIUS client asks the server whether a user is allowed to connect, applies the settings that the server returns for the user (an address, a rate limit, a session time), and reports the session to the server for accounting. One server can manage the users of many routers.</p>
+<p>The <code>/radius</code> menu holds the list of servers. Each entry names the router services that use it: <code>ppp</code>, <code>login</code> (<a href="user">router users</a>), <code>hotspot</code> (<a href="hotspot-captive-portal/">HotSpot</a>), <code>dhcp</code> (<a href="../network-management/dhcp/server">DHCP server</a>), <code>dot1x</code> (<a href="dot1x">Dot1X</a>), <code>ipsec</code> (<a href="../virtual-private-networks/ipsec/">IPsec</a>) and <code>wireless</code>. The <code>ppp</code> service covers all PPP servers: PPPoE, L2TP, SSTP and the others. Each service also has its own setting that turns RADIUS on.</p>
+<p>A PPP secret or a router user that exists on the router is checked on the router. The router does not ask the server about that name.</p>
+<p>On the server, add the router as a client with the same shared secret, and load the MikroTik attribute dictionary (see RADIUS attributes at the end of this page). <a href="user-manager">User Manager</a> is a RADIUS server that runs on RouterOS. The server examples on this page use the <code>users</code> file format of FreeRADIUS.</p>
+<h2 id="authenticate-ppp-users">Authenticate PPP users</h2>
+<p>This example sends the logins of a PPP server, for example a <a href="../virtual-private-networks/pppoe/">PPPoE server</a>, to the RADIUS server at 192.0.2.10. Add the server and turn RADIUS on for PPP:</p>
+<pre><code class="language-ros">/radius/add service=ppp address=192.0.2.10 secret=Example-secret-1
+/ppp/aaa/set use-radius=yes
+</code></pre>
+<p>On the server, the user gets a fixed address and a rate limit:</p>
+<pre><code class="language-text">alice Cleartext-Password := &quot;Example-pass-1&quot;
+    Framed-IP-Address = 10.0.0.10,
+    Mikrotik-Rate-Limit = &quot;10M/50M&quot;
+</code></pre>
+<p>When the user connects, the session has the <code>R</code> flag and the address from the server:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ppp/active/print
+Flags: R - RADIUS
+Columns: NAME, SERVICE, CALLER-ID, ADDRESS, UPTIME
+#   NAME   SERVICE  CALLER-ID          ADDRESS    UPTIME
+0 R alice  pppoe    00:00:5E:00:53:0B  10.0.0.10  9s
+</code></pre>
+<p>The rate limit is a dynamic simple queue on the interface of the user. The first value limits the upload of the user and the second the download:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print where dynamic
+Flags: D - DYNAMIC
+0 D name=&quot;&lt;pppoe-alice&gt;&quot; target=&lt;pppoe-alice&gt; parent=none packet-marks=&quot;&quot;
+    priority=8/8 queue=default-small/default-small limit-at=10M/50M
+    max-limit=10M/50M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+    bucket-size=0.1/0.1
+</code></pre>
+<p>The default configuration has a FastTrack rule, and simple queues do not limit FastTracked connections. See <a href="../firewall-and-quality-of-service/queues/simple-queue">Simple queue</a> before you rely on these queues.</p>
+<p>Framed-IP-Address or Framed-Pool from the server replaces <code>remote-address</code> of the PPP profile. Settings that the server does not send come from the default profile of the PPP server (<code>default-profile</code> in the settings of the server). <code>Mikrotik-Group</code> in the reply selects another PPP profile for the user.</p>
+<h2 id="log-in-to-the-router-with-radius-accounts">Log in to the router with RADIUS accounts</h2>
+<p>This example lets administrators log in to the router with accounts from the same server. Add <code>login</code> to the services of the entry and turn RADIUS on for router users:</p>
+<pre><code class="language-ros">/radius/set [find address=192.0.2.10] service=ppp,login
+/user/aaa/set use-radius=yes
+</code></pre>
+<p>On the server, <code>Mikrotik-Group</code> names the <a href="user">user group</a> of the account:</p>
+<pre><code class="language-text">netadmin Cleartext-Password := &quot;Example-pass-2&quot;
+    Mikrotik-Group = &quot;full&quot;
+</code></pre>
+<p>Log in with the account and list the sessions that RADIUS authenticated:</p>
+<pre><code class="language-ros">[netadmin@MikroTik] &gt; /user/active/print where radius
+Flags: R - RADIUS
+Columns: WHEN, NAME, ADDRESS, VIA
+#   WHEN                 NAME      ADDRESS     VIA
+0 R 2026-11-20 08:57:50  netadmin  192.0.2.20  ssh
+</code></pre>
+<p><code>ADDRESS</code> is the address that the administrator logged in from.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Every account that the server accepts for a login request can log in to the router. An account without <code>Mikrotik-Group</code>, or with a group that does not exist on the router, gets the group set in <code>default-group</code> of <code>/user/aaa</code>, which is <code>read</code> by default. The <code>read</code> group can do more than look: see <a href="user">User</a> for its policies. When the same server also holds PPP or HotSpot users, configure it to accept requests with Service-Type <code>Login</code> only for administrator accounts.</p>
+</div>
+<p>The router does not ask the server about names that exist in <code>/user</code>, so keep a local administrator account for the time when the server cannot be reached.</p>
+<h2 id="authorize-dhcp-clients">Authorize DHCP clients</h2>
+<p>With RADIUS, the <a href="../network-management/dhcp/server">DHCP server</a> asks the RADIUS server before it gives a lease. The server can set the address, the lease time and a rate limit for each device. The example uses the DHCP server of the default configuration, <code>defconf</code>:</p>
+<pre><code class="language-ros">/radius/set [find address=192.0.2.10] service=ppp,login,dhcp
+/ip/dhcp-server/set defconf use-radius=yes
+</code></pre>
+<p>With the default settings, the router sends the MAC address of the device as the user name, with an empty password. On the server, accept the device by its MAC address:</p>
+<pre><code class="language-text">00:00:5E:00:53:0A Auth-Type := Accept
+    Framed-IP-Address = 192.168.88.50,
+    Session-Timeout = 3600,
+    Mikrotik-Rate-Limit = &quot;5M/20M&quot;
+</code></pre>
+<p><code>Session-Timeout</code> is the lease time in seconds. The lease has the <code>R</code> flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dhcp-server/lease/print
+Flags: R - RADIUS, D - DYNAMIC
+Columns: ADDRESS, MAC-ADDRESS, HOST-NAME, SERVER, RATE-LIMIT, STATUS,
+         LAST-SEEN
+#   ADDRESS        MAC-ADDRESS        HOST-NAME  SERVER   RATE-L  STATUS  LAS
+0 R 192.168.88.50  00:00:5E:00:53:0A  laptop     defconf  5M/20M  bound   12s
+</code></pre>
+<p>A device that the server rejects gets no address. Add all devices of the network to the server before you turn RADIUS on for a DHCP server that is in use.</p>
+<h2 id="authenticate-hotspot-users">Authenticate HotSpot users</h2>
+<p>Add <code>hotspot</code> to the services of the entry and set <code>use-radius=yes</code> in the HotSpot server profile. The <a href="hotspot-captive-portal/">HotSpot</a> page describes the HotSpot server and its profiles.</p>
+<h2 id="authenticate-ipsec-users">Authenticate IPsec users</h2>
+<p>An IKEv2 server can pass the EAP authentication of its clients to RADIUS. <a href="../virtual-private-networks/ipsec/">IPsec</a> has the complete server setup; this example shows the RADIUS part. The server certificate is <code>ike-server</code>. Add <code>ipsec</code> to the services of the entry and set <code>auth-method=eap-radius</code> in the identity:</p>
+<pre><code class="language-ros">/radius/set [find address=192.0.2.10] \
+    service=ppp,login,dhcp,ipsec
+/ip/pool/add name=ike-pool ranges=10.10.10.10-10.10.10.100
+/ip/ipsec/mode-config/add name=ike-conf address-pool=ike-pool
+/ip/ipsec/peer/add name=ike-clients passive=yes exchange-mode=ike2
+/ip/ipsec/identity/add peer=ike-clients auth-method=eap-radius \
+    certificate=ike-server generate-policy=port-strict \
+    mode-config=ike-conf
+</code></pre>
+<p>On the server, Framed-IP-Address gives the client a fixed address in place of one from the pool:</p>
+<pre><code class="language-text">bob Cleartext-Password := &quot;Example-pass-3&quot;
+    Framed-IP-Address = 10.10.10.50
+</code></pre>
+<p>A client that logs in with EAP-MSCHAPv2 is listed with its user name and the address from the server:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/ipsec/active-peers/print
+Flags: R - RESPONDER
+Columns: ID, STATE, UPTIME, PH2-TOTAL, REMOTE-ADDRESS, DYNAMIC-ADDRESS
+#   ID   STATE        UPTIME  PH2-TOTAL  REMOTE-ADDRESS  DYNAMIC-ADDRESS
+0 R bob  established  9s              1  192.0.2.50      10.10.10.50
+</code></pre>
+<h2 id="authenticate-dot1x-clients">Authenticate Dot1X clients</h2>
+<p>The <a href="dot1x">Dot1X</a> server passes the EAP authentication of the devices on an Ethernet port to RADIUS. Add <code>dot1x</code> to the services of the entry and add the port to the Dot1X server:</p>
+<pre><code class="language-ros">/radius/set [find address=192.0.2.10] \
+    service=ppp,login,dhcp,ipsec,dot1x
+/interface/dot1x/server/add interface=ether2 auth-types=dot1x
+</code></pre>
+<pre><code class="language-text">carol Cleartext-Password := &quot;Example-pass-4&quot;
+</code></pre>
+<p>When the device has logged in, the port is authorized:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /interface/dot1x/server/state/print
+Columns: INTERFACE, STATUS
+#  INTERFACE  STATUS
+0  ether2     authorized
+</code></pre>
+<p>With <code>auth-types=mac-auth</code>, the router sends the MAC address of the device as the user name, by default with an empty password, as the DHCP server does. <code>mac-auth-mode</code> and <code>radius-mac-format</code> of the <a href="dot1x">Dot1X</a> server change the password and the format of the address.</p>
+<h2 id="send-accounting">Send accounting</h2>
+<p>The router reports the start and the end of each session to the server, and the traffic counters in between when an interim interval is set. Accounting is on by default in <code>/ppp/aaa</code>, <code>/user/aaa</code> and the Dot1X server (<code>accounting=yes</code>); <code>interim-update</code> in the same menus sets the interval. For DHCP, both settings are in <code>/ip/dhcp-server/config</code>. In a HotSpot server profile the settings are <code>radius-accounting</code> and <code>radius-interim-update</code>. The server can set the interval for one session with Acct-Interim-Interval.</p>
+<h2 id="add-a-second-server">Add a second server</h2>
+<p>The router uses the entries in the order of the list. This example adds a second server for the time when the first one does not answer, and a third one that keeps a copy of the accounting records:</p>
+<pre><code class="language-ros">/radius/add service=ppp,login,dhcp address=192.0.2.11 \
+    secret=Example-secret-2
+/radius/add service=ppp,dhcp address=192.0.2.12 \
+    secret=Example-secret-3 accounting-backup=yes
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /radius/print detail
+0  service=ppp,login,dhcp,ipsec,dot1x called-id=&quot;&quot; domain=&quot;&quot; address=192.0.2.10
+   authentication-port=1812 accounting-port=1813 timeout=1s100ms
+   radsec-timeout=3s300ms accounting-backup=no realm=&quot;&quot; protocol=udp
+   certificate=none require-message-auth=yes-for-request-resp status=&quot;&quot;
+
+1  service=ppp,login,dhcp called-id=&quot;&quot; domain=&quot;&quot; address=192.0.2.11
+   authentication-port=1812 accounting-port=1813 timeout=1s100ms
+   radsec-timeout=3s300ms accounting-backup=no realm=&quot;&quot; protocol=udp
+   certificate=none require-message-auth=yes-for-request-resp status=&quot;&quot;
+
+2  service=ppp,dhcp called-id=&quot;&quot; domain=&quot;&quot; address=192.0.2.12
+   authentication-port=1812 accounting-port=1813 timeout=1s100ms
+   radsec-timeout=3s300ms accounting-backup=yes realm=&quot;&quot; protocol=udp
+   certificate=none require-message-auth=yes-for-request-resp status=&quot;&quot;
+</code></pre>
+<ul>
+<li>The router sends a request to the first enabled entry that matches the service. It sends the request three times. When no answer arrives, it sends the request to the next matching entry.</li>
+<li>Each new request starts at the first entry again.</li>
+<li>An entry with <code>accounting-backup=yes</code> gets a copy of every accounting request, in addition to the entry that answers. The router does not send authentication requests to it.</li>
+<li><code>place-before</code> in <code>/radius/add</code> puts a new entry before an existing one.</li>
+</ul>
+<h2 id="change-or-disconnect-a-session-from-the-server">Change or disconnect a session from the server</h2>
+<p>The server can end a session with a Disconnect-Request and change a running session with a Change of Authorization (CoA) request (RFC 5176, earlier RFC 3576). The router ignores these requests until you allow them:</p>
+<pre><code class="language-ros">/radius/incoming/set accept=yes
+</code></pre>
+<p>The router listens on UDP port 3799; <code>port</code> changes it, and <code>vrf</code> selects the VRF in which the router listens. The server signs the request with the shared secret of its <code>/radius</code> entry.</p>
+<p>The default firewall drops these requests when the server is on the WAN side. Accept the port from the address of the server, before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=udp \
+    dst-port=3799 src-address=192.0.2.10 comment=&quot;RADIUS CoA&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>This command, run on the server, changes the rate limit of a connected PPP user. <code>radclient</code> is part of FreeRADIUS:</p>
+<pre><code class="language-bash">echo 'User-Name=alice,Mikrotik-Rate-Limit=&quot;20M/100M&quot;' | \
+    radclient -x 192.0.2.1:3799 coa Example-secret-1
+</code></pre>
+<pre><code class="language-text">Sent CoA-Request Id 179 from 0.0.0.0:52783 to 192.0.2.1:3799 length 43
+    User-Name = &quot;alice&quot;
+    Mikrotik-Rate-Limit = &quot;20M/100M&quot;
+Received CoA-ACK Id 179 from 192.0.2.1:3799 to 192.0.2.10:52783 length 38
+    Message-Authenticator = 0x3e08daec066d6cdd8aab7b9d6f3b98c7
+</code></pre>
+<p>The queue of the user has the new limit, and the session stays connected:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print where name~&quot;alice&quot;
+Flags: D - DYNAMIC
+1 D name=&quot;&lt;pppoe-alice&gt;&quot; target=&lt;pppoe-alice&gt; parent=none packet-marks=&quot;&quot;
+    priority=8/8 queue=default-small/default-small limit-at=20M/100M
+    max-limit=20M/100M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+    bucket-size=0.1/0.1
+</code></pre>
+<p>This command disconnects the user:</p>
+<pre><code class="language-bash">echo 'User-Name=alice' | \
+    radclient -x 192.0.2.1:3799 disconnect Example-secret-1
+</code></pre>
+<pre><code class="language-text">Sent Disconnect-Request Id 18 from 0.0.0.0:34758 to 192.0.2.1:3799 length 27
+    User-Name = &quot;alice&quot;
+Received Disconnect-ACK Id 18 from 192.0.2.1:3799 to 192.0.2.10:34758 length 38
+    Message-Authenticator = 0x15c3ee3b3b79a6f8b4fd44b83b46bb1a
+</code></pre>
+<ul>
+<li>A PPP session is found by <code>User-Name</code> or by <code>Acct-Session-Id</code>.</li>
+<li>A HotSpot session is found by <code>Framed-IP-Address</code>, the address of the device.</li>
+<li>When no session matches, the router answers with CoA-NAK or Disconnect-NAK.</li>
+<li>The router does not answer a request with a wrong secret. <code>/radius/incoming/monitor</code> counts it in <code>bad-requests</code>.</li>
+</ul>
+<p>RouterOS doesn't support POD (Packet of Disconnect), an older way to end a session.</p>
+<h2 id="encrypt-the-connection-with-radsec">Encrypt the connection with RadSec</h2>
+<p>RadSec carries RADIUS over TLS on TCP port 2083. Use it when the path between the router and the server is not trusted. The router needs:</p>
+<ul>
+<li>A client certificate with its private key.</li>
+<li>The certificate authority that signed the certificate of the server, as a trusted certificate.</li>
+<li>A server certificate that contains the address set in <code>address</code> of the entry.</li>
+</ul>
+<p><a href="certificates">Certificates</a> explains how to create, sign, export and import certificates. In this example the client certificate is imported with the name <code>radius-client</code>. Change the entry to RadSec:</p>
+<pre><code class="language-ros">/radius/set [find address=192.0.2.10] protocol=radsec \
+    certificate=radius-client
+</code></pre>
+<p>After the first request, <code>status</code> shows the state of the TLS connection:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /radius/print detail where address=192.0.2.10
+0  service=ppp,login,dhcp,ipsec,dot1x called-id=&quot;&quot; domain=&quot;&quot; address=192.0.2.10
+   authentication-port=1812 accounting-port=1813 timeout=1s100ms
+   radsec-timeout=3s300ms accounting-backup=no realm=&quot;&quot; protocol=radsec
+   certificate=radius-client require-message-auth=yes-for-request-resp
+   status=&quot;TLS connected&quot;
+</code></pre>
+<ul>
+<li>With RadSec, the router connects to TCP port 2083. <code>authentication-port</code> and <code>accounting-port</code> are not used.</li>
+<li><code>secret</code> is not used. RFC 6614 sets the shared secret of RadSec to <code>radsec</code>: configure this secret on a server that asks for one.</li>
+</ul>
+<p>When the server is <a href="user-manager">User Manager</a> on another router, set the server certificate and mark the router entry as a RadSec client:</p>
+<pre><code class="language-ros">/user-manager/set enabled=yes radsec-certificate=radius-server
+/user-manager/router/add name=router1 address=192.0.2.1 \
+    protocol=radsec
+</code></pre>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p><code>/radius/monitor</code> counts the requests and answers of one entry:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /radius/monitor [find address=192.0.2.10] once
+           pending: 0
+          requests: 3
+           accepts: 3
+           rejects: 0
+           resends: 0
+          timeouts: 0
+       bad-replies: 0
+  last-request-rtt: 10ms
+</code></pre>
+<ul>
+<li><code>accepts</code> counts the accepted logins and the accounting answers.</li>
+<li><code>rejects</code> counts the logins that the server refused.</li>
+<li><code>resends</code> and <code>timeouts</code> count requests without an answer.</li>
+<li><code>bad-replies</code> counts answers that failed the check of the shared secret or of the Message-Authenticator.</li>
+</ul>
+<p><code>/radius/reset-counters</code> sets the counters of all entries to zero. The read-only <code>status</code> of an entry shows the last connection error, or the state of the RadSec connection.</p>
+<p>To see each request and answer in the log, add the <code>radius</code> topic:</p>
+<pre><code class="language-ros">/system/logging/add topics=radius,debug,!packet
+</code></pre>
+<p>Without <code>!packet</code>, the log also has every attribute of every packet.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Symptom</th>
+<th style="text-align: left;">Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>timeouts</code> grows. A PPP login fails with <code>authentication failed - radius timeout</code> in the log.</td>
+<td style="text-align: left;">The server is not reachable, the router is not a client on the server, or the shared secret is wrong and the server drops the request.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bad-replies</code> grows.</td>
+<td style="text-align: left;">The answer is signed with another secret, or it has no Message-Authenticator.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rejects</code> grows.</td>
+<td style="text-align: left;">The server refused the user: a wrong password or an unknown name.</td>
+</tr>
+<tr>
+<td style="text-align: left;">No requests are counted.</td>
+<td style="text-align: left;">RADIUS is not turned on in the service, no entry matches the service, <code>called-id</code> or <code>domain</code>, or the name exists on the router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>status</code> is <code>connect:Connection refused</code>.</td>
+<td style="text-align: left;">The server does not listen on TCP port 2083. On User Manager, the router entry needs <code>protocol=radsec</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>status</code> is <code>client certificate required</code>.</td>
+<td style="text-align: left;">The RadSec entry has <code>certificate=none</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>status</code> is <code>ssl: name verification failed</code>.</td>
+<td style="text-align: left;">The certificate of the server does not contain the value of <code>address</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>status</code> is <code>ssl: no trusted CA certificate found</code>.</td>
+<td style="text-align: left;">The certificate authority of the server is not a trusted certificate on the router.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-the-router-selects-an-entry">How the router selects an entry</h2>
+<p>An entry is used for a request when all of these match:</p>
+<ul>
+<li><code>service</code> contains the service that makes the request.</li>
+<li><code>called-id</code> is empty or equals the Called-Station-Id of the request. For PPPoE, this is the service name of the PPPoE server.</li>
+<li><code>domain</code> is empty or equals the domain of the user name. The domain is the part before <code>\</code> or after <code>@</code>.</li>
+</ul>
+<p>A user who logs in as <code>EXAMPLE\alice</code> is sent to the server as <code>alice</code>, with <code>EXAMPLE</code> in the MS-CHAP-Domain attribute. A user who logs in as <code>alice@example.org</code> is sent with the complete name, and <code>example.org</code> in MS-CHAP-Domain.</p>
+<p><code>realm</code> sets the Mikrotik-Realm attribute in the Access-Requests of the entry. Without <code>realm</code>, the attribute has the domain of the user name, and it is not sent when the name has no domain.</p>
+<p><code>src-address</code> sets the source address of the packets. The same address is sent as NAS-IP-Address.</p>
+<p><code>address</code> can be an IPv6 address; the router then sends NAS-IPv6-Address in place of NAS-IP-Address. To reach a server in a VRF, add the VRF name to the address: <code>address=192.0.2.10@vrf1</code>.</p>
+<h2 id="message-authenticator">Message-Authenticator</h2>
+<p>The router adds the Message-Authenticator attribute to every Access-Request. With <code>require-message-auth=yes-for-request-resp</code>, the default, the router also drops an answer to an Access-Request that has no Message-Authenticator and counts it in <code>bad-replies</code>. Accounting requests and their answers do not have the attribute. Set <code>require-message-auth=no</code> only for a server that cannot send the attribute. The router drops an answer with a wrong Message-Authenticator with either value.</p>
+<h2 id="radius-attributes">RADIUS attributes</h2>
+<p>Two dictionary files list the attributes that RouterOS supports:</p>
+<ul>
+<li><a href="pathname:///assets/319783010_RADIUS_reference_dictionary.txt">RADIUS reference dictionary</a> is a complete dictionary in the FreeRADIUS format. It can conflict with the default dictionary of your RADIUS server. Correct the configuration of the server, not the dictionary: RouterOS supports no other attributes.</li>
+<li><a href="pathname:///assets/319783011_MikroTik_Vendor_attributes.txt">MikroTik vendor attributes</a> has only the MikroTik vendor-specific attributes, to include in an existing dictionary.</li>
+</ul>
+<p>On a router with User Manager, <code>/user-manager/attribute/print</code> lists the attributes that User Manager can send.</p>
+<p>The attributes that the server sends override the settings of the service: the PPP profile, the HotSpot user profile or the DHCP server. A setting that the server does not send comes from the service.</p>
+<h3 id="access-request">Access-Request</h3>
+<ul>
+<li><strong>Service-Type</strong> - <code>Framed</code> for PPP, DHCP, Dot1X and IPsec; <code>Login</code> for router login and HotSpot.</li>
+<li><strong>Framed-Protocol</strong> - <code>PPP</code> (PPP only).</li>
+<li><strong>NAS-Identifier</strong> - Identity of the router.</li>
+<li><strong>NAS-IP-Address</strong> - Address of the router: the source address of the request. With an IPv6 server, NAS-IPv6-Address is sent.</li>
+<li><strong>NAS-Port</strong> - Port number of the session on the router.</li>
+<li><strong>Acct-Session-Id</strong> - Session ID, eight hexadecimal digits. The first two digits depend on the service. The next digit is incremented on each reboot, and the last digits on each new session, so an ID is not repeated for 1 million connections of one service after a boot. If the server gets a Start message for a new session while it still keeps an older session open, the Stop message of the older session was lost: the server must close the old session and start the new one.</li>
+<li><strong>NAS-Port-Type</strong> - Async PPP and SSTP - <code>Async</code>; PPTP, L2TP and IPsec - <code>Virtual</code>; PPPoE, DHCP and Dot1X - <code>Ethernet</code>; ISDN - <code>ISDN Sync</code>; HotSpot - <code>Ethernet</code>, <code>Cable</code> or <code>Wireless-802.11</code>, as set in <code>nas-port-type</code> of the HotSpot server profile.</li>
+<li><strong>Calling-Station-Id</strong> - PPPoE and HotSpot - MAC address of the client in capital letters; PPTP, L2TP, SSTP and IPsec - public IP address of the client; router login - IP address of the client; DHCP - client ID of the device; Dot1X - MAC address of the device, written with dashes.</li>
+<li><strong>Called-Station-Id</strong> - PPPoE - service name; PPTP, L2TP, SSTP and IPsec - IP address of the server; HotSpot - name of the HotSpot server; DHCP - name of the DHCP server; Dot1X - MAC address of the port of the router, written with dashes.</li>
+<li><strong>NAS-Port-Id</strong> - Async PPP - serial port name; PPPoE, DHCP and Dot1X - name of the interface on which the server runs; HotSpot - name of the physical HotSpot interface (if bridged, the bridge port name); not present for ISDN, PPTP, L2TP and SSTP.</li>
+<li><strong>Framed-IP-Address</strong> - IP address of the HotSpot client after Universal Client translation.</li>
+<li><strong>Mikrotik-Host-IP</strong> - IP address of the HotSpot client before Universal Client translation (the original IP address of the client).</li>
+<li><strong>User-Name</strong> - Login name of the client. For DHCP and Dot1X MAC authentication, the MAC address of the device, by default in capital letters.</li>
+<li><strong>Framed-MTU</strong> - 1400 (Dot1X and IPsec).</li>
+<li><strong>EAP-Message</strong> - EAP packet of the client (Dot1X and IPsec).</li>
+<li><strong>MS-CHAP-Domain</strong> - Domain of the user name, if present.</li>
+<li><strong>Mikrotik-Realm</strong> - Value of <code>realm</code> of the entry. Without <code>realm</code>, the same value as MS-CHAP-Domain.</li>
+<li><strong>WISPr-Location-ID</strong> - Value of <code>radius-location-id</code> of the HotSpot server profile.</li>
+<li><strong>WISPr-Location-Name</strong> - Value of <code>radius-location-name</code> of the HotSpot server profile.</li>
+<li><strong>WISPr-Logoff-URL</strong> - Full link to the HotSpot logout page.</li>
+<li><strong>Message-Authenticator</strong> - Signature of the request.</li>
+</ul>
+<p>The password attributes depend on the authentication method. Router login uses MS-CHAPv2. HotSpot uses CHAP by default, PAP if unencrypted passwords are enabled, and cannot use MS-CHAP. DHCP and Dot1X MAC authentication send an empty User-Password by default. Dot1X and IPsec carry the EAP method of the client in EAP-Message.</p>
+<ul>
+<li><strong>User-Password</strong> - Encrypted password (PAP).</li>
+<li><strong>CHAP-Password</strong>, <strong>CHAP-Challenge</strong> - Encrypted password and challenge (CHAP).</li>
+<li><strong>MS-CHAP-Response</strong>, <strong>MS-CHAP-Challenge</strong> - Encrypted password and challenge (MS-CHAPv1).</li>
+<li><strong>MS-CHAP2-Response</strong>, <strong>MS-CHAP-Challenge</strong> - Encrypted password and challenge (MS-CHAPv2).</li>
+</ul>
+<h3 id="access-accept">Access-Accept</h3>
+<ul>
+<li><strong>Framed-IP-Address</strong> - IP address of the client. For PPP, if the address belongs to the 127.0.0.0/8 or 224.0.0.0/3 networks, the address comes from the pool of the profile. If Framed-IP-Address is sent, Framed-Pool is ignored. For IPsec, the address given to the client by mode config.</li>
+<li><strong>Framed-IP-Netmask</strong> - Netmask of the client. PPP - together with Framed-IP-Address, adds a route to the network of the address through the client; HotSpot - ignored.</li>
+<li><strong>Framed-Pool</strong> - Name of the IP pool on the router that gives the address of the client.</li>
+<li><strong>Framed-IPv6-Prefix</strong> - IPv6 prefix that the router advertises to the PPP client.</li>
+<li><strong>Framed-IPv6-Pool</strong> - Name of the IPv6 pool on the router that gives the prefix advertised to the PPP client.</li>
+<li><strong>Delegated-IPv6-Prefix</strong> - IPv6 prefix that the router delegates to the PPP client with DHCPv6.</li>
+<li><strong>Mikrotik-Delegated-IPv6-Pool</strong> - Name of the IPv6 pool on the router that gives the delegated prefix.</li>
+<li><strong>Idle-Timeout</strong> - Overrides <code>idle-timeout</code> of the service.</li>
+<li><strong>Session-Timeout</strong> - Overrides <code>session-timeout</code> of the service. For DHCP, the lease time.</li>
+<li><strong>Port-Limit</strong> - Maximal number of simultaneous connections with the same user name (overrides <code>shared-users</code> of the HotSpot user profile).</li>
+<li><strong>Class</strong> - Cookie. The router includes it unchanged in the accounting requests of the session.</li>
+<li><strong>Framed-Route</strong> - Route to add on the router. The format is specified in RFC 2865 (chapter 5.22). Can be sent several times.</li>
+<li><strong>Filter-Id</strong> - Name of a firewall filter chain. For PPP, the router adds dynamic rules to the <code>ppp</code> chain that jump to this chain for the packets from and to the client. For HotSpot, the rules are added to the <code>hotspot</code> chain. Jump rules from the <code>forward</code> chain to the <code>ppp</code> or <code>hotspot</code> chain must exist. The suffix <code>.in</code> or <code>.out</code> after the name adds the rule only for incoming or only for outgoing traffic. If Filter-Id is sent several times, only the last ones for incoming and outgoing are used.</li>
+<li><strong>Mikrotik-Mark-Id</strong> - Packet mark (HotSpot only). The router adds dynamic rules to the <code>hotspot</code> chain of the firewall mangle that mark the packets from and to the client. The suffix <code>.in</code> or <code>.out</code> adds the rule only for incoming or only for outgoing traffic. If the attribute is sent several times, only the last ones for incoming and outgoing are used.</li>
+<li><strong>Mikrotik-Address-List</strong> - Name of a firewall address list. The router adds the address of the client to the list while the session or the lease is active.</li>
+<li><strong>Mikrotik-DHCP-Option-Set</strong> - Name of a DHCP option set on the router that is sent to the device (DHCP only).</li>
+<li><strong>Acct-Interim-Interval</strong> - Interval of the Interim-Update accounting requests in seconds. PPP - if 0, the interval of <code>/ppp/aaa</code> is used. HotSpot - only respected if <code>radius-interim-update=received</code> in the HotSpot server profile.</li>
+<li><strong>MS-MPPE-Encryption-Policy</strong> - <code>require-encryption</code> property (PPP only).</li>
+<li><strong>MS-MPPE-Encryption-Types</strong> - <code>use-encryption</code> property. A non-zero value means to use encryption (PPP only).</li>
+<li><strong>Ascend-Data-Rate</strong> - Data rate limit. If the attribute is sent two times, the first limits the transmit rate and the second the receive rate. If it is sent together with Ascend-Xmit-Rate, it sets the receive rate. 0 means unlimited. Ignored if Mikrotik-Rate-Limit is present.</li>
+<li><strong>Ascend-Xmit-Rate</strong> - Transmit rate limit. 0 means unlimited. Ignored if Mikrotik-Rate-Limit is present.</li>
+<li><strong>MS-CHAP2-Success</strong> - Authentication response if MS-CHAPv2 was used.</li>
+<li><strong>MS-MPPE-Send-Key</strong>, <strong>MS-MPPE-Recv-Key</strong> - Encryption keys for encrypted PPP, sent by the server only if MS-CHAPv2 was used (PPP only).</li>
+<li><strong>Ascend-Client-Gateway</strong> - Client gateway for the DHCP-pool HotSpot login method (HotSpot only).</li>
+<li><strong>Mikrotik-Recv-Limit</strong> - Total receive limit in bytes for the client.</li>
+<li><strong>Mikrotik-Recv-Limit-Gigawords</strong> - Upper 32 bits of the receive limit (bits 32..63, when bits 0..31 are sent in Mikrotik-Recv-Limit).</li>
+<li><strong>Mikrotik-Xmit-Limit</strong> - Total transmit limit in bytes for the client.</li>
+<li><strong>Mikrotik-Xmit-Limit-Gigawords</strong> - Upper 32 bits of the transmit limit (bits 32..63, when bits 0..31 are sent in Mikrotik-Xmit-Limit).</li>
+<li><strong>Mikrotik-Total-Limit</strong> - Limit in bytes for the received and transmitted traffic together (HotSpot).</li>
+<li><strong>Mikrotik-Wireless-Forward</strong> - Does not forward the frames of the client back to the wireless infrastructure if this attribute is set to "0" (wireless only).</li>
+<li><strong>Mikrotik-Wireless-Skip-Dot1x</strong> - Disables 802.1x authentication for the wireless client if set to a non-zero value (wireless only).</li>
+<li><strong>Mikrotik-Wireless-Enc-Algo</strong> - WEP encryption algorithm: 0 - no encryption, 1 - 40-bit WEP, 2 - 104-bit WEP (wireless only).</li>
+<li><strong>Mikrotik-Wireless-Enc-Key</strong> - WEP encryption key for the client (wireless only).</li>
+<li><strong>Mikrotik-Wireless-VLANID</strong> - VLAN ID for the client (wireless only).</li>
+<li><strong>Mikrotik-Wireless-VLANIDtype</strong> - VLAN ID type for the client: 0 - 802.1q tag, 1 - 802.1ad tag (wireless only).</li>
+<li><strong>Mikrotik-Switching-Filter</strong> - Dynamic switch rules for a client that the <a href="dot1x">Dot1X</a> server authenticates.</li>
+<li><strong>Tunnel-Type</strong>, <strong>Tunnel-Medium-Type</strong>, <strong>Tunnel-Private-Group-ID</strong> - VLAN of a client that the <a href="dot1x">Dot1X</a> server authenticates.</li>
+<li><strong>Mikrotik-Rate-Limit</strong> - Data rate limit for the client. See Rate limit format.</li>
+<li><strong>Mikrotik-Group</strong> - Router login - name of the user group; HotSpot - name of the HotSpot user profile; PPP - name of the PPP profile.</li>
+<li><strong>Mikrotik-Advertise-URL</strong> - URL of the page with advertisements that is displayed to HotSpot clients. If this attribute is sent, advertisements are enabled, including the transparent proxy, even if they are disabled in the user profile. The server can send the attribute several times; the URLs are used in turn.</li>
+<li><strong>Mikrotik-Advertise-Interval</strong> - Time between two advertisements. The server can send the attribute several times. The values are used one by one for each successful advertisement, and the last value is used when the end of the list is reached.</li>
+<li><strong>WISPr-Redirection-URL</strong> - URL to which HotSpot clients are redirected after a successful login.</li>
+<li><strong>WISPr-Bandwidth-Min-Up</strong> - Minimal data rate (CIR) for the upload of the HotSpot client.</li>
+<li><strong>WISPr-Bandwidth-Min-Down</strong> - Minimal data rate (CIR) for the download of the HotSpot client.</li>
+<li><strong>WISPr-Bandwidth-Max-Up</strong> - Maximal data rate (MIR) for the upload of the HotSpot client.</li>
+<li><strong>WISPr-Bandwidth-Max-Down</strong> - Maximal data rate (MIR) for the download of the HotSpot client.</li>
+<li><strong>WISPr-Session-Terminate-Time</strong> - Time when the user is disconnected, in the form "YYYY-MM-DDThh:mm:ssTZD": Y - year; M - month; D - day; T - separator between date and time; h - hour (24-hour format); m - minute; s - second; TZD - time zone as "+hh:mm", "+hhmm", "-hh:mm" or "-hhmm".</li>
+</ul>
+<p>Mikrotik-Rate-Limit takes precedence over the other ways to set the data rate. The Ascend attributes come second and the WISPr attributes last.</p>
+<h3 id="rate-limit-format">Rate limit format</h3>
+<p>The format of Mikrotik-Rate-Limit is:</p>
+<pre><code class="language-text">rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate]
+[rx-burst-threshold[/tx-burst-threshold]
+[rx-burst-time[/tx-burst-time] [priority [rx-rate-min[/tx-rate-min]]]]]]
+</code></pre>
+<p>The value is one line with spaces between the fields. The rates are from the point of view of the router: <code>rx</code> is the upload of the client and <code>tx</code> the download. All rates are numbers with an optional <code>k</code> (1 000) or <code>M</code> (1 000 000).</p>
+<ul>
+<li>If <code>tx-rate</code> is not set, it is the same as <code>rx-rate</code>. The same applies to the burst rate, the burst threshold and the burst time.</li>
+<li>If the burst thresholds are not set but a burst rate is, <code>rx-rate</code> and <code>tx-rate</code> are the burst thresholds.</li>
+<li>If the burst times are not set, they are 1 second.</li>
+<li><code>priority</code> is 1 to 8, where 1 is the highest priority.</li>
+<li>If <code>rx-rate-min</code> and <code>tx-rate-min</code> are not set, they are the same as <code>rx-rate</code> and <code>tx-rate</code>. They cannot be higher than <code>rx-rate</code> and <code>tx-rate</code>.</li>
+</ul>
+<p>Examples:</p>
+<ul>
+<li><strong>128k</strong> - rx-rate=128000, tx-rate=128000 (no bursts).</li>
+<li><strong>64k/128M</strong> - rx-rate=64000, tx-rate=128000000.</li>
+<li><strong>64k 256k</strong> - rx/tx-rate=64000, rx/tx-burst-rate=256000, rx/tx-burst-threshold=64000, rx/tx-burst-time=1s.</li>
+<li><strong>64k/64k 256k/256k 128k/128k 10/10</strong> - rx/tx-rate=64000, rx/tx-burst-rate=256000, rx/tx-burst-threshold=128000, rx/tx-burst-time=10s.</li>
+</ul>
+<h3 id="accounting-request">Accounting-Request</h3>
+<p>An accounting request has the attributes of the Access-Request, without the password attributes and the Message-Authenticator, and these:</p>
+<ul>
+<li><strong>Acct-Status-Type</strong> - Start, Stop, or Interim-Update.</li>
+<li><strong>Acct-Authentic</strong> - Whether RADIUS or the router authenticated the session.</li>
+<li><strong>Class</strong> - Cookie of the server, as received in the Access-Accept.</li>
+<li><strong>Acct-Delay-Time</strong> - How long the router has tried to send this request.</li>
+<li><strong>Event-Timestamp</strong> - Time of the event.</li>
+<li><strong>Framed-IP-Address</strong> - Address of the client.</li>
+</ul>
+<p>Stop and Interim-Update requests also have:</p>
+<ul>
+<li><strong>Acct-Session-Time</strong> - Connection uptime in seconds.</li>
+<li><strong>Acct-Input-Octets</strong> - Bytes received from the client: the upload of the client.</li>
+<li><strong>Acct-Input-Gigawords</strong> - Upper 32 bits of the bytes received from the client (bits 32..63, when bits 0..31 are sent in Acct-Input-Octets).</li>
+<li><strong>Acct-Input-Packets</strong> - Number of packets received from the client.</li>
+<li><strong>Acct-Output-Octets</strong> - Bytes sent to the client: the download of the client.</li>
+<li><strong>Acct-Output-Gigawords</strong> - Upper 32 bits of the bytes sent to the client (bits 32..63, when bits 0..31 are sent in Acct-Output-Octets).</li>
+<li><strong>Acct-Output-Packets</strong> - Number of packets sent to the client.</li>
+</ul>
+<p>Stop requests also have:</p>
+<ul>
+<li><strong>Acct-Terminate-Cause</strong> - Cause of the session end (see RFC 2866, chapter 5.10).</li>
+</ul>
+<h3 id="change-of-authorization">Change of Authorization</h3>
+<p>A CoA request can change these attributes of a running session:</p>
+<ul>
+<li><strong>Mikrotik-Group</strong></li>
+<li><strong>Mikrotik-Recv-Limit</strong></li>
+<li><strong>Mikrotik-Xmit-Limit</strong></li>
+<li><strong>Mikrotik-Rate-Limit</strong></li>
+<li><strong>Ascend-Data-Rate</strong> (only if Mikrotik-Rate-Limit is not present)</li>
+<li><strong>Ascend-Xmit-Rate</strong> (only if Mikrotik-Rate-Limit is not present)</li>
+<li><strong>Mikrotik-Mark-Id</strong></li>
+<li><strong>Filter-Id</strong></li>
+<li><strong>Mikrotik-Address-List</strong></li>
+<li><strong>Mikrotik-Advertise-URL</strong></li>
+<li><strong>Mikrotik-Advertise-Interval</strong></li>
+<li><strong>Session-Timeout</strong></li>
+<li><strong>Idle-Timeout</strong></li>
+<li><strong>Port-Limit</strong></li>
+</ul>
+<p>A CoA request cannot change the IP address, the pool or the routes of a session. Disconnect the user to change them.</p>
+<h3 id="mikrotik-attribute-numbers">MikroTik attribute numbers</h3>
+<p>The vendor ID of MikroTik is 14988.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: right;">Vendor ID</th>
+<th style="text-align: right;">Number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Recv-Limit</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Xmit-Limit</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Group</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Forward</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Skip-Dot1x</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Enc-Algo</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Enc-Key</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Rate-Limit</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Realm</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Host-IP</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Mark-Id</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">11</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Advertise-URL</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">12</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Advertise-Interval</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">13</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Recv-Limit-Gigawords</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">14</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Xmit-Limit-Gigawords</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">15</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-PSK</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Total-Limit</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">17</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Total-Limit-Gigawords</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">18</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Address-List</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">19</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-MPKey</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">20</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Comment</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">21</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Delegated-IPv6-Pool</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">22</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-DHCP-Option-Set</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">23</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-DHCP-Option-Param-STR1</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">24</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-DHCP-Option-Param-STR2</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">25</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-VLANID</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">26</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-VLANIDtype</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">27</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Minsignal</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">28</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Wireless-Maxsignal</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">29</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrotik-Switching-Filter</strong></td>
+<td style="text-align: right;">14988</td>
+<td style="text-align: right;">30</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standard-and-other-vendor-attribute-numbers">Standard and other vendor attribute numbers</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: right;">Vendor ID</th>
+<th style="text-align: right;">Number</th>
+<th style="text-align: left;">Defined in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Acct-Authentic</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">45</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Delay-Time</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">41</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Input-Gigawords</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">52</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Input-Octets</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">42</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Input-Packets</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">47</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Interim-Interval</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">85</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Output-Gigawords</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">53</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Output-Octets</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">43</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Output-Packets</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">48</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Session-Id</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">44</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Session-Time</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">46</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Status-Type</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">40</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Acct-Terminate-Cause</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">49</td>
+<td style="text-align: left;">RFC 2866</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ascend-Client-Gateway</strong></td>
+<td style="text-align: right;">529</td>
+<td style="text-align: right;">132</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ascend-Data-Rate</strong></td>
+<td style="text-align: right;">529</td>
+<td style="text-align: right;">197</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ascend-Xmit-Rate</strong></td>
+<td style="text-align: right;">529</td>
+<td style="text-align: right;">255</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Called-Station-Id</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Calling-Station-Id</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">31</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CHAP-Challenge</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CHAP-Password</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Class</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Delegated-IPv6-Prefix</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">123</td>
+<td style="text-align: left;">RFC 4818</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EAP-Message</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">79</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Error-Cause</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">101</td>
+<td style="text-align: left;">RFC 5176</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Event-Timestamp</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">55</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Filter-Id</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Compression</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-IP-Address</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-IP-Netmask</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-IPv6-Pool</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">100</td>
+<td style="text-align: left;">RFC 3162</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-IPv6-Prefix</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">97</td>
+<td style="text-align: left;">RFC 3162</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Mtu</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Pool</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">88</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Protocol</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Route</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framed-Routing</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Idle-Timeout</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Message-Authenticator</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">80</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-CHAP-Challenge</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-CHAP-Domain</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-CHAP-Response</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-CHAP2-Response</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-CHAP2-Success</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-MPPE-Encryption-Policy</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-MPPE-Encryption-Types</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-MPPE-Recv-Key</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MS-MPPE-Send-Key</strong></td>
+<td style="text-align: right;">311</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: left;">RFC 2548</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-Identifier</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">32</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-IP-Address</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-IPv6-Address</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">95</td>
+<td style="text-align: left;">RFC 3162</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-Port</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-Port-Id</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">87</td>
+<td style="text-align: left;">RFC 2869</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NAS-Port-Type</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">61</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Port-Limit</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">62</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Redback-Agent-Remote-Id</strong></td>
+<td style="text-align: right;">2352</td>
+<td style="text-align: right;">96</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Redback-Agent-Circuit-Id</strong></td>
+<td style="text-align: right;">2352</td>
+<td style="text-align: right;">97</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Service-Type</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Session-Timeout</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tunnel-Medium-Type</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">65</td>
+<td style="text-align: left;">RFC 2868</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tunnel-Private-Group-ID</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">81</td>
+<td style="text-align: left;">RFC 2868</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tunnel-Type</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">64</td>
+<td style="text-align: left;">RFC 2868</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>User-Name</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>User-Password</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">RFC 2865</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Bandwidth-Max-Down</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Bandwidth-Max-Up</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Bandwidth-Min-Down</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Bandwidth-Min-Up</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Location-Id</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Location-Name</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Logoff-URL</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Redirection-URL</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Session-Terminate-Time</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Session-Terminate-End-Of-Day</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>WISPr-Billing-Class-Of-Service</strong></td>
+<td style="text-align: right;">14122</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;"><a href="https://www.wi-fi.org/">wi-fi.org</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-more_2">Read more</h2>
+<ul>
+<li><a href="../cli-reference/radius/"><code>/radius</code></a>, <a href="../cli-reference/radius/monitor"><code>/radius/monitor</code></a>, <a href="../cli-reference/radius/incoming/"><code>/radius/incoming</code></a>, <a href="../cli-reference/radius/incoming/monitor"><code>/radius/incoming/monitor</code></a></li>
+<li><a href="user">User</a></li>
+<li><a href="ppp-aaa">PPP AAA</a></li>
+<li><a href="hotspot-captive-portal/">HotSpot</a></li>
+<li><a href="dot1x">Dot1X</a></li>
+<li><a href="../virtual-private-networks/ipsec/">IPsec</a></li>
+<li><a href="user-manager">User Manager</a></li>
+<li><a href="certificates">Certificates</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

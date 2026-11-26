@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration Management · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Getting Started</p>
+      <h1 id="configuration-management">Configuration Management</h1>
+<h1 id="configuration-management_1">Configuration Management</h1>
+<blockquote>
+<p>Manage the RouterOS configuration: undo and redo changes, use safe mode to avoid locking yourself out, export the configuration as a script and import it on another router, run scripts automatically after upload, and...</p>
+</blockquote>
+<h1 id="configuration-management_2">Configuration Management</h1>
+<p>RouterOS records every configuration change, so you can undo it, and offers safe mode, which
+undoes your changes when the connection to the router is lost. The configuration can be exported
+as a script, imported on the same or another router, and reset to the defaults. For a binary copy
+of the whole configuration, see <a href="./backup">Backup</a>.</p>
+<h2 id="undo-and-redo-changes">Undo and redo changes</h2>
+<p>Every configuration change, made from the CLI, WinBox, WebFig or the API, is recorded in
+<code>/system/history</code>. The <code>/undo</code> and <code>/redo</code> commands, or the Undo and Redo buttons in WinBox,
+take back the last change or apply it again. Each further <code>/undo</code> takes back the change before it. The history keeps the last 100 changes and is cleared when the router reboots.</p>
+<p>Add a firewall rule and look at the history:</p>
+<pre><code class="language-routeros">/ip/firewall/filter/add chain=forward action=drop
+/system/history/print
+</code></pre>
+<pre><code class="language-text">Flags: U - UNDOABLE
+Columns: ACTION, BY, POLICY, TIME
+  ACTION              BY     POLICY  TIME
+U filter rule added   admin  write   2026-11-23 09:39:35
+U user admin changed  admin  write   2026-11-23 09:39:34
+                             policy
+</code></pre>
+<p>Undo the change. The rule is removed, and the history marks the action as redoable (<code>R</code>):</p>
+<pre><code class="language-routeros">/undo
+/system/history/print
+</code></pre>
+<pre><code class="language-text">Flags: U - UNDOABLE, R - REDOABLE
+Columns: ACTION, BY, POLICY, TIME
+  ACTION              BY     POLICY  TIME
+R filter rule added   admin  write   2026-11-23 09:39:35
+U user admin changed  admin  write   2026-11-23 09:39:34
+                             policy
+</code></pre>
+<p><code>/redo</code> adds the rule again. The detailed history shows the commands that undo and redo each
+action, also for changes made over the API or in the GUI:</p>
+<pre><code class="language-routeros">/redo
+/system/history/print detail proplist=action,redo,undo
+</code></pre>
+<pre><code class="language-text">Flags: U - UNDOABLE
+U action=&quot;filter rule added&quot;
+  redo=/ip firewall filter add action=drop chain=forward
+  undo=/ip firewall filter remove *1
+
+U action=&quot;user admin changed&quot;
+</code></pre>
+<h2 id="work-safely-with-safe-mode">Work safely with safe mode</h2>
+<p>A configuration change can cut your own connection to the router, for example a firewall rule or
+a wrong address. Safe mode protects against this: if the session that holds safe mode ends
+without releasing it, the router undoes every change made while safe mode was on, including changes made
+from other sessions.</p>
+<ul>
+<li>In the CLI, press <kbd>Control</kbd>+<kbd>X</kbd> (or <kbd>F4</kbd>). The router answers
+  <code>Taking Safe Mode session... Success!</code> and the prompt shows <code>&lt;SAFE&gt;</code>, for example
+  <code>[admin@MikroTik] &lt;SAFE&gt;</code>.</li>
+<li>In WinBox, select <strong>Safe Mode</strong> in the toolbar.</li>
+</ul>
+<p><em>[gambar: WinBox window with the Safe Mode button in the toolbar and an open terminal]</em></p>
+<p>Changes made in safe mode are listed with the <code>F</code> (floating-undo) flag in <code>/system/history/print</code>.
+How the session ends decides what happens to them:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Action</th>
+<th style="text-align: left;">Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><kbd>Control</kbd>+<kbd>X</kbd> again (<code>Releasing Safe Mode... Success!</code>)</td>
+<td style="text-align: left;">Kept. Safe mode ends.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><kbd>Control</kbd>+<kbd>D</kbd></td>
+<td style="text-align: left;">Undone. The session ends.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/quit</code>, then <code>y</code> at <code>You are in Safe Mode. Quitting will unroll changes. Quit? [y/N]:</code></td>
+<td style="text-align: left;">Undone. The session ends.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The client closes the connection, for example the terminal window is closed</td>
+<td style="text-align: left;">Undone.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The connection is cut without being closed, for example by a firewall rule</td>
+<td style="text-align: left;">Undone when the router detects that the session is gone, which can take about a quarter of an hour.</td>
+</tr>
+</tbody>
+</table>
+<p>If your connection drops and the old session still holds safe mode when you log in again, press <kbd>Control</kbd>+<kbd>X</kbd> and answer <code>u</code> to the question that follows to undo its
+changes at once.</p>
+<p>Pressing <kbd>Control</kbd>+<kbd>X</kbd> twice keeps the changes made so far and starts safe mode
+again with an empty list. Change the configuration in small steps: safe mode remembers at most
+100 changes. With more, the session leaves safe mode and no changes are undone.</p>
+<p>Only one session can hold safe mode. When another session presses <kbd>Control</kbd>+<kbd>X</kbd>, the
+router asks:</p>
+<pre><code class="language-text">Safe Mode is taken by current user in another session.
+Unroll, release or abort [u/r]?
+</code></pre>
+<ul>
+<li><code>u</code> undoes the changes of the other session and gives safe mode to this session. The other
+  session sees <code>Safe Mode unrolled by another user</code>.</li>
+<li><code>r</code> keeps the changes of the other session and gives safe mode to this session. The other session
+  sees <code>Safe Mode released by another user</code>.</li>
+<li><kbd>Control</kbd>+<kbd>C</kbd> leaves safe mode with the other session.</li>
+</ul>
+<h2 id="export-the-configuration">Export the configuration</h2>
+<p>The <code>export</code> command prints the configuration as RouterOS commands, which can be imported on the
+same or another router. Run it from the root menu for the whole configuration, or from a menu for
+that menu and its sub-menus. Export is a CLI command.</p>
+<p>By default, the export contains only settings that differ from the defaults. Arguments:</p>
+<ul>
+<li><code>file</code> writes the export to a file (<code>.rsc</code>) instead of the terminal.</li>
+<li><code>verbose</code> also exports default values.</li>
+<li><code>terse</code> writes every command on one line with its full menu path.</li>
+<li><code>show-sensitive</code> includes passwords, keys and other secrets, which are left out by default (see
+  <a href="./list-of-menus-with-sensitive-parameters">List of menus with sensitive parameters</a>).</li>
+<li><code>path</code> exports only the listed menus. A menu with <code>!</code> in front is left out.</li>
+<li><code>where</code> exports only the items that match a condition.</li>
+<li><code>compact</code> is the default and gives the same output as a plain <code>export</code>.</li>
+</ul>
+<p>Arguments can be combined, for example <code>/export path=/ip/firewall,!/ip/firewall/nat file=fw</code>.</p>
+<p>Export the addresses to the file <code>address.rsc</code>:</p>
+<pre><code class="language-routeros">/ip/address/add address=192.0.2.1/24 interface=ether1
+/ip/address/export file=address
+/file/print where name=address.rsc
+</code></pre>
+<pre><code class="language-text">Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME         TYPE    SIZE  LAST-MODIFIED
+0 address.rsc  script   146  2026-11-23 09:39:50
+</code></pre>
+<p>Export the whole firewall configuration except NAT:</p>
+<pre><code class="language-routeros">/ip/firewall/address-list/add list=mylist address=198.51.100.1
+/ip/firewall/address-list/add list=other address=198.51.100.2
+/ip/firewall/nat/add chain=srcnat action=masquerade out-interface=ether1
+/export path=/ip/firewall,!/ip/firewall/nat
+</code></pre>
+<pre><code class="language-text"># 2026-11-23 09:40:04 by RouterOS 7.25.1
+# system id = aX+jcgZWr+J
+#
+/ip firewall address-list
+add address=198.51.100.1 list=mylist
+add address=198.51.100.2 list=other
+/ip firewall filter
+add action=drop chain=forward
+</code></pre>
+<p>Export one address list:</p>
+<pre><code class="language-routeros">/ip/firewall/address-list/export where list=mylist
+</code></pre>
+<pre><code class="language-text"># 2026-11-23 09:40:07 by RouterOS 7.25.1
+# system id = aX+jcgZWr+J
+#
+/ip firewall address-list
+add address=198.51.100.1 disabled=no dynamic=no list=mylist
+</code></pre>
+<p>If a menu does not answer the export command in time, the export prints
+<code>#error exporting "/&lt;menu&gt;" (timeout)</code> for it and continues with the next menu.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The export does not contain:</p>
+<ul>
+<li>User accounts and their passwords. User groups and SSH public keys (<code>/user/ssh-keys</code>) are
+  exported, so create the users on the new router before you import.</li>
+<li>Certificates. Export and import them separately, see
+  <a href="../../authentication-authorization-accounting/certificates#export-certificates">Certificates</a>.</li>
+<li>The databases of <a href="../../management-tools/dude">The Dude</a> and
+  <a href="../../authentication-authorization-accounting/user-manager">User Manager</a>.</li>
+</ul>
+<p>Import the file on the same RouterOS version where possible: a command or parameter that does not
+exist in the other version stops the import.</p>
+</div>
+<h3 id="default-entries">Default entries</h3>
+<p>Some menus contain built-in default entries, shown with the <code>*</code> flag. They cannot be removed, for
+example <code>/ppp/profile/remove default</code> fails with <code>can not remove default profile</code>. The
+export lists them only when you change them, with <code>set</code>, for example:</p>
+<pre><code class="language-text">/ppp profile
+set *0 use-encryption=yes
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">Default entries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>/interface/wireless/security-profiles</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/hotspot/profile</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/hotspot/user/profile</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec/mode-config</code></td>
+<td style="text-align: left;">request-only</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec/policy</code></td>
+<td style="text-align: left;">the default template policy</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec/policy/group</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec/profile</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec/proposal</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/smb/shares</code></td>
+<td style="text-align: left;">pub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/smb/users</code></td>
+<td style="text-align: left;">guest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ipv6/nd</code></td>
+<td style="text-align: left;">the entry for interface <code>all</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ppp/profile</code></td>
+<td style="text-align: left;">default, default-encryption</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/routing/bgp/template</code></td>
+<td style="text-align: left;">default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/queue/type</code></td>
+<td style="text-align: left;">default, ethernet-default, wireless-default, synchronous-default, hotspot-default, pcq-upload-default, pcq-download-default, only-hardware-queue, multi-queue-ethernet-default, default-small</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/snmp/community</code></td>
+<td style="text-align: left;">public</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/logging</code></td>
+<td style="text-align: left;">the rules for info, error, warning and critical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/logging/action</code></td>
+<td style="text-align: left;">memory, disk, echo, remote</td>
+</tr>
+</tbody>
+</table>
+<h2 id="import-a-configuration">Import a configuration</h2>
+<p><code>/import</code> runs a script file (<code>.rsc</code>) line by line. The file can contain any console command,
+including scripts.</p>
+<pre><code class="language-routeros">/ip/address/remove [find address=&quot;192.0.2.1/24&quot;]
+/import address.rsc
+</code></pre>
+<pre><code class="language-text">Script file loaded and executed successfully
+</code></pre>
+<p>The import adds to the existing configuration and removes nothing. Firewall rules from the file are
+added after the rules that are already there, also when they are the same, and an entry that
+already exists, such as an address or an address-list entry, makes the import fail. On a router
+with the default configuration, remove or adapt the default items that the file also contains
+before you import.</p>
+<p>The import stops at the first line that fails and reports it, for example:</p>
+<pre><code class="language-text">Script Error: failure: already have such address (/ip/address/add; line 5) (:import; line 1)
+</code></pre>
+<p><code>line 5</code> is the line in the file. The lines before it stay applied. To replace the whole configuration of a router with a file,
+export it with <code>show-sensitive</code> so that it contains passwords and keys, reset the router and run
+the file instead of the default configuration (add <code>keep-users=yes</code>, as the file contains no
+users):</p>
+<pre><code class="language-routeros">/system/reset-configuration no-defaults=yes keep-users=yes \
+    run-after-reset=config.rsc
+</code></pre>
+<p>A failing line in such a file is logged as
+<code>error while running run-after-reset script:</code> followed by the error.</p>
+<h3 id="check-a-file-before-you-import-it">Check a file before you import it</h3>
+<p><code>verbose=yes</code> prints each line with its number before it runs, so you can see where an import
+stops. With <code>dry-run</code>, the router only checks the syntax and changes nothing: it does not find
+entries that already exist. <code>from-line</code> starts the import at a
+line of the file, for example to continue after you fixed the line that failed. <code>dry-run</code> and
+<code>from-line</code> work only together with <code>verbose=yes</code>.</p>
+<pre><code class="language-routeros">/import address.rsc verbose=yes dry-run
+</code></pre>
+<pre><code class="language-text">#line 1
+# 2026-11-23 09:39:50 by RouterOS 7.25.1
+#line 2
+# system id = aX+jcgZWr+J
+#line 3
+#
+#line 4
+/ip address
+#line 5
+add address=192.0.2.1/24 interface=ether1 network=192.0.2.0
+No syntax errors found in the import file
+</code></pre>
+<h3 id="import-automatically-after-upload">Import automatically after upload</h3>
+<p>A file whose name ends in <code>.auto.rsc</code> runs as soon as it is uploaded over FTP or SFTP. The router
+writes the result to a file with the same name and the <code>.auto.log</code> extension, for example
+<code>Script file loaded and executed successfully</code>, or the script error. Files created on the router
+or downloaded with <code>/tool/fetch</code> do not run automatically.</p>
+<h3 id="troubleshoot-an-import">Troubleshoot an import</h3>
+<p>Before you import an export from another router, check the file for:</p>
+<ul>
+<li>Interface names: renamed interfaces can clash with the default names on the new router. In this
+  export, ether6 is renamed to ether2 while ether2 still exists, so the second line fails:</li>
+</ul>
+<p><code>routeros
+  /interface/ethernet
+  set [ find default-name=ether5 ] auto-negotiation=no name=ether1-gateway
+  set [ find default-name=ether6 ] name=ether2
+  set [ find default-name=ether7 ] name=ether3
+  set [ find default-name=ether8 ] name=ether4
+  set [ find default-name=ether1 ] name=ether5
+  set [ find default-name=ether2 ] name=ether6
+  set [ find default-name=ether3 ] name=ether7
+  set [ find default-name=ether4 ] name=ether8</code></p>
+<ul>
+<li>Interfaces that do not exist on the new router: a command for a missing interface fails.</li>
+<li>Default entries written with <code>add</code> instead of <code>set</code> by an older version: change them to <code>set</code>.</li>
+</ul>
+<p>Then check the syntax with <code>verbose=yes dry-run</code>, run the import with <code>verbose=yes</code> to find the
+line that fails, fix the file, and continue with <code>from-line</code> from that line.</p>
+<h4 id="startup-delay">Startup delay</h4>
+<p>A script that runs at boot, for example a default configuration script or an import right after a
+reset, can start before all interfaces exist. Wait for them before the commands that use them. This
+script waits until there are at least 10 interfaces (count them on your router with
+<code>/interface/print count-only</code>) or 30 seconds, and logs a warning if they did not appear:</p>
+<pre><code class="language-routeros">{
+:local i 0
+#Number of interfaces. It is necessary to reconfigure this number for each device (/interface/print count-only)
+:local x 10
+#Max time to wait
+:local t 30
+while ($i &lt; $t &amp;&amp; [:len [/interface/find]] &lt; $x) do={
+:put $i
+:set $i ($i + 1)
+:delay 1
+}
+if ($i = $t) do={
+:log warning message=&quot;Could not load all physical interfaces&quot;
+} else={
+#Rest of your script
+}
+}
+</code></pre>
+<h2 id="reset-the-configuration">Reset the configuration</h2>
+<p><code>/system/reset-configuration</code> removes the configuration, reboots the router and applies the default
+configuration (see <a href="./default-configurations">Default configurations</a>). In an interactive session
+it asks <code>Dangerous! Reset anyway? [y/N]:</code> first. To reset with the button on the router, see
+<a href="./routeros-configuration-reset">RouterOS configuration reset</a>.</p>
+<ul>
+<li>Users are removed, and <code>admin</code> gets its default password back: none, or the password printed
+  on the device sticker. Without a password, the router asks you to set one at the first login.</li>
+<li>Before the reset, the router saves the old configuration to <code>auto-before-reset.backup</code>, so a
+  reset made by mistake can be undone by <a href="./backup#restore-a-backup">restoring it</a>. Files on the router are kept.</li>
+<li>At the first interactive login after a reset, the router offers to show the software license.</li>
+<li>If a custom default configuration script is installed, for example with Netinstall or TR-069,
+  the reset runs that script instead of MikroTik's default configuration.</li>
+</ul>
+<p>Arguments change what the reset does, for example:</p>
+<ul>
+<li><code>keep-users=yes</code> keeps users and their passwords.</li>
+<li><code>no-defaults=yes</code> does not apply the default configuration.</li>
+<li><code>skip-backup=yes</code> saves no backup.</li>
+<li><code>run-after-reset</code> runs a script file after the reset instead of the default configuration. A
+  script that runs longer than two minutes is stopped, and the log shows
+  <code>error while running run-after-reset script: runtime limit exceeded</code> (in rare cases
+  <code>std failure: timeout</code>).</li>
+<li><code>caps-mode=yes</code> runs the CAPs mode script after the reset.</li>
+<li><code>shutdown=yes</code> powers the router off instead of rebooting. It starts with the reset
+  configuration when it is powered on.</li>
+</ul>
+<p>Reset without the default configuration and without a backup:</p>
+<pre><code class="language-routeros">/system/reset-configuration no-defaults=yes skip-backup=yes
+</code></pre>
+<p>The same in WinBox:</p>
+<p><em>[gambar: WinBox Reset Configuration dialog with No Default Configuration and Do Not Backup selected]</em></p>
+<p>For all arguments, see <a href="../../cli-reference/system/reset-configuration"><code>/system/reset-configuration</code></a>.</p>
+<h2 id="related-topics">Related topics</h2>
+<hr />
+<h1 id="backup">Backup</h1>
+<blockquote>
+<p>Save the RouterOS configuration to a binary file, encrypt it, and restore it later on the same device.</p>
+</blockquote>
+<h1 id="backup_1">Backup</h1>
+<p>The system backup saves the whole router configuration to a single binary file. Save a backup before a risky change, for example before an upgrade or a batch of firewall edits, and restore it when the configuration breaks. For a change that can cut your connection, or one you plan to undo, <a href="./#work-safely-with-safe-mode">safe mode</a> and <a href="./#undo-and-redo-changes">undo/redo</a> are lighter alternatives.</p>
+<p>A backup restores reliably only on the device it was made on. The backup contains the device's MAC addresses, so restoring it on another device can leave the interfaces misconfigured. To copy a configuration between devices, <a href="./#export-the-configuration">export and import</a> it instead.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A backup contains sensitive parameters, such as passwords and keys; see the <a href="./list-of-menus-with-sensitive-parameters">list of menus with sensitive parameters</a>. A backup saved without a password stores the configuration in readable form. Encrypt the backup and keep it in a safe place.</p>
+</div>
+<h2 id="save-a-backup">Save a backup</h2>
+<p>Save the configuration to a backup file:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/backup/save name=config-before-update password=StrongPass
+Configuration backup saved
+</code></pre>
+<p>The command creates the file <code>config-before-update.backup</code> in the <a href="../../cli-reference/file/"><code>/file</code></a> menu:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;config-before-update&quot;
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME                         TYPE    SIZE     LAST-MODIFIED      
+0 config-before-update.backup  backup  35.8KiB  2026-10-16 07:15:38
+</code></pre>
+<p>Store a copy off the router, for example by downloading the file with <a href="../../system-information-and-utilities/files">WinBox or FTP</a>. To create backups regularly, add a scheduler entry that runs the save command; see the <a href="../../system-information-and-utilities/scheduler">scheduler example</a>.</p>
+<p>Provide a <code>password</code> to encrypt the backup file. Without a password, the backup is stored unencrypted. <code>encryption</code> selects the algorithm: <code>aes-sha256</code> by default, or <code>rc4</code> for compatibility with older RouterOS versions. <code>dont-encrypt=yes</code> stores the backup unencrypted even when a password is given.</p>
+<h2 id="restore-a-backup">Restore a backup</h2>
+<p>Give the backup name as you used with <code>save</code>, without the <code>.backup</code> extension. Load the backup file and confirm the reboot:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/backup/load name=config-before-update password=StrongPass
+Restore and reboot? [y/N]: y
+Restoring system configuration
+System configuration restored, rebooting now
+</code></pre>
+<p>The router reboots with the restored configuration. Answer <code>n</code> to cancel the restore. When <code>password</code> is omitted, RouterOS asks for it; for an unencrypted backup, any password works.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Restore the backup on the same RouterOS version the backup was made on. To load a backup made on RouterOS v6, add <code>force-v6-to-v7-configuration-upgrade=yes</code>.</p>
+</div>
+<h2 id="what-the-backup-does-not-contain">What the backup does not contain</h2>
+<p>The system backup does not include the databases of <a href="../../management-tools/dude">The Dude</a> or <a href="../../authentication-authorization-accounting/user-manager">User Manager</a>. Both store their data separately on the device, so use their own backup mechanisms to save these databases.</p>
+<h2 id="cloud-backup">Cloud backup</h2>
+<p>Store an encrypted copy of the backup on the MikroTik cloud server and download it later to the same or a replacement device. See <a href="../../network-management/cloud/cloud-backup">Cloud backup</a>.</p>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<ul>
+<li>The restore fails with <code>failure: bad password</code>. The password does not match the one used with <code>save</code>; a wrong password is reported during the restore, after the confirmation.</li>
+<li>A script that runs <code>load</code> without the <code>password</code> argument fails with <code>missing value(s) of argument(s) password</code>. Pass the password as an argument; the interactive prompt is not available in scripts.</li>
+</ul>
+<hr />
+<h1 id="default-configuration-passwords">Default Configuration Passwords</h1>
+<blockquote>
+<p>Find the default login credentials for MikroTik RouterOS devices fresh from the factory or after a full reset.</p>
+</blockquote>
+<p>MikroTik devices ship from the factory with a default configuration that includes a preset password. The same password is re-applied whenever you perform a standard system reset. Knowing how to locate this password is essential for initial device access.</p>
+<div class="adm adm-tip">
+<p><strong>Watch our official explainer</strong></p>
+<p><a href="https://www.youtube.com/watch?v=mq7nIIILrVc">Default passwords: WHY?!</a> — a short overview of why MikroTik devices now ship with unique factory passwords.</p>
+</div>
+<p>Earlier MikroTik models typically used the username <code>admin</code> with no password — type <code>admin</code> for the login and press <strong>Enter</strong> when prompted. Later models are manufactured with a unique default password per device.</p>
+<div class="adm adm-note">
+<p><strong>Custom-branded units</strong></p>
+<p>Custom-branded or OEM units may have a different default password. If you cannot locate a standard sticker, the device can still be reset with the <strong><a href="../installation-and-upgrade/netinstall">Netinstall utility</a></strong>.</p>
+</div>
+<h2 id="where-to-find-the-password">Where to Find the Password</h2>
+<p>The default password is printed in several physical locations:</p>
+<ul>
+<li>On the device itself, on the serial number sticker</li>
+<li>On the device packaging, also on the serial number sticker</li>
+<li>On the printed Quick Guide sheet included inside the product box</li>
+</ul>
+<p>Some MikroTik <a href="https://mikrotik.com/products/indoor-wireless">indoor wireless</a> devices (such as the <a href="https://mikrotik.com/product/hap_ac3">hAP ac³</a> and <a href="https://mikrotik.com/product/hap_ax3">hAP ax³</a>) have a dedicated <strong>product information compartment</strong> — a small panel on the underside of the device that houses the sticker with default credentials. Look for a compartment near the Ethernet ports or under an RF connector cover. Open the panel to reveal the serial number and default password printed on the sticker inside.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Always check for these stickers before contacting support. There is no public lookup for the default password — the only digital source is the password database kept by the distributor that supplied the device (see below).</p>
+</div>
+<h2 id="if-you-cannot-find-the-password">If You Cannot Find the Password</h2>
+<p>If the stickers are missing or illegible, contact the MikroTik distributor that supplied the device. Provide the device serial number and the name of the seller or shop where you purchased the unit. Distributors maintain a password database and can retrieve the default password from the serial number.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Watch our video guide: <a href="https://www.youtube.com/watch?v=q9F871KkGBw">Secret CSV password file for seamless configuration</a> — learn how to use a CSV password file for automated device setup.</p>
+</div>
+<p>If you cannot reach the distributor or the password is not retrievable, you can still regain access by <strong>reinstalling RouterOS</strong> with <strong><a href="../installation-and-upgrade/netinstall">Netinstall</a></strong> or performing a <strong><a href="./routeros-configuration-reset">full configuration reset</a></strong>.</p>
+<div class="adm adm-tip">
+<p><strong>Mass-configuration with Flashfig</strong></p>
+<p>For deploying multiple devices at scale, use the Flashfig tool:</p>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=gticPeOdN54">Mass-config MikroTik with flashfig</a> (Windows)</li>
+<li><a href="https://www.youtube.com/watch?v=xasM81Qc11g">Mass-config MikroTik with flashfig from Linux</a> (Linux)</li>
+</ul>
+</div>
+<hr />
+<h1 id="default-configurations">Default configurations</h1>
+<blockquote>
+<p>This page describes default configurations for various MikroTik RouterOS devices, including CPE routers, LTE CPE AP routers, and other interface types. It outlines specific settings for each configuration type, such...</p>
+</blockquote>
+<h1 id="default-configurations_1">Default configurations</h1>
+<p>All MikroTik devices come with some kind of default configuration. There are several different configurations depending on the board type:</p>
+<ul>
+<li>CPE Router</li>
+<li>LTE CPE AP router</li>
+<li>AP Router (single or dual-band)</li>
+<li>PTP Bridge, W60G Bridge (AP or CPE)</li>
+<li>WISP Bridge (AP in ap_bridge mode)</li>
+<li>Switch</li>
+<li>IP Only</li>
+<li>CAP</li>
+</ul>
+<p>Run <code>/system/default-configuration/print</code> to see the default configuration script of your device.
+If a custom default configuration script is installed, <code>/system/default-configuration/custom-script/print</code>
+shows it.</p>
+<h2 id="cpe-router">CPE Router</h2>
+<p>In this type of configuration, the router is set up as a wireless client device. The WAN interface is a <strong>Wireless</strong> interface. The WAN port has a DHCP client configured, is protected by an IP firewall, and MAC discovery and connection are disabled.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>RB 711,911,912,921,922 - with level3 license</li>
+<li>SXT</li>
+<li>QRT</li>
+<li>SEXTANT</li>
+<li>LHG</li>
+<li>LDF</li>
+<li>DISC</li>
+<li>Groove</li>
+<li>Metal</li>
+</ul>
+<p><strong>CPE Router Mode</strong></p>
+<ul>
+<li>wireless interface is connected to the provider's network (WAN port);</li>
+<li>WAN port is protected by a firewall and has DHCP client enabled</li>
+</ul>
+<p><strong>wlan1 Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>mode</em></td>
+<td style="text-align: left;">station</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>band</em></td>
+<td style="text-align: left;">2ghz-b/g/n</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>tx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>rx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>installation</em></td>
+<td style="text-align: left;">outdoor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>wpa2</em></td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ht-extension</em></td>
+<td style="text-align: left;">20/40mhz-XX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LAN Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>IP address</em></td>
+<td style="text-align: left;">192.168.88.1/24 is set on ether1 (LAN port)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DHCP Server</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DNS</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>WAN (gateway) Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>gateway</em></td>
+<td style="text-align: left;">wlan1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ip4 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ip6 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>NAT</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DHCP Client</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/167706794_CPE_Router.txt">CPE_Router.txt</a>.</p>
+<h2 id="lte-cpe-ap-router">LTE CPE AP router</h2>
+<p>This configuration type is applied to routers that have both LTE and wireless interfaces. The LTE interface is the WAN port, protected by a firewall and with MAC discovery and connection disabled. The IP address on the WAN port is acquired automatically. The wireless interface is configured as an access point and bridged with all available Ethernet ports.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>wAP LTE Kit</li>
+<li>SXT LTE</li>
+<li>LtAP 4G kit</li>
+<li>LtAP LTE kit</li>
+<li>Chateau</li>
+</ul>
+<p><strong>LTE CPE AP Router Mode</strong></p>
+<ul>
+<li>LTE interface is connected to the provider's network (WAN)</li>
+<li>WAN port is protected by the firewall and has DHCP client enabled</li>
+</ul>
+<p><strong>LAN Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>IP address</em></td>
+<td style="text-align: left;">192.168.188.1/24 is set on the bridge (LAN port)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DHCP Server</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DNS</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>WAN (gateway) Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>gateway</em></td>
+<td style="text-align: left;">lte1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ip4 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ip6 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>NAT</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong> :<br />
+<a href="pathname:///assets/167706791_LTE_CPE_AP_router.txt">LTE_CPE_AP_router.txt</a>.</p>
+<h2 id="ap-router">AP Router</h2>
+<p>This configuration type is applied to home access point routers to be used without additional configuration (except router passwords and wireless keys).</p>
+<p>The first Ethernet interface is configured as a WAN port (protected by a firewall, DHCP client enabled, and MAC connection and discovery disabled). Other Ethernet ports and wireless interfaces are added to the LAN bridge with IP address 192.168.88.1/24 set and a DHCP server configured. In the case of dual-band routers, one wireless interface is configured as a 5 GHz access point and the other as a 2.4 GHz access point.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>RB 450,751,850,951,953,2011,3011,4011</li>
+<li>hEX, PowerBox</li>
+<li>mAP</li>
+<li>wAP, wAP R (without LTE card)</li>
+<li>hAP</li>
+<li>cAP</li>
+<li>OmniTIK</li>
+<li>CRS series with wireless interface</li>
+<li>L009 series</li>
+<li>Audience</li>
+<li>Knot</li>
+<li>PWR</li>
+</ul>
+<p><strong>AP Router Mode</strong></p>
+<ul>
+<li>WAN port is protected by a firewall and has DHCP client enabled</li>
+<li>Wireless and Ethernet interfaces (except WAN port/s) are part of the LAN bridge</li>
+</ul>
+<p><strong>LAN Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>IP address</em></td>
+<td style="text-align: left;">192.168.88.1/24 is set on the bridge (LAN port)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DHCP Server</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DNS</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>wlan1 Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>mode</em></td>
+<td style="text-align: left;">ap-bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>band</em></td>
+<td style="text-align: left;">2ghz-b/g/n</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>tx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>rx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>installation</em></td>
+<td style="text-align: left;">indoor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>wpa2</em></td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ht-extension</em></td>
+<td style="text-align: left;">20/40mhz-XX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>WAN (gateway) Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>ip4 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ip6 firewall</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>NAT</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>DHCP Client</em></td>
+<td style="text-align: left;">enabled</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/167706790_RouterMode.txt">RouterMode.txt</a></p>
+<h2 id="ptp-bridge">PTP Bridge</h2>
+<p>Ethernet is bridged with a wireless interface. IP address 192.168.88.1/24 is set on the bridge interface. There are two options - CPE and AP. For CPE, the wireless interface uses "station-bridge" mode, and for AP, it uses "bridge" mode.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>DynaDish - as CPE</li>
+</ul>
+<p><strong>PTP Bridge Mode</strong></p>
+<ul>
+<li>Wireless and LAN interfaces are bridged;</li>
+</ul>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/167706792_PTP_Bridge.txt">PTP_Bridge.txt</a></p>
+<h2 id="w60g-bridge">W60G Bridge</h2>
+<p>This configuration type is applied to routers that have a 60 GHz point-to-point link.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>Cube, Cube Pro</li>
+<li>nRAY, Dish</li>
+<li>Wireless Wire kit</li>
+<li>wAP 60G - with level3 license</li>
+</ul>
+<p><strong>W60G Bridge Mode</strong></p>
+<ul>
+<li>W60G and LAN interfaces are bridged;</li>
+</ul>
+<p><strong>wlan60-1 Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>SSID</em></td>
+<td style="text-align: left;">MikroTik</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>mode</em></td>
+<td style="text-align: left;">station-bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>password</em></td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>IP address</em></td>
+<td style="text-align: left;">192.168.88.1/24 is set on the bridge</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/167706793_W60G_Bridge.txt">W60G_Bridge.txt</a></p>
+<h2 id="wisp-bridge">WISP Bridge</h2>
+<p>The configuration matches PTP Bridge in AP mode, except that wireless mode is set to ap_bridge for PTMP setups. You can access the router directly by using a MAC address. If the device is connected to a network with an enabled DHCP server, a DHCP client configured on the bridge interface gets an IP address that you can use to access the router.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>RB 911,912,921,922 - with Level4 license.</li>
+<li>Groove A, RB 711 A</li>
+<li>BaseBox, NetBox</li>
+<li>mANTBox, NetMetal</li>
+<li>wAP 60G AP - with level4 license.</li>
+<li>LtAP</li>
+<li>CME</li>
+</ul>
+<p><strong>WISP Bridge Mode</strong></p>
+<ul>
+<li>wireless and LAN interfaces are bridged;</li>
+</ul>
+<p><strong>wlan1 Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>mode</em></td>
+<td style="text-align: left;">ap-bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>band</em></td>
+<td style="text-align: left;">2ghz-b/g/n</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>tx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>rx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>installation</em></td>
+<td style="text-align: left;">outdoor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>wpa2</em></td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ht-extension</em></td>
+<td style="text-align: left;">20/40mhz-XX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>wlan2 Configuration</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>mode</em></td>
+<td style="text-align: left;">ap-bridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>band</em></td>
+<td style="text-align: left;">5ghz-a/n/ac</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>tx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>rx-chains</em></td>
+<td style="text-align: left;">0;1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>installation</em></td>
+<td style="text-align: left;">outdoor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>wpa2</em></td>
+<td style="text-align: left;">no</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>ht-extension</em></td>
+<td style="text-align: left;">20/40/80mhz-XXXX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LAN Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>DHCP Client</em></td>
+<td style="text-align: left;">enabled on bridge (LAN port)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/167706789_WISP_Bridge.txt">WISP_Bridge.txt</a></p>
+<h2 id="switch">Switch</h2>
+<p>This configuration uses switch chip features to configure a basic switch. All Ethernet ports are added to the switch group and IP address 192.168.88.1/24 is set on the bridge interface.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>FiberBox</li>
+<li>CRS without wireless interface</li>
+</ul>
+<p><strong>Switch Mode</strong></p>
+<ul>
+<li>All interfaces are switched;</li>
+</ul>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user is protected by a password</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/234914118_switch.txt">switch.txt</a></p>
+<h2 id="ip-only">IP Only</h2>
+<p>When no specific configuration is found, IP address 192.168.88.1/24 is set on ether1, or combo1, or sfp1.</p>
+<p>List of routers using this type of configuration:</p>
+<ul>
+<li>RB 411,433,435,493,800,M11,M33,1100</li>
+<li>CCR, ROSE Data server</li>
+</ul>
+<p><strong>LAN</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>IP on etherx</em></td>
+<td style="text-align: left;">192.168.88.1/24</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login</strong></p>
+<ul>
+<li>admin user has no password.</li>
+</ul>
+<p><strong>Configuration preview</strong>:<br />
+<a href="pathname:///assets/234914117_ccr.txt">ccr.txt</a></p>
+<h2 id="cap">CAP</h2>
+<p>This configuration type is used when a device needs to operate as a wireless client device controlled by <a href="../../wireless/abgn/capsman/">CAPsMAN</a>.</p>
+<p>When the CAP default configuration is loaded, ether1 is the management port with a DHCP client configured. All other Ethernet interfaces are bridged, and wlan1 is managed by CAPsMAN.</p>
+<p>To load the CAP configuration, see <a href="./routeros-configuration-reset">RouterOS configuration reset</a>.</p>
+<hr />
+<h1 id="list-of-menus-with-sensitive-parameters">List of menus with sensitive parameters</h1>
+<blockquote>
+<p>This page lists RouterOS menus where sensitive parameters such as passwords, keys, and secrets are configured, with links to detailed documentation for each.</p>
+</blockquote>
+<h1 id="list-of-menus-with-sensitive-parameters_1">List of menus with sensitive parameters</h1>
+<p>Sensitive parameters (passwords, keys and secrets) are left out of <code>export</code> and <code>print</code> output
+unless you add <code>show-sensitive</code>, for example <code>/ppp/secret/print show-sensitive</code> or
+<code>/export show-sensitive</code> (see <a href="./#export-the-configuration">Export the configuration</a>). WinBox hides
+them when the "Hide password" option is enabled. User accounts are not exported at all (user groups
+are), so their passwords are never in an export, not even with <code>show-sensitive</code>.</p>
+<p>The table lists the menus where sensitive parameters can be configured, the parameter names, and links to the menu documentation.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">Parameter names</th>
+<th style="text-align: left;">Page link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>/container</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../containers/index.md">Container#Containerconfiguration</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/hotspot</code></td>
+<td style="text-align: left;">mac-auth-password, password, otp-secret</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/hotspot-captive-portal/index.md">HotSpot - Captive portal#HotSpotUsers</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/iot</code></td>
+<td style="text-align: left;">password, key</td>
+<td style="text-align: left;">password - <a href="../../internet-of-things/mqtt/index.md">MQTT#Brokers</a>  key - <a href="../../internet-of-things/lora/general-properties.md#servers">Lora#Servers</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/gre</code>  <code>/interface/gre6</code></td>
+<td style="text-align: left;">ipsec-secret</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/gre.md">GRE#Properties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/ipip</code>  <code>/interface/ipipv6</code></td>
+<td style="text-align: left;">ipsec-secret</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/ipip.md#protect-the-tunnel-with-ipsec">IPIP#Protect the tunnel with IPsec</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/eoip</code>  <code>/interface/eoipv6</code></td>
+<td style="text-align: left;">ipsec-secret</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/eoip.md">EoIP#PropertyDescription</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/6to4</code></td>
+<td style="text-align: left;">ipsec-secret</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/6to4.md">6to4#6to4-PropertyDescription</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/ppp-client</code></td>
+<td style="text-align: left;">password, pin</td>
+<td style="text-align: left;">Work in Progress <a href="../../mobile-networking/ppp.md">PPP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/sstp-client</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/sstp.md">SSTP#Properties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/l2tp-server</code>  <code>/interface/l2tp-client</code>  <code>/interface/l2tp-ether</code></td>
+<td style="text-align: left;">ipsec-secret, password</td>
+<td style="text-align: left;">ipsec-secret, password - <a href="../../virtual-private-networks/l2tp/index.md">L2TP#L2TPClient</a>  ipsec-secret - <a href="../../virtual-private-networks/l2tp/index.md">L2TP#L2TPServer</a>  ipsec-secret - <a href="../../virtual-private-networks/l2tp/index.md">L2TP#L2TPEther</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/ovpn-client</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/openvpn.md">OpenVPN#OVPNClient</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/pptp-client</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/pptp.md">PPTP#PPTPClient</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/pppoe-client</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/pppoe/index.md">PPPoE#PPPoEClient</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ppp/secret</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/ppp-aaa.md">PPP AAA#UserDatabase</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ppp/l2tp-secret</code></td>
+<td style="text-align: left;">secret</td>
+<td style="text-align: left;">Work in Progress</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ssh/export-host-key</code>  <code>/ip/ssh/import-host-key</code></td>
+<td style="text-align: left;">passphrase</td>
+<td style="text-align: left;"><a href="../../management-tools/ssh#server-host-key">SSH</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/ipsec</code></td>
+<td style="text-align: left;">auth-key, enc-key, ppk-secret, secret, password, passphrase, key</td>
+<td style="text-align: left;">auth-key, enc-key - <a href="../../cli-reference/ip/ipsec/installed-sa/installed-sa.md">IPsec InstalledSA</a>  secret, password - <a href="../../cli-reference/ip/ipsec/identity.md">IPsec Identity</a>  ppk-secret - Work in Progress <a href="../../cli-reference/ip/ipsec/peer.md">IPsec Peer</a>  key, passphrase - Work in Progress IPsec Keys</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/ssh-exec</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../management-tools/ssh#run-remote-commands-from-scripts">SSH</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/user</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/user.md">User</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/disk</code></td>
+<td style="text-align: left;">nvme-tcp-server-password, nvme-tcp-password, smb-server-password, smb-password, self-encryption-password, encryption-key, sshfs-password</td>
+<td style="text-align: left;">nvme-tcp-server-password, nvme-tcp-password - <a href="../../storage/nvme-over-tcp.md">NVMe over TCP</a>  sshfs-password - Work in Progress  smb-server-password, smb-password - <a href="../../storage/smb.md">SMB</a>  self-encryption-password, encryption-key - <a href="../../storage/self-encrypting-drives.md">Self-Encrypting Drives</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/vrrp</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../cli-reference/interface/vrrp">VRRP parameters</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/dot1x</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/dot1x.md">Dot1X#Client</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/macsec</code></td>
+<td style="text-align: left;">cak</td>
+<td style="text-align: left;"><a href="../../bridging-and-switching/macsec#manage-keys-and-ciphers">MACsec#manage-keys-and-ciphers</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/wireguard</code></td>
+<td style="text-align: left;">private-key, preshared-key, *<em>show-client-config</em></td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/wireguard.md">WireGuard</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/lte</code></td>
+<td style="text-align: left;">pin, password</td>
+<td style="text-align: left;"><a href="../../mobile-networking/lte-5g.md#lte-client">LTE/5G#LTEClient</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/socks/users</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../network-management/socks/index.md">SOCKS</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/cloud</code></td>
+<td style="text-align: left;">vpn-private-key, vpn-peer-private-key, private-key</td>
+<td style="text-align: left;"><a href="../../network-management/cloud/back-to-home">Back To Home</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/smb</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../storage/smb.md">SMB#Usersetup</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/password</code></td>
+<td style="text-align: left;">old-password, new-password, confirm-new-password</td>
+<td style="text-align: left;">Password change command; no dedicated documentation page available.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/radius</code></td>
+<td style="text-align: left;">secret</td>
+<td style="text-align: left;"><a href="../../authentication-authorization-accounting/radius.md">RADIUS#RADIUSClient</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/routing</code></td>
+<td style="text-align: left;">password, tcp-md5-key, auth-key, key</td>
+<td style="text-align: left;">password,key - <a href="../../cli-reference/routing/rip/instance">/routing/rip</a>  tcp-md5-key - <a href="../../cli-reference/routing/bgp/connection.md">/routing/bgp/connection</a>  auth-key - <a href="../../cli-reference/routing/ospf/interface-template.md">/routing/ospf</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/snmp/community</code></td>
+<td style="text-align: left;">authentication-password, encryption-password</td>
+<td style="text-align: left;"><a href="../../diagnostics-monitoring-and-troubleshooting/snmp.md">SNMP#CommunityProperties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/backup</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="./backup.md">Backup</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/ntp/key</code></td>
+<td style="text-align: left;">key-val</td>
+<td style="text-align: left;">Work in Progress <a href="../../system-information-and-utilities/ntp.md">NTP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/swos/password</code></td>
+<td style="text-align: left;">new-password, confirm-new-password</td>
+<td style="text-align: left;">SwOS password change command; no dedicated documentation page available.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/package/local-update</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../installation-and-upgrade/packages.md">Packages#LocalUpdate</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/license</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../routeros-licensing/chr/chr-licensing.md#chr-license-levels">RouterOS license keys#CHRLicenseLevels</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/tool/romon</code></td>
+<td style="text-align: left;">secrets</td>
+<td style="text-align: left;"><a href="../../management-tools/romon.md">RoMON#Configuration</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/tool/sms</code></td>
+<td style="text-align: left;">sim-pin, secret</td>
+<td style="text-align: left;"><a href="../../mobile-networking/sms.md">SMS#Receiving</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/tool/email</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../system-information-and-utilities/e-mail.md">E-mail</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/tr069-client</code></td>
+<td style="text-align: left;">connection-request-password, password</td>
+<td style="text-align: left;"><a href="../../management-tools/tr-069.md">TR-069#ConfigurationSettings</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/user-manager</code></td>
+<td style="text-align: left;">web-private-password, paypal-password, shared-secret, password, otp-secret</td>
+<td style="text-align: left;">shared-secret - <a href="../../authentication-authorization-accounting/user-manager.md">User Manager</a>  paypal-password, web-private-password - <a href="../../authentication-authorization-accounting/user-manager.md">User Manager</a>  password, otp-secret - <a href="../../authentication-authorization-accounting/user-manager.md">User Manager</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/wifi</code></td>
+<td style="text-align: left;">passphrase, eap-password</td>
+<td style="text-align: left;"><a href="../../wireless/wifi/index.md">WiFi#SecurityProperties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/caps-man</code></td>
+<td style="text-align: left;">private-passphrase, passphrase</td>
+<td style="text-align: left;">private-passphrase - <a href="../../wireless/abgn/capsman/index.md#capsman-access-list">CAPsMAN#CAPsMANAccess-list</a>  passphrase - <a href="../../wireless/abgn/capsman/index.md#capsman-configuration">CAPsMAN#CAPsMANconfiguration</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/wireless</code></td>
+<td style="text-align: left;">static-key-0, static-key-1, static-key-2, static-key-3, static-sta-private-key, management-protection-key, nv2-preshared-key, private-key, private-pre-shared-key, wpa-pre-shared-key, wpa2-pre-shared-key, mschapv2-password</td>
+<td style="text-align: left;">static-key-0, static-key-1, static-key-2, static-key-3, static-sta-private-key - <a href="../../wireless/index.md">Wireless Interface#WEPproperties</a>  management-protection-key, private-key, private-pre-shared-key - <a href="../../wireless/index.md">Wireless Interface#Properties</a>  wpa-pre-shared-key, wpa2-pre-shared-key - <a href="../../wireless/index.md">Wireless Interface#WPAproperties</a>  mschapv2-password - <a href="../../wireless/index.md">Wireless Interface#WPAEAPproperties</a>  nv2-preshared-key - <a href="../../wireless/index.md">Wireless Interface#Generalinterfaceproperties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/w60g</code></td>
+<td style="text-align: left;">password</td>
+<td style="text-align: left;"><a href="../../wireless/w60g/index.md">W60G#Generalinterfaceproperties</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/zerotier</code></td>
+<td style="text-align: left;">identity</td>
+<td style="text-align: left;"><a href="../../virtual-private-networks/zerotier.md">ZeroTier#Parameters</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/certificate</code></td>
+<td style="text-align: left;">export-passphrase, passphrase, challenge-password, pin, key-passphrase, challenge-passphrase</td>
+<td style="text-align: left;">pin - used for card-reinstall and card-verify commands, no dedicated documentation page available.  export-passphrase - <a href="../../authentication-authorization-accounting/certificates.md#export-certificates">Certificates#ExportCertificate</a>  passphrase - <a href="../../authentication-authorization-accounting/certificates.md#import-a-certificate-with-its-private-key">Certificates#ImportCertificate</a>  challenge-password, key-passphrase, challenge-passphrase - Work in progress</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="routeros-configuration-reset">RouterOS configuration reset</h1>
+<blockquote>
+<p>This page provides comprehensive instructions for resetting MikroTik RouterOS configurations, covering both physical button methods and GUI/CLI commands. It details LED indicators for each reset action, backup loader...</p>
+</blockquote>
+<h1 id="routeros-configuration-reset_1">RouterOS configuration reset</h1>
+<h2 id="how-to-reset-configuration">How to Reset Configuration</h2>
+<p>To reset RouterOS to its factory defaults (including removing the current password), follow these steps:</p>
+<ol>
+<li>Disconnect the device from power.</li>
+<li>Press and hold the reset button.</li>
+<li>While holding the button, reconnect power to the device.</li>
+<li>Watch the LEDs. One of the LEDs (typically the USR/User LED) will begin flashing.</li>
+<li>Release the reset button when the LED starts flashing.</li>
+</ol>
+<p><em>[gambar: Reset button]</em></p>
+<p>The device will reboot with the default configuration.</p>
+<h2 id="reset-from-routeros">Reset From RouterOS</h2>
+<p>If you still have access to the device, you can restore the default configuration directly from RouterOS:</p>
+<ul>
+<li>Run <code>/system/reset-configuration</code> in the terminal.</li>
+<li>Or open <strong>System → Reset Configuration</strong> in <a href="../../management-tools/winbox">WinBox</a> or <a href="../../management-tools/webfig">WebFig</a>.</li>
+</ul>
+<p>The command resets users and the <code>admin</code> password, saves a backup first, and has options to keep
+users, skip the default configuration or run your own script. See <a href="./#reset-the-configuration">Reset the
+configuration</a>.</p>
+<h2 id="using-the-reset-button">Using the Reset Button</h2>
+<p>MikroTik devices include a reset button that can perform several functions depending on how long it is held during startup.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Watch the official MikroTips series: <a href="https://youtu.be/6Unz92rABs8">reset sequence</a>.</p>
+</div>
+<h3 id="load-the-backup-routerboot-loader">Load the Backup RouterBOOT Loader</h3>
+<p>Press and hold the reset button before applying power, then release it after approximately 3 seconds. This loads the backup RouterBOOT loader.</p>
+<p>This can be useful if the device is unable to boot because of a failed RouterBOOT upgrade. Once booted with the backup loader, you can either force the backup loader in RouterBOARD settings or reinstall RouterBOOT from an <code>.fwf</code> file.</p>
+<h3 id="reset-the-routeros-configuration">Reset the RouterOS Configuration</h3>
+<p>Press and hold the reset button until the LED starts flashing, then release it. The device will reset its RouterOS configuration to the factory defaults.</p>
+<h3 id="enable-caps-mode">Enable CAPs Mode</h3>
+<p>Continue holding the button for approximately <strong>5 additional seconds</strong> after the LED begins flashing. When the LED becomes solid, release the button to enable <strong><a href="../../wireless/abgn/capsman">CAPs mode</a></strong>.</p>
+<p><strong>CAPs mode</strong> can also be enabled from the command line: <code>/system/reset-configuration caps-mode=yes</code></p>
+<h3 id="start-netinstall-mode">Start Netinstall Mode</h3>
+<p>Press and hold the reset button while powering on the device. Continue holding the button until the LED sequence completes (typically blinking → solid → off), then release it.</p>
+<p>The device will enter Netinstall mode and start searching for a Netinstall server on the network.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Watch the official MikroTips series: <a href="https://youtu.be/gzlLbIf3Dbk">Netinstall</a>.</p>
+</div>
+<p>For detailed Netinstall instructions, see the <strong><a href="../installation-and-upgrade/netinstall">Netinstall documentation</a></strong>.</p>
+<h2 id="reset-jumper-method">Reset Jumper Method</h2>
+<p>Older RouterBOARD models are also fitted with a reset jumper hole. Some devices might need an opening of the enclosure. RB750/RB951/RB751 have the jumper hole under one of the rubber feet of the enclosure.</p>
+<p>Short the reset jumper using a metal screwdriver and boot the board until the configuration is cleared:</p>
+<p><em>[gambar: Circuit board with an arrow to the reset jumper hole: hold a metal object in it while the board boots]</em> <em>[gambar: Screwdriver shorting the reset jumper hole on a circuit board]</em></p>
+<h3 id="jumper-reset-for-older-models">Jumper reset for older models</h3>
+<p>The image below shows the location of the Reset Jumper on older RouterBOARDs like RB133C:</p>
+<p><em>[gambar: RB133 circuit board with an arrow to the Soft Reset jumper]</em></p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Don't forget to remove the jumper after the configuration has been reset, or it will be reset every time you reboot!</p>
+</div>
+<h3 id="wps">WPS</h3>
+<p>Some devices have a WPS button, or a reset button with WPS functionality that can be used to simplify wireless client connections without manually entering a password. Some models also support WPS synchronization between devices.
+For model-specific information about WPS and reset button functionality, refer to the <a href="../../../hardware">User Manual</a> for your device.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

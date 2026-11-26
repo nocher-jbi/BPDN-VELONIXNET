@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>system · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="system-part-22">system (part 2/2)</h1>
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>This sub-menu configures RouterBOOT firmware settings. These settings control how the device starts and operates at the hardware level.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardsettings">system/routerboard/settings</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Settings Directory</p>
+<p>This sub-menu configures RouterBOOT firmware settings. These settings control how the device starts and operates at the hardware level.</p>
+<pre><code class="language-ros">[admin@MikroTik] /system/routerboard/settings&gt; print 
+              auto-upgrade: no
+                 baud-rate: 115200
+                boot-delay: 2s
+            enter-setup-on: any-key
+               boot-device: nand-if-fail-then-ethernet
+         preboot-etherboot: disabled
+             cpu-frequency: 1200MHz
+          memory-frequency: 1066DDR
+             boot-protocol: bootp
+       enable-jumper-reset: yes
+       force-backup-booter: no
+               silent-boot: yes
+      protected-routerboot: disabled
+      reformat-hold-button: 20s
+  reformat-hold-button-max: 10m
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The device-mode setting restricts SwOS/RouterOS transitions for dual-boot devices. To enable it, run:
+<code>/system/device-mode/update routerboard=yes</code></p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Overclocking the CPU or memory is not covered by warranty. If you suspect overclocking causes performance issues, return both frequencies to their nominal values before contacting support.</p>
+</div>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>auto-upgrade</strong> <code>bool</code> — Whether to upgrade firmware automatically after a RouterOS upgrade. The latest firmware will be applied after an additional reboot.</li>
+<li><strong>baud-rate</strong> <code>enum (115200 | 57600 | 38400 | 19200 | 9600 | 4800 | 2400 | 1200) { 115200:0, 57600:1, 38400:2, 19200:3, 9600:4, 4800:5, 2400:6, 1200:7 }</code> — Choose the onboard RS232 speed in bits per second, if installed. The <strong>off</strong> option disables the serial interface.</li>
+<li><strong>boot-delay</strong> <code>time</code> — How much time to wait for a keystroke while booting.</li>
+<li><strong>init-delay</strong> <code>time</code> — Used only for mPCIe modems on RB9xx series devices. If your modem is not recognized after a soft reboot, set a delay before the USB port is initialized.</li>
+<li><strong>enter-setup-on</strong> <code>enum (any-key | delete-key) { any-key:0, delete-key:1 }</code> — Specifies which key causes the BIOS to enter configuration mode during the boot delay. Useful when the serial console prints symbols during the boot process and enters the RouterBOOT menu by itself. In some serial terminal programs, you cannot use the <kbd>Delete</kbd> key to enter the setup. In this case, use the <kbd>Backspace</kbd> key instead.</li>
+<li><strong>boot-device</strong> <code>enum</code> — Choose how RouterBOOT loads the operating system: - <strong>ethernet</strong> — boot the device in Etherboot mode. - <strong>flash-boot</strong> — enable Flashfig mode on startup. This setting reverts to NAND after a successful configuration change, or when a user logs into the board. - <strong>flash-boot-once-then-nand</strong> — enable Flashfig mode on startup for a single boot only. After that, the setting resets to <code>nand-if-fail-then-ethernet</code>. - <strong>nand-if-fail-then-ethernet</strong> — boot RouterOS from the NAND. If RouterOS does not boot, the device goes to Etherboot automatically. This is the default mode for devices straight out of the box. - <strong>nand-only</strong> — boot RouterOS from the NAND. - <strong>try-ethernet-once-then-nand</strong> — boot the device in Etherboot mode once. If no server is available, the device boots directly from the NAND or the storage type the device uses. Etherboot mode is a special state for a MikroTik device. You can use it to reinstall the device with Netinstall. You can put the device into Etherboot mode in several ways, depending on the device you use: 1. Press the Reset button and power on the device. Wait until the USR LED blinks, then stays on, and then turns off. Release the Reset button. The device boots in bootp mode to reinstall RouterOS with Netinstall. 2. Use the serial console. When the device boots, press and hold <kbd>Control</kbd>+<kbd>E</kbd> until the device shows that it is trying the bootp protocol. 3. Use the serial console. Press any key while the device boots, and then press <kbd>O</kbd>, <kbd>1</kbd>, and <kbd>X</kbd>.</li>
+<li><strong>preboot-etherboot</strong> <code>alt { symbolic-names: enum (disabled) { disabled:0 }
+, timeout: time [1 .. 30]
+ }</code> — Enables preboot-etherboot, which runs before the regular boot device. It works the same as <code>boot-device=etherboot</code>, but has an additional timeout value. If an IP address is not received from the Netinstall server before the timeout expires, the regular boot process starts.The preboot-etherboot configuration is stored in the BIOS, so downgrading RouterOS to an earlier version does not disable it. You can disable it from the RouterOS menu or by resetting the BIOS.Because etherboot accepts IP addresses from any BOOTP/DHCP server, use preboot-etherboot-server to start etherboot only when the address is received from the specified Netinstall server.</li>
+<li><strong>preboot-etherboot-server</strong> <code>alt { symbolic-names: enum (any) { any:0 }
+, ip: ipAddr
+ }</code> — Sets preboot-etherboot to accept an IP address only from the specified Netinstall server. This setting prevents unintentional etherboot from other BOOTP/DHCP servers.</li>
+<li><strong>etherboot-port</strong> <code>enum (ether1 | ether2) { ether1:0, ether2:1 }</code> — Selects the Etherboot/Netinstall interface. Applies only to CRS520, CRS804, and CRS812. The default port depends on the model.</li>
+<li><strong>boot-os</strong> <code>enum (router-os | swos) { router-os:0, swos:1 }</code> — Changes the boot operating system for CRS3xx series switches.</li>
+<li><strong>regulatory-domain-ce</strong> <code>bool</code> — Enables extra-low TX power for high antenna gain devices (requires a reboot).</li>
+<li><strong>cpu-mode</strong> <code>enum (power-save | regular) { power-save:0, regular:1 }</code> — Whether the CPU enters suspend mode on the HLT instruction. Most operating systems use the HLT instruction during the CPU idle cycle. When the CPU is in suspend mode, it consumes less power. In low-temperature conditions, you should choose the regular mode, so the overall system temperature is higher.</li>
+<li><strong>cpu-frequency</strong> <code>enum</code> — Use this option to change the CPU frequency of the device. Values depend on the model. To see the available options, press <kbd>?</kbd> in RouterOS version 6 or <kbd>F1</kbd> in RouterOS version 7 at this prompt.</li>
+<li><strong>memory-frequency</strong> <code>enum</code> — Use this option to change the memory frequency of the device. Values depend on the model. To see the available options, press <kbd>?</kbd> in RouterOS version 6 or <kbd>F1</kbd> in RouterOS version 7 at this prompt.</li>
+<li><strong>memory-data-rate</strong> <code>enum</code> — Use this option to change the memory data rate of the device. Values depend on the model. To see the available options, press <kbd>?</kbd> in RouterOS version 6 or <kbd>F1</kbd> in RouterOS version 7 at this prompt.</li>
+<li><strong>preferred-architecture</strong> <code>enum (arm32 | arm64) { arm32:0, arm64:1 }</code> — Specific setting for L009 devices. Updates the device to use the ARM64 architecture.</li>
+<li><strong>boot-protocol</strong> <code>enum (bootp | dhcp) { bootp:0, dhcp:1 }</code> — The boot protocol to use:- <strong>bootp</strong> — the default option for booting RouterOS.- <strong>dhcp</strong> — used for OpenWrt and possibly other operating systems.</li>
+<li><strong>enable-jumper-reset</strong> <code>bool</code> — Disable this option to prevent an accidental settings reset through the onboard jumper.</li>
+<li><strong>force-backup-booter</strong> <code>bool</code> — Whether to use the backup RouterBOOT. This setting is useful only if the main loader is corrupted and cannot be fixed. Instead of booting the device with a pressed reset button (which loads the backup loader), you can use this setting to load it on every boot.</li>
+<li><strong>silent-boot</strong> <code>bool</code> — This option disables beeping sounds during boot (does not disable the RouterOS <code>beep</code> command).</li>
+<li><strong>disable-pci</strong> <code>bool</code> — Specific setting for devices with the MT7621 chip. Disables PCI.</li>
+<li><strong>gpio-function</strong> <code>ubit (serial1)</code> — Specific setting for M33 devices. By default, pins 12, 13, 15, and 16 are configured for use of the second <code>serial1</code> port. You can reassign them for GPIO use in the <code>/iot/gpio/digital</code> menu.</li>
+<li><strong>protected-routerboot</strong> <code>enum (disabled | enabled)</code> — Disables access to the RouterBOOT configuration over the serial console and prevents the reset button from changing boot mode (Netinstall is disabled). You can access RouterOS only with a known RouterOS user account with administrative privileges. You can disable this setting only from within RouterOS. If you lose the RouterOS password, recovery requires a full device reformat with the reset button timing procedure. - <strong>enabled</strong> — secure mode. RouterOS is accessible only with a valid admin-level account. Serial input is ignored, Etherboot is disabled, and RouterBOOT settings cannot be changed. - <strong>disabled</strong> — normal operation. RouterBOOT settings are accessible through the serial console, and the reset button can be used to enter Netinstall mode.</li>
+<li><strong>reformat-hold-button</strong> <code>time</code> — Defines the minimum time the reset button must be held at power-on to trigger a full device reformat. The hold time must be longer than this value, but shorter than <code>reformat-hold-button-max</code>. When triggered, the device performs a complete reset operation: - RouterOS, all files, and configuration are permanently erased (NAND reformat). - All RouterBOOT settings are reset to defaults. - The device reboots. - Because NAND boot fails, the device enters Etherboot automatically. - Netinstall is required to reinstall RouterOS. This operation is extremely dangerous. Use it only when all other access methods are unavailable. On some RouterBOARD devices, the reformat process can take more than 5 minutes. The device is ready for Netinstall after the reformat completes.</li>
+<li><strong>reformat-hold-button-max</strong> <code>time</code> — Defines the maximum time the reset button can be held during a reformat trigger. Works together with <code>reformat-hold-button</code> to create a precise time window. For example, setting <code>reformat-hold-button=60s</code> and <code>reformat-hold-button-max=65s</code> requires the button to be held strictly between 60 and 65 seconds. This increases security by making accidental or guessed resets practically impossible. Introduced in RouterBOOT 3.38.3.</li>
+</ul>
+<hr />
+<h1 id="upgrade">upgrade</h1>
+<blockquote>
+<p>RouterOS command reference for /system/routerboard/upgrade.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardupgrade">system/routerboard/upgrade</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="usb">usb</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/routerboard/usb.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardusb">system/routerboard/usb</h2>
+<p><strong>Conditions:</strong> !i386, !i386, !powerpc
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (USB-type-A | mini-PCIe | auto)</code></li>
+<li><strong>usb-mode</strong> <code>enum (automatic | force-host) { automatic:0, force-host:1 }</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>auto-type</strong> <code>enum (USB-type-A | mini-PCIe)</code></li>
+<li><strong>bootstrap</strong> <code>enum (host-mode | device-mode) { host-mode:0, device-mode:1 }</code></li>
+</ul>
+<hr />
+<h1 id="power-reset">power-reset</h1>
+<blockquote>
+<p>RouterOS command reference for /system/routerboard/usb/power-reset.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardusbpower-reset">system/routerboard/usb/power-reset</h2>
+<p><strong>Conditions:</strong> !i386, !i386, !powerpc
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code></li>
+<li><strong>bus</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="wps-button">wps-button</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/routerboard/wps-button.</p>
+</blockquote>
+<hr />
+<h2 id="systemrouterboardwps-button">system/routerboard/wps-button</h2>
+<p><strong>Conditions:</strong> !i386
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enables or disables the button.</li>
+<li><strong>hold-time</strong> <code>composite { min: time [0 .. 60]
+, max: time [0 .. 60]
+ }</code> — Triggers the button action only when the button is held for a duration within the specified range.</li>
+<li><strong>on-event</strong> <code>alt { script: string
+ }</code> — The name of the script to run when the button is pressed. You must create and name the script in the <a href="../../../developer-guides/scripting">Script</a> menu. WPS buttons is executed with <code>read,write,reboot,ftp,romon,test</code> permissions.</li>
+</ul>
+<hr />
+<h1 id="rtrace">rtrace</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/rtrace.</p>
+</blockquote>
+<hr />
+<h2 id="systemrtrace">system/rtrace</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>state</strong> <code>enum (stopped | running | stopping)</code></li>
+</ul>
+<hr />
+<h1 id="start">start</h1>
+<blockquote>
+<p>RouterOS command reference for /system/rtrace/start.</p>
+</blockquote>
+<hr />
+<h2 id="systemrtracestart">system/rtrace/start</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="stop">stop</h1>
+<blockquote>
+<p>RouterOS command reference for /system/rtrace/stop.</p>
+</blockquote>
+<hr />
+<h2 id="systemrtracestop">system/rtrace/stop</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="scheduler">scheduler</h1>
+<blockquote>
+<p>Scheduler entries run RouterOS commands or a /system/script entry at a set date and time, repeatedly at an interval, during startup, or on selected weekdays. See the Scheduler guide for examples and for how the next...</p>
+</blockquote>
+<hr />
+<h2 id="systemscheduler">system/scheduler</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Scheduler entries run RouterOS commands or a <code>/system/script</code> entry at a set date and time, repeatedly at an interval, during startup, or on selected weekdays. See the <a href="../../system-information-and-utilities/scheduler">Scheduler</a> guide for examples and for how the next run is calculated. The <code>reset</code> command clears <code>on-event</code> and sets <code>interval</code> to <code>0s</code>; it does not reset <code>run-count</code>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Disabled entry; it does not run until enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the entry. Log messages from its runs refer to it as <code>scheduler:&lt;name&gt;</code>.</li>
+<li><strong>start-date</strong> <code>date</code> — Date of the first run, in the format <code>YYYY-MM-DD</code> (years 1970..2106). Default: the date when the entry is added.</li>
+<li><strong>start-time</strong> <code>alt { startup: enum (startup) { startup:0xffffffff }
+, time: date
+ }</code> — Time of the first run: - <code>HH:MM:SS</code> - The first run happens at this time on <code>start-date</code>. - <code>startup</code> - Run during system startup. With <code>interval=0s</code> the entry runs once on each startup. With a non-zero <code>interval</code> the first run comes one interval after startup (or one interval after the entry is added while the router runs), not at startup itself. Startup runs happen before interfaces are up and before the DHCP client has an address. Default: the time when the entry is added.</li>
+<li><strong>days</strong> <code>alt { day: enum (never | always) { never:0, always:127 }
+, day: ubit (sun, mon, tue, wed, thu, fri, sat)
+ }</code> — Weekdays on which the entry runs: - Unset (default) - The weekday is not considered. Runs follow <code>start-time</code> plus <code>interval</code> continuously across midnight. - <code>always</code> - Every day, with day scheduling: each day starts again at <code>start-time</code>. - <code>never</code> - The entry never runs. - <code>sun</code>, <code>mon</code>, <code>tue</code>, <code>wed</code>, <code>thu</code>, <code>fri</code>, <code>sat</code> - Only on the listed days (comma-separated). Each matching day starts at <code>start-time</code> and repeats every <code>interval</code> until the end of that day. With <code>interval=0s</code> the entry runs once on each matching day. An <code>interval</code> of <code>1d</code> or longer is not supported when <code>days</code> is set; the entry then shows the note <code>multi-day intervals are not supported with active day scheduling</code>.</li>
+<li><strong>interval</strong> <code>time</code> — Time between runs. Runs happen at <code>start-date</code> and <code>start-time</code> plus whole multiples of the interval, so a start in the past aligns the schedule: <code>start-time=00:00:00 interval=1h</code> runs on every full hour. <code>0s</code> runs the entry once at <code>start-date</code> and <code>start-time</code> (with <code>days</code> set, once on each matching day). Default: 0s.</li>
+<li><strong>on-event</strong> <code>alt { script: string
+ }</code> — RouterOS commands to run, or the name of a <code>/system/script</code> entry. A script called by name runs with this entry's <code>policy</code>; it is refused with <code>not enough permissions</code> when the script's own policy has rights this entry's policy lacks. Default: empty.</li>
+<li><strong>policy</strong> <code>multi { array-id, policy: enum
+ }</code> — Policies the commands run with. Commands that need a missing policy fail with <code>not enough permissions (9)</code> in the log. See <a href="../../developer-guides/scripting/#script-permissions">script permissions</a>. Default: the policies of the user who adds the entry, limited to <code>ftp</code>, <code>reboot</code>, <code>read</code>, <code>write</code>, <code>policy</code>, <code>test</code>, <code>password</code>, <code>sniff</code>, <code>sensitive</code> and <code>romon</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>owner</strong> <code>string</code> — The user who added the entry.</li>
+<li><strong>run-count</strong> <code>num</code> — Number of runs since the last startup. A reboot resets it to 0.</li>
+<li><strong>next-run</strong> <code>date</code> — Date and time of the next run. Empty when no run is pending: an entry with <code>interval=0s</code> after its run, a <code>startup</code> entry with <code>interval=0s</code>, or an entry with <code>days=never</code>.</li>
+</ul>
+<hr />
+<h1 id="script">script</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/script.</p>
+</blockquote>
+<hr />
+<h2 id="systemscript">system/script</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>invalid</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>owner</strong> <code>string</code></li>
+<li><strong>policy</strong> <code>multi { array-id, policy: enum
+ }</code></li>
+<li><strong>dont-require-permissions</strong> <code>bool</code></li>
+<li><strong>source</strong> <code>string</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>last-started</strong> <code>date</code></li>
+<li><strong>run-count</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="environment">environment</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/script/environment.</p>
+</blockquote>
+<hr />
+<h2 id="systemscriptenvironment">system/script/environment</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>value</strong> <code>string</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="job">job</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/script/job.</p>
+</blockquote>
+<hr />
+<h2 id="systemscriptjob">system/script/job</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>started</strong> <code>date</code></li>
+<li><strong>type</strong> <code>enum (command | login | api-login)</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>script</strong> <code>enum</code></li>
+<li><strong>owner</strong> <code>string</code></li>
+<li><strong>policy</strong> <code>multi { array-id, policy: enum
+ }</code></li>
+<li><strong>parent</strong> <code>num</code></li>
+<li><strong>trace</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="serial-terminal">serial-terminal</h1>
+<blockquote>
+<p>RouterOS command reference for /system/serial-terminal.</p>
+</blockquote>
+<hr />
+<h2 id="systemserial-terminal">system/serial-terminal</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>port</strong> <code>enum</code> — name of the port from port list</li>
+<li><strong>channel</strong> <code>num</code> — port channel that will be used (0 by default)</li>
+<li><strong>write</strong> <code>string</code> — non-interactively write provided value to the serial terminal</li>
+</ul>
+<hr />
+<h1 id="shutdown">shutdown</h1>
+<blockquote>
+<p>RouterOS command reference for /system/shutdown.</p>
+</blockquote>
+<hr />
+<h2 id="systemshutdown">system/shutdown</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+<h1 id="ssh-exec">ssh-exec</h1>
+<blockquote>
+<p>The ssh-exec command is a non-interactive SSH command, allowing you to execute commands remotely on a device through scripts and scheduler.</p>
+</blockquote>
+<hr />
+<h2 id="systemssh-exec">system/ssh-exec</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <a href="../../management-tools/ssh#run-remote-commands-from-scripts"><code>ssh-exec</code></a> command is a non-interactive SSH command, allowing you to execute commands remotely on a device through scripts and scheduler.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { ip: ipAddr
+, ipv6-address: composite { ip6: ip6Addr
+, interface: [ iface_enum]
+ }
+ }</code> — Remote host IPv4 or IPv6 address.</li>
+<li><strong>command</strong> <code>string</code> — Remote command to execute.</li>
+<li><strong>user</strong> <code>string</code> — Username for the remote host.</li>
+<li><strong>password</strong> <code>string</code> — Password for the remote host. You should use SSH PKI authentication instead of plain text passwords.</li>
+<li><strong>port</strong> <code>num</code> — TCP port the SSH server listens on. Default: 22.</li>
+<li><strong>known-hosts-ignore</strong> <code>bool</code> — skip host key validation</li>
+<li><strong>src-address</strong> <code>alt { ip: ipAddr
+, ip6: ip6Addr
+ }</code> — Source address to use when connecting. Supports both IPv4 and IPv6.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF to run the command over; the connection is made inside that routing table.</li>
+<li><strong>output-to-file</strong> <code>string</code> — Write output to file instead of 'output' variable.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>exit-code</strong> <code>num</code> — Exit code reported by the remote command shell; <code>0</code> when the command ran. A connection or authentication failure aborts <code>ssh-exec</code> itself instead of returning.</li>
+<li><strong>output</strong> <code>string</code> — Returns the output of the remotely executed command.</li>
+</ul>
+<hr />
+<h1 id="ssh">ssh</h1>
+<blockquote>
+<p>SSH client to connect to remote hosts.</p>
+</blockquote>
+<hr />
+<h2 id="systemssh">system/ssh</h2>
+<p><strong>Type:</strong> Command</p>
+<p><a href="../../management-tools/ssh#ssh-client">SSH client</a> to connect to remote hosts.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { ip: ipAddr
+, ipv6-address: composite { ip6: ip6Addr
+, interface: [ iface_enum]
+ }
+ }</code> — Remote host IPv4 or IPv6 address.</li>
+<li><strong>command</strong> <code>string</code> — Remote command to execute.</li>
+<li><strong>user</strong> <code>string</code> — Username for the remote host. Defaults to the currently logged-in user.</li>
+<li><strong>port</strong> <code>num</code> — TCP port the SSH server listens on. Default: 22.</li>
+<li><strong>src-address</strong> <code>alt { ip: ipAddr
+, ip6: ip6Addr
+ }</code> — Source address to use when connecting. Supports both IPv4 and IPv6.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF to make the connection in. Matches the remote host only inside that routing table.</li>
+<li><strong>output-to-file</strong> <code>string</code> — Write output to file instead of terminal. Does not accept password input, use key authentication.</li>
+</ul>
+<hr />
+<h1 id="sup-output">sup-output</h1>
+<blockquote>
+<p>Creates a support output file (supout.rif), a diagnostic snapshot of the router for MikroTik support, and shows its progress in created. The file is encoded and is opened with the Supout.rif viewer in your MikroTik...</p>
+</blockquote>
+<hr />
+<h2 id="systemsup-output">system/sup-output</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Creates a support output file (<code>supout.rif</code>), a diagnostic snapshot of the router for MikroTik support, and shows its progress in <code>created</code>. The file is encoded and is opened with the Supout.rif viewer in your MikroTik account. See <a href="../../getting-started/supout-rif">Supout.rif</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the file, or a path such as <code>usb1/supout</code> to write it into a folder. RouterOS adds the <code>.rif</code> extension when the name has none, so <code>supout.rif</code> also writes <code>supout.rif</code>. Default: supout.</li>
+<li><strong>output-width</strong> <code>num</code> — Width of the command outputs in the file. Use a larger value, for example <code>300</code>, when the viewer shows the outputs cut or wrapped.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>created</strong> <code>num</code> — Progress of the file in percent, from the start up to <code>100%</code>.</li>
+</ul>
+<hr />
+<h1 id="swos">swos</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/swos.</p>
+</blockquote>
+<hr />
+<h2 id="systemswos">system/swos</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address-acquisition-mode</strong> <code>enum (dhcp-with-fallback | static | dhcp-only) { dhcp-with-fallback:0, static:1, dhcp-only:2 }</code></li>
+<li><strong>static-ip-address</strong> <code>ipAddr</code></li>
+<li><strong>identity</strong> <code>string</code></li>
+<li><strong>allow-from</strong> <code>composite { address: ipAddr
+, netmask: [ num [ .. 32]]
+ }</code></li>
+<li><strong>allow-from-ports</strong> <code>ubit (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21, p22, p23, p24, p25, p26, p27, p28, p29, p30, p31, p32)</code></li>
+<li><strong>allow-from-vlan</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="load-config">load-config</h1>
+<blockquote>
+<p>RouterOS command reference for /system/swos/load-config.</p>
+</blockquote>
+<hr />
+<h2 id="systemswosload-config">system/swos/load-config</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>file</code></li>
+</ul>
+<hr />
+<h1 id="password">password</h1>
+<blockquote>
+<p>RouterOS command reference for /system/swos/password.</p>
+</blockquote>
+<hr />
+<h2 id="systemswospassword">system/swos/password</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>new-password</strong> <code>string</code></li>
+<li><strong>confirm-new-password</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="reset-config">reset-config</h1>
+<blockquote>
+<p>RouterOS command reference for /system/swos/reset-config.</p>
+</blockquote>
+<hr />
+<h2 id="systemswosreset-config">system/swos/reset-config</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="save-config">save-config</h1>
+<blockquote>
+<p>RouterOS command reference for /system/swos/save-config.</p>
+</blockquote>
+<hr />
+<h2 id="systemswossave-config">system/swos/save-config</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="upgrade_1">upgrade</h1>
+<blockquote>
+<p>RouterOS command reference for /system/swos/upgrade.</p>
+</blockquote>
+<hr />
+<h2 id="systemswosupgrade">system/swos/upgrade</h2>
+<p><strong>Conditions:</strong> !i386, !mmips, !powerpc, !tile, !smips
+<strong>Syscap:</strong> swos
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>version</strong> <code>string</code></li>
+<li><strong>status</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="sync-e">sync-e</h1>
+<blockquote>
+<p>RouterOS settings reference for /system/sync-e.</p>
+</blockquote>
+<hr />
+<h2 id="systemsync-e">system/sync-e</h2>
+<p><strong>Syscap:</strong> synce
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — enable or disable SyncE</li>
+<li><strong>wait-to-restore</strong> <code>time</code> — time to wait before using a reference after it becomes valid again</li>
+<li><strong>hold-off</strong> <code>time</code> — time to wait before switching away from the current reference after it becomes invalid</li>
+<li><strong>quality-level</strong> <code>enum (dnu | eprtc | eprc | prtc | prc | ssu-a | ssu-b | eec1 | prs | stu | st2 | tnc | st3e | eec2 | eeec | prov) { dnu:0, eprtc:5, eprc:15, prtc:6, prc:4, ssu-a:3, ssu-b:2, eec1:12, prs:7, stu:8, st2:9, tnc:10, st3e:11, eec2:13, eeec:16, prov:14 }</code> — minimum accepted ESMC quality level; lower-quality references are not selected</li>
+<li><strong>network</strong> <code>enum (option-1 | option-2) { option-1:0, option-2:1 }</code> — ESMC network option used when interpreting quality levels</li>
+<li><strong>holdover</strong> <code>time</code> — time to keep the last reference active when no valid reference is available before entering local holdover</li>
+<li><strong>esmc-timeout</strong> <code>time</code> — time without a valid ESMC message before the reference is considered lost</li>
+<li><strong>essm</strong> <code>bool</code> — use eSSM quality-level information in transmitted and received ESMC frames</li>
+</ul>
+<hr />
+<h1 id="monitor">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /system/sync-e/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="systemsync-emonitor">system/sync-e/monitor</h2>
+<p><strong>Syscap:</strong> synce
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>synce-status</strong> <code>string</code></li>
+<li><strong>sync-status</strong> <code>string</code></li>
+<li><strong>selected-source</strong> <code>string</code></li>
+<li><strong>selection-criteria</strong> <code>string</code></li>
+<li><strong>rx-quality</strong> <code>string</code></li>
+<li><strong>hold-off</strong> <code>string</code></li>
+<li><strong>wait-to-restore</strong> <code>string</code></li>
+<li><strong>master-clock</strong> <code>string</code></li>
+<li><strong>lock-uptime</strong> <code>string</code></li>
+<li><strong>dbg-dpll-status</strong> <code>string</code></li>
+<li><strong>dbg-dpll-ref-stat</strong> <code>string</code></li>
+<li><strong>dbg-dpll-filter-status</strong> <code>string</code></li>
+<li><strong>dbg-loop-bandwidth</strong> <code>string</code></li>
+<li><strong>dbg-phase-offset</strong> <code>string</code></li>
+<li><strong>dbg-selected-frequency-src</strong> <code>string</code></li>
+<li><strong>dbg-measured-frequency</strong> <code>string</code></li>
+<li><strong>dbg-status-input-clk0</strong> <code>string</code></li>
+<li><strong>dbg-input-los-clk0</strong> <code>string</code></li>
+<li><strong>dbg-input-no-activity-clk0</strong> <code>string</code></li>
+<li><strong>dbg-input-frequency-offset-clk0</strong> <code>string</code></li>
+<li><strong>dbg-input-transient-clk0</strong> <code>string</code></li>
+<li><strong>dbg-status-input-clk1</strong> <code>string</code></li>
+<li><strong>dbg-input-los-clk1</strong> <code>string</code></li>
+<li><strong>dbg-input-no-activity-clk1</strong> <code>string</code></li>
+<li><strong>dbg-input-frequency-offset-clk1</strong> <code>string</code></li>
+<li><strong>dbg-input-transient-clk1</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="port">port</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/sync-e/port.</p>
+</blockquote>
+<hr />
+<h2 id="systemsync-eport">system/sync-e/port</h2>
+<p><strong>Syscap:</strong> synce
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code></li>
+<li><strong>E</strong> <code>elected</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code></li>
+<li><strong>ql-mode</strong> <code>enum (disable | prc | prs | ssu-a | ssu-b | st2 | st3e | stu | tnc | eprtc | eprc | prtc | eec1 | eec2 | eeec | prov) { disable:0, prc:1, prs:2, ssu-a:5, ssu-b:6, st2:7, st3e:9, stu:11, tnc:12, eprtc:13, eprc:18, prtc:14, eec1:15, eec2:16, eeec:19, prov:17 }</code></li>
+<li><strong>priority</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="telnet">telnet</h1>
+<blockquote>
+<p>RouterOS command reference for /system/telnet.</p>
+</blockquote>
+<hr />
+<h2 id="systemtelnet">system/telnet</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { ip-address: ipAddr
+, ipv6-address: composite { addr: ip6Addr
+, interface: [ iface_enum]
+ }
+ }</code></li>
+<li><strong>port</strong> <code>num</code></li>
+<li><strong>vrf</strong> <code>enum</code></li>
+</ul>
+<hr />
+<h1 id="ups">ups</h1>
+<blockquote>
+<p>RouterOS directory reference for /system/ups.</p>
+</blockquote>
+<hr />
+<h2 id="systemups">system/ups</h2>
+<p><strong>Package:</strong> ups
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code></li>
+<li><strong>I</strong> <code>invalid</code></li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>port</strong> <code>enum ()</code></li>
+<li><strong>offline-time</strong> <code>time</code></li>
+<li><strong>min-runtime</strong> <code>alt { never: enum (never) { never:0xffffffff }
+, min-runtime: time
+ }</code></li>
+<li><strong>alarm-setting</strong> <code>enum (immediate | delayed | low-battery | none) { immediate:0, delayed:1, low-battery:2, none:3 }</code></li>
+<li><strong>check-capabilities</strong> <code>bool</code></li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>model</strong> <code>string</code></li>
+<li><strong>version</strong> <code>string</code></li>
+<li><strong>serial</strong> <code>string</code></li>
+<li><strong>manufacture-date</strong> <code>string</code></li>
+<li><strong>load</strong> <code>num</code></li>
+<li><strong>on-line</strong> <code>bool</code></li>
+<li><strong>nominal-battery-voltage</strong> <code>num</code></li>
+<li><strong>offline-after</strong> <code>time</code></li>
+</ul>
+<hr />
+<h1 id="beep">beep</h1>
+<blockquote>
+<p>RouterOS command reference for /system/ups/beep.</p>
+</blockquote>
+<hr />
+<h2 id="systemupsbeep">system/ups/beep</h2>
+<p><strong>Package:</strong> ups
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="monitor_1">monitor</h1>
+<blockquote>
+<p>RouterOS command reference for /system/ups/monitor.</p>
+</blockquote>
+<hr />
+<h2 id="systemupsmonitor">system/ups/monitor</h2>
+<p><strong>Package:</strong> ups
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>on-line</strong> <code>bool</code></li>
+<li><strong>on-battery</strong> <code>bool</code></li>
+<li><strong>transfer-cause</strong> <code>string</code></li>
+<li><strong>rtc-running</strong> <code>bool</code></li>
+<li><strong>runtime-left</strong> <code>time</code></li>
+<li><strong>offline-after</strong> <code>time</code></li>
+<li><strong>battery-charge</strong> <code>num</code></li>
+<li><strong>battery-voltage</strong> <code>num</code></li>
+<li><strong>line-voltage</strong> <code>num</code></li>
+<li><strong>output-voltage</strong> <code>num</code></li>
+<li><strong>load</strong> <code>num</code></li>
+<li><strong>temperature</strong> <code>num</code></li>
+<li><strong>frequency</strong> <code>num</code></li>
+<li><strong>replace-battery</strong> <code>bool</code></li>
+<li><strong>smart-boost</strong> <code>bool</code></li>
+<li><strong>smart-trim</strong> <code>bool</code></li>
+<li><strong>overload</strong> <code>bool</code></li>
+<li><strong>low-battery</strong> <code>bool</code></li>
+<li><strong>self-test</strong> <code>string</code></li>
+<li><strong>hid-self-test</strong> <code>enum (done-and-passed | done-and-warning | done-and-error | aborted | in-progress | no-test-initiated) { done-and-passed:1, done-and-warning:2, done-and-error:3, aborted:4, in-progress:5, no-test-initiated:6 }</code></li>
+</ul>
+<hr />
+<h1 id="rtc">rtc</h1>
+<blockquote>
+<p>RouterOS command reference for /system/ups/rtc.</p>
+</blockquote>
+<hr />
+<h2 id="systemupsrtc">system/ups/rtc</h2>
+<p><strong>Package:</strong> ups
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="self-test">self-test</h1>
+<blockquote>
+<p>RouterOS command reference for /system/ups/self-test.</p>
+</blockquote>
+<hr />
+<h2 id="systemupsself-test">system/ups/self-test</h2>
+<p><strong>Package:</strong> ups
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>hid-test-type</strong> <code>enum (quick | deep | abort)</code></li>
+</ul>
+<hr />
+<h1 id="watchdog">watchdog</h1>
+<blockquote>
+<p>Reboots the router when the system stops responding (the software watchdog timer) or when one IP address stops answering pings (the ping watchdog), and writes a support output file after a software failure. See Watchdog.</p>
+</blockquote>
+<hr />
+<h2 id="systemwatchdog">system/watchdog</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Reboots the router when the system stops responding (the software watchdog timer) or when one IP address stops answering pings (the ping watchdog), and writes a support output file after a software failure. See <a href="../../diagnostics-monitoring-and-troubleshooting/watchdog">Watchdog</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>watch-address</strong> <code>alt { ip: ipAddr
+, ipv6: composite { address: ip6Addr
+, interface: [ iface_enum]
+ }
+ }</code> — Address the ping watchdog pings. The router sends six pings over <code>ping-timeout</code> and reboots when all six fail. <code>none</code> turns the ping watchdog off. Use an address that is reliably up and reached through the link to watch, such as the gateway or, for a VPN, the tunnel address of the far end. If it stays unreachable, the router reboots again after every boot, about every <code>ping-start-after-boot</code> plus <code>ping-timeout</code>. Default: none.</li>
+<li><strong>watchdog-timer</strong> <code>bool</code> — Whether the router reboots when the system is unresponsive for a minute. Default: yes.</li>
+<li><strong>ping-start-after-boot</strong> <code>time</code> — Time after a boot before the ping watchdog sends its first ping to <code>watch-address</code>. On a router that has been up longer than this time, setting <code>watch-address</code> starts the pings at once. Set it longer than the watched link needs to come up after a boot. Older exports call it <code>no-ping-delay</code>. Default: 5m.</li>
+<li><strong>ping-timeout</strong> <code>time</code> — Time over which the ping watchdog sends six pings to <code>watch-address</code>, one every <code>ping-timeout</code> divided by six. The router reboots when all six fail. Default: 1m.</li>
+<li><strong>automatic-supout</strong> <code>bool</code> — Whether the router writes <code>autosupout.rif</code> when the software fails. The previous file is renamed to <code>autosupout.old.rif</code>. A ping watchdog reboot does not write the file. Default: yes.</li>
+<li><strong>auto-send-supout</strong> <code>bool</code> — Whether the router sends the automatic support output file by email to <code>send-email-to</code>. Default: no.</li>
+<li><strong>send-email-to</strong> <code>string</code> — Email address the automatic support output file is sent to, with <code>auto-send-supout=yes</code>.</li>
+<li><strong>send-email-from</strong> <code>string</code> — Sender address of the email with the automatic support output file. When not set, the value from <code>/tool/e-mail</code> is used.</li>
+<li><strong>send-smtp-server</strong> <code>alt { ipv4: ipAddr
+, fqdn: string
+ }</code> — SMTP server, as an IPv4 address or a name, that sends the email with the automatic support output file. When not set, the value from <code>/tool/e-mail</code> is used.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

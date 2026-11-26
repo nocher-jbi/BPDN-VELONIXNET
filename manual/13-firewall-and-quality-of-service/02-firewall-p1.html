@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firewall · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Firewall and Quality of Service</p>
+      <h1 id="firewall-part-12">Firewall (part 1/2)</h1>
+<h1 id="firewall">Firewall</h1>
+<blockquote>
+<p>Overview of the RouterOS firewall: the filter, NAT, mangle and RAW tables, their predefined chains, how the rules of a chain are processed, and how to group rules in your own chains.</p>
+</blockquote>
+<h1 id="firewall_1">Firewall</h1>
+<p><em>[gambar: A local network behind a router with a firewall: authorized access to and from the internet passes, unauthorized access from the internet is stopped]</em></p>
+<p>The firewall manages the data flow to the router, from the router and through the router. It filters packets with and without regard to their connection: <a href="../connection-tracking">connection tracking</a> gives the firewall the state of each connection. Together with network address translation (NAT), it prevents unauthorized access to the networks behind the router and to the router itself, and it can filter outgoing traffic.</p>
+<p>Whenever networks are joined, someone from outside can try to break into your network, to steal, change or destroy data. A firewall prevents or reduces the security risks of connecting to other networks.</p>
+<p>The RouterOS firewall can classify traffic by:</p>
+<ul>
+<li>Source MAC address.</li>
+<li>IP addresses, as networks or address lists, and address types (broadcast, local, multicast, unicast).</li>
+<li>Port or port range.</li>
+<li>IP protocol.</li>
+<li>Protocol options: ICMP type and code, TCP flags, IP options and MSS.</li>
+<li>The interface that the packet arrived on or leaves through.</li>
+<li>Packet marks and connection marks.</li>
+<li>The DSCP field.</li>
+<li>Packet content, including Layer 7 protocol detection.</li>
+<li>The rate at which packets arrive, and their sequence.</li>
+<li>Packet size.</li>
+<li>The time when the packet arrives.</li>
+</ul>
+<h2 id="firewall-tables">Firewall tables</h2>
+<p>The firewall has four tables. Each is a menu in <code>/ip/firewall</code> for IPv4 and in <code>/ipv6/firewall</code> for IPv6:</p>
+<ul>
+<li><a href="./filter">Filter</a> accepts or drops packets according to your policies.</li>
+<li><a href="./raw">RAW</a> drops packets or excludes them from connection tracking before connection tracking processes them, which saves resources.</li>
+<li><a href="./mangle">Mangle</a> marks packets, connections and routing decisions, sets priorities and changes fields of the IP header.</li>
+<li><a href="./nat">NAT</a> translates addresses, redirects connections and forwards ports.</li>
+</ul>
+<p><a href="./address-lists">Address lists</a> hold groups of addresses that the rules of all tables can match. <a href="./common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a> describes what the tables have in common: the rule counters and the order of the matchers.</p>
+<h2 id="chains">Chains</h2>
+<p>The rules of each table are grouped in chains. Each table has predefined chains, which process the packets at fixed points of the <a href="../packet-flow-in-routeros">packet flow</a>:</p>
+<ul>
+<li><strong>raw</strong>: <code>prerouting</code>, <code>output</code>.</li>
+<li><strong>filter</strong>: <code>input</code>, <code>forward</code>, <code>output</code>.</li>
+<li><strong>mangle</strong>: <code>prerouting</code>, <code>input</code>, <code>forward</code>, <code>output</code>, <code>postrouting</code>.</li>
+<li><strong>nat</strong>: <code>srcnat</code>, <code>dstnat</code>, <code>input</code>, <code>output</code>.</li>
+</ul>
+<p>The router takes the rules of a chain in the order in which they are listed, from top to bottom. When a packet matches a rule, the router applies the action of the rule and processes no more rules of the chain. The exceptions are the <code>passthrough</code> action and other actions that do not end the processing, such as <code>fasttrack-connection</code> in the filter table and some <a href="./mangle">mangle</a> actions: after them, the router continues with the next rule. A packet that matches no rule of a chain is accepted.</p>
+<h3 id="chains-of-your-own">Chains of your own</h3>
+<p>You can add chains of your own and send packets to them with <code>action=jump</code>. A chain is created when you add its first rule. This lets you match a common condition once and put the detailed rules into a separate chain.</p>
+<p>In this example, rules for the public address of an office, 198.51.100.7, are grouped in the chain <code>office</code>. The jump rule matches the source address and the interface, and the rules of the chain match only the ports, without repeating them:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=jump jump-target=office \
+    src-address=198.51.100.7 in-interface-list=WAN \
+    comment=&quot;Rules for the office address&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=office action=accept protocol=tcp dst-port=22 \
+    comment=&quot;SSH from the office&quot;
+add chain=office action=accept protocol=tcp dst-port=8291 \
+    comment=&quot;WinBox from the office&quot;
+</code></pre>
+<p>A packet that matches no rule of the <code>office</code> chain returns to the <code>input</code> chain and continues with the rule after the jump rule. In the default firewall, that is the rule that drops what does not come from the local network.</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where chain=office or jump-target=office
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION  BYTES  PACKETS
+;;; Rules for the office address
+0 input   jump      300        5
+;;; SSH from the office
+1 office  accept     60        1
+;;; WinBox from the office
+2 office  accept     60        1
+</code></pre>
+<hr />
+<h1 id="address-lists">Address lists</h1>
+<blockquote>
+<p>Address lists group IP addresses, prefixes, ranges and DNS names under one name for firewall rules. Entries can be static, added by rules with a timeout, or resolved from names.</p>
+</blockquote>
+<h1 id="address-lists_1">Address lists</h1>
+<p>An address list is a named set of IP addresses, prefixes and, for IPv4, address ranges. Filter, NAT, mangle and raw rules match it with <code>src-address-list</code> and <code>dst-address-list</code>, and <code>!</code> in front of the name matches every address that is not in the list. One rule then covers many addresses, and you change who it applies to by changing the list, not the rule.</p>
+<p>Entries come from three sources: you add them, firewall rules add them with the <code>add-src-to-address-list</code> and <code>add-dst-to-address-list</code> actions, and the router resolves DNS names you put in a list. IPv4 lists are in <code>/ip/firewall/address-list</code> and IPv6 lists in <code>/ipv6/firewall/address-list</code>. The two are separate, even when a list has the same name in both.</p>
+<h2 id="block-traffic-from-a-list-of-addresses">Block traffic from a list of addresses</h2>
+<p>Drop everything that comes from the WAN from the addresses in the list <code>blocked</code>. <code>WAN</code> is the interface list of the default configuration that holds the internet port:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/add list=blocked address=203.0.113.0/24 \
+    comment=&quot;Abuse reports&quot;
+/ip/firewall/address-list/add list=blocked address=198.51.100.7
+/ip/firewall/raw/add chain=prerouting action=drop \
+    in-interface-list=WAN src-address-list=blocked \
+    comment=&quot;Drop traffic from blocked addresses&quot;
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/address-list/print where list=blocked
+Columns: LIST, ADDRESS, CREATION-TIME
+# LIST     ADDRESS         CREATION-TIME
+;;; Abuse reports
+0 blocked  203.0.113.0/24  2026-10-01 08:50:12
+1 blocked  198.51.100.7    2026-10-01 08:50:12
+</code></pre>
+<p>Rules in <code>/ip/firewall/raw</code> run before <a href="../connection-tracking">connection tracking</a>, so this rule drops every packet from these addresses that arrives on the WAN: new connections to the router and to forwarded services, and also the replies to connections that hosts in your LAN open to them. To block more addresses later, add them to the list.</p>
+<p>To add many entries at once, paste several <code>add</code> lines into the terminal, or put them in an <code>.rsc</code> file and import it with <code>/import</code>. <code>203.0.113.77/24</code> and <code>203.0.113.0/24</code> are the same entry, so the second <code>add</code> fails with <code>failure: already have such entry</code>, and an import stops there.</p>
+<p>IPv6 addresses go into the IPv6 list, with the same drop rule in <code>/ipv6/firewall/raw</code>:</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list/add list=blocked address=2001:db8:bad::/48
+/ipv6/firewall/raw/add chain=prerouting action=drop \
+    in-interface-list=WAN src-address-list=blocked \
+    comment=&quot;Drop traffic from blocked addresses&quot;
+</code></pre>
+<p>An IPv6 host can change its address inside its /64. For IPv6, list whole prefixes, a /64 or larger, rather than single addresses.</p>
+<h2 id="allow-access-from-a-dynamic-address-by-name">Allow access from a dynamic address by name</h2>
+<p>A remote office or a home connection often has an address that changes. Put its DNS name in a list, for example the DDNS name of the office router, and allow SSH and WinBox from it (SSH is TCP port 22, WinBox TCP port 8291):</p>
+<pre><code class="language-ros">/ip/firewall/address-list/add list=trusted address=office.example.com \
+    comment=&quot;Office router&quot;
+/ip/firewall/filter/add chain=input action=accept protocol=tcp \
+    dst-port=22,8291 src-address-list=trusted \
+    comment=&quot;Allow SSH and WinBox from trusted addresses&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>The rule goes before the default <code>drop all not coming from LAN</code> rule. A plain <code>add</code> puts it after the drop rule, where it never matches.</p>
+<p>The router resolves the name and adds the address as a dynamic entry, with the name as its comment:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/address-list/print where list=trusted
+Flags: D - DYNAMIC
+Columns: LIST, ADDRESS, CREATION-TIME
+#   LIST     ADDRESS             CREATION-TIME
+;;; Office router
+4   trusted  office.example.com  2026-10-01 08:52:00
+;;; office.example.com
+5 D trusted  198.51.100.20       2026-10-01 08:52:00
+</code></pre>
+<p>When the DNS record expires, the router resolves the name again and replaces an address that has changed, so the rule follows the office's address.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The rule opens SSH and WinBox to every host that has the address the name resolves to. Use a name that only you control. Access depends on the answers of the router's DNS servers, so use DNS servers you trust, and keep another way in, such as a VPN. If <code>/ip/service</code> limits WinBox or SSH with <code>available-from</code>, the address must be allowed there as well (see <a href="../../system-information-and-utilities/services#limit-who-can-use-a-service">Limit who can use a service</a>).</p>
+</div>
+<h2 id="block-hosts-that-probe-a-closed-port">Block hosts that probe a closed port</h2>
+<p>A host that tries to reach Telnet on your WAN address is usually scanning for weak devices. List such hosts for a day and drop all their traffic, including traffic to services you forward to the LAN:</p>
+<pre><code class="language-ros">/ip/firewall/raw/add chain=prerouting action=add-src-to-address-list \
+    in-interface-list=WAN protocol=tcp dst-port=23 \
+    src-address-list=!trusted \
+    address-list=port-scanners address-list-timeout=1d \
+    comment=&quot;List hosts that probe the Telnet port&quot;
+/ip/firewall/raw/add chain=prerouting action=drop \
+    in-interface-list=WAN src-address-list=port-scanners \
+    comment=&quot;Drop listed hosts&quot;
+</code></pre>
+<p>The first rule adds the source address to <code>port-scanners</code> and passes the packet on to the next rule. From then on, the second rule drops every packet from that host, until the timeout ends. Each new probe resets the timeout to a full day.</p>
+<p>One packet is enough to list its source address, and the source address of a packet can be forged. Keep the addresses you rely on, such as your DNS servers, VPN peers and the office, in the <code>trusted</code> list from the previous section: <code>src-address-list=!trusted</code> makes the first rule skip them.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/address-list/print where list=port-scanners
+Flags: D - DYNAMIC
+Columns: LIST, ADDRESS, CREATION-TIME, TIMEOUT
+#   LIST           ADDRESS        CREATION-TIME        TIMEOUT
+2 D port-scanners  198.51.100.23  2026-10-01 08:50:30  23h59m55s
+</code></pre>
+<p>Entries with a timeout are dynamic (<code>D</code>): they are not saved in the configuration, and a reboot clears them. Scanners come back, so the list fills again. <code>address-list-timeout=none-static</code> keeps the entries over reboots, but the list then grows with every scanner until you remove entries, and every new entry changes the saved configuration.</p>
+<p>For rules that list a host only after several attempts, see <a href="../user-guides/bruteforce-prevention">SSH brute-force protection</a> and <a href="../user-guides/port-knocking">Port knocking</a>, which opens a port only after a secret sequence of connection attempts.</p>
+<h2 id="view-remove-and-export-entries">View, remove and export entries</h2>
+<p>Show a list, or only count its entries:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/print where list=port-scanners
+/ip/firewall/address-list/print count-only where list=port-scanners
+</code></pre>
+<p>Remove one entry:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+remove [find list=port-scanners address=198.51.100.23]
+</code></pre>
+<p>To copy a list to another router, export it to a file. Write <code>file=</code> before <code>where</code>, because <code>where</code> takes the rest of the command line as its condition. With <code>file=</code> after it, the export prints to the terminal and writes no file.</p>
+<pre><code class="language-ros">/ip/firewall/address-list/export file=blocked where list=blocked
+</code></pre>
+<p>The file <code>blocked.rsc</code> holds the static entries of the list. Dynamic entries are not exported.</p>
+<pre><code class="language-ros">/ip firewall address-list
+add address=203.0.113.0/24 comment=&quot;Abuse reports&quot; disabled=no dynamic=no \
+    list=blocked
+add address=198.51.100.7 disabled=no dynamic=no list=blocked
+</code></pre>
+<p>Copy the file to the other router, with <strong>Files</strong> in WinBox (see <a href="../../system-information-and-utilities/files#manage-files-in-winbox">Manage files in WinBox</a>) or with <code>scp</code>, and import it:</p>
+<pre><code class="language-ros">/import blocked.rsc
+</code></pre>
+<p>The file holds only the entries: add the drop rule on the other router as well. The import stops at the first address that is already in the list, with <code>failure: already have such entry</code>. To update the list on the other router later, remove its entries first (the list holds no DNS names) and import the new file:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/remove [find list=blocked]
+/import blocked.rsc
+</code></pre>
+<p>To empty a list that holds a DNS name, remove it in two steps:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/remove [find list=trusted !dynamic]
+/ip/firewall/address-list/remove [find list=trusted]
+</code></pre>
+<p>The first command removes the static entries; removing the name also removes the addresses it resolved to. The second removes the dynamic entries that rules added. A single <code>remove [find list=trusted]</code> also selects the name's addresses, and it stops with <code>no such item</code> after the name is gone.</p>
+<h2 id="how-entries-behave">How entries behave</h2>
+<h3 id="static-and-dynamic-entries">Static and dynamic entries</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">How the entry is created</th>
+<th style="text-align: left;">Flag</th>
+<th style="text-align: left;">Saved in the configuration and export</th>
+<th style="text-align: left;">After a reboot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>add</code> without <code>timeout</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Kept</td>
+</tr>
+<tr>
+<td style="text-align: left;">A rule with <code>address-list-timeout=none-static</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Kept</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>add</code> with <code>timeout</code> or <code>dynamic=yes</code></td>
+<td style="text-align: left;"><code>D</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Gone</td>
+</tr>
+<tr>
+<td style="text-align: left;">A rule with a time or <code>address-list-timeout=none-dynamic</code></td>
+<td style="text-align: left;"><code>D</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Gone</td>
+</tr>
+<tr>
+<td style="text-align: left;">An address resolved from a DNS name</td>
+<td style="text-align: left;"><code>D</code></td>
+<td style="text-align: left;">No, the name entry is</td>
+<td style="text-align: left;">The name entry is kept</td>
+</tr>
+</tbody>
+</table>
+<p>Static entries keep their <code>creation-time</code> after a reboot. The entries that DNS and the DHCP server add are dynamic too.</p>
+<h3 id="timeouts">Timeouts</h3>
+<p>The longest timeout is <code>35w3d13h13m56s</code>. A longer one fails with <code>value of timeout is out of range (00:00:00 .. 35w3d13:13:56)</code>.</p>
+<p>When a rule matches an address that is already in the list, it resets the entry's timeout. When the address is already a static entry in that list, the entry stays static and gets no timeout.</p>
+<h3 id="addresses-prefixes-and-ranges">Addresses, prefixes and ranges</h3>
+<ul>
+<li>An address with a prefix length is stored as its network: <code>203.0.113.77/24</code> becomes <code>203.0.113.0/24</code>.</li>
+<li>An IPv4 range that is exactly one prefix is stored as that prefix: <code>198.51.100.0-198.51.100.255</code> becomes <code>198.51.100.0/24</code>. Other ranges stay ranges, for example <code>198.51.100.10-198.51.100.20</code>.</li>
+<li>An entry that is already in the list is refused with <code>failure: already have such entry</code>. Overlapping entries are accepted, for example a /24 and an address inside it.</li>
+<li>IPv6 lists take addresses and prefixes, but no ranges: <code>failure: 2001:db8::1-2001:db8::5 is not a valid dns name</code>. An IPv6 address without a prefix length is stored as a /128.</li>
+</ul>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Anything that is not a valid address is stored as a DNS name, without an error. A range written in short form, such as <code>203.0.113.1-254</code>, becomes a name that never resolves, and the entry matches nothing. Write ranges in full: <code>203.0.113.1-203.0.113.254</code>.</p>
+</div>
+<h3 id="domain-names">Domain names</h3>
+<ul>
+<li>The router resolves the name with its own DNS settings (<code>/ip/dns</code>) and adds one dynamic entry for each address in the answer, with the name as the comment. IPv4 lists get the A records, IPv6 lists the AAAA records.</li>
+<li>The dynamic entries show no timeout. When the DNS record expires, the router resolves the name again: addresses that changed are replaced, the others stay.</li>
+<li>The list holds whatever the router's DNS server answers. A filtering DNS server that answers <code>0.0.0.0</code> for a name puts <code>0.0.0.0</code> in the list. A device that asks another DNS server can get other addresses for the same name.</li>
+<li>Names served by CDNs or by round-robin DNS can return different addresses on each query, so a list built from the name can miss addresses that devices use. When the devices use the router as their DNS server, a static DNS <code>FWD</code> entry with <code>address-list</code> adds exactly the addresses the router answers them (see <a href="../../network-management/dns#use-domain-names-in-firewall-rules">Use domain names in firewall rules</a>).</li>
+<li>An entry that holds a name shows the name in <code>ADDRESS</code>. When the name resolves, dynamic entries with the name as their comment follow it. A name entry without them does not resolve, which is how a short range that became a name shows up.</li>
+<li>Removing the name entry removes the addresses it resolved to.</li>
+</ul>
+<h2 id="other-features-that-add-entries">Other features that add entries</h2>
+<ul>
+<li>DNS: a static DNS entry with <code>address-list</code> adds the addresses the router answers for the name, see <a href="../../network-management/dns#use-domain-names-in-firewall-rules">Use domain names in firewall rules</a>.</li>
+<li>DHCP server: <code>address-lists</code> on the server or on a lease adds the address of a bound lease, see <a href="../../cli-reference/ip/dhcp-server/"><code>/ip/dhcp-server</code></a> and <a href="../../cli-reference/ip/dhcp-server/lease/"><code>/ip/dhcp-server/lease</code></a>.</li>
+<li>PPP: <code>address-list</code> in a PPP profile adds the address the server assigns or the client receives, see <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</li>
+</ul>
+<p>For all parameters, see the CLI reference for <a href="../../cli-reference/ip/firewall/address-list"><code>/ip/firewall/address-list</code></a> and <a href="../../cli-reference/ipv6/firewall/address-list"><code>/ipv6/firewall/address-list</code></a>.</p>
+<hr />
+<h1 id="common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</h1>
+<blockquote>
+<p>Commands and rules that are common to the firewall filter, NAT, mangle and RAW tables of RouterOS: view and reset the rule counters, show or hide dynamic rules, and the order in which the matchers of a rule are checked.</p>
+</blockquote>
+<h1 id="common-firewall-matchers-and-actions_1">Common Firewall Matchers and Actions</h1>
+<p>The firewall tables <a href="./filter">filter</a>, <a href="./nat">NAT</a>, <a href="./mangle">mangle</a> and <a href="./raw">RAW</a> have several things in common. Each rule counts the packets that it matches. The same commands show and reset these counters. The router checks the matchers of a rule in a fixed order.</p>
+<p>The examples on this page use the IPv4 filter table. The counter commands are the same in the other tables and in the IPv6 firewall, for example <code>/ip/firewall/nat/print stats</code> or <code>/ipv6/firewall/filter/print stats</code>.</p>
+<h2 id="view-the-rule-counters">View the rule counters</h2>
+<p>Each firewall rule counts the packets and the bytes that it has matched. To see the counters, use <code>print stats</code>. This command shows the static rules of the <code>forward</code> chain:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats static where chain=forward
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION                BYTES  PACKETS
+;;; defconf: accept in ipsec policy
+0 forward  accept                    0        0
+;;; defconf: accept out ipsec policy
+1 forward  accept                    0        0
+;;; defconf: fasttrack
+2 forward  fasttrack-connection  2 457       15
+;;; defconf: accept established,related, untracked
+3 forward  accept                2 457       15
+;;; defconf: drop invalid
+4 forward  drop                      0        0
+;;; defconf: drop all from WAN not DSTNATed
+5 forward  drop                    112        2
+</code></pre>
+<p><code>PACKETS</code> is the number of packets that the rule has matched, and <code>BYTES</code> is their total size. The line above each rule is its comment.</p>
+<p>To see the counters of particular rules, select them by their comment. This command shows the rules whose comment contains "drop invalid":</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where comment~&quot;drop invalid&quot;
+</code></pre>
+<p>Use the counters to check that a new rule works: send traffic that the rule has to match, and look at its counters. If they do not grow, the rule does not match the traffic, or the packets do not reach the rule: an earlier rule of the chain has accepted or dropped them, or <a href="../connection-tracking#fasttrack">FastTrack</a> handles the connection. In the default configuration, established connections are FastTracked and accepted at the start of the <code>forward</code> chain, so the rules after that do not see most of their packets.</p>
+<h2 id="reset-the-counters">Reset the counters</h2>
+<p>To set the counters of one rule or of several rules back to zero, use <code>reset-counters</code> with the rules that <code>find</code> selects. This command resets the rules whose comment contains "WAN":</p>
+<pre><code class="language-ros">/ip/firewall/filter/reset-counters [find comment~&quot;WAN&quot;]
+</code></pre>
+<p>To reset the counters of all rules of the table, use <code>reset-counters-all</code>:</p>
+<pre><code class="language-ros">/ip/firewall/filter/reset-counters-all
+</code></pre>
+<p>Both commands work on one table: <code>/ip/firewall/filter/reset-counters-all</code> does not change the counters of the NAT, mangle and RAW rules. Each table has its own commands, for example for the NAT table:</p>
+<pre><code class="language-ros">/ip/firewall/nat/reset-counters-all
+</code></pre>
+<h2 id="show-or-hide-dynamic-rules">Show or hide dynamic rules</h2>
+<p>A table can contain dynamic rules, marked with the <code>D</code> flag. These are rules that the router adds itself. An example is the rule with the comment "special dummy rule to show fasttrack counters": it processes no packets, and its counters show the traffic that FastTrack handles. You cannot change or remove that rule.</p>
+<p>In the IPv4 tables, <code>print</code> lists the static and the dynamic rules, and <code>print all</code> does the same. To list only one kind, add <code>static</code> or <code>dynamic</code>:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print dynamic
+</code></pre>
+<pre><code class="language-text">Flags: D - DYNAMIC
+0 D ;;; special dummy rule to show fasttrack counters
+    chain=forward action=passthrough
+</code></pre>
+<p><code>/ip/firewall/filter/print static</code> lists only the rules of the configuration. The rule numbers in the output belong to the list that the command printed, so they differ between <code>print</code> and <code>print static</code>. In the IPv6 firewall, only the NAT table has the <code>static</code> and <code>dynamic</code> switches. The IPv6 filter, mangle and RAW tables do not have these switches.</p>
+<h2 id="order-of-the-matchers">Order of the matchers</h2>
+<p>A rule matches a packet only when all its matchers match. The router checks the matchers of a rule in a fixed order, which does not depend on the order in which you write them.</p>
+<p>The order matters for the matchers that keep a count or a state of their own, such as <code>nth</code>, <code>limit</code> and <code>dst-limit</code>: they see only the packets that have passed all matchers before them. For example, in a rule with <code>protocol=icmp</code> and <code>limit</code>, only ICMP packets use up the limit: the <code>protocol</code> matcher is not in the lists, and the router checks it before <code>limit</code>. In a rule with <code>nth</code> and <code>limit</code>, the limit counts only the packets that <code>nth</code> has selected. A packet over the limit does not match the rule, and the next rule of the chain processes it. <code>log</code> comes last: the rule writes a log entry only for a packet that all its matchers have matched.</p>
+<h3 id="for-ipv4">For IPv4</h3>
+<ol>
+<li>Source MAC address</li>
+<li>In and out interfaces</li>
+<li>In and out interface lists</li>
+<li>IP range</li>
+<li>Address type</li>
+<li>Address list</li>
+<li>TTL</li>
+<li>DSCP</li>
+<li>Length</li>
+<li>TLS</li>
+<li>IPv4 options</li>
+<li>Destination port</li>
+<li>Source port</li>
+<li>Any port</li>
+<li>TCP options</li>
+<li>TCP MSS</li>
+<li>ICMP codes</li>
+<li>Ingress priority</li>
+<li>Priority</li>
+<li>Packet mark</li>
+<li>Realm (routing table)</li>
+<li>HotSpot</li>
+<li>Connection mark</li>
+<li>Connection state</li>
+<li>Connection NAT state</li>
+<li>Connection bytes</li>
+<li>Connection limit</li>
+<li>Connection rate</li>
+<li>IPsec policy</li>
+<li>Helper</li>
+<li>String (content)</li>
+<li>PSD</li>
+<li>Layer7</li>
+<li>Random</li>
+<li>Nth</li>
+<li>PCC</li>
+<li>Limit</li>
+<li>Destination limit</li>
+<li>Log</li>
+</ol>
+<h3 id="for-ipv6">For IPv6</h3>
+<ol>
+<li>Address type</li>
+<li>Address list</li>
+<li>Source MAC address</li>
+<li>In and out interfaces</li>
+<li>In and out interface lists</li>
+<li>Hop limit</li>
+<li>DSCP</li>
+<li>Length</li>
+<li>TLS</li>
+<li>IPv6 header</li>
+<li>Destination port</li>
+<li>Source port</li>
+<li>Any port</li>
+<li>TCP options</li>
+<li>TCP MSS</li>
+<li>ICMPv6 codes</li>
+<li>Ingress priority</li>
+<li>Priority</li>
+<li>Packet mark</li>
+<li>Connection mark</li>
+<li>Connection state</li>
+<li>Connection NAT state</li>
+<li>Connection bytes</li>
+<li>Connection limit</li>
+<li>Connection rate</li>
+<li>IPsec policy</li>
+<li>Helper</li>
+<li>String (content)</li>
+<li>Random</li>
+<li>Nth</li>
+<li>PCC</li>
+<li>Limit</li>
+<li>Destination limit</li>
+<li>Log</li>
+</ol>
+<p>The properties of the matchers are described in the CLI reference of each table, for example <a href="../../cli-reference/ip/firewall/filter"><code>/ip/firewall/filter</code></a> and <a href="../../cli-reference/ipv6/firewall/filter"><code>/ipv6/firewall/filter</code></a>.</p>
+<hr />
+<h1 id="filter">Filter</h1>
+<blockquote>
+<p>The firewall filter of RouterOS accepts or drops packets in the input, forward and output chains. Add rules to the default firewall, for example to allow a service from the internet, block a device or isolate a guest...</p>
+</blockquote>
+<h1 id="filter_1">Filter</h1>
+<p>The firewall filter decides which packets the router accepts and which it drops: packets that pass through the router to and from your network, packets for the router itself, and packets that the router sends.</p>
+<p>Filter rules are in the <code>/ip/firewall/filter</code> menu for IPv4 and in the <code>/ipv6/firewall/filter</code> menu for IPv6. The default configuration of MikroTik home and office routers already has a firewall that protects the router and the local network from the internet. The first part of this page adds rules to that firewall. The second part builds a firewall from the start.</p>
+<h2 id="chains-and-rule-order">Chains and rule order</h2>
+<p>The filter has three predefined chains that cannot be deleted:</p>
+<p><em>[gambar: Packet flow chains with the filter marked: filter input follows mangle input, filter forward follows mangle forward, filter output follows mangle output]</em></p>
+<ul>
+<li><strong>input</strong> - processes packets that enter the router and have one of the addresses of the router as their destination. Packets that pass through the router are not processed by the rules of the input chain.</li>
+<li><strong>forward</strong> - processes packets that pass through the router.</li>
+<li><strong>output</strong> - processes packets that the router itself sends. Packets that pass through the router are not processed by the rules of the output chain.</li>
+</ul>
+<p>The router checks a packet against the rules of a chain from the top. The first rule that matches decides what happens to the packet. After an action such as <code>accept</code>, <code>drop</code> or <code>reject</code>, the router does not check the remaining rules. After <code>action=passthrough</code>, it continues with the next rule. A packet that no rule matches is accepted. The order of the rules therefore matters: a rule after a matching <code>accept</code> or <code>drop</code> rule does not see the packet.</p>
+<p>You can add chains of your own and send packets to them with <code>action=jump</code>. The section about ICMP on this page has an example.</p>
+<p>There are two ways to build a filter:</p>
+<ul>
+<li>Accept the traffic that you need and drop everything else. This is more secure, and it limits the damage when a service is misconfigured, but you have to add a rule for each new service.</li>
+<li>Drop only the traffic that you do not want and accept everything else. This is less work in a network where you cannot list all services that the users need, such as a customer network.</li>
+</ul>
+<p>The default firewall uses the first way for traffic from the internet.</p>
+<h2 id="add-rules-to-the-default-firewall">Add rules to the default firewall</h2>
+<p>The examples in this section are for a router whose default configuration has a firewall. Enter the commands in the terminal of WinBox or WebFig, or over SSH. The examples use the <code>WAN</code> and <code>LAN</code> interface lists of the default configuration: <code>WAN</code> holds the interface to the internet and <code>LAN</code> the local bridge.</p>
+<p>Each example places its rule before a rule of the default firewall with <code>place-before=[find comment="..."]</code>, which finds that rule by its comment. If the comment does not exist on your router, the command fails with "no such item": look at your rules with <code>/ip/firewall/filter/print</code> and use the comment of the rule that the new rule has to precede. A rule that is added without <code>place-before</code> goes to the end of the chain, after the rules that drop the traffic.</p>
+<p>The default firewall accepts the packets of established connections with its first rules. For that reason, most rules only have to deal with the first packet of a connection.</p>
+<p>The examples are IPv4 rules. If your network also uses IPv6, add the matching rules in <code>/ipv6/firewall/filter</code>: an IPv4 rule does not stop IPv6 traffic.</p>
+<h3 id="allow-access-to-a-service-of-the-router-from-the-internet">Allow access to a service of the router from the internet</h3>
+<p>The default firewall drops what arrives from the internet for the router itself, except ICMP. To manage the router with WinBox from another place that has a fixed public address, accept TCP port 8291 from that address before the rule that drops the rest. Replace 198.51.100.7 with the public address that you connect from:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept protocol=tcp dst-port=8291 \
+    src-address=198.51.100.7 in-interface-list=WAN \
+    comment=&quot;WinBox from the office&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>Accept a management service only from addresses that you trust, never from the whole internet. For access from changing addresses, use a VPN.</p>
+<p>To check the rule, connect from that address and look at the counters of the rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where comment~&quot;WinBox&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN  ACTION  BYTES  PACKETS
+;;; WinBox from the office
+0 input  accept     60        1
+</code></pre>
+<h3 id="block-a-device-from-the-internet">Block a device from the internet</h3>
+<p>To stop one device of the local network from reaching the internet, drop its packets in the forward chain. In this example an IP camera has the address 192.168.88.50. Give such a device a static lease in <code>/ip/dhcp-server/lease</code>, so that its address does not change.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=drop src-address=192.168.88.50 \
+    out-interface-list=WAN comment=&quot;No internet for the camera&quot; \
+    place-before=[find comment=&quot;defconf: fasttrack&quot;]
+</code></pre>
+<p>The rule is placed before the rules that FastTrack and accept established connections, so it also matches the packets of connections that are already open. The section about blocking an open connection on this page describes what to do with FastTracked connections. The camera can still reach the router and the devices of the local network.</p>
+<p>The counters of the rule grow when the camera tries to reach the internet:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where comment~&quot;camera&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION  BYTES  PACKETS
+;;; No internet for the camera
+1 forward  drop      168        3
+</code></pre>
+<h3 id="reject-instead-of-drop">Reject instead of drop</h3>
+<p>A dropped packet gets no answer, so the application on the sending host waits until it times out. With <code>action=reject</code>, the router answers with an error, and the application fails immediately. This example rejects Telnet connections that hosts of the local network open through the router, with a TCP reset:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=reject reject-with=tcp-reset \
+    protocol=tcp dst-port=23 in-interface-list=LAN \
+    comment=&quot;No Telnet from the LAN&quot; \
+    place-before=[find comment=&quot;defconf: fasttrack&quot;]
+</code></pre>
+<p>A host in the local network that opens a Telnet connection now gets "connection refused" without waiting. Use <code>reject</code> for the hosts of your own network, and <code>drop</code> for traffic from the internet, so that the router does not answer port scans.</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where comment~&quot;Telnet&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION  BYTES  PACKETS
+;;; No Telnet from the LAN
+5 forward  reject     60        1
+</code></pre>
+<h3 id="keep-a-guest-network-away-from-the-local-network">Keep a guest network away from the local network</h3>
+<p>The default firewall does not separate the networks behind the router from each other: a device in a guest network can reach the devices of the main network. In this example the guest network is on the interface <code>bridge-guest</code>. The rules let the guests reach the internet and the DNS server of the router. They do not separate the guest devices from each other.</p>
+<pre><code class="language-ros">/interface/list
+add name=GUEST
+/interface/list/member
+add list=GUEST interface=bridge-guest
+/ip/firewall/filter
+add chain=forward action=drop connection-state=new \
+    in-interface-list=GUEST out-interface-list=!WAN \
+    comment=&quot;Guests reach only the internet&quot; \
+    place-before=[find comment=&quot;defconf: fasttrack&quot;]
+add chain=input action=accept protocol=udp dst-port=53 \
+    in-interface-list=GUEST comment=&quot;DNS for guests&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept protocol=tcp dst-port=53 \
+    in-interface-list=GUEST comment=&quot;DNS for guests&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<ul>
+<li>The forward rule drops new connections from the guest network to everything that is not the internet. Because it matches only <code>connection-state=new</code>, the devices of the local network can still open connections to the guest devices.</li>
+<li>The interface <code>bridge-guest</code> must not be in the <code>LAN</code> list: check with <code>/interface/list/member/print</code>. The default rule "drop all not coming from LAN" then keeps the guests away from the router itself, except for ICMP. The two input rules make an exception for DNS, which the router answers when <code>allow-remote-requests=yes</code> is set in <code>/ip/dns</code>.</li>
+<li>The interface to the internet must be in the <code>WAN</code> list, or the forward rule also drops the guests' internet traffic.</li>
+<li>The DHCP server of the router works for the guest network without a firewall rule.</li>
+<li>Connections from guests to the local network that are already open stay open. The section about blocking an open connection on this page shows how to remove them.</li>
+</ul>
+<p>To check the rules, try to reach a device of the local network from a guest device, and look at the counters:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where in-interface-list=GUEST
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION  BYTES  PACKETS
+;;; DNS for guests
+2 input    accept     56        1
+;;; DNS for guests
+3 input    accept      0        0
+;;; Guests reach only the internet
+4 forward  drop      168        3
+</code></pre>
+<h3 id="log-what-a-rule-drops">Log what a rule drops</h3>
+<p>To see which packets a rule drops, turn on logging for the rule. This example logs what the default firewall drops in the input chain:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find comment=&quot;defconf: drop all not coming from LAN&quot;] \
+    log=yes log-prefix=&quot;input-drop&quot;
+</code></pre>
+<p>The log entries start with the prefix. They show the interface, the addresses, the protocol and the ports of each packet:</p>
+<pre><code class="language-ros">/log/print where message~&quot;input-drop&quot;
+</code></pre>
+<p>This rule drops what does not come from the <code>LAN</code> list, so the log also shows packets from other local networks, such as a guest network. To log what the firewall drops on the way from the internet to the local network, do the same for the rule of the forward chain:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find comment=&quot;defconf: drop all from WAN not DSTNATed&quot;] \
+    log=yes log-prefix=&quot;forward-drop&quot;
+</code></pre>
+<p>Logging every dropped packet costs CPU time and fills the log on a router that is under attack. Turn it off when you have what you need. The command for the forward rule is the same, with the comment of that rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find comment=&quot;defconf: drop all not coming from LAN&quot;] log=no
+</code></pre>
+<h2 id="block-a-connection-that-is-already-open">Block a connection that is already open</h2>
+<p>A drop rule that you add after the rules that accept established connections stops only new connections: connections that are already open keep working until they end.</p>
+<p>To stop open connections too, put the drop rule before the rules that accept or FastTrack established connections, and then remove the connections from the connection list. This example blocks the address 203.0.113.10 for all hosts behind the router:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=drop dst-address=203.0.113.10 \
+    comment=&quot;Block 203.0.113.10&quot; \
+    place-before=[find comment=&quot;defconf: fasttrack&quot;]
+/ip/firewall/connection
+remove [find dst-address=203.0.113.10]
+</code></pre>
+<p>The packets of a FastTracked connection that take the fast path bypass the filter rules. When the connection is removed from the list, its next packets go through the rules again and reach the drop rule.</p>
+<p>Removing a connection without the drop rule does not stop it: with the default <code>loose-tcp-tracking=yes</code> setting, the router adds the connection to the list again when its next packet arrives. See <a href="../connection-tracking">Connection tracking</a>.</p>
+<p>To check, look at the counters of the rule, and make sure that the connection list has no entry for the address: <code>/ip/firewall/connection/print where dst-address=203.0.113.10</code>.</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where comment~&quot;Block&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION   BYTES  PACKETS
+;;; Block 203.0.113.10
+0 forward  drop    38 532       17
+</code></pre>
+<h2 id="build-an-ipv4-firewall">Build an IPv4 firewall</h2>
+<p>This section builds a firewall on a router that has no filter rules. It uses the interface lists <code>WAN</code> for the interfaces towards the internet and <code>LAN</code> for the local interfaces. If the router does not have the lists, create them first. In this example <code>ether1</code> is the interface to the internet and <code>bridge</code> is the local bridge:</p>
+<pre><code class="language-ros">/interface/list
+add name=WAN
+add name=LAN
+/interface/list/member
+add list=WAN interface=ether1
+add list=LAN interface=bridge
+</code></pre>
+<p>The filter does not translate addresses. For internet access of a network with private addresses, the router also needs a source NAT rule, see <a href="./nat">NAT</a>.</p>
+<p>Follow these rules of thumb:</p>
+<ul>
+<li>Accept established and related connections first, so that the remaining rules work only with new connections. This decreases the load on the router.</li>
+<li>Accept what you need.</li>
+<li>Drop everything else. You can set <code>log=yes</code> on the drop rules to log attackers, but logging adds load to the CPU during heavy attacks.</li>
+</ul>
+<h3 id="protect-the-router">Protect the router</h3>
+<p>The input chain protects the router itself. In this example, any address can send ICMP packets to the router, for example a ping. Only the addresses 192.168.88.2-192.168.88.254 of the local network have access to everything else. Replace the range with the addresses of your network.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The last rule of this block drops every connection to the router that the rules before it do not accept. Before you add the rules, make sure that the address from which you manage the router is in the <code>allowed_to_router</code> list and that its interface is in the <code>LAN</code> list, or use <a href="../../management-tools/console#safe-mode">Safe Mode</a>, so that you do not lock yourself out.</p>
+</div>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=allowed_to_router address=192.168.88.2-192.168.88.254
+/ip/firewall/filter
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;Accept established, related, untracked&quot;
+add chain=input action=drop connection-state=invalid \
+    comment=&quot;Drop invalid&quot;
+add chain=input action=accept src-address-list=allowed_to_router \
+    in-interface-list=LAN \
+    comment=&quot;Accept from the management addresses&quot;
+add chain=input action=accept protocol=icmp comment=&quot;Accept ICMP&quot;
+add chain=input action=drop comment=&quot;Drop everything else&quot;
+</code></pre>
+<p>The rule that accepts the management addresses also checks the interface. A packet from the internet that only claims to have one of these source addresses does not match it.</p>
+<h3 id="protect-the-devices-of-the-local-network">Protect the devices of the local network</h3>
+<p>The forward chain protects the devices behind the router. In this example the firewall drops unwanted traffic and accepts everything else.</p>
+<p>First create an address list with the addresses that cannot be the source or the destination of a packet on the internet:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=not_in_internet address=0.0.0.0/8 comment=RFC6890
+add list=not_in_internet address=172.16.0.0/12 comment=RFC6890
+add list=not_in_internet address=192.168.0.0/16 comment=RFC6890
+add list=not_in_internet address=10.0.0.0/8 comment=RFC6890
+add list=not_in_internet address=169.254.0.0/16 comment=RFC6890
+add list=not_in_internet address=127.0.0.0/8 comment=RFC6890
+add list=not_in_internet address=224.0.0.0/4 comment=Multicast
+add list=not_in_internet address=198.18.0.0/15 comment=RFC6890
+add list=not_in_internet address=192.0.0.0/24 comment=RFC6890
+add list=not_in_internet address=192.0.2.0/24 comment=RFC6890
+add list=not_in_internet address=198.51.100.0/24 comment=RFC6890
+add list=not_in_internet address=203.0.113.0/24 comment=RFC6890
+add list=not_in_internet address=100.64.0.0/10 comment=RFC6890
+add list=not_in_internet address=240.0.0.0/4 comment=RFC6890
+</code></pre>
+<p>Then add the rules:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=fasttrack-connection \
+    connection-state=established,related comment=&quot;FastTrack&quot;
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;Accept established, related, untracked&quot;
+add chain=forward action=drop connection-state=invalid \
+    log=yes log-prefix=invalid comment=&quot;Drop invalid&quot;
+add chain=forward action=drop dst-address-list=not_in_internet \
+    in-interface-list=LAN out-interface-list=!LAN \
+    log=yes log-prefix=!public_from_LAN \
+    comment=&quot;Drop tries to reach not public addresses from LAN&quot;
+add chain=forward action=drop connection-state=new \
+    connection-nat-state=!dstnat in-interface-list=WAN \
+    log=yes log-prefix=!NAT \
+    comment=&quot;Drop incoming packets that are not NATed&quot;
+add chain=forward action=drop src-address-list=not_in_internet \
+    in-interface-list=WAN log=yes log-prefix=!public \
+    comment=&quot;Drop incoming from internet which is not public IP&quot;
+add chain=forward action=drop src-address=!192.168.88.0/24 \
+    in-interface-list=LAN log=yes log-prefix=LAN_!LAN \
+    comment=&quot;Drop packets from LAN that do not have LAN IP&quot;
+add chain=forward action=jump jump-target=icmp protocol=icmp \
+    comment=&quot;Jump to ICMP filters&quot;
+</code></pre>
+<p>The rules do the following, in this order:</p>
+<ul>
+<li>FastTrack and accept the packets of established and related connections, so that the remaining rules see only new connections and invalid packets.</li>
+<li>Drop invalid packets and log them with the prefix "invalid".</li>
+<li>Drop packets from the local network to addresses that do not exist on the internet, and log them with the prefix "!public_from_LAN". If the router is behind another router with private addresses, for example the modem of the provider, or has local networks on interfaces that are not in the <code>LAN</code> list, remove those networks from the list.</li>
+<li>Drop new connections from the internet that are not destination NATed, which means that no port forward matches them, and log them with the prefix "!NAT".</li>
+<li>Drop packets from the internet whose source address is not a public address, and log them with the prefix "!public". The rule before it has already dropped the new connections that no port forward matches, so this rule works on the port-forwarded connections.</li>
+<li>Drop packets from the local network that do not have an address of the local network, 192.168.88.0/24 in this example, and log them with the prefix "LAN_!LAN". If the router has more local networks, change the rule so that it accepts their addresses too.</li>
+<li>Send the remaining ICMP packets to the <code>icmp</code> chain. The chain is created by the rules of the next block.</li>
+</ul>
+<p>The rules log what they drop. Remove <code>log=yes</code> from the rules whose log entries you do not need.</p>
+<h3 id="accept-only-the-needed-icmp-messages">Accept only the needed ICMP messages</h3>
+<p>The <code>icmp</code> chain accepts the ICMP types and codes that the network needs and drops the rest. The jump rule in the forward chain sends ICMP packets to it. The forward chain accepts established and related packets before the jump, so the chain processes the ICMP packets that start a connection, such as echo requests:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=icmp action=accept protocol=icmp icmp-options=0:0 \
+    comment=&quot;Echo reply&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=3:0 \
+    comment=&quot;Net unreachable&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=3:1 \
+    comment=&quot;Host unreachable&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=3:4 \
+    comment=&quot;Fragmentation required&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=8:0 \
+    comment=&quot;Echo request&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=11:0 \
+    comment=&quot;Time exceeded&quot;
+add chain=icmp action=accept protocol=icmp icmp-options=12:0 \
+    comment=&quot;Parameter problem&quot;
+add chain=icmp action=drop comment=&quot;Drop all other types&quot;
+</code></pre>
+<h2 id="build-an-ipv6-firewall">Build an IPv6 firewall</h2>
+<p>The IPv6 firewall follows the same idea as the IPv4 firewall, but IPv6 needs more protocols to work, and the devices of the local network usually have public addresses.</p>
+<h3 id="protect-the-router_1">Protect the router</h3>
+<p>First create an address list with the addresses of your local network: the link-local addresses, the public prefix that your provider has assigned, and a ULA prefix if you use one. Replace <code>2001:db8:1::/48</code> and <code>fd12:672e:6f65:8899::/64</code> with your prefixes. The same list is used for the devices of the local network in the next section: a device whose address is not in the list can send only ICMPv6 to the internet.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The last rule of this block drops every connection to the router that the rules before it do not accept. Before you add the rules, make sure that the address from which you manage the router is in the <code>allowed</code> list and that its interface is in the <code>LAN</code> list, or use <a href="../../management-tools/console#safe-mode">Safe Mode</a>.</p>
+</div>
+<p>Then add the input rules:</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list
+add list=allowed address=fe80::/10 comment=&quot;Link-local&quot;
+add list=allowed address=2001:db8:1::/48 comment=&quot;Public prefix&quot;
+add list=allowed address=fd12:672e:6f65:8899::/64 comment=&quot;ULA prefix&quot;
+/ipv6/firewall/filter
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;Accept established, related, untracked&quot;
+add chain=input action=drop connection-state=invalid \
+    comment=&quot;Drop invalid&quot;
+add chain=input action=accept protocol=icmpv6 comment=&quot;Accept ICMPv6&quot;
+add chain=input action=accept protocol=udp dst-port=33434-33534 \
+    comment=&quot;Accept UDP traceroute&quot;
+add chain=input action=accept protocol=udp dst-port=546 \
+    src-address=fe80::/10 \
+    comment=&quot;Accept DHCPv6 client prefix delegation&quot;
+add chain=input action=drop src-address=fe80::/10 \
+    in-interface-list=WAN log=yes log-prefix=dropLL_from_public \
+    comment=&quot;Drop link-local from the internet&quot;
+add chain=input action=accept src-address-list=allowed \
+    in-interface-list=LAN \
+    comment=&quot;Accept from the allowed addresses&quot;
+add chain=input action=drop comment=&quot;Drop everything else&quot;
+</code></pre>
+<p>The rules do the following:</p>
+<ul>
+<li>Accept the packets of established, related and untracked connections, and drop invalid packets.</li>
+<li>Accept ICMPv6, which IPv6 needs for neighbor discovery.</li>
+<li>Accept UDP traceroute.</li>
+<li>Accept the answers to the DHCPv6 client of the router, which it uses for prefix delegation.</li>
+<li>Drop packets with a link-local source address that arrive from the internet, and log them.</li>
+<li>Accept packets from the addresses of the <code>allowed</code> list that arrive from the local network.</li>
+<li>Drop everything else.</li>
+</ul>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>In setups with a DHCPv6 relay, the source address of the DHCPv6 packets can be outside the link-local range. In that case, remove the <code>src-address</code> from the rule that accepts the DHCPv6 client prefix delegation, or change it to the address of the relay.</p>
+</div>
+<h3 id="protect-the-devices-of-the-local-network_1">Protect the devices of the local network</h3>
+<p>This step is more important for IPv6 than for IPv4. With IPv4, the devices mostly have private addresses behind NAT and cannot be reached directly from the internet. With IPv6, the devices usually have public addresses and can be reached from the internet, so they need filter rules that protect them.</p>
+<p>A basic protection of the local network:</p>
+<ul>
+<li>Accepts the packets of established, related and untracked connections.</li>
+<li>Drops invalid packets.</li>
+<li>Accepts ICMPv6 from the local network.</li>
+<li>Accepts new connections only from the local network, from the addresses of the <code>allowed</code> list.</li>
+<li>Drops everything else.</li>
+</ul>
+<pre><code class="language-ros">/ipv6/firewall/filter
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;Accept established, related, untracked&quot;
+add chain=forward action=drop connection-state=invalid \
+    log=yes log-prefix=ipv6,invalid comment=&quot;Drop invalid&quot;
+add chain=forward action=accept protocol=icmpv6 \
+    in-interface-list=LAN comment=&quot;Accept ICMPv6 from the LAN&quot;
+add chain=forward action=accept src-address-list=allowed \
+    in-interface-list=LAN comment=&quot;Accept new connections from the LAN&quot;
+add chain=forward action=drop comment=&quot;Drop everything else&quot;
+</code></pre>
+<h2 id="raw-filtering">RAW filtering</h2>
+<p>The firewall RAW table drops or bypasses packets before connection tracking, which reduces the load on the CPU. It is well suited for DoS and DDoS attack mitigation.</p>
+<p>The RAW table has its own chains, <code>prerouting</code> and <code>output</code>, and does not have matchers that depend on connection tracking. Chains, properties and examples are described on the <a href="./raw">RAW</a> page.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="./common-firewall-matchers-and-actions">Common Firewall Matchers and Actions</a> - rule counters and the order of the matchers.</li>
+<li><a href="../connection-tracking">Connection tracking</a> - connection states and FastTrack.</li>
+<li><a href="../user-guides/building-advanced-firewall">Building advanced firewall</a></li>
+<li><a href="../user-guides/connection-rate">Connection Rate</a></li>
+<li><a href="../user-guides/bruteforce-prevention">SSH brute-force protection</a></li>
+<li><a href="../user-guides/ddos-protection">Syn/DoS protection</a></li>
+<li>CLI reference: <a href="../../cli-reference/ip/firewall/filter"><code>/ip/firewall/filter</code></a>, <a href="../../cli-reference/ipv6/firewall/filter"><code>/ipv6/firewall/filter</code></a></li>
+</ul>
+<hr />
+<h1 id="layer7">Layer7</h1>
+<blockquote>
+<p>Layer7 protocol inspection matches regular expressions against the payload of IPv4 ICMP, TCP and UDP streams. The page covers the inspection window, direction requirements, regular expression syntax, examples for RDP...</p>
+</blockquote>
+<h1 id="layer7_1">Layer7</h1>
+<p>Layer7-protocol matches a regular expression against the payload of an IPv4 ICMP, TCP or UDP stream. Use it when the port does not identify the protocol reliably, for example when an application runs on non-standard ports, and the payload contains a recognizable signature. The examples use RDP and Telnet because both payloads contain distinctive strings.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The L7 matcher is resource-intensive. Use it only for specific traffic. Do not use it for generic web blocking: HTTPS and QUIC encrypt the HTTP request and response, so the matcher cannot see the web traffic, and inspecting all web traffic increases CPU and memory use. Use other features to block web pages by URL.</p>
+</div>
+<h2 id="configuration">Configuration</h2>
+<p>Define a pattern in the <code>layer7-protocol</code> menu, then reference it from a firewall rule. The matcher is available in the IPv4 firewall; it is not available in <code>/ipv6/firewall</code> or <code>/ip/firewall/raw</code>.</p>
+<pre><code class="language-ros">/ip/firewall/layer7-protocol
+add name=rdp regexp=&quot;rdpdr.*cliprdr.*rdpsnd&quot;
+
+/ip/firewall/filter
+add chain=forward action=drop protocol=tcp layer7-protocol=rdp \
+    log=yes log-prefix=rdp
+</code></pre>
+<p>Add regular firewall rules before the L7 rule to accept traffic that is already known by address or port. Those packets are not passed to the matcher:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept protocol=tcp dst-port=80
+add chain=forward action=accept protocol=tcp dst-port=443
+add chain=forward action=drop protocol=tcp layer7-protocol=rdp
+</code></pre>
+<p>The accepted ports are unrelated web traffic. Do not accept the traffic you want the L7 rule to match before the rule, because the accept rule bypasses the matcher.</p>
+<p>The pattern matches a payload that contains the three RDP channel names in this order. <code>.*</code> matches any characters between them; escape a literal dot as <code>\\.</code> in a command (stored as <code>\.</code>), because an unescaped <code>.</code> matches any character. The example does not restrict the port, so the matcher sees both directions.</p>
+<p>Check the rule counters with <code>/ip/firewall/filter/print stats</code>, or the log entries with the <code>rdp</code> prefix. The counter increases only when the pattern matches.</p>
+<p>An L7 drop rule acts after the pattern is found. Packets sent before the match, including the packet that carries the signature, can already be forwarded, so the first exchange can complete. Use L7 to classify traffic or to stop a session after the signature appears, not as a guarantee that no data is exchanged.</p>
+<h2 id="match-traffic-to-the-router">Match traffic to the router</h2>
+<p>A rule in the <code>forward</code> chain can see both directions of a connection when it has no address or port conditions. A rule in the <code>input</code> chain sees only packets addressed to the router, so use the same <code>layer7-protocol</code> in an <code>output</code> rule as well. Without the second rule, the matcher does not receive the packets in the other direction and a pattern from that direction does not match.</p>
+<p>The following example matches the Telnet negotiation that the router sends when a client connects to its Telnet service:</p>
+<pre><code class="language-ros">/ip/firewall/layer7-protocol
+add name=telnet regexp=&quot;^\\xff[\\xfb-\\xfe].\\xff[\\xfb-\\xfe].\\xff[\\xfb-\\xfe]&quot;
+
+/ip/firewall/filter
+add chain=input action=accept protocol=tcp dst-port=23 \
+    layer7-protocol=telnet
+add chain=output action=accept protocol=tcp src-port=23 \
+    layer7-protocol=telnet
+</code></pre>
+<p>The pattern matches the first eight bytes of the Telnet negotiation: <code>\xff</code>, a command byte in the range <code>\xfb</code> to <code>\xfe</code>, and an option byte, then the same pair once more, then <code>\xff</code> and a command byte. The input rule matches the client-to-server port (<code>dst-port=23</code>); the output rule matches the server-to-client port (<code>src-port=23</code>). Both rules need the same <code>layer7-protocol</code>; use the action you need in each chain. To block matching connections, use <code>action=drop</code> in both.</p>
+<p>Write hex escapes with a double backslash in a script or command (<code>\\xff</code>); the router stores the pattern as <code>\xff</code>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="the-rule-does-not-match">The rule does not match</h3>
+<p>Check these points in order:</p>
+<ul>
+<li><strong>Encrypted traffic.</strong> HTTPS and QUIC encrypt the application data, so the matcher cannot see the HTTP request or response.</li>
+<li><strong>Inspection window.</strong> The matcher examines at most the first 10 packets that carry data or the first 2 KB of application payload, whichever comes first. TCP ACK-only packets are not counted, and the 2 KB includes application headers such as HTTP; IP and TCP headers are not counted. A pattern that appears later in the stream is not found. For example, a large HTTP response can place a signature beyond 2 KB.</li>
+<li><strong>Direction.</strong> A rule with address or port conditions sees only the packets that match them. If the pattern can appear in the response, do not restrict the rule to the request direction. Use a rule that matches both directions, or add a rule with the reversed conditions. In the <code>input</code> chain, add the same matcher to an <code>output</code> rule. For other chains, make sure a rule sees both directions.</li>
+<li><strong>Case.</strong> Matching is case-insensitive. A pattern cannot distinguish uppercase from lowercase.</li>
+<li><strong>Regular expression syntax.</strong> Hex escapes such as <code>\x2f</code> work, and character ranges such as <code>[0-9]</code> work. POSIX character classes such as <code>[[:digit:]]</code> do not match, and octal escapes such as <code>\057</code> do not work. RouterOS rejects a regexp that it cannot compile when you add the definition, with an error such as <code>bad regexp: unmatched ()</code>.</li>
+<li><strong>Rule order.</strong> Rules are evaluated in order. Once an L7 rule matches a connection, later L7 rules do not inspect it, so put the most specific rule first. Add regular accept rules before L7 rules to reduce the traffic the matcher sees.</li>
+<li><strong>Menu.</strong> L7 is available only in the IPv4 firewall, not in <code>/ipv6/firewall</code> or <code>/ip/firewall/raw</code>.</li>
+</ul>
+<h3 id="cpu-and-memory-use">CPU and memory use</h3>
+<p>Each connection is inspected separately until the pattern matches or the window ends. Many connections, or broad patterns, increase CPU and memory use. Keep the number of L7 rules small, put regular matchers before them, and do not use L7 for generic web traffic. No fixed memory or CPU figure applies: the cost depends on the number of connections the rule inspects and on the pattern.</p>
+<h2 id="technical-details">Technical details</h2>
+<p>The matcher collects data from a connection and searches for the regular expression in it. It stops at 10 data packets or 2 KB of application payload, whichever is reached first. The 2 KB includes application headers such as HTTP; IP and TCP headers are not counted. If the pattern is not found, the matcher stops inspecting the connection, frees its state and leaves the protocol unknown. If the pattern is found, the firewall rule matches, and later L7 rules do not inspect the connection.</p>
+<p>Matching is case-insensitive: both the pattern and the payload are compared without regard to case.</p>
+<p>The <code>regexp</code> value uses a regular expression syntax with these behaviors: hex escapes (<code>\xNN</code>) and character ranges (<code>[0-9]</code>) are supported; POSIX character classes (<code>[[:digit:]]</code>) and octal escapes are not. Write a backslash as <code>\\</code> in a script or command so that the stored value contains <code>\xNN</code>.</p>
+<p>Patterns for common protocols are collected in the <a href="https://l7-filter.sourceforge.net/Pattern-HOWTO">l7-filter project</a>, but check each pattern on your traffic: the project's syntax and the RouterOS regexp engine may differ.</p>
+<p>All properties of the <code>/ip/firewall/layer7-protocol</code> menu are described in the <a href="../../cli-reference/ip/firewall/layer7-protocol/"><code>/ip/firewall/layer7-protocol</code></a> CLI reference.</p>
+<hr />
+<h1 id="mangle">Mangle</h1>
+<blockquote>
+<p>The firewall mangle table of RouterOS marks packets, connections and routing decisions for other facilities, such as queues and policy routing, and changes fields of the IP header, such as the TCP MSS and DSCP.</p>
+</blockquote>
+<h1 id="mangle_1">Mangle</h1>
+<p>The mangle table marks packets for later processing. Other facilities of RouterOS, such as queues, NAT and routing, find a packet by its mark and process it accordingly. There are three kinds of marks: packet marks, connection marks and routing marks. The marks exist only inside the router: they are not sent to the network.</p>
+<p>The mangle table is also used to change some fields of the IP header, such as the DSCP and TTL fields, and the MSS of TCP connections.</p>
+<p>Mangle rules are in the <code>/ip/firewall/mangle</code> menu for IPv4 and in the <code>/ipv6/firewall/mangle</code> menu for IPv6. The table has five predefined chains that cannot be deleted:</p>
+<p><em>[gambar: Packet flow chains with the mangle stages marked: mangle prerouting, mangle input, mangle forward, mangle output and mangle postrouting]</em></p>
+<ul>
+<li><strong>prerouting</strong> - processes packets when they arrive on an interface, before the routing decision.</li>
+<li><strong>input</strong> - processes packets for the router itself, before they are given to a local process.</li>
+<li><strong>forward</strong> - processes packets that are routed through the router.</li>
+<li><strong>output</strong> - processes packets that the router itself sends.</li>
+<li><strong>postrouting</strong> - processes packets when they leave through an interface.</li>
+</ul>
+<p>The examples on this page use the <code>WAN</code> and <code>LAN</code> interface lists of the default configuration. Replace the addresses of the examples with the addresses of your hosts.</p>
+<p>The default firewall <a href="../connection-tracking#fasttrack">FastTracks</a> established connections, and FastTracked packets bypass the mangle rules. A mangle rule that has to see all packets of a connection works only when the connection is kept out of FastTrack. The section about marking connections shows how.</p>
+<h2 id="change-mss">Change MSS</h2>
+<p>VPN and PPPoE links carry smaller packets than Ethernet, because of the encapsulation overhead. A packet that is too large for the link has to be fragmented, but a packet with the "Don't Fragment" flag cannot be fragmented and is discarded. On links where path MTU discovery (PMTUD) does not work, this breaks TCP connections with large packets: web pages that do not load, and problems with FTP and e-mail.</p>
+<p>To solve this, decrease the maximum segment size (MSS) of the TCP connections that go through the link. The MSS is the largest amount of data in one TCP packet, 40 bytes less than the packet size: for a link with an MTU of 1340 bytes, the MSS is 1300. The MSS is set in the SYN packets of a connection, so the rule matches SYN packets with an MSS that is larger than the new value:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=change-mss new-mss=1300 protocol=tcp \
+    tcp-flags=syn tcp-mss=1301-65535 out-interface-list=WAN \
+    comment=&quot;Clamp MSS&quot;
+</code></pre>
+<p>Use the interface of the link in place of the <code>WAN</code> list, for example <code>out-interface=pppoe-out</code>.</p>
+<p>To check, open a TCP connection through the link and look at the counters of the rule:</p>
+<pre><code class="language-ros">/ip/firewall/mangle/print stats where comment~&quot;MSS&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION      BYTES  PACKETS
+;;; Clamp MSS
+0 forward  change-mss     60        1
+</code></pre>
+<h2 id="mark-connections-and-packets">Mark connections and packets</h2>
+<p>To process all packets of some connections, for example to limit the traffic of one host with a queue, mark the connections and then mark their packets. Matching the address of each packet is more work for the router than matching a connection mark: the first rule looks only at the first packet of a connection, and the second rule matches the mark that connection tracking keeps.</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=mark-connection \
+    new-connection-mark=client_conn connection-state=new \
+    src-address=10.0.0.2 in-interface-list=LAN \
+    comment=&quot;Mark the connections of the client&quot;
+add chain=forward action=mark-packet new-packet-mark=client_p \
+    connection-mark=client_conn passthrough=no \
+    comment=&quot;Mark the packets of the client&quot;
+</code></pre>
+<p>The first rule has the default <code>passthrough=yes</code>, so the packet continues to the next rule. The second rule has <code>passthrough=no</code>: the remaining mangle rules of the chain do not process the packet. Put rules that the marked packets also have to pass, such as the MSS rule, before it.</p>
+<p>The first rule matches new connections. Connections that are already open when you add the rules stay without a mark.</p>
+<p>Use the packet mark in a queue, for example in a <a href="../queues/queue-tree">queue tree</a>. A queue with <code>parent=global</code> limits the traffic of both directions together:</p>
+<pre><code class="language-ros">/queue/tree
+add name=client parent=global packet-mark=client_p max-limit=5M
+</code></pre>
+<p>FastTracked packets bypass the mangle rules and the queues, except queue trees that are attached to an interface. Keep the marked connections out of FastTrack: this change makes the default FastTrack rule match only connections without a connection mark.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find comment=&quot;defconf: fasttrack&quot;] connection-mark=no-mark
+</code></pre>
+<p>Check the result with <code>/ip/firewall/filter/print where action=fasttrack-connection</code>: if your FastTrack rule has another comment, the command changes nothing.</p>
+<p>To check the marks, send traffic from the host and look at the counters of the mangle rules. The connection list shows the marked connections with <code>/ip/firewall/connection/print where connection-mark=client_conn</code>.</p>
+<pre><code class="language-ros">/ip/firewall/mangle/print stats where comment~&quot;client&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION               BYTES  PACKETS
+;;; Mark the connections of the client
+1 forward  mark-connection         60        1
+;;; Mark the packets of the client
+2 forward  mark-packet      1 270 796    1 006
+</code></pre>
+<h2 id="route-some-traffic-through-another-provider">Route some traffic through another provider</h2>
+<p>A routing mark makes the router look up the route for a packet in another routing table. In this example the router has a second provider with the gateway 172.16.17.2 on the interface <code>ether5</code>, and the server 10.0.0.3 has to use it for the connections that it opens to the internet.</p>
+<p>Add the interface of the second provider to the <code>WAN</code> list, so that the masquerade rule and the firewall rules of the default configuration cover it:</p>
+<pre><code class="language-ros">/interface/list/member
+add list=WAN interface=ether5
+</code></pre>
+<p>Then add the routing table, its default route and the mangle rules:</p>
+<pre><code class="language-ros">/routing/table
+add name=to-isp2 fib
+/ip/route
+add dst-address=0.0.0.0/0 gateway=172.16.17.2 routing-table=to-isp2
+/ip/firewall/mangle
+add chain=prerouting action=mark-connection \
+    new-connection-mark=isp2_conn connection-state=new \
+    src-address=10.0.0.3 dst-address-type=!local \
+    in-interface-list=LAN comment=&quot;Server through the second provider&quot;
+add chain=prerouting action=mark-routing new-routing-mark=to-isp2 \
+    connection-mark=isp2_conn in-interface-list=LAN passthrough=no \
+    comment=&quot;Server through the second provider&quot;
+</code></pre>
+<ul>
+<li>The first rule marks the connections that the server opens. <code>dst-address-type=!local</code> leaves out the connections to the router itself. Connections that are opened from the internet to the server, for example through a port forward, get no mark and use the main routing table.</li>
+<li>The second rule sets the routing mark on the packets of the marked connections that arrive from the local network. The mark is set in the <code>prerouting</code> chain, before the routing decision.</li>
+<li>FastTrack works only with the main routing table. The FastTrack rule of the previous section, with <code>connection-mark=no-mark</code>, keeps the marked connections out of FastTrack.</li>
+</ul>
+<p>When the interface of the second provider is down, the route of the <code>to-isp2</code> table is inactive, and the server uses the main routing table again.</p>
+<p>To check, open connections from the server and look at the counters:</p>
+<pre><code class="language-ros">/ip/firewall/mangle/print stats where comment~&quot;second provider&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION               BYTES  PACKETS
+;;; Server through the second provider
+0 prerouting  mark-connection        116        2
+;;; Server through the second provider
+1 prerouting  mark-routing     1 235 553      479
+</code></pre>
+<h2 id="set-the-dscp-value">Set the DSCP value</h2>
+<p>To set the DSCP field of packets, for example so that the devices after the router give priority to voice traffic, use <code>action=change-dscp</code>. This example sets DSCP 46 on the UDP packets that the PBX 10.0.0.3 sends to the internet. The rule changes only the packets that are not FastTracked.</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=postrouting action=change-dscp new-dscp=46 protocol=udp \
+    src-address=10.0.0.3 out-interface-list=WAN passthrough=no \
+    comment=&quot;Voice from the PBX&quot;
+</code></pre>
+<pre><code class="language-ros">/ip/firewall/mangle/print stats where comment~&quot;Voice&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN        ACTION       BYTES  PACKETS
+;;; Voice from the PBX
+1 postrouting  change-dscp    255        5
+</code></pre>
+<p>All actions and properties are described in the CLI reference of <a href="../../cli-reference/ip/firewall/mangle"><code>/ip/firewall/mangle</code></a> and <a href="../../cli-reference/ipv6/firewall/mangle"><code>/ipv6/firewall/mangle</code></a>.</p>
+<hr />
+<h1 id="nat">NAT</h1>
+<blockquote>
+<p>Network address translation in RouterOS: masquerade and source NAT for a local network, destination NAT for port forwarding, hairpin NAT, redirect, 1:1 NAT, CGNAT, endpoint-independent NAT and the NAT helpers.</p>
+</blockquote>
+<h1 id="nat_1">NAT</h1>
+<p>Network address translation (NAT) lets the hosts of a local network use one set of IP addresses inside the network and another set of addresses outside it. The NAT router rewrites the addresses of the packets on their way to and from the local network.</p>
+<p>NAT rules are in the <code>/ip/firewall/nat</code> menu for IPv4 and in the <code>/ipv6/firewall/nat</code> menu for IPv6. RouterOS does not support NAT64.</p>
+<p>A NAT rule matches only the first packet of a connection. <a href="../connection-tracking">Connection tracking</a> remembers the translation and applies it to all other packets of the connection.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A NAT rule that you add, change or remove does not affect connections that are already open: they keep their translation until they end. To apply the new rules to them at once, remove the connections from the connection list, see <a href="../connection-tracking">Connection tracking</a>.</p>
+</div>
+<p>The examples on this page use the network of the diagrams: the local network 10.0.0.0/24 behind the gateway 10.0.0.1, and the public address 172.16.16.1 on the interface to the internet. The interface lists <code>WAN</code> and <code>LAN</code> hold the interface to the internet and the local bridge, as in the default configuration. In your own rules, replace the local network 10.0.0.0/24, the server 10.0.0.3 and the public address 172.16.16.1 with your values.</p>
+<p>When several NAT rules of a chain match a connection, the first one in the list is used. Some examples therefore place their rule before the masquerade rule, which they find by the comment that the masquerade example on this page gives it. On your router, use the comment of your own source NAT rule for the local network, whether it is a masquerade or a <code>src-nat</code> rule.</p>
+<h2 id="types-of-nat-and-chains">Types of NAT and chains</h2>
+<p><em>[gambar: Packet flow chains with the NAT stages marked: dst-nat in prerouting, NAT input, NAT output, and src-nat in postrouting]</em></p>
+<p>There are two types of NAT:</p>
+<ul>
+<li><strong>Source NAT</strong> (<code>chain=srcnat</code>) is applied to packets that leave the local network. The router replaces the private source address of a packet with a public address, and does the reverse for the reply packets.</li>
+<li><strong>Destination NAT</strong> (<code>chain=dstnat</code>) is applied to packets that arrive for the local network. The router replaces the destination address of a packet with the address of a host in the local network. It is most often used to make a host of the local network reachable from the internet.</li>
+</ul>
+<p>The NAT table also has the <code>input</code> and <code>output</code> chains, for packets that are delivered to the router itself and packets that the router itself sends:</p>
+<ul>
+<li><strong>input</strong> - processes packets that enter the router and have one of the addresses of the router as their destination. Packets that pass through the router are not processed by the rules of this chain.</li>
+<li><strong>output</strong> - processes packets that the router itself sends. Packets that pass through the router are not processed by the rules of this chain.</li>
+</ul>
+<h2 id="source-nat">Source NAT</h2>
+<h3 id="masquerade">Masquerade</h3>
+<p>To give the hosts of the local network access to the internet through the public address of the router, use <code>action=masquerade</code>. The router replaces the source address with the address of the interface through which the packet leaves. The default configuration has such a rule.</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=masquerade src-address=10.0.0.0/24 \
+    out-interface-list=WAN comment=&quot;Masquerade the local network&quot;
+</code></pre>
+<p>Masquerade is made for a public address that can change, for example an address from the DHCP server of the provider or from a PPPoE connection.</p>
+<p>When the interface goes down or its address changes, the router removes all masqueraded connections of that interface from the connection list. This makes the recovery after an address change faster. On unstable links with a second way to the internet it can have a side effect:</p>
+<ul>
+<li>When the link goes down, the router removes the masqueraded connections.</li>
+<li>The next packet of each removed connection arrives in the firewall as a new connection. If the primary link is not back, the packet leaves through the other route, and a new masqueraded connection is created there.</li>
+<li>When the primary link comes back, routing uses it again, and the packets of these connections leave through the primary interface without being masqueraded. Local addresses leak to the public network.</li>
+</ul>
+<p>To avoid this, add a blackhole route as an alternative to the route that can disappear.</p>
+<h3 id="source-nat-to-a-fixed-address">Source NAT to a fixed address</h3>
+<p>When the public address does not change, you can use <code>action=src-nat</code> in place of masquerade and set the address in <code>to-addresses</code>. Disable or remove the masquerade rule for the same traffic, or put this rule before it:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=src-nat src-address=10.0.0.0/24 \
+    out-interface-list=WAN to-addresses=172.16.16.1 \
+    comment=&quot;Source NAT to the public address&quot;
+</code></pre>
+<p>The provider now sees all requests coming from 172.16.16.1 and does not see the addresses of the local network. With <code>src-nat</code>, the connections stay in the connection list when the interface goes down.</p>
+<p>To check a source NAT rule, send traffic from the local network and look at the counters. The rule counts one packet for each new connection:</p>
+<pre><code class="language-ros">/ip/firewall/nat/print stats where comment~&quot;Source NAT&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION   BYTES  PACKETS
+;;; Source NAT to the public address
+0 srcnat  src-nat     56        1
+</code></pre>
+<p>Hosts behind NAT do not have true end-to-end connectivity. Protocols that need a connection that is opened from the outside, and some protocols without connections such as UDP, can fail. The NAT helpers and destination NAT, described on this page, work around these limits.</p>
+<h2 id="destination-nat">Destination NAT</h2>
+<p><em>[gambar: An office network 10.0.0.0/24 with a PC 10.0.0.2 and a server 10.0.0.3 behind a gateway, 10.0.0.1 on bridge1 and the public address 172.16.16.1 on ether1; a home PC with the public address 192.168.88.1 reaches the gateway over the internet]</em></p>
+<p>Destination NAT, often called port forwarding, makes a host of the local network reachable from the internet. In this example the administrator wants to reach the SSH service of the office server 10.0.0.3 from home. The rule translates connections to TCP port 22 of the public address 172.16.16.1 to the server:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=dst-nat protocol=tcp \
+    dst-address=172.16.16.1 dst-port=22 to-addresses=10.0.0.3 \
+    comment=&quot;SSH to the server&quot;
+</code></pre>
+<p>The default firewall accepts forwarded connections that are destination NATed, so no filter rule is needed. In a firewall that you built yourself, accept these connections in the forward chain, see <a href="./filter">Filter</a>.</p>
+<p>A forwarded port no longer reaches the router itself: with this rule, SSH to the public address opens the server and not the router.</p>
+<p>To check the rule, connect from the internet and look at the counters:</p>
+<pre><code class="language-ros">/ip/firewall/nat/print stats where comment~&quot;SSH&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION   BYTES  PACKETS
+;;; SSH to the server
+0 dstnat  dst-nat     60        1
+</code></pre>
+<p>A port forward opens the service to everyone on the internet. Limit it to the addresses that need it when you can. To allow only the home PC, whose public address is 192.168.88.1 in the diagram, add its address to the rule:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+set [find comment=&quot;SSH to the server&quot;] src-address=192.168.88.1
+</code></pre>
+<p>To forward a public port to another port of the server, set <code>to-ports</code>. This rule forwards port 8080 of the public address to the web server on port 80 of the server:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=dst-nat protocol=tcp \
+    dst-address=172.16.16.1 dst-port=8080 \
+    to-addresses=10.0.0.3 to-ports=80 \
+    comment=&quot;Web server on port 8080&quot;
+</code></pre>
+<p>When the public address of the router changes, match the interface in place of the address. This rule forwards port 8443 of any address of the router on the <code>WAN</code> interfaces to port 443 of the server. <code>dst-address-type=local</code> limits it to the addresses of the router itself:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=dst-nat protocol=tcp dst-port=8443 \
+    in-interface-list=WAN dst-address-type=local \
+    to-addresses=10.0.0.3 to-ports=443 \
+    comment=&quot;Web server, any public address&quot;
+</code></pre>
+<h2 id="hairpin-nat">Hairpin NAT</h2>
+<p>Hairpin NAT, also called NAT loopback, lets a host of the local network reach another host of the same network through the public address of the router.</p>
+<p>The router has this destination NAT rule for the web server:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=dst-nat protocol=tcp \
+    dst-address=172.16.16.1 dst-port=443 \
+    to-addresses=10.0.0.3 to-ports=443 comment=&quot;Web server&quot;
+</code></pre>
+<p>When the home PC connects to the web server, destination NAT works as expected:</p>
+<ol>
+<li>The client sends a packet with the source address 192.168.88.1 to the destination address 172.16.16.1, port 443.</li>
+<li>The router replaces the destination address with 10.0.0.3. The source address stays 192.168.88.1.</li>
+<li>The server replies with the source address 10.0.0.3 to the destination address 192.168.88.1.</li>
+<li>The router finds the connection of the reply and undoes the destination NAT: the source address of the reply becomes 172.16.16.1.</li>
+<li>The client receives the reply that it expects, and the connection is established.</li>
+</ol>
+<p><em>[gambar: The office PC 10.0.0.2 sends a request to the public address 172.16.16.1 (1), the gateway forwards it to the server 10.0.0.3 (2), and the server replies directly to the PC (3)]</em></p>
+<p>A client in the same network as the web server has a problem when it connects to the public address:</p>
+<ol>
+<li>The client sends a packet with the source address 10.0.0.2 to the destination address 172.16.16.1, port 443.</li>
+<li>The router replaces the destination address with 10.0.0.3. The source address stays 10.0.0.2.</li>
+<li>The server replies. The source address of the request is in its own network, so the server does not send the reply to the router: it sends it directly to 10.0.0.2, with the source address 10.0.0.3.</li>
+<li>The client receives the reply and discards it, because it expects a reply from 172.16.16.1 and not from 10.0.0.3.</li>
+</ol>
+<p>To solve this, add a source NAT rule for connections from the local network to the server, the hairpin NAT rule:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=masquerade protocol=tcp \
+    src-address=10.0.0.0/24 dst-address=10.0.0.3 \
+    out-interface-list=LAN comment=&quot;Hairpin NAT&quot;
+</code></pre>
+<p>With this rule:</p>
+<ol>
+<li>The client sends a packet with the source address 10.0.0.2 to the destination address 172.16.16.1, port 443.</li>
+<li>The router replaces the destination address with 10.0.0.3, and also replaces the source address with its own address in the local network, 10.0.0.1.</li>
+<li>The server replies to 10.0.0.1.</li>
+<li>The router undoes both translations: the reply reaches the client with the source address 172.16.16.1 and the destination address 10.0.0.2.</li>
+</ol>
+<p>The server sees these connections coming from the address of the router, 10.0.0.1, and not from the address of the client.</p>
+<p>To check, open the service from a host of the local network through the public address, and look at the counters of both rules:</p>
+<pre><code class="language-ros">/ip/firewall/nat/print stats where comment~&quot;Hairpin|Web server&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION      BYTES  PACKETS
+;;; Web server on port 8080
+0 dstnat  dst-nat        60        1
+;;; Web server
+1 dstnat  dst-nat       180        3
+;;; Hairpin NAT
+2 srcnat  masquerade     60        1
+</code></pre>
+<h2 id="redirect-dns-requests-to-the-router">Redirect DNS requests to the router</h2>
+<p><code>action=redirect</code> sends a connection to the router itself instead of its destination. This example makes all hosts of the local network use the DNS server of the router, whatever DNS server they are configured with. The router must answer DNS requests:</p>
+<pre><code class="language-ros">/ip/dns
+set allow-remote-requests=yes
+</code></pre>
+<p>With this setting the router answers DNS requests on all interfaces. The default firewall drops the requests that arrive from the internet; on a router without such rules, add them, so that the router is not an open resolver.</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=redirect protocol=udp dst-port=53 \
+    in-interface-list=LAN to-ports=53 comment=&quot;DNS to the router&quot;
+add chain=dstnat action=redirect protocol=tcp dst-port=53 \
+    in-interface-list=LAN to-ports=53 comment=&quot;DNS to the router&quot;
+</code></pre>
+<p>A host of the local network that asks any DNS server on port 53 now gets its answer from the router. Requests with DNS over HTTPS or DNS over TLS use other ports and are not redirected.</p>
+<pre><code class="language-ros">/ip/firewall/nat/print stats where comment~&quot;DNS&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION    BYTES  PACKETS
+;;; DNS to the router
+3 dstnat  redirect     56        1
+;;; DNS to the router
+4 dstnat  redirect      0        0
+</code></pre>
+<h2 id="map-a-public-subnet-to-local-addresses">Map a public subnet to local addresses</h2>
+<p><code>action=netmap</code> translates a whole subnet to another subnet of the same size, address by address (1:1 NAT). In this example the provider routes the public subnet 172.16.16.8/29 to the router. Each address of it is mapped to the local address with the same last bits: 172.16.16.11 to 10.0.0.11, and so on.</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=netmap dst-address=172.16.16.8/29 \
+    in-interface-list=WAN to-addresses=10.0.0.8/29 \
+    comment=&quot;1:1 NAT, to the local addresses&quot;
+add chain=srcnat action=netmap src-address=10.0.0.8/29 \
+    out-interface-list=WAN to-addresses=172.16.16.8/29 \
+    comment=&quot;1:1 NAT, to the public addresses&quot; \
+    place-before=[find comment=&quot;Masquerade the local network&quot;]
+</code></pre>
+<p>The first rule translates connections from the internet to the public addresses. The second rule translates the connections that the local hosts open, so that they leave with their own public address. It has to be before the masquerade rule, which would otherwise match first.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The first rule makes every port of the mapped hosts reachable from the internet, because the default firewall accepts destination NATed connections. Add filter rules in the forward chain that accept only the services that you want to offer, see <a href="./filter">Filter</a>.</p>
+</div>
+<pre><code class="language-ros">/ip/firewall/nat/print stats where comment~&quot;1:1&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN   ACTION  BYTES  PACKETS
+;;; 1:1 NAT, to the public addresses
+0 srcnat  netmap     56        1
+;;; 1:1 NAT, to the local addresses
+1 dstnat  netmap     56        1
+</code></pre>
+<h2 id="cgnat-nat444">CGNAT (NAT444)</h2>
+<p><em>[gambar: A customer network with RFC 1918 addresses behind a CE router, the carrier network 100.64.0.0/10 (RFC 6598) between the CE router and the CGN router, and the internet behind the CGN router]</em></p>
+<p>Carrier-grade NAT saves public IPv4 addresses. The provider uses the shared address space 100.64.0.0/10 (RFC 6598) inside its network and translates it to one public address, or to a range of them, on its edge router. The setup is also called NAT444, because three IPv4 address spaces are involved, as opposed to NAT44 for NAT in one place.</p>
+<p>The CGNAT configuration is a source NAT rule like any other. In this example 203.0.113.2 is the public address:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=src-nat src-address=100.64.0.0/10 \
+    out-interface-list=WAN to-addresses=203.0.113.2
+</code></pre>
+<p>NAT444 uses fewer public IPv4 addresses, but it has major drawbacks:</p>
+<ul>
+<li>The router that does CGNAT keeps the state of all translations, which needs a lot of memory and CPU resources.</li>
+<li>Some console games fail when two subscribers behind the same public address try to connect to each other.</li>
+<li>Tracking users for legal reasons needs extra logging, because many households share one public address.</li>
+<li>Everything that needs incoming connections is broken. With NAT in one place, users can set up port forwarding on their router; with CGNAT they cannot. They cannot host a web server, and IP phones cannot receive incoming calls by default.</li>
+<li>Some web servers limit the number of connections from one public address, to counter DoS attacks such as SYN floods. With CGNAT this limit is reached more often, and the service quality can suffer.</li>
+<li>6to4 needs globally reachable addresses and does not work in networks with addresses of limited reach.</li>
+</ul>
+<p>Packets with a source or destination address of the shared address space must not be forwarded across the borders of the provider's network, and providers must filter them on the links to other networks. On the edge router, drop them in the firewall filter. Do not drop packets with a shared source address on their way out to the internet on the router that does the CGNAT: the filter processes a packet before source NAT, so such a rule would drop the traffic of the subscribers.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=drop src-address=100.64.0.0/10 \
+    in-interface-list=WAN
+add chain=output action=drop dst-address=100.64.0.0/10 \
+    out-interface-list=WAN
+add chain=forward action=drop src-address=100.64.0.0/10 \
+    in-interface-list=WAN
+add chain=forward action=drop dst-address=100.64.0.0/10 \
+    out-interface-list=WAN
+</code></pre>
+<p>Providers can be required to log the mapped addresses, which is a problem in a large network. RFC 7422 describes a way to reduce the logging: instead of logging each connection, the CGN router maps each private address to a public address with a fixed range of ports. This needs a rule for each mapping:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Inside IP</th>
+<th style="text-align: left;">Outside IP and port range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">100.64.0.1</td>
+<td style="text-align: left;">203.0.113.2:5000-5199</td>
+</tr>
+<tr>
+<td style="text-align: left;">100.64.0.2</td>
+<td style="text-align: left;">203.0.113.2:5200-5399</td>
+</tr>
+<tr>
+<td style="text-align: left;">100.64.0.3</td>
+<td style="text-align: left;">203.0.113.2:5400-5599</td>
+</tr>
+<tr>
+<td style="text-align: left;">100.64.0.4</td>
+<td style="text-align: left;">203.0.113.2:5600-5799</td>
+</tr>
+</tbody>
+</table>
+<p>These rules replace the single source NAT rule of the first example: use one or the other. Create the rules with a script instead of writing them by hand. Change the six values at the top to fit your network. Save the script to a file and run it with <code>/import</code>, or store it in <code>/system/script</code> to create the rules again later.</p>
+<pre><code class="language-ros">{
+######## Adjustable values #########
+:local StartingAddress 100.64.0.1
+:local ClientCount 2
+:local AddressesPerClient 2
+:local PublicAddress 203.0.113.2
+:local StartingPort 5000
+:local PortsPerAddress 200
+####################################
+
+# All client chain jump
+:local count ($ClientCount * $AddressesPerClient)
+:local last ($StartingAddress + $count - 1)
+/ip/firewall/nat/add chain=srcnat action=jump jump-target=clients \
+    src-address=&quot;$StartingAddress-$last&quot;
+
+:local currentPort $StartingPort
+
+:for c from=1 to=$ClientCount do={
+    # Specific client chain jumps
+    :local first ($StartingAddress + ($AddressesPerClient * ($c - 1)))
+    :local range $first
+    :if ($AddressesPerClient &gt; 1) do={
+        :set range &quot;$first-$($first + $AddressesPerClient - 1)&quot;
+    }
+    /ip/firewall/nat/add chain=clients action=jump \
+        jump-target=&quot;client-$c&quot; src-address=$range
+
+    # Translation rules
+    :for a from=1 to=$AddressesPerClient do={
+        :local addr ($first + $a - 1)
+        :local lastPort ($currentPort + $PortsPerAddress - 1)
+        :local ports &quot;$currentPort-$lastPort&quot;
+        /ip/firewall/nat/add chain=&quot;client-$c&quot; action=src-nat \
+            protocol=tcp src-address=$addr \
+            to-addresses=$PublicAddress to-ports=$ports
+        /ip/firewall/nat/add chain=&quot;client-$c&quot; action=src-nat \
+            protocol=udp src-address=$addr \
+            to-addresses=$PublicAddress to-ports=$ports
+        :set currentPort ($currentPort + $PortsPerAddress)
+    }
+}
+}
+</code></pre>
+<p>The script creates these rules:</p>
+<pre><code class="language-ros">/ip/firewall/nat/print
+</code></pre>
+<pre><code class="language-text"> 0  chain=srcnat action=jump jump-target=clients
+    src-address=100.64.0.1-100.64.0.4
+
+ 1  chain=clients action=jump jump-target=client-1
+    src-address=100.64.0.1-100.64.0.2
+
+ 2  chain=client-1 action=src-nat to-addresses=203.0.113.2 to-ports=5000-5199
+    protocol=tcp src-address=100.64.0.1
+
+ 3  chain=client-1 action=src-nat to-addresses=203.0.113.2 to-ports=5000-5199
+    protocol=udp src-address=100.64.0.1
+
+ 4  chain=client-1 action=src-nat to-addresses=203.0.113.2 to-ports=5200-5399
+    protocol=tcp src-address=100.64.0.2
+
+ 5  chain=client-1 action=src-nat to-addresses=203.0.113.2 to-ports=5200-5399
+    protocol=udp src-address=100.64.0.2
+
+ 6  chain=clients action=jump jump-target=client-2
+    src-address=100.64.0.3-100.64.0.4
+
+ 7  chain=client-2 action=src-nat to-addresses=203.0.113.2 to-ports=5400-5599
+    protocol=tcp src-address=100.64.0.3
+
+ 8  chain=client-2 action=src-nat to-addresses=203.0.113.2 to-ports=5400-5599
+    protocol=udp src-address=100.64.0.3
+
+ 9  chain=client-2 action=src-nat to-addresses=203.0.113.2 to-ports=5600-5799
+    protocol=tcp src-address=100.64.0.4
+
+10  chain=client-2 action=src-nat to-addresses=203.0.113.2 to-ports=5600-5799
+    protocol=udp src-address=100.64.0.4
+</code></pre>
+<h2 id="endpoint-independent-nat">Endpoint-independent NAT</h2>
+<p>Endpoint-independent NAT creates a mapping for a source address and port of the local network, and uses the same mapping for all later packets from that address and port, whatever their destination. The first rule creates the mappings. It has to be before the masquerade rule:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=endpoint-independent-nat protocol=udp \
+    out-interface-list=WAN comment=&quot;Endpoint-independent mapping&quot; \
+    place-before=[find comment=&quot;Masquerade the local network&quot;]
+add chain=dstnat action=endpoint-independent-nat protocol=udp \
+    in-interface-list=WAN comment=&quot;Endpoint-independent filtering&quot;
+</code></pre>
+<p>The second rule enables endpoint-independent filtering: a packet from any source on the internet that arrives for a mapped address and port is forwarded to the local host of the mapping. This opens each mapped UDP port of the local hosts to the whole internet for as long as the mapping exists.</p>
+<p>Endpoint-independent NAT works only with UDP: the rules need <code>protocol=udp</code>. The <code>randomise-ports</code> option makes the router choose the public port of a mapping at random.</p>
+<p>See RFC 5128, sections 2.2.3 and 2.2.5, for the background.</p>
+<h2 id="nat-helpers">NAT helpers</h2>
+<p>Some protocols carry addresses or ports inside their data, or open additional connections, and do not work through NAT without help. RouterOS has NAT helpers for such protocols in the <code>/ip/firewall/service-port</code> menu:</p>
+<pre><code class="language-ros">/ip/firewall/service-port/print
+</code></pre>
+<pre><code class="language-text">Flags: X - DISABLED, I - INVALID
+Columns: NAME, PORTS
+#   NAME     PORTS
+0   ftp         21
+1   tftp        69
+2 X irc       6667
+3   h323          
+4   sip       5060
+              5061
+5   pptp          
+6 X rtsp       554
+7   udplite       
+8   dccp          
+9   sctp          
+</code></pre>
+<ul>
+<li><code>ftp</code>, <code>tftp</code>, <code>irc</code>, <code>h323</code>, <code>sip</code>, <code>pptp</code> and <code>rtsp</code> are helpers for these protocols. You can disable each of them, and some have a <code>ports</code> setting.</li>
+<li>The <code>sip</code> helper has two more settings. <code>sip-direct-media</code> allows the RTP media stream to go directly from the caller to the callee; the default is <code>yes</code>. <code>sip-timeout</code> is the timeout of SIP UDP connections, one hour by default; some setups need a lower value.</li>
+<li><code>udplite</code>, <code>dccp</code> and <code>sctp</code> are built into connection tracking. They cannot be disabled separately: they are off only when connection tracking is off.</li>
+</ul>
+<p>When connection tracking is not active, all service ports are shown as invalid, with the <code>I</code> flag.</p>
+<p>The settings are described in the CLI reference of <a href="../../cli-reference/ip/firewall/service-port"><code>/ip/firewall/service-port</code></a>. All NAT properties are in the CLI reference of <a href="../../cli-reference/ip/firewall/nat"><code>/ip/firewall/nat</code></a> and <a href="../../cli-reference/ipv6/firewall/nat"><code>/ipv6/firewall/nat</code></a>.</p>
+<hr />
+<h1 id="raw">RAW</h1>
+<blockquote>
+<p>The RAW firewall table in RouterOS processes packets before connection tracking. Use it to drop unwanted packets early, or to exclude traffic from connection tracking with action=notrack.</p>
+</blockquote>
+<h1 id="raw_1">RAW</h1>
+<p>The firewall RAW table processes packets before <a href="../connection-tracking">connection tracking</a>. It has two uses:</p>
+<ul>
+<li>Drop unwanted packets before connection tracking and the mangle, NAT and filter rules process them.</li>
+<li>Exclude traffic from connection tracking with <code>action=notrack</code>.</li>
+</ul>
+<p>In both cases, the router creates no connection tracking entry for the packet.</p>
+<p>RAW rules are in <code>/ip/firewall/raw</code> for IPv4 and in <code>/ipv6/firewall/raw</code> for IPv6. The table has two built-in chains:</p>
+<ul>
+<li><strong>prerouting</strong> - every packet that enters the router, both packets for the router itself and packets that pass through it.</li>
+<li><strong>output</strong> - packets that the router itself sends.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>RAW rules work before connection tracking, so they are stateless: a rule sees each packet on its own and does not know which connection the packet belongs to. For packets that skip connection tracking with <code>action=notrack</code>, the mangle and filter rules are stateless too. Write the rules for both directions of the traffic: a rule for one direction does not cover the replies.</p>
+</div>
+<h2 id="drop-unwanted-traffic-before-connection-tracking">Drop unwanted traffic before connection tracking</h2>
+<p>Drop packets that arrive from the internet with a source address that is never valid there. <code>WAN</code> is the interface list of the default configuration that holds the internet port:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=bad_src address=0.0.0.0/8 comment=&quot;This network&quot;
+add list=bad_src address=127.0.0.0/8 comment=&quot;Loopback&quot;
+add list=bad_src address=224.0.0.0/4 comment=&quot;Multicast&quot;
+add list=bad_src address=240.0.0.0/4 comment=&quot;Reserved&quot;
+/ip/firewall/raw
+add chain=prerouting action=drop in-interface-list=WAN \
+    src-address-list=bad_src comment=&quot;Drop invalid source addresses&quot;
+</code></pre>
+<p>The rule drops every packet from these addresses that arrives on the WAN, before the router creates a connection tracking entry for it. Because the rule is stateless, it also drops the replies to connections that your own hosts open to these addresses. Put only addresses in the list that must never reach you. For how to maintain a list, see <a href="./address-lists">Address lists</a>.</p>
+<p>To check that the rule works, look at its counters:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/raw/print stats where comment~&quot;Drop invalid&quot;
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION  BYTES  PACKETS
+;;; Drop invalid source addresses
+0 prerouting  drop      168        3
+</code></pre>
+<p>To set the counters back to zero, use <code>/ip/firewall/raw/reset-counters-all</code>.</p>
+<p>To detect and drop a flood towards one destination, see <a href="../user-guides/ddos-protection">DDoS protection</a>.</p>
+<h2 id="exclude-traffic-from-connection-tracking">Exclude traffic from connection tracking</h2>
+<p>A router that routes between two local networks does not need connection tracking for that traffic, as long as no NAT and no stateful filtering apply to it. In this example, the networks are 192.168.88.0/24 and 192.168.99.0/24.</p>
+<p>This example is for a router that does not FastTrack this traffic, for example because you removed the FastTrack rule to use queues on it. The default configuration has a FastTrack rule for established connections, and a FastTrack rule does not match untracked packets, so the following rules take the traffic off FastTrack there.</p>
+<p>A connection has packets in both directions, so add one rule for each direction:</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=prerouting action=notrack src-address=192.168.88.0/24 \
+    dst-address=192.168.99.0/24 comment=&quot;Do not track LAN to LAN&quot;
+add chain=prerouting action=notrack src-address=192.168.99.0/24 \
+    dst-address=192.168.88.0/24 comment=&quot;Do not track LAN to LAN&quot;
+</code></pre>
+<p>Packets that match <code>action=notrack</code> continue through the remaining RAW rules and through the mangle and filter rules, but the router creates no entry for them in <code>/ip/firewall/connection</code>. In mangle and filter, they have the connection state <code>untracked</code>.</p>
+<p>The filter rules must accept untracked packets. The default configuration does: its rules that accept established and related connections in the input and forward chains also list <code>untracked</code>. Check your firewall:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/filter/print where connection-state~&quot;untracked&quot;
+0  ;;; defconf: accept established,related,untracked
+   chain=input action=accept connection-state=established,related,untracked
+
+1  ;;; defconf: accept established,related, untracked
+   chain=forward action=accept connection-state=established,related,untracked
+</code></pre>
+<p>If your own rules accept only established and related connections, add <code>untracked</code> to them:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+set [find action=accept connection-state=&quot;established,related&quot;] \
+    connection-state=established,related,untracked
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A filter rule that accepts <code>untracked</code> packets accepts every packet that a <code>notrack</code> rule matched, and the filter rules after it do not see these packets. In the default configuration, the rule that drops new connections from the WAN is one of the rules after it. Make each <code>notrack</code> rule as narrow as the traffic that you want to exclude. If some of this traffic must still be dropped, put the filter rule that drops it before the rule that accepts <code>untracked</code>.</p>
+</div>
+<p>To check that the traffic is no longer tracked, ping a host in 192.168.88.0/24 from the other network five times. Right after the ping, count the connection entries between the two networks:</p>
+<pre><code class="language-ros">/ip/firewall/connection/print count-only \
+    where src-address~&quot;^192.168.99\\.&quot; and dst-address~&quot;^192.168.88\\.&quot;
+</code></pre>
+<p>The command prints <code>0</code>. Without the <code>notrack</code> rules, the same ping leaves one entry, which expires 10 seconds after the last packet. The counters do not depend on timing, and the <code>notrack</code> rules show the five packets of each direction:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/raw/print stats where comment~&quot;LAN to LAN&quot;
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION   BYTES  PACKETS
+;;; Do not track LAN to LAN
+1 prerouting  notrack    280        5
+;;; Do not track LAN to LAN
+2 prerouting  notrack    280        5
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Untracked packets have no connection, so everything that depends on one does not apply to them:</p>
+<ul>
+<li>NAT rules do not process them. Do not use <code>notrack</code> for traffic that needs source or destination NAT, such as traffic that leaves through a masquerade rule.</li>
+<li>Matchers that read the connection entry, such as <code>connection-mark</code>, do not match them, and <code>action=mark-connection</code> has no effect on them. <code>connection-state=untracked</code> matches them.</li>
+</ul>
+</div>
+<p>Connections that are open when you add the rules continue to work. Their packets are untracked from then on, and the old entries stay in the connection table until they time out. While you add the rules, the firewall can drop a few packets of these connections as invalid.</p>
+<h3 id="exclude-one-service">Exclude one service</h3>
+<p>When you exclude one service instead of whole networks, the rule for the replies must match the source address and source port of the server. For example, exclude the DNS traffic of the server 192.168.88.2 that uses UDP:</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=prerouting action=notrack protocol=udp dst-port=53 \
+    dst-address=192.168.88.2 comment=&quot;Do not track DNS queries&quot;
+add chain=prerouting action=notrack protocol=udp src-port=53 \
+    src-address=192.168.88.2 comment=&quot;Do not track DNS replies&quot;
+</code></pre>
+<p>To check the rules, resolve a name through the server from the other network and look at the counters. Each rule counts one packet:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/raw/print stats where comment~&quot;DNS&quot;
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION   BYTES  PACKETS
+;;; Do not track DNS queries
+2 prerouting  notrack     54        1
+;;; Do not track DNS replies
+3 prerouting  notrack     70        1
+</code></pre>
+<p>Without the second rule, the replies are still tracked. Connection tracking has not seen the query, so it handles a UDP reply as a new connection from the server to the client and creates an entry for it. For a TCP service, connection tracking handles the replies as invalid, and the default firewall drops them.</p>
+<p>When the service runs on the router itself, the replies do not pass through the prerouting chain. Put the rule for the replies in the output chain. In this example, the router has the address 192.168.88.1:</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=prerouting action=notrack protocol=udp dst-port=53 \
+    dst-address=192.168.88.1 comment=&quot;Do not track DNS to the router&quot;
+add chain=output action=notrack protocol=udp src-port=53 \
+    src-address=192.168.88.1 comment=&quot;Do not track DNS from the router&quot;
+</code></pre>
+<h2 id="group-rules-in-a-chain">Group rules in a chain</h2>
+<p>Rules can be grouped in your own chains. RouterOS creates a chain when you add the first rule with a new chain name. A packet enters the chain through a rule with <code>action=jump</code>. It goes back to the next rule of the calling chain with <code>action=return</code>, or when it reaches the end of the chain. Rules in a chain that no jump rule leads to are not processed.</p>
+<p>Send the UDP packets that arrive from the internet through a chain that drops the replies of services commonly abused for amplification attacks: Chargen (port 19), SSDP (port 1900) and Memcached (port 11211). Packets from the addresses in the list <code>trusted</code> skip the check:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=trusted address=198.51.100.20 comment=&quot;Office router&quot;
+/ip/firewall/raw
+add chain=prerouting action=jump jump-target=udp-check \
+    in-interface-list=WAN protocol=udp comment=&quot;Check UDP from the WAN&quot;
+add chain=udp-check action=return src-address-list=trusted \
+    comment=&quot;Do not check trusted addresses&quot;
+add chain=udp-check action=drop protocol=udp src-port=19,1900,11211 \
+    comment=&quot;Drop replies of common amplification services&quot;
+</code></pre>
+<p>The counters show how many packets entered the chain and what happened to them. Here, six UDP packets entered the chain. One had source port 1900 and was dropped; the other five reached the end of the chain and returned:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/raw/print stats where chain=udp-check or jump-target=udp-check
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION  BYTES  PACKETS
+;;; Check UDP from the WAN
+3 prerouting  jump      342        6
+;;; Do not check trusted addresses
+4 udp-check   return      0        0
+;;; Drop replies of common amplification services
+5 udp-check   drop       57        1
+</code></pre>
+<h2 id="ipv6">IPv6</h2>
+<p>The IPv6 RAW table is separate and has the same chains and actions. For example, drop packets that arrive from the internet with the documentation prefix as the source address:</p>
+<pre><code class="language-ros">/ipv6/firewall/raw
+add chain=prerouting action=drop in-interface-list=WAN \
+    src-address=2001:db8::/32 comment=&quot;Drop the documentation prefix&quot;
+</code></pre>
+<p>The matchers differ in a few places. IPv6 rules have <code>headers</code> and <code>hop-limit</code>. They do not have <code>fragment</code>, <code>hotspot</code>, <code>ipv4-options</code>, <code>psd</code> and <code>ttl</code>. The address types of <code>src-address-type</code> and <code>dst-address-type</code> differ too: IPv4 rules have <code>broadcast</code> and <code>blackhole</code>, IPv6 rules have <code>anycast</code> and <code>unreachable</code>.</p>
+<h2 id="how-raw-rules-behave">How RAW rules behave</h2>
+<h3 id="place-in-the-packet-flow">Place in the packet flow</h3>
+<p>RAW rules are the first rules of the IP firewall that a packet meets. See <a href="../packet-flow-in-routeros">Packet Flow in RouterOS</a> for the full diagram. This position has the following effects:</p>
+<ul>
+<li>Connection tracking has not seen the packet yet, so RAW rules have no matchers that depend on it.</li>
+<li>NAT has not been applied yet. In the prerouting chain, <code>dst-address</code> is the destination address of the packet before destination NAT.</li>
+<li>A packet dropped in the RAW table does not create a connection tracking entry.</li>
+</ul>
+<h3 id="rule-processing">Rule processing</h3>
+<p>Rules are processed from the top of the chain. <code>accept</code>, <code>drop</code> and <code>notrack</code> differ in what happens next:</p>
+<ul>
+<li><code>accept</code> - the packet skips the remaining RAW rules and goes on to connection tracking.</li>
+<li><code>drop</code> - the packet is discarded.</li>
+<li><code>notrack</code> - the packet is marked to bypass connection tracking and goes on to the next RAW rule.</li>
+</ul>
+<p>The other actions, <code>log</code>, <code>passthrough</code>, <code>add-src-to-address-list</code> and <code>add-dst-to-address-list</code>, do their work and pass the packet to the next rule. <code>jump</code> and <code>return</code> move the packet between chains.</p>
+<p>A rule without <code>action</code> accepts the packet. A packet that matches no rule is accepted as well.</p>
+<p>The router refuses a rule with <code>out-interface</code> in the prerouting chain and a rule with <code>in-interface</code> in the output chain.</p>
+<h3 id="differences-from-filter">Differences from filter</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Filter</th>
+<th style="text-align: left;">RAW</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Built-in chains</td>
+<td style="text-align: left;">input, forward, output</td>
+<td style="text-align: left;">prerouting, output</td>
+</tr>
+<tr>
+<td style="text-align: left;">Position</td>
+<td style="text-align: left;">After connection tracking</td>
+<td style="text-align: left;">Before connection tracking</td>
+</tr>
+<tr>
+<td style="text-align: left;">Matchers that depend on connection tracking</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;">Actions that the other table lacks</td>
+<td style="text-align: left;"><code>fasttrack-connection</code>, <code>reject</code>, <code>tarpit</code></td>
+<td style="text-align: left;"><code>notrack</code></td>
+</tr>
+</tbody>
+</table>
+<p>These filter properties are not available in the RAW table: <code>connection-bytes</code>, <code>connection-limit</code>, <code>connection-mark</code>, <code>connection-nat-state</code>, <code>connection-rate</code>, <code>connection-state</code>, <code>connection-type</code>, <code>hw-offload</code>, <code>layer7-protocol</code>, <code>p2p</code>, <code>realm</code>, <code>reject-with</code> and <code>routing-mark</code>.</p>
+<h3 id="fragmented-packets">Fragmented packets</h3>
+<p>IPv4 and IPv6 RAW rules see fragmented packets differently:</p>
+<ul>
+<li><strong>IPv4</strong> - RAW rules see every fragment on its own, before the packet is assembled, also when connection tracking is enabled. <code>fragment=yes</code> matches all fragments except the first one, and <code>packet-size</code> matches the size of a fragment, not of the whole packet. After the RAW table, connection tracking assembles the packet, and the other firewall tables see one whole packet.</li>
+<li><strong>IPv6</strong> - RAW rules see the assembled packet.</li>
+</ul>
+<p>An IPv4 packet that bypasses connection tracking with <code>action=notrack</code> is not assembled. When the router forwards it, it stays fragmented in the mangle and filter rules, where only the first fragment has the port numbers. Packets for the router itself are assembled before the input chain.</p>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="./filter">Filter</a></li>
+<li><a href="./address-lists">Address lists</a></li>
+<li><a href="../connection-tracking">Connection tracking</a></li>
+<li><a href="../user-guides/building-advanced-firewall">Building advanced firewall</a></li>
+</ul>
+<p>For all rule properties, see the CLI reference for <a href="../../cli-reference/ip/firewall/raw/"><code>/ip/firewall/raw</code></a> and <a href="../../cli-reference/ipv6/firewall/raw/"><code>/ipv6/firewall/raw</code></a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

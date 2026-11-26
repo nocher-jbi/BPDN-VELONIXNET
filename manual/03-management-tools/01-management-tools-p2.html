@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Management Tools · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Management Tools</p>
+      <h1 id="management-tools-part-22">Management Tools (part 2/2)</h1>
+<h1 id="romon">RoMON</h1>
+<blockquote>
+<p>RoMON (Router Management Overlay Network) builds an independent MAC-layer overlay between routers for management: peer discovery, MAC ping, RoMON SSH, message authentication with secrets, and per-port participation...</p>
+</blockquote>
+<h1 id="romon_1">RoMON</h1>
+<p>RoMON (Router Management Overlay Network) builds an independent MAC-layer peer discovery and data forwarding network between routers. RoMON packets use EtherType 0x88bf and destination multicast MAC 01:80:c2:00:88:bf and are handled independently of L2 or L3 configuration: a router stays reachable through RoMON even when its IP configuration, routing or firewall is broken. That makes RoMON a recovery path into misconfigured routers, one overlay hop at a time.</p>
+<p>Each router on the RoMON network has a RoMON ID, either selected automatically from a port MAC address or configured with <code>id</code>.</p>
+<p>The RoMON protocol does not encrypt messages. Encryption comes from the application running on top of it, for example SSH or a secure WinBox connection.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>RoMON packets can be forwarded through network switches or bridges, unless there are specific restrictions on multicast traffic. When using a MikroTik bridge with hardware offloading, these packets are treated like regular multicast packets and are flooded across the network.</p>
+<p>If the RoMON service is enabled and the switch chip supports ACL rules, dynamic rules are automatically created to redirect these packets to the CPU, where the RoMON service operates. However, if the switch does not support ACL rules and the configuration does not align, such as when the CPU and RoMON untagged packets are not in the same VLAN, the RoMON service might not function as expected.</p>
+<p><strong>RB5009</strong> (switch-chip 88E6393X) does not support this path. The chip's frame-types=admit-only-vlan-tagged filter drops RoMON frames before any ACL rule can be applied, so the packets never reach the CPU.</p>
+</div>
+<h2 id="enable-romon">Enable RoMON</h2>
+<p>Enable the service in the <a href="../cli-reference/tool/romon"><code>/tool/romon</code></a> menu:</p>
+<pre><code class="language-ros">/tool/romon/set enabled=yes
+</code></pre>
+<p>When the ID is not configured, it is selected automatically:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/print
+     enabled: yes
+          id: 00:00:00:00:00:00
+  current-id: DC:2C:6E:E7:10:6B
+</code></pre>
+<h2 id="choose-ports">Choose ports</h2>
+<p>Ports that participate in the RoMON network are configured in the <a href="../cli-reference/tool/romon/port"><code>/tool/romon/port</code></a> menu. Each entry matches one physical interface name (or the built-in wildcard <code>all</code>) and either forbids RoMON on it or allows it with a port cost. Bridge or other master interfaces are not accepted as RoMON ports — name the physical ports that talk to the network. More specific entries override the wildcard entry.</p>
+<p>A default entry with the interface list <code>all</code> is preconfigured, so every interface participates with cost 100 until you change it:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/port/print
+Flags: * - DEFAULT
+Columns: INTERFACE, FORBID, COST
+#   INTERFACE  FORBID  COST
+0 * all        no       100
+</code></pre>
+<p>RoMON should not listen on the untrusted side of a router (it accepts management connections by MAC address). Forbid the WAN port and keep the LAN:</p>
+<pre><code class="language-ros">/tool/romon/port/add interface=ether1 forbid=yes
+</code></pre>
+<p>Or the other way around: forbid everything with the wildcard entry, then allow the trusted interfaces one by one:</p>
+<pre><code class="language-ros">/tool/romon/port/set [find default=yes] forbid=yes
+/tool/romon/port/add interface=ether2 forbid=no
+/tool/romon/port/add interface=ether3 forbid=no
+</code></pre>
+<h2 id="protect-the-overlay-with-secrets">Protect the overlay with secrets</h2>
+<p>RoMON secrets authenticate messages, check their integrity and prevent replays by hashing the message contents with MD5. Every router in the same RoMON network should use the same secrets. On a fresh setup, set the secret on all routers:</p>
+<pre><code class="language-ros">/tool/romon/set secrets=&quot;mysecret&quot;
+</code></pre>
+<p>The global list lives in <code>/tool/romon</code>; an interface-specific list can be set per port in <code>/tool/romon/port</code> (if the port list is empty, the global list is used).</p>
+<p>When sending, messages are hashed with the first secret in the list, unless the list is empty or starts with the empty secret (in that case messages are sent unhashed). When receiving, unhashed messages are accepted only by an empty list or a list that contains the empty secret; hashed messages are accepted when they carry any secret in the list.</p>
+<p>That behaviour makes a rolling change possible without splitting the network — and the rotation works even when you do it while connected through RoMON itself:</p>
+<pre><code class="language-ros"># 1. every router still sends unhashed, but also accepts &quot;mysecret&quot;
+/tool/romon/set secrets=(&quot;&quot;,&quot;mysecret&quot;)
+# 2. every router sends hashed with &quot;mysecret&quot;, but still accepts unhashed
+/tool/romon/set secrets=(&quot;mysecret&quot;,&quot;&quot;)
+# 3. every router sends and only accepts &quot;mysecret&quot;
+/tool/romon/set secrets=&quot;mysecret&quot;
+</code></pre>
+<p>To change a secret later, run the same rotation with both the old and the new secret in the list for a while.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>In the CLI, list entries that contain an empty secret need parentheses: <code>secrets=("","mysecret")</code>. In WinBox, press the small <strong>+</strong> in the <strong>Secrets</strong> field and leave the first row empty.</p>
+</div>
+<p>A client whose secret does not match gets no answer:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/ping id=DC:2C:6E:E7:10:6B count=3
+  SEQ HOST                                    TIME  SIZE STATUS
+    0 DC:2C:6E:E7:10:6B                           32 timeout
+    1 DC:2C:6E:E7:10:6B                           32 timeout
+    2 DC:2C:6E:E7:10:6B                           32 timeout
+    sent=3 received=0 packet-loss=100%
+</code></pre>
+<h2 id="find-routers-in-the-overlay">Find routers in the overlay</h2>
+<p>Run <a href="../cli-reference/tool/romon/discover"><code>/tool/romon/discover</code></a> to list the reachable routers:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/discover
+Flags: A - ACTIVE
+Columns: ADDRESS, COST, HOPS, PATH, L2MTU, IDENTITY, VERSION
+  ADDRESS            COST  HOPS  PATH               L2MTU  IDENTITY  VERSION
+A F4:1E:57:46:89:89   200     1  F4:1E:57:46:89:89   1500  Router-B  7.26beta1
+</code></pre>
+<p>The discovery table keeps refreshing; with <code>duration</code> it stops after the given time. The <code>address</code> column holds the RoMON ID of the found router, which is what the other RoMON tools take.</p>
+<h2 id="test-connectivity-with-romon-ping">Test connectivity with RoMON ping</h2>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/ping id=F4:1E:57:46:89:89 count=5
+  SEQ HOST                                    TIME   SIZE STATUS
+    0 F4:1E:57:46:89:89                       1ms      32
+    1 F4:1E:57:46:89:89                       0ms      32
+    ...
+    sent=5 received=5 packet-loss=0% min-rtt=0ms avg-rtt=0ms max-rtt=1ms
+</code></pre>
+<h2 id="open-an-ssh-session-over-romon">Open an SSH session over RoMON</h2>
+<p><a href="../cli-reference/tool/romon/ssh"><code>/tool/romon/ssh</code></a> opens an SSH session through the overlay, even when the remote router has no IP address:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/romon/ssh F4:1E:57:46:89:89 user=admin
+</code></pre>
+<h2 id="connect-with-winbox">Connect with WinBox</h2>
+<p>In WinBox, select <strong>Connect To &gt; RoMON Agent</strong> on the login screen and choose a saved router with RoMON enabled as the agent, then connect to the target by its RoMON ID (see <a href="winbox">WinBox</a>). Watch the <a href="https://www.youtube.com/watch?v=Peg6UcSJ_eA">video tutorial</a>.</p>
+<p>You can also run WinBox from the command line with a RoMON agent and the target router's ID. The agent router must be saved in the WinBox managed router list for the connection to succeed:</p>
+<pre><code class="language-bash">winbox.exe --romon 192.168.88.24 F4:1E:57:46:89:89 admin &quot;&quot;
+</code></pre>
+<h2 id="technical-details">Technical details</h2>
+<ul>
+<li>Discovery, ping and RoMON SSH all run over raw Ethernet frames, so they keep working without any IP configuration.</li>
+<li>The <a href="../diagnostics-monitoring-and-troubleshooting/packet-sniffer">packet sniffer</a> and <a href="../diagnostics-monitoring-and-troubleshooting/torch">Torch</a> show only the RoMON frames that the router sends; received RoMON frames are not shown.</li>
+<li><code>hops</code>, <code>path</code> and <code>cost</code> in the discovery table describe the RoMON path: routers that run RoMON forward the overlay traffic, so a target several segments away shows the intermediate IDs in <code>path</code>.</li>
+<li>A <code>[find default=yes]</code> wildcard port entry always exists: it cannot be removed, disabled or enabled — only its <code>cost</code>, <code>forbid</code> and <code>secrets</code> can be changed ("failure: only cost, forbid and secrets can be changed for preset"). Setting it to <code>forbid=yes</code> turns the default into "deny all".</li>
+</ul>
+<p>The sniffer and Torch see RoMON frames (EtherType 0x88BF) only in the <code>tx</code> direction. Received RoMON frames do not appear in a capture or in Torch, not even with <code>mac-protocol=romon</code> or <code>direction=rx</code>, so a capture on a router that answers another router's discovery holds only the frames it sends:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /tool/sniffer/start interface=ether2 mac-protocol=romon
+[admin@MikroTik] &gt; /tool/sniffer/stop
+[admin@MikroTik] &gt; /tool/sniffer/packet/print proplist=time,direction,src-mac,dst-mac,protocol,size
+Columns: TIME, DIRECTION, SRC-MAC, DST-MAC, PROTOCOL, SIZE
+#  TIME      DIRECTION  SRC-MAC            DST-MAC            PROTOCOL  SIZE
+0  0.449619  tx         DC:2C:6E:E7:10:6B  F4:1E:57:46:89:89  romon      171
+1  0.44973   tx         DC:2C:6E:E7:10:6B  F4:1E:57:46:89:89  romon      145
+2  0.950712  tx         DC:2C:6E:E7:10:6B  F4:1E:57:46:89:89  romon      171
+3  0.951016  tx         DC:2C:6E:E7:10:6B  F4:1E:57:46:89:89  romon      145
+</code></pre>
+<p>To see both directions of a RoMON exchange, capture on a device between the two routers, for example through a mirror port of a switch.</p>
+<p>For all parameters, see the <a href="../cli-reference/tool/romon"><code>/tool/romon</code></a>, <a href="../cli-reference/tool/romon/port"><code>/tool/romon/port</code></a>, <a href="../cli-reference/tool/romon/discover"><code>/tool/romon/discover</code></a>, <a href="../cli-reference/tool/romon/ping"><code>/tool/romon/ping</code></a> and <a href="../cli-reference/tool/romon/ssh"><code>/tool/romon/ssh</code></a> CLI reference pages.</p>
+<hr />
+<h1 id="mac-server">MAC server</h1>
+<blockquote>
+<p>The RouterOS MAC server lets you reach a router by its MAC address on the same layer-2 segment, without IP configuration: connect with MAC Telnet, find routers with MAC scan, limit MAC Telnet and MAC WinBox to...</p>
+</blockquote>
+<h1 id="mac-server_1">MAC server</h1>
+<p>The MAC server lets you reach a router by its MAC address from a device on the same layer-2 segment, without any IP configuration on either side. It serves three things:</p>
+<ul>
+<li>MAC Telnet - A console session, like Telnet over IP. The RouterOS client is <code>/tool/mac-telnet</code>.</li>
+<li>MAC WinBox - <a href="winbox">WinBox</a> connects to the router by its MAC address.</li>
+<li>MAC ping - Answers pings sent to the router's MAC address.</li>
+</ul>
+<p>Use MAC access to recover a router whose IP settings are wrong or missing, and for the first setup of a new router. The default configuration allows MAC Telnet and MAC WinBox only on the interfaces in the <code>LAN</code> interface list, which holds the LAN bridge: on most routers every port except the WAN port <code>ether1</code>, and the Wi-Fi interfaces. Without the default configuration, they are allowed on all interfaces. The MAC ping server is on by default. In production networks, you should turn MAC access off or limit it to trusted interfaces; see <a href="../getting-started/securing-your-router#routeros-mac-access">Securing your router</a>. To reach routers beyond one layer-2 segment by MAC address, use <a href="romon">RoMON</a>.</p>
+<h2 id="connect-with-mac-telnet">Connect with MAC Telnet</h2>
+<p>From a computer, use <a href="winbox#device-list-section">WinBox</a>: the <strong>Neighbors</strong> tab lists the routers on the network, and selecting the MAC address connects by MAC WinBox. WinBox also has a terminal. From another RouterOS device, find the MAC address of the router with MAC scan or in the <a href="../system-information-and-utilities/neighbor-discovery">neighbor list</a>, then connect with MAC Telnet:</p>
+<pre><code class="language-ros">/tool/mac-telnet FE:F1:E6:82:D5:B6
+</code></pre>
+<pre><code class="language-text">Login: admin
+Password:
+Trying FE:F1:E6:82:D5:B6...
+Connected to FE:F1:E6:82:D5:B6
+
+  MMM      MMM       KKK                          TTTTTTTTTTT      KKK
+  MMMM    MMMM       KKK                          TTTTTTTTTTT      KKK
+  MMM MMMM MMM  III  KKK  KKK  RRRRRR     OOOOOO      TTT     III  KKK  KKK
+  MMM  MM  MMM  III  KKKKK     RRR  RRR  OOO  OOO     TTT     III  KKKKK
+  MMM      MMM  III  KKK KKK   RRRRRR    OOO  OOO     TTT     III  KKK KKK
+  MMM      MMM  III  KKK  KKK  RRR  RRR   OOOOOO      TTT     III  KKK  KKK
+
+  MikroTik RouterOS 7.25beta5 (c) 1999-2026       https://www.mikrotik.com/
+
+Press F1 for help
+
+[admin@Test2] &gt;
+</code></pre>
+<p>MAC Telnet logs in with a user name and password; SSH keys do not apply. The user's group needs the <code>telnet</code> policy. After you log in, correct the IP settings, for example in <a href="../cli-reference/ip/address"><code>/ip/address</code></a>. When the target does not answer or refuses the connection, for example because MAC Telnet is not allowed on the interface the request arrives on, the client prints <code>Trying ...</code> and returns to the local prompt without an error message.</p>
+<p>Without <code>interface</code>, the client sends its connection attempts out of every interface of the router. To send them out of one interface only:</p>
+<pre><code class="language-ros">/tool/mac-telnet FE:F1:E6:82:D5:B6 interface=ether1
+</code></pre>
+<p>The router you connect to lists the open MAC Telnet sessions, with the interface the session arrived on and the MAC address of the client:</p>
+<pre><code class="language-ros">/tool/mac-server/sessions/print
+</code></pre>
+<pre><code class="language-text">Columns: INTERFACE, SRC-ADDRESS, UPTIME
+#  INTERFACE  SRC-ADDRESS        UPTIME
+0  ether2     DC:2C:6E:E7:10:6A  2s
+</code></pre>
+<p>The list shows MAC Telnet sessions only, not MAC WinBox connections. The sessions also appear in <code>/user/active</code> with <code>mac-telnet</code> in the <code>VIA</code> column.</p>
+<h2 id="find-routers-with-mac-scan">Find routers with MAC scan</h2>
+<p>MAC scan lists the devices that send MikroTik Neighbor Discovery (MNDP) announcements on an interface, with their MAC address and IPv4 address:</p>
+<pre><code class="language-ros">/tool/mac-scan interface=ether2 duration=8s
+</code></pre>
+<pre><code class="language-text">Columns: MAC-ADDRESS, ADDRESS, AGE
+MAC-ADDRESS        ADDRESS      AGE
+FE:F1:E6:82:D5:B6  203.0.113.1   17
+</code></pre>
+<p><code>AGE</code> is the time in seconds since the device's last announcement. The list comes from <a href="../system-information-and-utilities/neighbor-discovery">neighbor discovery</a>, not from the MAC server: a device appears whatever its MAC server settings are, and a device whose neighbor discovery is off on that interface does not appear. The list includes devices heard before the scan started, so <code>AGE</code> can be longer than <code>duration</code>; devices announce themselves every 30 seconds by default. <code>/ip/neighbor/print</code> shows the same devices with more details, such as the identity and RouterOS version.</p>
+<p>On a bridge, scan one of its ports or <code>interface=all</code>: the bridge interface itself shows no devices. Without <code>duration</code>, the scan runs until you stop it with <kbd>Control</kbd>+<kbd>C</kbd>. MAC scan is not available on devices with the SMIPS architecture.</p>
+<h2 id="allow-mac-access-only-on-trusted-interfaces">Allow MAC access only on trusted interfaces</h2>
+<p>MAC Telnet and MAC WinBox each have their own <code>allowed-interface-list</code> setting: <code>/tool/mac-server</code> for MAC Telnet and <code>/tool/mac-server/mac-winbox</code> for MAC WinBox. Each takes an <a href="../cli-reference/interface/list/">interface list</a>.</p>
+<p>To allow MAC Telnet and MAC WinBox only on the LAN:</p>
+<pre><code class="language-ros">/tool/mac-server/set allowed-interface-list=LAN
+/tool/mac-server/mac-winbox/set allowed-interface-list=LAN
+</code></pre>
+<p>The default configuration already has the <code>LAN</code> list, with the LAN bridge in it. On a router without it, create the list first:</p>
+<pre><code class="language-ros">/interface/list/add name=LAN
+/interface/list/member/add list=LAN interface=bridge
+</code></pre>
+<p>Check the current settings with <code>/tool/mac-server/print</code> and <code>/tool/mac-server/mac-winbox/print</code>.</p>
+<p>Put the bridge in the list, not its ports: a bridge in the list allows connections that arrive through any of its ports, and a bridge port alone in the list does not allow them. A change applies to the next connection immediately; sessions that are already open stay open.</p>
+<p>To keep one port of the bridge out, for example the port of a guest Wi-Fi network, drop MAC access on it with a bridge filter rule, or put the guests on their own bridge:</p>
+<pre><code class="language-ros">/interface/bridge/filter/add chain=input in-interface=wifi2 \
+    mac-protocol=ip ip-protocol=udp dst-port=20561 action=drop
+</code></pre>
+<p>To turn MAC Telnet and MAC WinBox off, set the lists to <code>none</code>:</p>
+<pre><code class="language-ros">/tool/mac-server/set allowed-interface-list=none
+/tool/mac-server/mac-winbox/set allowed-interface-list=none
+</code></pre>
+<p>An interface list you create without members blocks MAC access in the same way.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The IP firewall does not protect MAC access: an IP filter rule that drops UDP port 20561 does not block MAC Telnet or MAC ping. Limit MAC access with <code>allowed-interface-list</code>, or with a bridge filter rule on a bridge port. For the other ports RouterOS uses, see <a href="../system-information-and-utilities/services">Services</a>.</p>
+<p>Enabling <a href="../bridging-and-switching/#arp-inspection-and-ip-source-guard">IP Source Guard</a> on a bridge blocks MAC Telnet, MAC WinBox and MAC ping on its untrusted ports.</p>
+</div>
+<h2 id="mac-ping">MAC ping</h2>
+<p>The MAC ping server (<code>/tool/mac-server/ping</code>) answers pings sent to the router's MAC address. It is enabled by default. To ping a MAC address, see <a href="../diagnostics-monitoring-and-troubleshooting/ping#ping-a-mac-address">Ping a MAC address</a>.</p>
+<p>To turn the MAC ping server off:</p>
+<pre><code class="language-ros">/tool/mac-server/ping/set enabled=no
+</code></pre>
+<p>With the server off, the router no longer answers MAC pings, and it cannot send MAC pings either: its own MAC pings fail with the status <code>unknown interface</code>. ARP ping works in both directions regardless of this setting.</p>
+<h2 id="technical-details_1">Technical details</h2>
+<h3 id="transport">Transport</h3>
+<p>MAC Telnet, MAC WinBox and MAC ping use UDP port 20561 inside Ethernet frames addressed to the MAC address of the target. The IP header carries the addresses 0.0.0.0 and 255.255.255.255, so the packets do not depend on IP configuration. The MAC server takes them directly from the interface, so IP firewall rules do not stop them.</p>
+<h3 id="security">Security</h3>
+<p>MAC Telnet is not encrypted. The commands you type and the router's output cross the link in clear text. The password is not sent in clear: the login uses a challenge and response. Use MAC Telnet on trusted links, for example to recover a router, and use SSH for regular access.</p>
+<p>A MAC login has no IP address, so the <code>address</code> setting of a user in <code>/user</code> does not apply to it: a user restricted to certain IP addresses can still log in with MAC Telnet. The group policies do apply.</p>
+<p>For all parameters, see <a href="../cli-reference/tool/mac-server/"><code>/tool/mac-server</code></a>, <a href="../cli-reference/tool/mac-telnet"><code>/tool/mac-telnet</code></a> and <a href="../cli-reference/tool/mac-scan"><code>/tool/mac-scan</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="tr-069">TR-069</h1>
+<blockquote>
+<p>Manage RouterOS devices from a TR-069 (CWMP) Auto Configuration Server: connect the router over HTTPS, allow connection requests, troubleshoot sessions, change the configuration, upgrade RouterOS, upload files and...</p>
+</blockquote>
+<h1 id="tr-069_1">TR-069</h1>
+<p>The TR-069 client implements the CPE WAN Management Protocol (CWMP), standardized by the Broadband
+Forum (BBF). The router (the CPE) connects over HTTP or HTTPS to an Auto Configuration Server (ACS),
+which can read and change parameters, run RouterOS scripts, upgrade RouterOS, upload the
+configuration and the log, and reset the router. ISPs use it to manage customer routers; it also
+works for managing network infrastructure devices.</p>
+<p>The client is in the <code>tr069-client</code> package, which is not part of the main RouterOS package.
+Install it as described in <a href="../getting-started/installation-and-upgrade/packages">Packages</a>. The
+client is disabled by default.</p>
+<h2 id="connect-the-router-to-an-acs">Connect the router to an ACS</h2>
+<p>This example connects a router with the default configuration to the ACS at
+<code>https://acs.example.com:7547/</code>, whose address is 198.51.100.10. Before you start, upload the CA
+certificate that signed the ACS certificate to the router as <code>acs-ca.crt</code> (see
+<a href="../system-information-and-utilities/files">Files</a> for the ways to upload a file), and
+create the device credentials on the ACS.</p>
+<pre><code class="language-routeros">/certificate/import file-name=acs-ca.crt passphrase=&quot;&quot;
+/tr069-client/set acs-url=https://acs.example.com:7547/ \
+    username=cpe-0001 password=Cpe-0001-secret \
+    connection-request-username=acs \
+    connection-request-password=Acs-request-secret enabled=yes
+/ip/firewall/filter/add chain=input action=accept protocol=tcp \
+    dst-port=7547 src-address=198.51.100.10 in-interface-list=WAN \
+    place-before=[find comment~&quot;not coming from LAN&quot;] \
+    comment=&quot;TR-069 connection requests from the ACS&quot;
+</code></pre>
+<ul>
+<li>The import deletes the file and adds the CA as a trusted certificate. With the default
+  <code>check-certificate=yes</code>, the router connects only if the ACS certificate is signed by a CA in the
+  store and its name matches the host in <code>acs-url</code>.</li>
+<li><code>username</code> and <code>password</code> are the credentials the router uses to log in to the ACS.</li>
+<li><code>connection-request-username</code> and <code>connection-request-password</code> are the credentials the ACS uses
+  to ask the router to start a session (a connection request). Always set them.</li>
+<li>The firewall rule lets connection requests from the ACS reach the router. The client adds no
+  firewall rule itself, and the default configuration drops them with all other input from the
+  interfaces in the <code>WAN</code> list. The rule is placed before the default rule
+  <code>defconf: drop all not coming from LAN</code>. Without the rule, the router still contacts the ACS on
+  its own events and periodically, but the ACS cannot reach it in between.</li>
+</ul>
+<p>Check the client:</p>
+<pre><code class="language-routeros">/tr069-client/print
+</code></pre>
+<pre><code class="language-text">                      enabled: yes
+                      acs-url: https://acs.example.com:7547/
+                     username: cpe-0001
+      periodic-inform-enabled: yes
+     periodic-inform-interval: 1d
+  connection-request-username: acs
+      connection-request-port: 7547
+            provisioning-code:
+           client-certificate: none
+            check-certificate: yes
+                       status: running
+           last-session-error:
+                  retry-count: 0
+</code></pre>
+<p>An empty <code>last-session-error</code> with <code>retry-count: 0</code> means the last session with the ACS
+succeeded. The ACS now lists the router as a new device: its first Inform carries the
+<code>0 BOOTSTRAP</code> event.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Use plain HTTP only to test a setup in a private network. Anyone on the path can read and change
+the parameters of an HTTP session. In production, use HTTPS and keep <code>check-certificate=yes</code>.</p>
+</div>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p><code>status</code> shows whether the client is configured: <code>disabled</code>, <code>waiting-url</code> (enabled, but no ACS
+URL) or <code>running</code>. A failing ACS does not change it. Failures show in <code>last-session-error</code> and
+<code>retry-count</code>. For example, with a password the ACS does not accept:</p>
+<pre><code class="language-routeros">/tr069-client/print
+</code></pre>
+<pre><code class="language-text">                      enabled: yes
+                      acs-url: https://acs.example.com:7547/
+                     username: cpe-0001
+      periodic-inform-enabled: yes
+     periodic-inform-interval: 1d
+  connection-request-username: acs
+      connection-request-port: 7547
+            provisioning-code:
+           client-certificate: none
+            check-certificate: yes
+                       status: running
+           last-session-error: HTTP authentication error. Wrong username/password.
+                  retry-count: 3
+</code></pre>
+<p>The client retries a failed session with a growing delay, from a few seconds up to minutes, and
+resets <code>retry-count</code> after the next successful session. A corrected setting is used at the next
+retry.</p>
+<p>To follow each session, log the <code>tr069</code> topic:</p>
+<pre><code class="language-routeros">/system/logging/add topics=tr069
+/log/print where topics~&quot;tr069&quot;
+</code></pre>
+<pre><code class="language-text"> 2026-11-23 08:16:36 tr069,debug starting session, events: [4 VALUE CHANGE, 1 BOOT, ]
+ 2026-11-23 08:16:36 tr069,debug session finished with error: &quot;Network unreachable&quot;
+ 2026-11-23 08:16:36 tr069,debug scheduled next Session retry after 7 seconds
+ 2026-11-23 08:16:43 tr069,debug starting session, events: [4 VALUE CHANGE, 1 BOOT, ] retry-count: 1
+ 2026-11-23 08:16:43 tr069,debug send: Inform
+ 2026-11-23 08:16:43 tr069,debug session finished with error: &quot;HTTP authentication error. Wrong username/password.&quot;
+ 2026-11-23 08:16:44 tr069,debug scheduled next Session retry after 18 seconds
+ 2026-11-23 08:17:02 tr069,debug starting session, events: [4 VALUE CHANGE, 1 BOOT, ] retry-count: 2
+ 2026-11-23 08:17:02 tr069,debug send: Inform
+ 2026-11-23 08:17:02 tr069,debug session finished with error: &quot;HTTP authentication error. Wrong username/password.&quot;
+ 2026-11-23 08:17:02 tr069,debug scheduled next Session retry after 31 seconds
+</code></pre>
+<p>Here the first session after a reboot started before the DHCP client had an address, and the
+following ones were refused by the ACS. A successful session ends with <code>session finished ok</code> and
+<code>scheduled next Periodic Inform</code>.</p>
+<p>Common errors in <code>last-session-error</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Error</th>
+<th style="text-align: left;">Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>HTTP authentication error. Wrong username/password.</code></td>
+<td style="text-align: left;">The ACS refused <code>username</code> and <code>password</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>SSL: ssl: no trusted CA certificate found (6)</code></td>
+<td style="text-align: left;">The CA that signed the ACS certificate is not in the certificate store.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>SSL: ssl: name verification failed for: "CN=..." (6)</code></td>
+<td style="text-align: left;">The ACS certificate is for another name than the host in <code>acs-url</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resolving error</code></td>
+<td style="text-align: left;">The router cannot resolve the host name in <code>acs-url</code>. Check <code>/ip/dns</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Connection refused</code></td>
+<td style="text-align: left;">Nothing listens on the host and port in <code>acs-url</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Network unreachable</code></td>
+<td style="text-align: left;">The router has no route to the ACS yet, for example right after boot.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>HTTP error code: 500</code></td>
+<td style="text-align: left;">The ACS answered with an HTTP error. Check the ACS logs.</td>
+</tr>
+</tbody>
+</table>
+<p>If the ACS cannot reach the router with a connection request, check the firewall rule from the
+example and its counters, and the connection request credentials on the ACS.</p>
+<h2 id="how-a-session-works">How a session works</h2>
+<p>The router starts every session. It sends an Inform RPC that lists the events that caused the
+session, the device identity and a few parameters. When the router has nothing more to send, the
+ACS calls its RPCs: reading and setting parameters, downloads, uploads, reboot or factory reset.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Event in the Inform</th>
+<th style="text-align: left;">When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>0 BOOTSTRAP</code></td>
+<td style="text-align: left;">First session with an ACS: after the client is enabled for the first time, after <code>acs-url</code> changes, and after a configuration reset.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>1 BOOT</code></td>
+<td style="text-align: left;">After a reboot, and when the client is enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>2 PERIODIC</code></td>
+<td style="text-align: left;">Every <code>periodic-inform-interval</code> (default one day), if <code>periodic-inform-enabled=yes</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>4 VALUE CHANGE</code></td>
+<td style="text-align: left;">A client setting changed since the last session.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>6 CONNECTION REQUEST</code></td>
+<td style="text-align: left;">After a connection request from the ACS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>7 TRANSFER COMPLETE</code> with <code>M Download</code> or <code>M Upload</code></td>
+<td style="text-align: left;">After a download or upload the ACS asked for, with the result.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>M Reboot</code></td>
+<td style="text-align: left;">After a reboot the ACS asked for.</td>
+</tr>
+</tbody>
+</table>
+<p>The Inform identifies the router with Manufacturer <code>MikroTik</code>, an OUI, a ProductClass and a
+SerialNumber. It also carries the RouterOS version
+(<code>Device.DeviceInfo.SoftwareVersion</code>), <code>provisioning-code</code> (<code>Device.DeviceInfo.ProvisioningCode</code>)
+and the connection request URL (<code>Device.ManagementServer.ConnectionRequestURL</code>).</p>
+<p>A connection request is an HTTP request from the ACS to that URL,
+<code>http://&lt;router address&gt;:&lt;connection-request-port&gt;/&lt;random path&gt;</code>, where the address is the
+router's own address. The ACS must be able to open a TCP connection to it, so a router behind NAT
+receives connection requests only if the NAT device forwards the port. The router accepts the
+request only with HTTP Digest authentication and the <code>connection-request-username</code> and
+<code>connection-request-password</code>. It then starts a new session with the configured ACS. A connection
+request cannot make the router contact any other server.</p>
+<h2 id="parameters-and-data-models">Parameters and data models</h2>
+<p>Parameters are name and value pairs, such as <code>Device.DeviceInfo.SoftwareVersion</code>. The set of
+parameters a device supports is its data model. The BBF defines the root data models TR-098 and
+TR-181 (Issue 1 and Issue 2), on which vendors base their parameters. The RouterOS data model is
+based on TR-181 Issue 2: the router reports <code>Device.RootDataModelVersion</code> 2.15. MikroTik-specific
+parameters start with <code>X_MIKROTIK_</code>, for example <code>Device.DeviceInfo.X_MIKROTIK_SystemIdentity</code>.</p>
+<p>Some parameters map to RouterOS settings. For example, setting
+<code>Device.DeviceInfo.X_MIKROTIK_SystemIdentity</code> changes <code>/system/identity</code>, and setting
+<code>Device.ManagementServer.PeriodicInformInterval</code> to <code>300</code> sets <code>periodic-inform-interval=5m</code>.</p>
+<p>See the <a href="pathname:///assets/tr069_parameters.html">RouterOS TR-069 parameter reference</a> for all
+supported parameters.</p>
+<h2 id="change-the-configuration">Change the configuration</h2>
+<p>Not every RouterOS setting has a CWMP parameter. To change any setting, the ACS sends a RouterOS
+script with the Download RPC and FileType <code>3 Vendor Configuration File</code>. The URL's file name decides
+what the router does with it. Put the file on an HTTP or HTTPS server that the router can reach,
+for example the file server of the ACS:</p>
+<ul>
+<li>A file name ending in <code>.alter</code> changes the configuration: the router runs the script as it is,
+  without a reboot, and reports the result with TransferComplete.</li>
+<li>Any other file name replaces the configuration: the router removes the whole configuration,
+  reboots and applies the file. The next session starts with <code>0 BOOTSTRAP</code> and <code>1 BOOT</code>.</li>
+</ul>
+<p>For example, a file named <code>identity-dns.alter</code> with this content renames the router and sets its
+DNS server:</p>
+<pre><code class="language-routeros">/system/identity/set name=CPE-altered
+/ip/dns/set servers=192.0.2.53
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A file that replaces the configuration must bring the router back to the ACS on its own. The rest
+of the file is not applied after a line that fails, so a single error can leave the router without
+the TR-069 client and out of reach of the ACS. Test each file on a local router first. Things to
+include:</p>
+<ul>
+<li>A <a href="../getting-started/configuration-management/#startup-delay">startup delay</a>, so that
+  the interfaces exist before the script configures them.</li>
+<li>Passwords: an exported configuration, including the file the router sends with the Upload RPC,
+  does not contain them, including the TR-069 client password. Such a file cannot replace the
+  configuration unchanged.</li>
+<li><a href="../authentication-authorization-accounting/certificates">Certificates</a> that the
+  configuration needs, such as the CA certificate of the ACS.</li>
+</ul>
+</div>
+<h2 id="upgrade-routeros">Upgrade RouterOS</h2>
+<p>The CWMP standard upgrades firmware with the Download RPC, FileType <code>1 Firmware Upgrade Image</code> and
+a single URL (HTTP or HTTPS). RouterOS is installed as packages, so the URL points to an XML file
+that lists the package files to install, for an upgrade or a downgrade. The router downloads the
+XML, checks it, downloads every listed file and installs them as in an upgrade by package file
+upload, then reboots. It reports the result with TransferComplete in the first session after the
+reboot (events <code>7 TRANSFER COMPLETE</code>, <code>M Download</code> and <code>1 BOOT</code>).</p>
+<p>Put the XML file and the packages on an HTTP or HTTPS server that the router can reach, and send the
+Download RPC with the URL of the XML file, for example <code>https://example.com/path/upgrade.xml</code>. List
+the <code>tr069-client</code> package together with the RouterOS package, so that the client is upgraded with
+it. The packages must match the router's architecture, which the router reports in
+<code>Device.DeviceInfo.X_MIKROTIK_ArchName</code>:</p>
+<pre><code class="language-xml">&lt;upgrade version=&quot;1&quot; type=&quot;links&quot;&gt;
+   &lt;config/&gt;
+   &lt;links&gt;
+       &lt;link&gt;
+          &lt;url&gt;https://example.com/routeros-X.Y.Z-mipsbe.npk&lt;/url&gt;
+       &lt;/link&gt;
+       &lt;link&gt;
+          &lt;url&gt;https://example.com/tr069-client-X.Y.Z-mipsbe.npk&lt;/url&gt;
+       &lt;/link&gt;
+   &lt;/links&gt;
+&lt;/upgrade&gt;
+</code></pre>
+<p>If the download fails, the router reports a fault in TransferComplete, for example <code>9015</code> with
+<code>Connection refused</code>.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Upgrade step by step: first upgrade a router you have tested locally, and check that it reconnects
+to the ACS and that the functions you need work. Then upgrade groups of routers. Do not upgrade all
+remote routers at once. Serve the files over HTTPS in production.</p>
+</div>
+<h2 id="upload-files-to-the-acs">Upload files to the ACS</h2>
+<p>With the Upload RPC, the router sends a file to the URL the ACS gives, with HTTP PUT, and reports the
+result with TransferComplete. The FileType selects the file:</p>
+<ul>
+<li><code>1 Vendor Configuration File</code>: the current configuration, as <code>/export</code> shows it. Passwords and
+  other sensitive values are not included.</li>
+<li><code>2 Vendor Log File</code>: the log, similar to <a href="../cli-reference/log"><code>/log/print</code></a>: one line per
+  entry with the time (in ISO 8601 format), topics and message.</li>
+<li><code>X MIKROTIK Factory Configuration File</code>: the default configuration script that runs at the next
+  configuration reset. If a custom script is installed, this is the custom script, which differs
+  from the one <code>/system/default-configuration/print</code> shows.</li>
+</ul>
+<h2 id="reset-the-router-to-its-default-configuration">Reset the router to its default configuration</h2>
+<p>The FactoryReset RPC resets the configuration in the same way as this command:</p>
+<pre><code class="language-routeros">/system/reset-configuration skip-backup=yes
+</code></pre>
+<p>The reset removes the whole configuration, including certificates, and runs the default
+configuration script. The default configuration differs between devices (see <a href="../getting-started/configuration-management/default-configurations">Default
+configurations</a>). To bring
+routers back to the ACS after a reset, install a custom default configuration that configures the
+TR-069 client, as the next section describes.</p>
+<h2 id="prepare-routers-for-tr-069-management">Prepare routers for TR-069 management</h2>
+<p>A provider who manages routers over TR-069 can replace MikroTik's default configuration with a
+custom script that brings the router back to the ACS after a reset: a FactoryReset RPC,
+<code>/system/reset-configuration</code> or the reset button. This makes a router reachable again after a
+configuration that cannot be fixed remotely.</p>
+<p>The custom default configuration script can be installed in two ways:</p>
+<ul>
+<li>With Netinstall, which installs the script in place of MikroTik's default configuration.</li>
+<li>With the Download RPC and FileType <code>X MIKROTIK Factory Configuration File</code>. The router stores the
+  script without a reboot and without changing the current configuration.</li>
+</ul>
+<p>After a Download of the script, <code>/system/default-configuration/print</code> keeps showing MikroTik's
+script. The custom script shows in
+<code>/system/default-configuration/custom-script/print</code>, and <code>/export</code> starts with the comment
+<code># custom default configuration script installed</code>.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The script runs on a router with an empty configuration and no certificates. If it fails, the
+router can end up unreachable for the ACS. Test it with a reset on a local router first.</p>
+</div>
+<p>At minimum, the script imports the CA certificate of the ACS, configures IP connectivity, a
+firewall and the TR-069 client. The ACS configures the rest.</p>
+<h3 id="example-default-configuration-script">Example default configuration script</h3>
+<p>This script assumes that ether1 is the WAN port, that the router gets its address from a DHCP
+client, and that the ACS at 198.51.100.10 uses a certificate signed by the CA in the script. The
+certificate in the script is a placeholder: replace it with your CA certificate, and replace the
+address, <code>acs-url</code> and the credentials. Add your own configuration.
+The router waits for the Ethernet interfaces to appear, imports the CA certificate, adds a firewall
+that accepts only connection requests from the ACS on ether1, turns off MAC server access, and
+enables the TR-069 client.</p>
+<pre><code class="language-routeros"># Default configuration of a router managed over TR-069
+:local acsCaCert &quot;-----BEGIN CERTIFICATE-----
+MIIDCDCCAfCgAwIBAgIIBQ68Phid9+owDQYJKoZIhvcNAQELBQAwDzENMAsGA1UE
+AwwEbXlDYTAeFw03MDAxMDIwMDM0MDZaFw03MTAxMDIwMDM0MDZaMA8xDTALBgNV
+BAMMBG15Q2EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDILvvnEc/8
+53jevX3MW4qjn9CNdHLexUZSL8qSXzE5sik1kaNOdckOXC8/Ku0qO95elaBaXmLe
+QsIQbVtZ768SBQc7q4RaG3AEauLfNl0BS3kl91/nSvYKp20Nvn7LP7CVZj8D81S+
+z4lYgab00X6hT65r8cOI4idaJNWkB9+vFujiPpg0H4IEthgslvCu0i2C7VMrZps/
+lTI4xD7kUU4ySzpMUDD3SiA1cEtR8SC5gspYFqtUB2Chk4DTeqWzPCT9eIKclIKM
+eh/5w7eLCKyjqIBDwWixuHGW7uFffHjmkgtmzG35W/qmgXGXG+BC8NomxmKxdxCT
+ZpQCbisMKieTAgMBAAGjaDBmMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQD
+AgEGMB0GA1UdDgQWBBR5poVfi8tXHrD3sEidlLLzm1k3xzAkBglghkgBhvhCAQ0E
+FxYVR2VuZXJhdGVkIGJ5IFJvdXRlck9TMA0GCSqGSIb3DQEBCwUAA4IBAQChVt7s
+YNL+U7p0OoxdKgCqP3JyrVOAYDs51243IR83BM3WQybWaDcEv50/R668icnnNHgN
+GKQ6OjgQbia7ZW38JWlD/n59WDjk9T63lHh5RHmrhPlIDUN8Wh89v6N2q8YQy+rj
+o2lOcbZOJTSIirSBcokMRw45yJNO9HU02E9Bl5nb1hq6/xP4pbTS3t8bL+Xpg0eJ
+herz/Ap62k/ToRP+yFYN90z8sDHHvKWnq1W60xreLQ95D5IOego0dIWDC8J/a551
+Z2AklvEhKfJTQ6zylrhPDy5bySadxy8lAV82+gEZ1AQyS2UXzRAUgCCCzdEmgiWE
+6Du6ubASPAEmYfhC
+-----END CERTIFICATE-----&quot;
+
+# Wait up to 30 seconds for the Ethernet interfaces to appear
+:local count 0
+:while ([:len [/interface/ethernet/find]] = 0 &amp;&amp; $count &lt; 30) do={
+    :delay 1s
+    :set count ($count + 1)
+}
+
+# Import the CA certificate that signed the ACS certificate
+/file/add name=acs-ca.crt contents=$acsCaCert
+/certificate/import file-name=acs-ca.crt passphrase=&quot;&quot;
+
+# Firewall: allow connection requests from the ACS only
+/ip/firewall/filter/add chain=input action=accept \
+    connection-state=established,related \
+    comment=&quot;defconf: accept established,related&quot;
+/ip/firewall/filter/add chain=input action=accept protocol=tcp \
+    dst-port=7547 src-address=198.51.100.10 in-interface=ether1 \
+    comment=&quot;defconf: accept TR-069 connection requests&quot;
+/ip/firewall/filter/add chain=input action=drop in-interface=ether1 \
+    comment=&quot;defconf: drop all from WAN&quot;
+/ip/neighbor/discovery-settings/set discover-interface-list=none
+
+# No MAC server access, IPv6 input from ether1 dropped
+/tool/mac-server/set allowed-interface-list=none
+/tool/mac-server/mac-winbox/set allowed-interface-list=none
+/ipv6/firewall/filter/add chain=input action=accept \
+    connection-state=established,related \
+    comment=&quot;defconf: accept established,related&quot;
+/ipv6/firewall/filter/add chain=input action=accept protocol=icmpv6 \
+    comment=&quot;defconf: accept ICMPv6&quot;
+/ipv6/firewall/filter/add chain=input action=drop in-interface=ether1 \
+    comment=&quot;defconf: drop all from WAN&quot;
+
+# Get an address on ether1 and connect to the ACS
+:if ([:len [/ip/dhcp-client/find interface=ether1]] = 0) do={
+    /ip/dhcp-client/add interface=ether1 comment=&quot;defconf&quot;
+}
+/tr069-client/set enabled=yes acs-url=&quot;https://acs.example.com:7547/&quot; \
+    username=cpe-0001 password=Cpe-0001-secret \
+    connection-request-username=acs \
+    connection-request-password=Acs-request-secret
+</code></pre>
+<p>After a reset with this script, the router has no LAN configuration and accepts no management
+access from ether1. Neighbor discovery is off on all interfaces; to use it on the LAN side, define
+an interface list for it. Configure the rest, including the LAN, from the ACS, for example with
+<code>.alter</code> files.</p>
+<h2 id="tested-acss">Tested ACSs</h2>
+<p>Ordering is alphabetical. MikroTik does not imply any one vendor's superiority over another.</p>
+<h3 id="commercial">Commercial</h3>
+<p>MikroTik has tested and verified the following commercial ACS solutions:</p>
+<ul>
+<li><a href="https://www.avsystem.com">AVSystem</a></li>
+<li><a href="https://axiros.com">Axiros</a></li>
+<li><a href="https://friendly-tech.com">Friendly Tech</a></li>
+</ul>
+<h3 id="open-source">Open source</h3>
+<ul>
+<li><a href="https://github.com/genieacs/genieacs">GenieACS</a></li>
+</ul>
+<p>For all <code>/tr069-client</code> properties, see the <a href="../cli-reference/tr069-client/">CLI reference</a>.</p>
+<hr />
+<h1 id="dude">Dude</h1>
+<blockquote>
+<p>Dude is a legacy network management tool discontinued by MikroTik, now offered without further updates or enhancements. Users are advised to exercise caution and consider alternative solutions for network management...</p>
+</blockquote>
+<h1 id="dude_1">Dude</h1>
+<p>Please be advised that development of Dude has been officially discontinued, and the software is now classified as legacy. It is provided on an “as-is” basis, and no further updates or enhancements are planned for the foreseeable future. Users are encouraged to exercise their own discretion when utilizing this software.</p>
+<h2 id="run-the-dude-server">Run the Dude server</h2>
+<p>The Dude server runs on the router and comes in the <code>dude</code> extra package (see
+<a href="../getting-started/installation-and-upgrade/packages">Packages</a>). After installing the package,
+enable the server and choose the folder for its database:</p>
+<pre><code class="language-routeros">/dude/set enabled=yes data-directory=dude
+/dude/print
+</code></pre>
+<pre><code class="language-text">         enabled: yes
+  data-directory: dude
+          status: running
+</code></pre>
+<p>The router creates the folder with the database (<code>dude.db</code>) and the default files of the Dude.
+While the server runs, RouterOS adds a dynamic <code>dudes</code> service on UDP port 514 (see <code>/ip/service/print</code>).
+On a router with a <code>flash</code> folder or an attached disk, choose a folder there, for example
+<code>flash/dude</code>, so that the database is kept on persistent storage.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

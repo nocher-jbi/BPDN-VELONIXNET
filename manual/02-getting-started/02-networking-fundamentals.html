@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networking Fundamentals · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Getting Started</p>
+      <h1 id="networking-fundamentals">Networking Fundamentals</h1>
+<h1 id="networking-fundamentals_1">Networking Fundamentals</h1>
+<blockquote>
+<p>This page introduces networking fundamentals in MikroTik RouterOS, covering the OSI and TCP/IP models, their layers, protocols, and Ethernet communication details including MAC addresses and frame forwarding types.</p>
+</blockquote>
+<h1 id="networking-fundamentals_2">Networking Fundamentals</h1>
+<p>Computer networks consist of many different components and protocols working together. To understand the concept of how node to node communication works, the <strong>OSI model</strong> and <strong>TCP/IP model</strong> help visualize how nodes communicate.</p>
+<h3 id="osi-model">OSI Model</h3>
+<p>The Open Systems Interconnection (OSI) model is a 7-layer model that today is used as a teaching tool. The OSI model was originally conceived as a standard architecture for building network systems, but in real-world networks are much less defined than the OSI model suggests.</p>
+<ul>
+<li><strong>Layer 7 (Application)</strong> - a protocol that defines the communication between the server and the client, for example, HTTP protocol. If the web browser wants to download an image, the protocol organizes and executes the request;</li>
+<li><strong>Layer 6 (Presentation)</strong> - ensures data is received in a usable format. Encryption is done here (but in reality it may not be true, for example, IPSec);</li>
+<li><strong>Layer 5 (Session)</strong> - responsible for setting up, managing and closing sessions between client and server;</li>
+<li><strong>Layer 4 (Transport)</strong> - transport layers primary responsibility is assembly and reassembly, a data stream is divided into chunks (segments), assigned sequence numbers and encapsulated into protocol header (TCP, UDP, for example);</li>
+<li><strong>Layer 3 (Network)</strong> - responsible for logical device addressing, data is encapsulated within an IP header and now called "packet";</li>
+<li><strong>Layer 2 (Data link)</strong> - Data is encapsulated within a custom header, either 802.3 (Ethernet) or 802.11 (wireless) and is called "frame", handles flow control;</li>
+<li><strong>Layer 1 (Physical)</strong> - Communication media that sends and receives bits, electric signaling, and hardware interface;</li>
+</ul>
+<h3 id="tcpip-model">TCP/IP model</h3>
+<p>This model has the same purpose as the OSI model but fits better into modern network troubleshooting. Comparing to the OSI model, TCP/IP is a 4-layer model:</p>
+<ul>
+<li><strong>Application layer (4)</strong> - includes application, presentation and session layers of the OSI model, which significantly simplifies network troubleshooting;</li>
+<li><strong>Transport layer (3)</strong> - same as a transport layer in the OSI model (TCP, UDP protocols);</li>
+<li><strong>Internet layer (2)</strong> - does the same as Network layer in the OSI model (include ARP, IP protocols);</li>
+<li><strong>Link layer (1)</strong> - also called the Network Access layer. Includes both Layer1 and 2 of the OSI model, therefore its primary concern is physical data exchange between network nodes;</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">TCP/IP</th>
+<th style="text-align: left;">OSI Model</th>
+<th style="text-align: left;">Protocols</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Application Layer</td>
+<td style="text-align: left;">Application Layer</td>
+<td style="text-align: left;">DNS, DHCP,HTTP,SSH for example.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Presentation Layer</td>
+<td style="text-align: left;">JPEG,MPEG,PICT for example.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Session Layer</td>
+<td style="text-align: left;">PAP, SCP, ZIP for example.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Transport Layer</td>
+<td style="text-align: left;">Transport Layer</td>
+<td style="text-align: left;">TCP, UDP</td>
+</tr>
+<tr>
+<td style="text-align: left;">Internet Layer</td>
+<td style="text-align: left;">Network Layer</td>
+<td style="text-align: left;">ICMP, IGMP, IPv4, IPv6, IPSec</td>
+</tr>
+<tr>
+<td style="text-align: left;">Link Layer</td>
+<td style="text-align: left;">Data Link Layer</td>
+<td style="text-align: left;">ARP, CDP, MPLS, PPP for example.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Physical Layer</td>
+<td style="text-align: left;">Bluetooth, Ethernet, Wi-Fi for example.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ethernet">Ethernet</h2>
+<p>The most commonly used link layer protocol (OSI Layer2) in computer networks is the Ethernet protocol. In order to communicate, each node has a unique assigned address, called <strong>MAC</strong> (Media Access Control address) sometimes it is also called an Ethernet address.</p>
+<p>It is 48-bit long and typically was fixed by the manufacturer (could not be changed), but nowadays customization of MAC addresses is widely used, RouterOS also allows setting a custom MAC address.</p>
+<p>Most commonly used MAC format is 6 hexadecimal numbers separated by colons (<code>D4:CA:6D:01:22:96</code>)</p>
+<p>RouterOS shows MAC address in a configuration for all Ethernet-like interfaces (Wireless, 60G, VPLS, for example)</p>
+<pre><code class="language-ros">[admin@rack1_b32_CCR1036] /interface ethernet&gt; print 
+Flags: X - disabled, R - running, S - slave 
+ #    NAME                  MTU MAC-ADDRESS       ARP             SWITCH               
+ 0 R  ether1               1500 D4:CA:6D:01:22:96 enabled        
+ 1 R  ether2               1500 D4:CA:6D:01:22:97 enabled        
+ 2 R  ether3               1500 D4:CA:6D:01:22:98 enabled        
+ 3    ether4               1500 D4:CA:6D:01:22:99 enabled        
+ 4    ether5               1500 D4:CA:6D:01:22:9A enabled        
+ 5    ether6               1500 D4:CA:6D:01:22:9B enabled        
+ 6    ether7               1500 D4:CA:6D:01:22:9C enabled        
+ 7 R  ether8               1500 D4:CA:6D:01:22:9D enabled        
+ 8    sfp-sfpplus1         1500 D4:CA:6D:01:22:94 enabled        
+ 9    sfp-sfpplus2         1500 D4:CA:6D:01:22:95 enabled 
+</code></pre>
+<p>There are three types of forwarding frames over the Ethernet network:</p>
+<ul>
+<li><strong>Unicast</strong> - frame with unicast address is sent to all nodes within the collision domain, which typically is Ethernet cable between two nodes or in case of wireless all receivers that can detect wireless signals. Only remote node with matching MAC address accepts the frame (unless the promiscuous mode is enabled)</li>
+<li><strong>Broadcast</strong> - one of the special addresses (<code>FF:FF:FF:FF:FF:FF</code>), a broadcast frame is accepted and forwarded over Layer2 network by all nodes.</li>
+<li><strong>Multicast</strong> - frames with multicast addresses are received by all nodes configured to listen to this address.</li>
+</ul>
+<h2 id="ip-networking">IP Networking</h2>
+<p>Ethernet protocol is sufficient to get the data between two nodes on an Ethernet network, but it is not enough to get the data between nodes multiple hops away over multiple Ethernet segments. For Internet/Networking layer (OSI Layer 3) IP (Internet Protocol) is used to identify hosts with unique logical addresses.</p>
+<p>Most of the current networks use <strong>IPv4</strong>, which is 32bit address written in dotted-decimal notation (<code>192.168.88.1</code>), but use of <strong>IPv6</strong> (128bit address) is expanding.</p>
+<p>It is possible to add multiple IP addresses to an interface or to leave the interface without any addresses assigned to it. In the case of bridging or PPPoE connection, the physical interface may not have any address assigned, yet be perfectly usable. Configuring an IP address to a physical interface included in a bridge would mean actually setting it on the bridge interface itself.</p>
+<h3 id="netmasks">Netmasks</h3>
+<p>There can be multiple logical networks and to identify which network IP address belongs to, the <strong>netmask</strong> is used. <strong>Netmask</strong> typically is specified as a number of bits used to identify a logical network. The format can also be in decimal notation, for example, the 24-bit netmask can be written as <code>255.255.255.0</code></p>
+<h3 id="ipv4-addresses">IPv4 Addresses</h3>
+<p>IPv4 uses 4-byte addresses which are segmented in four 8-bit fields called octets. Each octet is converted to a decimal format and separated by a dot. For example:</p>
+<pre><code>11000000 10101000 00000011 00011000 =&gt; 192.168.3.24
+</code></pre>
+<p>Let's take a closer look at 192.168.3.24/24 and how valid range is determined from the netmask:</p>
+<pre><code>11000000 10101000 00000011 00011000 =&gt; 192.168.3.24
+11111111 11111111 11111111 00000000 =&gt; /24 or 255.255.255.0
+</code></pre>
+<p>In this example high 24 bits are masked, leaving us with a range of 0-255.<br />
+This range consists of three address types:</p>
+<ul>
+<li>
+<p><strong>Network address</strong> - the first address from the range is used to identify the network (in our example network address would be 192.168.3.0)</p>
+</li>
+<li>
+<p><strong>Broadcast address</strong> - the last/highest address from the range ( in our example it is 192.168.3.255). Broadcast address is used to send the data to all possible destinations (<strong>all-hosts broadcast</strong>), which permits the sender to send the data only once, and all receivers receive a copy of it. In the IPv4 protocol, the address 255.255.255.255 is used for <strong>local broadcast</strong>. In addition, a directed (limited) broadcast can be made to network broadcast address.</p>
+</li>
+<li><strong>Unicast address</strong> - all other addresses from the range can be used to identify specific host in the network (in our example range is from 1 to 254 for host identification).</li>
+</ul>
+<p>The same as in Ethernet protocol there is also a special address range for <strong>multicast</strong>. Multicast address is used to associate with a group of interested receivers. In IPv4, addresses <code>224.0.0.0</code> through <code>239.255.255.255</code> are designated as multicast addresses. The sender sends a single datagram from its unicast address to the multicast group address and the intermediary routers take care of making copies and sending them to all receivers that have joined the corresponding multicast group;</p>
+<p>Logical IP network, unicast, broadcast and multicast visualization:</p>
+<p>There are also address ranges reserved for a special purpose:</p>
+<ul>
+<li><a href="https://tools.ietf.org/html/rfc1918">Private address range (RFC 1918)</a>, that should be used only in local networks and typically are dropped when forwarded to the internet:</li>
+<li>10.0.0.0/8 - start: 10.0.0.0; end: 10.255.255.255</li>
+<li>172.16.0.0/12 - start: 172.16.0.0; end:172.31.255.255</li>
+<li>
+<p>192.168.0.0/16 - start: 192.168.0.0; end: 192.168.255.255</p>
+</li>
+<li>
+<p>198.18.0.0/15 - benchmarking</p>
+</li>
+<li>192.88.99.0/24 - 6to4 relay anycast address range</li>
+<li>192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 - documentation</li>
+<li>169.254.0.0/16 - auto-configuration address range</li>
+</ul>
+<h4 id="point-to-point-addressing">Point-to-point addressing</h4>
+<p>Point-to-point addressing, as name implies, can be used to set layer3 network consisting of only two nodes. There are two ways to set such adressing:</p>
+<ul>
+<li>Use /31 address range</li>
+<li>Use /32 addresses where the network address is set as remote node`s ip address.<br />
+  For example:</li>
+</ul>
+<p>```mermaid
+  flowchart LR
+    H1 --- H2</p>
+<pre><code>H1["**Host 1**____________________ **Address**: 192.168.0.1/32**Network**: 192.168.0.2"]
+H2["**Host 2**____________________ **Address**: 192.168.0.2/32**Network**: 192.168.0.1"]
+
+style H1 text-align:left
+style H2 text-align:left
+</code></pre>
+<p>```</p>
+<h4 id="address-configuration">Address configuration</h4>
+<p>Consider a setup where two routers are directly connected with the cable and we do not want to waste address space:</p>
+<p>Router 1:</p>
+<pre><code class="language-ros">/ip address
+add address=10.1.1.1/32 interface=ether1 network=172.16.1.1
+</code></pre>
+<p>Router 2:</p>
+<pre><code class="language-ros">/ip address
+add address=172.16.1.1/32 interface=ether1 network=10.1.1.1
+</code></pre>
+<h2 id="arp-and-tying-it-all-together">ARP and Tying It All Together</h2>
+<p>Even though IP packets are addressed using IP addresses, hardware addresses must be used to actually transport data from one host to another.</p>
+<p>This brings us to <strong>Address Resolution Protocol (ARP)</strong> which is used for mapping the <strong>IPv4</strong> address of the host to the hardware address (MAC). <strong>ARP</strong> protocol is referenced in <a href="https://tools.ietf.org/html/rfc826">RFC 826</a>. It is a thing of the past which is eliminated by multicast for IPv6, however it stays as long as IPv4 is in use.</p>
+<p>Each network device has a table of currently used ARP entries. Normally the table is built dynamically, but to increase network security, it can be partially or completely built statically by means of adding static entries.</p>
+<p>When a host on the local area network wants to send an IP packet to another host in this network, it must look for the Ethernet MAC address of destination host in its ARP cache. If the destination host’s MAC address is not in the ARP table, then the ARP request is sent to find the device with a corresponding IP address. ARP sends a broadcast request message to all devices on the LAN by asking the devices with the specified IP address to reply with its MAC address. A device that recognizes the IP address as its own returns ARP response with its own MAC address:</p>
+<p>Let's make a simple configuration and take a closer look at processes when <strong>Host A</strong> tries to ping <strong>Host C</strong>.</p>
+<p>At first, we add IP addresses on <strong>Host A</strong>:</p>
+<pre><code class="language-ros">/ip address add address=10.155.101.225/24 interface=ether1
+</code></pre>
+<p><strong>Host B</strong>:</p>
+<pre><code class="language-ros">/ip address add address=10.155.101.221/24 interface=ether1
+</code></pre>
+<p><strong>Host C</strong>:</p>
+<pre><code class="language-ros">/ip address add address=10.155.101.217/24 interface=ether1
+</code></pre>
+<p>Let's run a <a href="../../cli-reference/tool/sniffer"><code>/tool/sniffer</code></a> that saves packet dump to the file and run the ping command on <strong>Host A</strong>:</p>
+<pre><code class="language-ros">/tool sniffer
+  set file-name=arp.pcap filter-interface=ether1
+  start 
+/ping 10.155.101.217 count=1
+/tool sniffer stop
+</code></pre>
+<p>Now you can download arp.pcap file from the router and open it in Wireshark for analyzing:</p>
+<ul>
+<li><strong>Host A</strong> sends <strong>ARP</strong> message asking who has "10.155.101.217"</li>
+<li><strong>Host C</strong> responds that 10.155.101.217 can be reached at 08:00:27:3C:79:3A MAC address</li>
+<li>Both <strong>Host A</strong> and <strong>Host C</strong> now have updated their <strong>ARP</strong> tables and ICMP (ping) packets can be sent</li>
+</ul>
+<p>If you look at ARP tables of both hosts by running <a href="../../cli-reference/ip/arp"><code>/ip/arp/print</code></a>, you should be able to see relevant entries:</p>
+<pre><code class="language-routeros">[admin@host_a] /ip arp&gt; print 
+Flags: D - DYNAMIC; C - COMPLETE
+Columns: ADDRESS, MAC-ADDRESS, INTERFACE, VRF, STATUS
+ #    ADDRESS         MAC-ADDRESS       INTERFACE     VRF   STATUS
+ 0 DC 10.155.101.217  08:00:27:3C:79:3A ether1        main  reachable
+
+ [admin@host_b] /ip arp&gt; print 
+Flags: D - DYNAMIC; C - COMPLETE
+Columns: ADDRESS, MAC-ADDRESS, INTERFACE, VRF, STATUS
+ #    ADDRESS         MAC-ADDRESS       INTERFACE     VRF   STATUS
+ 0 DC 10.155.101.225  08:00:27:85:69:B5 ether1        main  reachable
+</code></pre>
+<p>There might be scenarios where different behavior is necessary. RouterOS allows configuring different modes for interfaces that support <strong>ARP</strong>:</p>
+<ul>
+<li><strong>Enabled</strong> - ARPs are discovered automatically and new dynamic entries are added to the ARP table. This is a default mode for interfaces.</li>
+<li><strong>Disabled</strong> - If the ARP feature is turned off on the interface, then ARP requests from clients are not answered by the router. Therefore, static ARP entry should be added to the clients as well. For example,
+  Host A:</li>
+</ul>
+<p><code>ros
+  /interface/set ether1 arp=disabled
+  /ip arp add mac-address=08:00:27:3C:79:3A address=10.155.101.217 interface=ether1</code></p>
+<p>Host B:</p>
+<p><code>ros
+  /ip arp add mac-address=08:00:27:85:69:B5 address=10.155.101.225 interface=ether1</code></p>
+<ul>
+<li>
+<p><strong>Reply Only</strong> - If the ARP property is set to <code>reply-only</code> on the interface, then the router only replies to ARP requests. Neighbour MAC addresses are resolved by using <code>/ip/arp</code> statically, but there is no need to add the router's MAC address to other hosts' ARP tables like in the cases where ARP is disabled.</p>
+</li>
+<li>
+<p><strong>Proxy ARP</strong> - A router with properly configured proxy ARP feature acts as a transparent proxy between directly connected networks. This behavior can be useful, for example, if you want to assign dial-in (PPP, PPPoE, PPTP) clients IP addresses from the same address space as used on the connected LAN.</p>
+</li>
+<li>
+<p><strong>Local Proxy ARP</strong> - If the arp property is set to <code>local-proxy-arp</code> on an interface, then the router performs proxy ARP to/from this interface only. I.e. for traffic that comes in and goes out of the same interface. In a normal LAN, the default behavior is for two network hosts to communicate directly with each other, without involving the router.
+  The router responds to all client hosts with the router's own interface MAC address instead of the other host's MAC address.</p>
+</li>
+</ul>
+<p>For example, if Host A (192.168.88.2/24) queries for the MAC address of Host B (192.168.88.3/24), the router would respond with its own MAC address. In other words, if local-proxy-arp is enabled, the router would assume responsibility for forwarding traffic between Host A 192.168.88.2 and Host B 192.168.88.3. All the ARP cache entries on Hosts A and B reference the router's MAC address. In this case, the router is performing local-proxy-arp for the entire subnet 192.168.88.0/24.</p>
+<p>An example for RouterOS local-proxy-arp could be a bridge setup with a DHCP server and isolated bridge ports where hosts from the same subnet can reach each other only at Layer3 through bridge IP.</p>
+<p><code>ros
+  /interface bridge
+  add arp=local-proxy-arp name=bridge1
+  /interface bridge port
+  add bridge=bridge1 horizon=1 interface=ether2
+  add bridge=bridge1 horizon=1 interface=ether3
+  add bridge=bridge1 horizon=1 interface=ether4</code></p>
+<p>This technology is known by different names:
+  - In RFC 3069 it is called VLAN Aggregation;
+  - Cisco and Allied Telesis call it Private VLAN;
+  - Hewlett-Packard calls it Source-Port filtering or port-isolation;
+  - Ericsson calls it MAC-Forced Forwarding (RFC Draft).</p>
+<h3 id="proxy-arp-example">Proxy ARP Example</h3>
+<p>Let's look at the example diagram.  </p>
+<p><strong>Host A</strong> (172.16.1.2) on Subnet A wants to send packets to <strong>Host D</strong> (172.16.2.3) on Subnet B. <strong>Host A</strong> has a /16 subnet mask which means that it believes that it is directly connected to all 172.16.0.0/16 network (the same LAN). It broadcasts on Subnet A to clarify the MAC address of <strong>Host D</strong>.</p>
+<p>Info from packet analyzer software:</p>
+<pre><code class="language-text"> No.     Time   Source             Destination       Protocol  Info
+
+ 12   5.133205  00:1b:38:24:fc:13  ff:ff:ff:ff:ff:ff  ARP      Who has 173.16.2.3?  Tell 173.16.1.2
+
+Packet details:
+
+Ethernet II, Src: (00:1b:38:24:fc:13), Dst: (ff:ff:ff:ff:ff:ff)
+    Destination: Broadcast (ff:ff:ff:ff:ff:ff)
+    Source: (00:1b:38:24:fc:13)
+    Type: ARP (0x0806)
+Address Resolution Protocol (request)
+    Hardware type: Ethernet (0x0001)
+    Protocol type: IP (0x0800)
+    Hardware size: 6
+    Protocol size: 4
+    Opcode: request (0x0001)
+    [Is gratuitous: False]
+    Sender MAC address: 00:1b:38:24:fc:13
+    Sender IP address: 173.16.1.2
+    Target MAC address: 00:00:00:00:00:00
+    Target IP address: 173.16.2.3
+</code></pre>
+<p>With this ARP request, <strong>Host A</strong> (172.16.1.2) is asking <strong>Host D</strong> (172.16.2.3) to send its MAC address.  Layer-2 broadcast means that the frame is sent to all hosts in the same layer-2 broadcast domain which includes the <strong>ether0</strong> interface of the router, but does not reach <strong>Host D</strong>, because router by default does not forward layer-2 broadcasts.</p>
+<p>To fix this problem we need to enable <code>proxy-arp</code> on ether0:</p>
+<pre><code class="language-ros">/interface/ethernet set ether0 arp=proxy-arp
+</code></pre>
+<p>Now, the router knows that the target address (172.16.2.3) is on another subnet and is reachable, it sends a unicast reply to <strong>Host A</strong> with its own <strong>MAC</strong> address. Basically, it is saying "send these packets to me, and I'll get it to where it needs to go."</p>
+<pre><code class="language-text">No.     Time   Source            Destination         Protocol   Info
+
+13   5.133378  00:0c:42:52:2e:cf  00:1b:38:24:fc:13   ARP        172.16.2.3 is at 00:0c:42:52:2e:cf
+
+Packet details:
+
+Ethernet II, Src: 00:0c:42:52:2e:cf, Dst: 00:1b:38:24:fc:13
+   Destination: 00:1b:38:24:fc:13
+   Source: 00:0c:42:52:2e:cf
+   Type: ARP (0x0806)
+Address Resolution Protocol (reply)
+   Hardware type: Ethernet (0x0001)
+   Protocol type: IP (0x0800)
+   Hardware size: 6
+   Protocol size: 4
+   Opcode: reply (0x0002)
+   [Is gratuitous: False]
+   Sender MAC address: 00:0c:42:52:2e:cf
+   Sender IP address: 172.16.1.254
+   Target MAC address: 00:1b:38:24:fc:13
+   Target IP address: 172.16.1.2
+</code></pre>
+<p>When Host A receives ARP response it updates its ARP table, as shown:</p>
+<pre><code class="language-text">C:\Users\And&gt;arp -a
+Interface: 173.16.2.1 --- 0x8
+  Internet Address      Physical Address      Type
+  173.16.1.254          00-0c-42-52-2e-cf    dynamic
+  173.16.2.3            00-0c-42-52-2e-cf    dynamic
+  173.16.2.2            00-0c-42-52-2e-cf    dynamic
+</code></pre>
+<p>After MAC table update, <strong>Host A</strong> forwards all the packets intended for <strong>Host D</strong> (172.16.2.3) directly to router interface ether0 (00:0c:42:52:2e:cf) and the router forwards packets to <strong>Host D</strong>. The ARP cache on the hosts in Subnet A is populated with the MAC address of the router for all the hosts on Subnet B. Hence, all packets destined to Subnet B are sent to the router. The router forwards those packets to the hosts in Subnet B.</p>
+<p>Multiple IP addresses by the host are mapped to a single MAC address when proxy ARP is used.</p>
+<h3 id="gratuitous-arp">Gratuitous ARP</h3>
+<p>It is possible to create Gratuitous ARP requests in RouterOS. To do so you must use the <a href="../../cli-reference/tool/traffic-generator/inject"><code>/tool/traffic-generator/inject</code></a> tool. Below is an example of how to generate a Gratuitous ARP request to update the ARP table on a remote device:</p>
+<pre><code class="language-ros">/tool/traffic-generator/inject interface=ether2 \
+data=&quot;ffffffffffff4c5e0c14ef78080600010800060400014c5e0c14ef780a057a01ffffffffffff0a057a01000000000000000000000000000000000000&quot;
+</code></pre>
+<p>You must change the MAC address (4c5e0c14ef78) and the IP address (0a057a01) to your router's address. The IP address and the MAC address must be from the device that requests an ARP table update. You also need to specify through which interface (ether2) you want to send the Gratuitous ARP request. Make sure that the receiving device supports Gratuitous ARP requests.</p>
+<h2 id="transport-layer">Transport Layer</h2>
+<p>Protocols in this layer provide end-to-end communication services for applications. These protocols should ensure that packets arrive in sequence and without error, by swapping acknowledgments of data reception, and retransmitting lost packets.</p>
+<p>The best known and widely used is <strong>Transmission Control Protocol (TCP)</strong>, which is used for connection-oriented transmission, it incorporates mechanisms for reliable data transmission.</p>
+<p>Connectionless <strong>User Datagram Protocol (UDP)</strong> is another common protocol used for simple data transmission.</p>
+<h3 id="tcp-protocol-operation">TCP Protocol Operation</h3>
+<p>Connection-oriented protocol does not send any data until a proper connection is established. <strong>TCP</strong> uses multi-step handshake process whenever the transmitting device tries to establish a connection to the remote node. As a result end-to-end virtual (logical) circuit is created where flow control and acknowledgment for reliable delivery are used. TCP has several message types used in connection establishment and termination process.</p>
+<p><strong>Three-way handshake</strong> process:</p>
+<ol>
+<li>The <strong>HostA</strong> who needs to initialize a connection sends out an <strong>SYN</strong> (Synchronize) packet with a proposed initial sequence number to the destination <strong>HostB</strong>.</li>
+<li>When the <strong>HostB</strong> receives a <strong>SYN</strong> message, it replies with a packet where both <strong>SYN</strong> and <strong>ACK</strong> flags are set in the TCP header (SYN-ACK).</li>
+<li>When the <strong>HostA</strong> receives the SYN-ACK, it replies with the <strong>ACK</strong> (Acknowledgment) packet. <strong>HostB</strong> receives <strong>ACK</strong> and at this stage, the connection is <strong>ESTABLISHED;</strong></li>
+</ol>
+<pre><code class="language-mermaid">sequenceDiagram
+    HostA-&gt;&gt;HostB: Syn sent
+    HostB-&gt;&gt;HostA: Syn-Ack sent
+    HostA-&gt;&gt;HostB: Ack sent
+Note right of HostB: Established
+</code></pre>
+<p>Now that we know how the <strong>TCP</strong> connection is established we need to understand how data transmission is managed and maintained.</p>
+<p>Connection-oriented protocol services are often sending acknowledgments (ACKs) after successful delivery. After the packet with data is transmitted, the sender waits for acknowledgment from the receiver. If time expires and the sender did not receive <strong>ACK</strong>, a packet is retransmitted.</p>
+<p>Let’s think about what happens when data-grams are sent out faster than the receiving device can process. The receiver stores them in memory called a buffer. But since buffer space is not unlimited, when its capacity is exceeded receiver starts to drop the frames. All dropped frames must be re-transmitted again which is the reason for low transmission performance.</p>
+<p>To address this problem, TCP uses a flow control protocol. The window mechanism is used to control the flow of the data. When a connection is established, the receiver specifies the window field in each TCP frame. Window size represents the amount of received data that the receiver is willing to store in the buffer. Window size (in bytes) is sent together with acknowledgments to the sender. So the size of the window controls how much information can be transmitted from one host to another without receiving an acknowledgment. The sender sends only the amount of bytes specified in window size and then waits for acknowledgments with updated window size.</p>
+<p>If the receiving application can process data as quickly as it arrives from the sender, then the receiver will send a positive window advertisement (increase the size of the window) with each acknowledgment. It works until the sender becomes faster than the receiver and incoming data will eventually fill the receiver's buffer, causing the receiver to advertise acknowledgment with a zero window. A sender that receives a zero window advertisement must stop transmit until it receives a positive window.  Let's take a look at the illustrated windowing process:</p>
+<ol>
+<li>The <strong>HostA</strong> starts to transmit with a window size of 1000, one 1000byte frame is transmitted.</li>
+<li>Receiver <strong>HostB</strong> returns <strong>ACK</strong> with window size to increase to 2000.</li>
+<li>The <strong>HostA</strong> receives <strong>ACK</strong> and transmits two frames (1000 bytes each).</li>
+<li>After that, the receiver advertises an initial window size to 3000. Now sender transmits three frames and waits for an acknowledgement.</li>
+<li>The first three segments fill the receiver's buffer faster than the receiving application can process the data, so the advertised window size reaches zero indicating that it is necessary to wait before further transmission is possible.</li>
+<li>The size of the window and how fast to increase or decrease the window size is available in various TCP congestion avoidance algorithms such as Reno, Vegas, and Tahoe.</li>
+</ol>
+<pre><code class="language-mermaid">sequenceDiagram
+    HostA-&gt;&gt;HostB: Window size of 1000
+    HostB-&gt;&gt;HostA: Ack1 window size=2
+    HostA-&gt;&gt;HostB: Window size of 2000
+    HostA-&gt;&gt;HostB:
+    HostB-&gt;&gt;HostA: Ack2 window size=3
+rect rgb(185, 50, 50)
+    HostA-&gt;&gt;HostB: Window size of 3000
+    HostA-&gt;&gt;HostB:
+    HostA-&gt;&gt;HostB:
+Note left of HostB: Buffer is full, stop sending...
+    HostB-&gt;&gt;HostA: Ack3 window size=0
+end
+Note left of HostB: Buffer have been freed, continue...
+    HostB-&gt;&gt;HostA: Ack window size=1
+</code></pre>
+<p>When the data transmission is complete and the host wants to terminate the connection, the termination process is initiated. Unlike <strong>TCP</strong> Connection establishment, which uses a <strong>three-way handshake</strong>, connection termination uses a <strong>four-way</strong> handshake. A connection is terminated when both sides have finished the shutdown procedure by sending a <strong>FIN</strong> (finish) and receiving an <strong>ACK</strong> (Acknowledgment).</p>
+<p><strong>Four-way</strong> termination process:</p>
+<ol>
+<li>The <strong>HostA</strong>, who needs to terminate the connection, sends a special message with the <strong>FIN</strong> flag, indicating that it has finished sending the data.</li>
+<li>The <strong>HostB</strong>, who receives the <strong>FIN</strong> segment, does not terminate the connection but enters into a "passive close" (CLOSE_WAIT) state and sends the <strong>ACK</strong> for the <strong>FIN</strong> back to the <strong>HostA</strong>. If <strong>HostB</strong> does not have any data to transmit to the <strong>HostA</strong> it also sends the <strong>FIN</strong> message. Now the <strong>HostB</strong> enters into LAST_ACK state. At this point it no longer accepts data from <strong>HostA</strong>, but can continue to transmit data.</li>
+<li>When the <strong>HostA</strong> receives the last <strong>FIN</strong> from the <strong>HostB</strong>, it enters a (TIME_WAIT) state, and sends an <strong>ACK</strong> back to the <strong>HostB</strong>.</li>
+<li><strong>HostB</strong> gets the <strong>ACK</strong> from the <strong>HostA</strong> and connection is terminated.</li>
+</ol>
+<pre><code class="language-mermaid">sequenceDiagram
+    HostA-&gt;&gt;HostB: Fin sent
+Note right of HostB: CLOSE_WAIT
+    HostB-&gt;&gt;HostA: Ack sent
+    HostB-&gt;&gt;HostA: Fin sent
+Note right of HostB: LAST_ACK
+    HostA-&gt;&gt;HostB: Ack sent
+Note right of HostB: Terminated
+</code></pre>
+<h2 id="see-more">See more</h2>
+<ul>
+<li><a href="https://tools.ietf.org/html/rfc6890">RFC 6890</a> - list of all reserved IPv4 and IPv6 address ranges</li>
+<li><a href="https://tools.ietf.org/html/rfc3069">RFC 3069</a></li>
+</ul>
+<hr />
+<h1 id="ipv6-addresses">IPv6 Addresses</h1>
+<blockquote>
+<p>This page introduces IPv6 addressing in MikroTik RouterOS, covering its benefits over IPv4, address types and syntax, simplified representation with zero compression, prefix notation, and the absence of broadcast...</p>
+</blockquote>
+<h1 id="ipv6-addresses_1">IPv6 Addresses</h1>
+<p>Internet Protocol version 6 (IPv6) is the newer version of the Internet Protocol (IP). It was initially expected to replace IPv4 in a short enough time, but for now, it seems that these two versions coexist on the Internet in the foreseeable future. Nevertheless, IPv6 becomes more important, as the date of the unallocated IPv4 address pool's exhaustion approaches.</p>
+<ul>
+<li>
+<p>four main benefits:</p>
+</li>
+<li>
+<p>much larger address space;</p>
+</li>
+<li>support of stateless and stateful address auto-configuration;</li>
+<li>built-in security;</li>
+<li>new header format (faster forwarding).</li>
+</ul>
+<p>IPv6 uses 16-byte addresses compared to 4-byte addresses in IPv4. IPv6 address syntax and types are described in <a href="https://tools.ietf.org/html/rfc4291">RFC 4291</a>.</p>
+<p>There are multiple IPv6 address types, that can be recognized by their prefix. RouterOS distinguishes the following:</p>
+<ul>
+<li>multicast (with prefix ff00::/8)</li>
+<li>link-local (with prefix fe80::/10)</li>
+<li>unique local addresses (with prefix fc00::/7)</li>
+<li>loopback (the address::1/128)</li>
+<li>unspecified (the address::/128)</li>
+<li>other (all other addresses, including the obsoleted site-local addresses, and <a href="https://tools.ietf.org/html/rfc4193">RFC 4193</a> unique local addresses; they all are treated as global unicast).</li>
+</ul>
+<p>One difference between IPv6 and IPv4 addresses is that IPv6 automatically generates a <strong>link-local</strong> IPv6 address for each active interface that has IPv6 support.</p>
+<p>IPv6 addresses are represented a little bit differently than IPv4 addresses. For IPv6, the 128-bit address is divided into eight 16-bit blocks, and each 16-bit block is converted to a 4-digit hexadecimal number and separated by colons. The resulting representation is called colon-hexadecimal.</p>
+<p>In the example below IPv6 address in binary format is converted to a colon-hexadecimal representation</p>
+<pre><code>0010000000000001 0000010001110000 0001111100001001 0000000100110001
+0000000000000000 0000000000000000 0000000000000000 0000000000001001
+</code></pre>
+<pre><code>2001:0470:1f09:0131:0000:0000:0000:0009
+</code></pre>
+<p>The IPv6 address can be further simplified by removing leading zeros in each block:</p>
+<pre><code>2001:470:1f09:131:0:0:0:9
+</code></pre>
+<p>As you can see IPv6 addresses can have long sequences of zeros. This contiguous sequence can be compressed to <strong>::</strong></p>
+<pre><code>2001:470:1f09:131::9
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Zero compression can only be used once. Otherwise, you could not determine the number of 0 bits represented by each instance of a double-colon</p>
+</div>
+<p>IPv6 prefix is written in <strong>address/prefix-length</strong> format. Compared to IPv4 decimal representation of a network mask cannot be used. Prefix examples:</p>
+<pre><code>2001:470:1f09:131::/64
+2001:db8:1234::/48
+2607:f580::/32
+2000::/3
+</code></pre>
+<p>There are no <strong>Broadcast addresses</strong> in the IPv6 network, broadcast functionality was completely replaced with multicast.</p>
+<h3 id="unicast-addresses">Unicast Addresses</h3>
+<p>Packets addressed to a unicast address are delivered only to a single interface. To this group belong:</p>
+<ul>
+<li>globally unique addresses and can be used to connect to addresses with global scope anywhere;</li>
+<li>link-local addresses;</li>
+<li>unique local addresses (ULA RFC4193)</li>
+<li>site-local addresses (FEC0::/10) - deprecated;</li>
+<li>special-purpose addresses;</li>
+<li>compatibility addresses;</li>
+</ul>
+<p>A global unicast address can be automatically assigned to the node by <strong>Stateless Address auto-configuration.</strong></p>
+<h3 id="link-local-address">Link-local Address</h3>
+<p>A link-local address is required on every IPv6-enabled interface, applications may rely on the existence of a link-local address even when there is no IPv6 routing, that is why the link-local address is generated automatically for every active interface using its interface identifier (calculated EUI-64 from MAC address if present). The address prefix is always <strong>FE80::/64</strong> and IPv6 router never forwards link-local traffic beyond the link.</p>
+<p>These addresses are comparable to the auto-configuration addresses 169.254.0.0/16 of IPv4.</p>
+<p>A link-local address is also required for IPv6 Neighbor Discovery processes.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>If the interface is set as a bridge port, an interface-specific link-local address is removed leaving only the bridge link-local address</p>
+</div>
+<h3 id="unique-local-address">Unique Local Address</h3>
+<p>Unique Local Address (ULA) is reserved for local use in the home and enterprise environments not routed in public address space and is equivalent to IPv4 private address ranges.</p>
+<p>The reserved address range is <strong>fc00::/7</strong></p>
+<h3 id="special-purpose-address">Special Purpose Address</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Address</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Unspecified address (::/128)</strong></td>
+<td style="text-align: left;">Never assigned to an interface or used as a destination address, used only to indicate the absence of an address. Equivalent to IPv4 0.0.0.0 address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>loopback address (::1/128)</strong></td>
+<td style="text-align: left;">Used to identify a loopback interface, enabling a node to send packets to itself. It is equivalent to the IPv4 loopback address of 127.0.0.1.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2002::/16</strong></td>
+<td style="text-align: left;">This prefix is used for 6to4 addressing. Here, an address from the IPv4 network 192.88.99.0/24 is also used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2001:db8::/32</strong></td>
+<td style="text-align: left;">Address range reserved for documentation. These should never be seen as the source or destination.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2001:0010::/28</strong></td>
+<td style="text-align: left;">Orchid fixed term experiment. Should not be seen as a source or destination</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2001:0002::/48</strong></td>
+<td style="text-align: left;">Used for benchmarking, should not be seen as source or destination</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2001:0000::/32</strong></td>
+<td style="text-align: left;">Teredo</td>
+</tr>
+</tbody>
+</table>
+<h4 id="compatibility-address">Compatibility Address</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Address</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>IPv4 compatible address</strong></td>
+<td style="text-align: left;">used by dual-stack nodes that are communicating with IPv6 over an IPv4 infrastructure. When the IPv4-compatible address is used as an IPv6 destination, IPv6 traffic is automatically encapsulated with an IPv4 header and sent to the destination by using the IPv4 infrastructure. The address is written in the following format <code>::w.x.y.z</code>, where w.x.y.z is the dotted decimal representation of a public IPv4 address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>IPv4 mapped address</strong></td>
+<td style="text-align: left;">used to represent an IPv4-only node to an IPv6 node. It is used only for internal representation. The IPv4-mapped address is never used as a source or destination address for an IPv6 packet. The IPv6 protocol does not support the use of IPv4-mapped addresses. The address is written in the following format: <code>::ffff:w.x.y.z</code>, where <code>w.x.y.z</code> is the dotted-decimal representation of a public IPv4 address.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multicast-address">Multicast Address</h3>
+<p>The most important multicast aspects are:</p>
+<ul>
+<li>traffic is sent to a single address but is processed by multiple hosts;</li>
+<li>group membership is dynamic, allowing hosts to join and leave the group at any time;</li>
+<li>in IPv6, Multicast Listener Discovery (MLD) messages are used to determine group membership on a network segment, also known as a link or subnet;</li>
+<li>a host can send traffic to the group's address without belonging to the corresponding group.</li>
+</ul>
+<p>A single IPv6 multicast address identifies each multicast group. Each group's reserved IPv6 address is shared by all host members of the group who listen and receive any IPv6 messages sent to the group's address.</p>
+<p>The multicast address consists of the following parts:</p>
+<ul>
+<li>The first 8 bits in the multicast address are always 1111 1111 (which is FF in hexadecimal format).</li>
+<li>The flag uses the 9th to 12th bit and shows if this multicast address is predefined (well-known) or not. If it is well-known, all bits are 0s.</li>
+<li>Scope ID indicates to which scope multicast address belongs, for example, Scope ID=2 is link-local scope.</li>
+<li>The group ID is used to specify a multicast group. There are predefined group IDs, such as Group ID=1 - all nodes. Therefore, if the multicast address is ff02::1, that means Scope ID=2 and Group ID=1, indicating all nodes in link-local scope. This is analogous to broadcast on IPv4.</li>
+</ul>
+<p>Here is the table of reserved IPV6 addresses for multicast:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Address</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>FF02::1</strong></td>
+<td style="text-align: left;">The all-nodes address is used to reach all nodes on the same link.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FF02::2</strong></td>
+<td style="text-align: left;">The all-routers address is used to reach all routers on the same link.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FF02::5</strong></td>
+<td style="text-align: left;">The all-Open Shortest Path First (OSPF) router address is used to reach all OSPF routers on the same link.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FF02::6</strong></td>
+<td style="text-align: left;">The all-OSPF-designated router's address is used to reach all OSPF-designated routers on the same link.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FF02::1:FFXX:XXXX</strong></td>
+<td style="text-align: left;">The solicited-node address is used in the address resolution process to resolve the IPv6 address of a link-local node to its link-layer address. The last 24 bits (XX:XXXX) of the solicited-node address are the last 24 bits of an IPv6 unicast address.</td>
+</tr>
+</tbody>
+</table>
+<p>The following table is a partial list of IPv6 multicast addresses that are reserved for IPv6 multicasting and registered with the Internet Assigned Numbers Authority (IANA). For a complete list of assigned addresses read <a href="https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml">IANA document.</a></p>
+<p>Multicast addresses can be used to discover nodes in a network. For example, discover all nodes</p>
+<pre><code class="language-text">mrz@bumba:/media/aaa/ver$ ping6 ff02::1%eth0
+PING ff02::1%eth0(ff02::1) 56 data bytes
+64 bytes from fe80::21a:4dff:fe5d:8e56: icmp_seq=1 ttl=64 time=0.037 ms
+64 bytes from fe80::20c:42ff:fe0d:2c38: icmp_seq=1 ttl=64 time=4.03 ms (DUP!)
+64 bytes from fe80::20c:42ff:fe28:7945: icmp_seq=1 ttl=64 time=5.59 ms (DUP!)
+64 bytes from fe80::20c:42ff:fe49:fce5: icmp_seq=1 ttl=64 time=5.60 ms (DUP!)
+64 bytes from fe80::20c:42ff:fe21:f1ec: icmp_seq=1 ttl=64 time=5.88 ms (DUP!)
+64 bytes from fe80::20c:42ff:fe72:a1b0: icmp_seq=1 ttl=64 time=6.70 ms (DUP!)
+</code></pre>
+<p>discover all routers</p>
+<pre><code class="language-text">mrz@bumba:/media/aaa/ver$ ping6 ff02::2%eth0
+PING ff02::2%eth0(ff02::2) 56 data bytes
+64 bytes from fe80::20c:42ff:fe28:7945: icmp_seq=1 ttl=64 time=0.672 ms
+64 bytes from fe80::20c:42ff:fe0d:2c38: icmp_seq=1 ttl=64 time=1.44 ms (DUP!)
+</code></pre>
+<h3 id="anycast-address">Anycast Address</h3>
+<p>An anycast address is a new type of address incorporated in IPv6.</p>
+<p>Anycasting is a new networking paradigm supporting service-oriented Addresses where an identical address can be assigned to multiple nodes providing a specific service. An anycast packet (one with an anycast destination address) is delivered to one of these nodes with the same anycast address.</p>
+<p>An anycast address is not assigned a specific address range. It is assigned from the unicast address range.</p>
+<h3 id="interface-identifier">Interface Identifier</h3>
+<p>The last 64 bits of an IPv6 address are the interface identifier that is unique to the 64-bit prefix of the IPv6 address. There are several ways how to determine interface identifier:</p>
+<ul>
+<li>EUI-64;</li>
+<li>randomly generated to provide a level of anonymity;</li>
+<li>manually configured.</li>
+</ul>
+<h3 id="eui-64">EUI-64</h3>
+<p>Traditional interface identifiers for network adapters are 48-bit MAC addresses. This address consists of a 24-bit manufacturer ID and a 24-bit board ID.</p>
+<p>IEEE EUI-64 is a new standard for network interface addresses. The company ID is still 24 bits in length, but the extension ID is 40 bits, creating a much larger address space for network adapters.</p>
+<p>To create a EUI-64 address from the interface MAC address:</p>
+<ul>
+<li>0xFFFE is inserted into the MAC address between the manufacturer ID and the board ID.</li>
+<li>The seventh bit of the first byte is reversed.</li>
+</ul>
+<p>Let's make an example with the following MAC address 00:0C:42:28:79:45.</p>
+<p>The image above illustrates the conversion process. When the result is converted to colon-hexadecimal notation, we get the interface identifier <code>20C:42FF:FE28:7945</code>. As a result, the corresponding link-local address is</p>
+<pre><code>FE80::20C:42FF:FE28:7945/64
+</code></pre>
+<p>In RouterOS, if the EUI-64 parameter of an address is configured, the last 64 bits of that address are automatically generated and updated by using the interface identifier. The last bits must be configured to be zero for this case. Example:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; ipv6 address add address=fc00:3::/64 interface=ether3 eui-64=yes
+[admin@MikroTik] &gt; ipv6 address print
+Flags: X - disabled, I - invalid, D - dynamic, G - global, L - link-local
+#    ADDRESS                                     INTERFACE                  ADVERTISE
+...
+5  G fc00:3::20c:42ff:fe1d:3d4/64                ether3                     yes
+[admin@MikroTik] &gt; interface ethernet set ether3 mac-address=10:00:00:00:00:01
+[admin@MikroTik] &gt; ipv6 address print
+Flags: X - disabled, I - invalid, D - dynamic, G - global, L - link-local
+#    ADDRESS                                     INTERFACE                  ADVERTISE
+...
+5  G fc00:3::1200:ff:fe00:1/64                   ether3                     yes
+</code></pre>
+<h3 id="configuring-ipv6-address">Configuring IPv6 Address</h3>
+<p>This example shows how to set up simple addressing with global IPv6 addresses between two routers.</p>
+<p>R1 configuration:</p>
+<pre><code class="language-ros">/ipv6 address
+add address=2001:DB8::1/64 interface=ether1 advertise=no
+</code></pre>
+<p>R2 configuration:</p>
+<pre><code class="language-ros">/ipv6 address
+add address=2001:DB8::2/64 interface=ether1 advertise=no
+</code></pre>
+<p>Check the address list:</p>
+<pre><code class="language-text">[admin@R1] /ipv6 address&gt; print
+Flags: X - disabled, I - invalid, D - dynamic, G - global, L - link-local
+#    ADDRESS                                     FROM-POOL INTERFACE     ADVERTISE
+0  G 2001:db8::1/64                                        ether1        no
+3 DL fe80::219:d1ff:fe39:3535/64                           ether1        no
+</code></pre>
+<p>Notice that our added address has a G flag indicating that this address can be globally routed. We also have a link-local address on the interface which is created automatically for every IPv6-capable interface.</p>
+<p>Test connectivity:</p>
+<pre><code class="language-text">[admin@R1] /ipv6 address&gt; /ping 2001:DB8::2
+HOST                                     SIZE TTL TIME  STATUS
+2001:db8::2                 56  64 12ms  echo reply
+2001:db8::2                 56  64 0ms   echo reply
+    sent=2 received=2 packet-loss=0% min-rtt=0ms avg-rtt=6ms max-rtt=12ms
+</code></pre>
+<h3 id="slaac-ipv6-address">SLAAC IPv6 Address</h3>
+<p>If the <code>accept-router-advertisements</code> option is enabled under the <a href="../../cli-reference/ipv6/settings"><code>/ipv6/settings</code></a> menu and the router receives a Router Advertisement packet, then the SLAAC IPv6 address is automatically assigned to the interface on which the advertisements were received. This address has DG flags meaning that the address is dynamic and global. Such addresses show valid and lifetime parameters.</p>
+<pre><code class="language-text">[admin@R1] /ipv6/address/print detail where dynamic &amp;&amp; global 
+Flags: X - disabled, I - invalid, D - dynamic; G - global, L - link-local 
+ 0 DG address=2001:db8::ba69:f4ff:fe84:545/64 from-pool=&quot;&quot; interface=ether1 
+      actual-interface=test_fp eui-64=no advertise=no no-dad=no valid=4w2d 
+      preferred=1w 
+</code></pre>
+<p>If SLAAC addresses are accepted, then a dynamic route toward the Internet is also generated. It also contains a few limitations if specified on the advertisement packet. For example, hop-limit and MTU. If multiple addresses are received on the same interface, then the lowest of the MTU values per interface is used.</p>
+<pre><code class="language-text">[admin@R1] /routing/route/print detail where slaac 
+Flags: X - disabled, F - filtered, U - unreachable, A - active; 
+c - connect, s - static, r - rip, b - bgp, o - ospf, d - dhcp, v - vpn, m - modem, a - ldp-address, l - ldp-mapping, g - slaac, y - bgp-mpls-vpn; 
+H - hw-offloaded; + - ecmp, B - blackhole 
+ Ag + afi=ip6 contribution=active dst-address=::/0 routing-table=main 
+       pref-src=&quot;&quot; gateway=fe80::ba69:f4ff:fe84:7b2%ether1
+       immediate-gw=fe80::ba69:f4ff:fe84:7b2%ether1 distance=1 scope=30 
+       target-scope=10 belongs-to=&quot;slaac&quot; mtu=1400 hoplimit=10 
+       debug.fwp-ptr=0x201C2C00 
+</code></pre>
+<hr />
+<h1 id="ipv6-neighbor-discovery">IPv6 Neighbor Discovery</h1>
+<blockquote>
+<p>RouterOS supports IPv6 Neighbor Discovery and stateless address autoconfiguration by using RADVD, adhering to RFC 4861 and 4862. It enables hosts to automatically configure IPv6 addresses through Router...</p>
+</blockquote>
+<h1 id="ipv6-neighbor-discovery_1">IPv6 Neighbor Discovery</h1>
+<p>RouterOS supports IPv6 Neighbor Discovery and stateless address autoconfiguration by using Router Advertisement Daemon (RADVD).</p>
+<h2 id="standards">Standards</h2>
+<ul>
+<li><a href="https://tools.ietf.org/html/rfc4861"><code>RFC 4861</code></a> - Neighbor Discovery for IP version 6 (IPv6).</li>
+<li><a href="https://tools.ietf.org/html/rfc4862"><code>RFC 4862</code></a> - IPv6 Stateless Address Autoconfiguration</li>
+</ul>
+<h2 id="node-description">Node description</h2>
+<p>A node is a device that implements IPv6. In IPv6 networks nodes are divided into two types:</p>
+<ul>
+<li><strong>Routers</strong> - nodes that forward IPv6 packets not explicitly addressed to themselves.</li>
+<li><strong>Hosts</strong> - any nodes that are not routers.</li>
+</ul>
+<p>Routers and hosts are distinct classifications defined in RFC 4861, but a single device can perform both roles: forwarding packets (router) and receiving traffic addressed to itself (host).</p>
+<h2 id="stateless-address-autoconfiguration">Stateless address autoconfiguration</h2>
+<p>There are several types of autoconfiguration:</p>
+<ul>
+<li><em>stateless</em> - address configuration is done by receiving Router Advertisement messages. These messages include stateless address prefixes and require that the host is not using a stateful address configuration protocol.</li>
+<li><em>stateful</em> - address configuration is done by using the stateful address configuration protocol (DHCPv6). The stateful protocol is used if RA messages do not include address prefixes.</li>
+<li><em>both</em> - RA messages include stateless address prefixes and require that hosts use a stateful address configuration protocol.</li>
+</ul>
+<p>IPv6 can automatically configure itself without using a stateful configuration protocol such as DHCP (<a href="#stateless-autoconfiguration-example">example</a>).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Address autoconfiguration can only be performed on multicast-capable interfaces.</p>
+</div>
+<p>This process is called stateless address autoconfiguration because the router does not manage state. It is a simple, robust, and effective method.</p>
+<p>RouterOS uses RADVD to periodically advertise information about the link to all nodes on the same link. The information is carried by an ICMPv6 "router advertisement" packet, and includes the following fields:</p>
+<ul>
+<li>IPv6 subnet prefix.</li>
+<li>Default router link-local address.</li>
+<li>Other parameters that may be optional are: link MTU, default hop limit, and router lifetime.</li>
+</ul>
+<p>Host uses the advertisement to configure the global IPv6 address and the default router. The global IPv6 address is generated from the advertised <a href="./ipv6-addresses">subnet prefix</a> and the EUI-64 <a href="./ipv6-addresses#interface-identifier">interface identifier</a>.</p>
+<p>You can request an advertisement by sending an ICMPv6 router solicitation packet. On Linux, the <strong>rtsol</strong> utility sends router solicitations. Mobile nodes should transmit router solicitations periodically.</p>
+<h3 id="address-states">Address states</h3>
+<p>When an auto-configuration address is assigned, it can be in one of the following states:</p>
+<ul>
+<li><strong><em><code>tentative</code></em></strong> - in this state the host verifies that the address is unique. Verification occurs through duplicate address detection.</li>
+<li><strong><em><code>preferred</code></em></strong> - at this state the address is verified as unique and the node can send and receive unicast traffic to and from a preferred address. The period of time of the preferred state is included in the RA message.</li>
+<li><strong><em><code>deprecated</code></em></strong> - the address is still valid, but is not used for new connections.</li>
+<li><strong><em><code>invalid</code></em></strong> - the node can no longer send or receive unicast traffic. An address enters the invalid state after the valid lifetime expires.</li>
+</ul>
+<p>The following diagram illustrates the relation between states and lifetimes:</p>
+<pre><code class="language-mermaid">%%{init: {&quot;sequence&quot;: {&quot;mirrorActors&quot;: false, &quot;messageAlign&quot;: &quot;left&quot;}}}%%
+sequenceDiagram
+    participant Tentative
+    participant Preferred
+    participant Deprecated
+    participant Invalid
+
+    Tentative-&gt;&gt;Preferred: Preferred lifetime
+    Tentative-&gt;&gt;Deprecated: Valid lifetime
+</code></pre>
+<h2 id="neighbor-discovery">Neighbor discovery</h2>
+<p>Neighbor Discovery (ND) uses messages and processes to determine relationships between neighboring nodes. Compared to IPv4, ND replaces Address Resolution Protocol (ARP), ICMP Router Discovery, and ICMP Redirect while providing additional functionality.</p>
+<p>Hosts use ND to:</p>
+<ul>
+<li>Discover neighboring routers.</li>
+<li>Discover addresses, address prefixes, and other configuration parameters.</li>
+</ul>
+<p>Routers use ND to:</p>
+<ul>
+<li>Advertise their presence, host configuration parameters, and on-link prefixes.</li>
+<li>Inform hosts of a better next-hop address for a specific destination.</li>
+</ul>
+<p>Nodes use ND to:</p>
+<ul>
+<li>Resolve the link-layer address of a neighboring node to which an IPv6 packet is being forwarded and determine when that address changes.</li>
+<li>Determine whether IPv6 packets can be sent to and received from a neighbor.</li>
+</ul>
+<p>RFC 4861 defines five ND message types: Router Solicitation (RS), Router Advertisement (RA), Neighbor Solicitation (NS), Neighbor Advertisement (NA), and Redirect. Adding an interface to <a href="../../cli-reference/ipv6/nd"><code>/ipv6/nd</code></a> activates only the router-side messages:</p>
+<ul>
+<li>Router Solicitation (RS) – The router listens for an RS sent by hosts and replies with a Router Advertisement.</li>
+<li>Router Advertisement (RA) – The router sends periodic unsolicited RAs and also responds to any RS it receives. The content of the RA (prefixes, flag bitmaps, lifetime, MTU, timer values) is taken from the per‑interface <a href="../../cli-reference/ipv6/nd"><code>/ipv6/nd</code></a> settings and any <a href="../../cli-reference/ipv6/nd/prefix"><code>/ipv6/nd/prefix</code></a> entries. The <a href="../../cli-reference/ipv6/nd"><code>/ipv6/nd</code></a> list has interface option 'all' which has lower priority than entry configured for a particular interface.</li>
+<li>Neighbor Solicitation (NS) – The router replies with a Neighbor Advertisement when it receives an NS for any of its own addresses on that interface (link‑local, SLAAC, or static). This also covers Duplicate Address Detection (DAD) for the router's own address.</li>
+<li>Neighbor Advertisement (NA) – Sent in response to an NS (as above). Unsolicited NAs are not sent unless explicitly enabled.</li>
+</ul>
+<p>Host‑to‑host NS/NA between end devices is handled automatically by the host stack and is not controlled by the <a href="../../cli-reference/ipv6/nd"><code>/ipv6/nd</code></a> menu. Redirect generation is optional and disabled by default (<code>redirect=no</code>).</p>
+<h2 id="examples">Examples</h2>
+<h4 id="stateless-autoconfiguration-example">Stateless autoconfiguration example</h4>
+<pre><code class="language-ros">[admin@MikroTik] &gt; ipv6 address print
+Flags: X - disabled, I - invalid, D - dynamic, G - global, L - link-local
+# ADDRESS INTERFACE ADVERTISE
+0 G 2001:db8::1/64 ether1 yes
+
+</code></pre>
+<p>In this example, the <a href="../../cli-reference/ipv6/address#advertise_"><code>advertise</code></a> flag is enabled, which indicates that a dynamic <a href="../../cli-reference/ipv6/nd/prefix"><code>/ipv6/nd/prefix</code></a> entry was added.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/nd/prefix/print
+Flags: X - disabled, I - invalid, D - dynamic
+0 D prefix=2001:db8::/64 interface=ether1 on-link=yes autonomous=yes
+ valid-lifetime=4w2d preferred-lifetime=1w
+</code></pre>
+<p>On a host that is directly attached to the router, we see that an address was added. The address consists of the prefix part (first 64 bits) that takes the prefix from the prefix advertisement, and the host part (last 64 bits) that is automatically generated from the local MAC address:</p>
+<pre><code class="language-ros">atis@atis-desktop:~$ ip -6 addr
+ 1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 16436
+inet6 ::1/128 scope host
+valid_lft forever preferred_lft forever
+2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qlen 1000
+inet6 2001:db8::21a:4dff:fe56:1f4d/64 scope global dynamic
+ valid_lft 2588363sec preferred_lft 601163sec
+inet6 fe80::21a:4dff:fe56:1f4d/64 scope link
+valid_lft forever preferred_lft forever
+</code></pre>
+<p>The host has received the <em>2001:db8::/64</em> prefix from the router and configured an address with it.</p>
+<p>You can also redistribute <a href="../../network-management/dns">DNS</a> server information by using RADVD:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/nd/set [find where interface=all] dns=2001:db8::2 advertise-dns=yes
+</code></pre>
+<p>Or you can distribute your own router LL IPv6 address as DNS server and use router itself as DNS cache:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/nd/set [find where interface=all] advertise-dns=self
+</code></pre>
+<p>If you advertise specific servers, then every RA also includes the router's own LL address as DNS server, but as an already expired server. This is necessary to invalidate this server, if it was used before (if you changed settings between self and yes options). Any client which properly handles RA DNS ignores this server or invalidates the existing server, if it was the router itself.</p>
+<p>You need client-side software with Router Advertisement DNS support to use the advertised DNS information.</p>
+<p>On Ubuntu/Debian Linux distributions you can install the <strong>rdnssd</strong> package which is capable of receiving the advertised DNS addresses.</p>
+<pre><code class="language-ros">mrz@bumba:/$ sudo apt-get install rdnssd
+</code></pre>
+<pre><code class="language-ros">mrz@bumba:/$ cat /etc/resolv.conf
+# Dynamic resolv.conf(5) file for glibc resolver(3) generated by resolvconf(8)
+ # DO NOT EDIT THIS FILE BY HAND -- YOUR CHANGES WILL BE OVERWRITTEN
+ nameserver 2001:db8::2
+
+mrz@bumba:/$ ping6 www.mikrotik.com
+PING www.mikrotik.com(2a02:610:7501:1000::2) 56 data bytes
+ 64 bytes from 2a02:610:7501:1000::2: icmp_seq=1 ttl=61 time=2.11 ms
+ 64 bytes from 2a02:610:7501:1000::2: icmp_seq=2 ttl=61 time=1.33 ms
+^C
+ --- www.mikrotik.com ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 1.334/1.725/2.117/0.393 ms
+mrz@bumba:/$
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

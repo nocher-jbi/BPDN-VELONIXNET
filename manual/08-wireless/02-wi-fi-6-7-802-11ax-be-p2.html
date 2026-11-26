@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wi-Fi 6 / 7 (802.11ax/be) · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="wi-fi-6-7-80211axbe-part-22">Wi-Fi 6 / 7 (802.11ax/be) (part 2/2)</h1>
+<h1 id="configuring-easymesh">Configuring EasyMesh</h1>
+<blockquote>
+<p>Configure a Wi-Fi EasyMesh network in RouterOS: set up the controller and agents, create fronthaul and backhaul configurations, onboard agents with WPS, and monitor the mesh.</p>
+</blockquote>
+<h1 id="configuring-easymesh_1">Configuring EasyMesh</h1>
+<p><strong>Package:</strong> <code>wifi-qcom</code>, <code>wifi-qcom-ac</code></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<ul>
+<li>EasyMesh is available in CLI (no GUI support yet).</li>
+<li>At this moment, it works on <code>wifi-qcom</code> and <code>wifi-qcom-ac</code> only.</li>
+<li>When onboarding an agent over Wi-Fi, configure the fronthaul with <code>wpa2-psk</code> or <code>wpa2-psk,wpa3-psk</code>. WPS onboarding uses the fronthaul configuration, while the agent's backhaul credentials are delivered over the backhaul link. WPS does not support WPA3-only (SAE).</li>
+<li>DPP (Wi-Fi Easy Connect) onboarding is not implemented. To onboard an agent, use the WPS push-button or connect the agent over Ethernet.</li>
+</ul>
+</div>
+<p>EasyMesh is a Wi-Fi Alliance standard for managing Wi-Fi APs and wireless extenders from different vendors as one coordinated network. A controller distributes fronthaul (client SSID) and backhaul (agent SSID) settings to managed APs (agents), which bridge their fronthaul interfaces to a wireless or Ethernet backhaul interface via Layer 2, preserving client MAC addresses during client traffic forwarding. The result is one Layer 2 network under a single controller. For all settings, see the <a href="../../cli-reference/interface/wifi/easymesh/">EasyMesh CLI reference</a>.</p>
+<p><a href="./capsman">CAPsMAN</a> provides similar centralized management for MikroTik devices, but it is primarily intended for access points connected to the network with Ethernet. It does not provide the standardized wireless backhaul and WPS onboarding. EasyMesh certification allows a controller to manage certified agents from different vendors. Interoperability still depends on the devices, so test the controller and agent combination before deployment.</p>
+<h2 id="topology">Topology</h2>
+<p>An EasyMesh network has one controller and one or more agents. The controller and agents must be in the same Layer 2 network. Agents connect to the controller over a wired Ethernet connection or a wireless backhaul link. The backhaul (wired and wireless) carries EasyMesh management traffic and the client traffic of each agent.</p>
+<p>A device performs one of three EasyMesh roles:</p>
+<ul>
+<li><code>controller</code> - manages the EasyMesh network. It provides the fronthaul and backhaul configurations and coordinates the agents. Use it on a device that only performs controller duties.</li>
+<li><code>agent</code> - joins the EasyMesh network and receives its configuration from the controller. It broadcasts the configured fronthaul networks and connects to the controller over a wireless backhaul link or a wired Ethernet connection. Use it on additional access points.</li>
+<li><code>controller-and-agent</code> - performs both roles on the same device. A single Wi-Fi device can manage the EasyMesh network and also serve clients as an agent. Use it on the main router or access point with Wi-Fi radios.</li>
+</ul>
+<p>Only the controller manages the network. An agent receives and applies configuration (it does not manage other agents, but it can relay controller traffic over the backhaul).</p>
+<p>In most setups, the main router uses <code>controller-and-agent</code> and additional access points use <code>agent</code>.</p>
+<p>The radios on these devices can perform the following roles:</p>
+<ul>
+<li>Fronthaul AP - broadcasts the client networks. Client devices connect to these BSSes.</li>
+<li>Backhaul AP - broadcasts the backhaul network. Agents use it to connect to the controller. Client devices do not use this network.</li>
+<li>Backhaul station - connects an agent to the controller's backhaul AP. It is used only for a wireless backhaul.</li>
+</ul>
+<p>The same radio can provide both fronthaul and backhaul BSSes. Fronthaul interfaces stay dedicated to clients and are bridged to the backhaul.</p>
+<p>The controller and agents exchange EasyMesh control messages with the IEEE 1905.1 standard (EtherType <code>0x893A</code>). It carries Wi-Fi Alliance Multi-AP Control Message Data Units (CMDUs) and TLVs over the Layer 2 backhaul. WPS onboarding uses 802.11/EAP-WSC.</p>
+<h2 id="controller-configuration">Controller configuration</h2>
+<h3 id="set-the-radio-manager">Set the radio manager</h3>
+<p>Set the EasyMesh manager on every radio that EasyMesh should control:</p>
+<pre><code class="language-ros">/interface/wifi
+set [find default-name=wifi1] configuration.manager=easymesh
+set [find default-name=wifi2] configuration.manager=easymesh
+</code></pre>
+<p>Adjust the interface names to match your device.</p>
+<h3 id="create-the-wi-fi-configurations">Create the Wi-Fi configurations</h3>
+<p>Create a fronthaul configuration for clients and a backhaul configuration for wireless agents:</p>
+<pre><code class="language-ros">/interface/wifi/configuration
+add name=em_fh ssid=em_fh security.authentication-types=wpa2-psk security.passphrase=fronthaul-password
+add name=em_bh ssid=em_bh security.authentication-types=wpa2-psk security.passphrase=backhaul-password
+</code></pre>
+<ul>
+<li><code>em_fh</code> is the client network, broadcast by agents for client devices.</li>
+<li><code>em_bh</code> is the backhaul network, broadcast by agents for other agents to connect to. Use a separate SSID and password from the client network.</li>
+</ul>
+<h3 id="enable-the-controller">Enable the controller</h3>
+<pre><code class="language-ros">/interface/wifi/easymesh
+set enabled=yes role=controller-and-agent bridge=bridge bhaul-configuration=em_bh fhaul-configurations=em_fh dpp-onboarding=no
+</code></pre>
+<ul>
+<li><code>role=controller-and-agent</code> makes the device manage the network and provide Wi-Fi. Use <code>role=controller</code> if the device only manages the network.</li>
+<li><code>bridge=bridge</code> is the bridge that connects the controller to the agents. Use the existing LAN bridge.</li>
+<li><code>bhaul-configuration=em_bh</code> selects the backhaul configuration.</li>
+<li><code>fhaul-configurations=em_fh</code> selects the client network. Add more configuration names to broadcast more networks.</li>
+</ul>
+<p>The backhaul SSID and security come from the <code>em_bh</code> configuration. Wireless agents receive these credentials during onboarding.</p>
+<h2 id="agent-configuration">Agent configuration</h2>
+<h3 id="prepare-the-access-point">Prepare the access point</h3>
+<p>Configure the agent as a bridged access point. Set the EasyMesh manager on every radio:</p>
+<pre><code class="language-ros">/interface/wifi
+set [find default-name=wifi1] configuration.manager=easymesh
+set [find default-name=wifi2] configuration.manager=easymesh
+</code></pre>
+<p>Configure the bridge and the management IP address as described in <a href="./configuring-standalone-access-point">Configuring standalone access point</a>. The bridge must include the Ethernet port used for a wired backhaul.</p>
+<h3 id="enable-the-agent">Enable the agent</h3>
+<pre><code class="language-ros">/interface/wifi/easymesh
+set enabled=yes role=agent bridge=bridge dpp-onboarding=no
+</code></pre>
+<p>EasyMesh adds its Wi-Fi interfaces to the bridge specified in the <code>bridge</code> setting. Do not set <code>bhaul-configuration</code> or <code>fhaul-configurations</code> on the agent. The controller provides them during onboarding.</p>
+<h2 id="onboarding">Onboarding</h2>
+<h3 id="wired-backhaul">Wired backhaul</h3>
+<p>Connect an agent Ethernet port to the controller's LAN. WPS is not required. When the agent is in the same Layer 2 network, the controller discovers it and applies the configuration automatically.</p>
+<h3 id="wireless-backhaul">Wireless backhaul</h3>
+<p>A wireless backhaul is used when an agent has no Ethernet connection to the controller. The controller provides a backhaul network through its <code>bhaul-configuration</code>. A backhaul AP broadcasts it, and the agent's backhaul station connects to it using the credentials received during onboarding.</p>
+<p>Onboard the agent with WPS push-button:</p>
+<pre><code class="language-ros">/interface/wifi/easymesh/wps-push-button
+</code></pre>
+<p>Run the command on the controller first, then on the agent. The agent connects to the controller's backhaul network and receives the backhaul and fronthaul configuration.</p>
+<p>After onboarding, <code>agent-state</code> will change to <code>wifi-backhaul-connected</code>:</p>
+<pre><code class="language-ros">[admin@hAP] &gt; /interface/wifi/easymesh/print
+                     enabled: yes
+                        role: agent
+                      bridge: bridge
+                  bhaul-ssid: em_bh
+            bhaul-passphrase: backhaul-password
+  bhaul-authentication-types: wpa2-psk
+            bhaul-encryption: ccmp
+                              gcmp
+              dpp-onboarding: no
+                 agent-state: wifi-backhaul-connected
+</code></pre>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Keep the agent close to the controller during onboarding. Move it to its final location after the backhaul link is established.</p>
+</div>
+<h2 id="verify-the-setup">Verify the setup</h2>
+<p>Run the following commands to see the EasyMesh state:</p>
+<pre><code class="language-ros">/interface/wifi/easymesh/print
+/interface/wifi/easymesh/topology/print
+/interface/wifi/easymesh/bss/print
+/interface/wifi/easymesh/sta/print
+</code></pre>
+<ul>
+<li><code>print</code> shows the global EasyMesh settings, the agent state, and the topology tree with the controller, agents, radios, and BSSes.</li>
+<li><code>topology/print</code> lists connected agents by their AL MAC addresses.</li>
+<li><code>bss/print</code> lists all BSSes with their fronthaul/backhaul role, channel, utilization, and client count.</li>
+<li><code>sta/print</code> lists connected clients and backhaul stations.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The AL MAC is the IEEE 1905.1 abstraction layer MAC address. EasyMesh uses it as the device identity in control messages and topology, independent of the interface that carries the traffic.</p>
+</div>
+<p>The <code>print</code> output shows the global settings, the agent state, and the topology tree:</p>
+<pre><code class="language-ros">[admin@cAP] &gt; /interface/wifi/easymesh/print
+               enabled: yes
+                  role: controller-and-agent
+                bridge: bridge
+   bhaul-configuration: em_bh
+  fhaul-configurations: em_fh
+        dpp-onboarding: no
+           agent-state: wired-backhaul-connected
+               network: CONTROLLER: AL-MAC: 48:XX:XX:XX:XX:74
+                            ETHERNET: mac: 48:XX:XX:XX:XX:74
+                                AGENT: AL-MAC: D0:XX:XX:XX:XX:D3 via mac: D0:XX:XX:XX:XX:D3
+                                    ETHERNET: mac: D0:XX:XX:XX:XX:D3
+                                    ETHERNET: mac: D0:XX:XX:XX:XX:D4
+                                    ETHERNET: mac: D0:XX:XX:XX:XX:D5
+                                    ETHERNET: mac: D0:XX:XX:XX:XX:D6
+                                    ETHERNET: mac: D0:XX:XX:XX:XX:D7
+                                    RADIO: mac: D0:XX:XX:XX:XX:D9
+                                        bVAP[0]: bssid: D0:XX:XX:XX:XX:D9, ssid: em_bh, bw: 160 MHz, ccfi1: 50
+                                        fVAP[1]: bssid: D2:XX:XX:XX:XX:DA, ssid: em_fh, bw: 160 MHz, ccfi1: 50
+                                    RADIO: mac: D0:XX:XX:XX:XX:D8
+                                        bVAP[0]: bssid: D2:XX:XX:XX:XX:D8, ssid: em_bh, bw: 40 MHz, ccfi1: 11
+                                        fVAP[1]: bssid: D2:XX:XX:XX:XX:D9, ssid: em_fh, bw: 40 MHz, ccfi1: 11
+                            ETHERNET: mac: 48:XX:XX:XX:XX:75
+                            RADIO: mac: 48:XX:XX:XX:XX:77
+                                bVAP[0]: bssid: 48:XX:XX:XX:XX:77, ssid: em_bh, bw: 40 MHz, ccfi1: 5
+                                fVAP[1]: bssid: 4A:XX:XX:XX:XX:77, ssid: em_fh, bw: 40 MHz, ccfi1: 5
+                            RADIO: mac: 48:XX:XX:XX:XX:76
+                                bVAP[0]: bssid: 48:XX:XX:XX:XX:76, ssid: em_bh, bw: 80 MHz, ccfi1: 58
+                                fVAP[1]: bssid: 4A:XX:XX:XX:XX:76, ssid: em_fh, bw: 80 MHz, ccfi1: 58
+</code></pre>
+<p>The topology table lists connected agents:</p>
+<pre><code class="language-ros">[admin@cAP] &gt; /interface/wifi/easymesh/topology/print
+Columns: ALMAC
+#  ALMAC
+0  D0:XX:XX:XX:XX:D3
+</code></pre>
+<p>The BSS table lists the fronthaul and backhaul BSSes on the controller and the agent:</p>
+<pre><code class="language-ros">[admin@cAP] &gt; /interface/wifi/easymesh/bss/print
+Flags: A - ACTIVE
+Columns: ALMAC, RADIO-MAC, BSSID, SSID, FRONTHAUL, BACKHAUL, UTILIZATION, BRANCH-UTILIZATION, STA-COUNT, OPCLASS, PRIMARY-CHAN, IEEE-CHAN
+#   ALMAC              RADIO-MAC          BSSID              SSID   FRONTHAUL  BACKHAUL  UTI  BRA  S  OPCLASS  PRI  IEEE-CHAN
+0 A 48:XX:XX:XX:XX:74  48:XX:XX:XX:XX:76  48:XX:XX:XX:XX:76  em_bh  no         yes       0%   0%   0  128      136  138
+1 A 48:XX:XX:XX:XX:74  48:XX:XX:XX:XX:77  48:XX:XX:XX:XX:77  em_bh  no         yes       33%  33%  1  84       5    5
+2 A 48:XX:XX:XX:XX:74  48:XX:XX:XX:XX:76  4A:XX:XX:XX:XX:76  em_fh  yes        no        0%   0%   1  128      136  138
+3 A 48:XX:XX:XX:XX:74  48:XX:XX:XX:XX:77  4A:XX:XX:XX:XX:77  em_fh  yes        no        33%  33%  0  84       5    5
+4 A D0:XX:XX:XX:XX:D3  D0:XX:XX:XX:XX:D9  D0:XX:XX:XX:XX:D9  em_bh  no         yes       0%   33%  0  129      64   50
+5 A D0:XX:XX:XX:XX:D3  D0:XX:XX:XX:XX:D8  D2:XX:XX:XX:XX:D8  em_bh  no         yes       0%   33%  0  84       5    5
+6 A D0:XX:XX:XX:XX:D3  D0:XX:XX:XX:XX:D8  D2:XX:XX:XX:XX:D9  em_fh  yes        no        0%   33%  0  84       5    5
+7 A D0:XX:XX:XX:XX:D3  D0:XX:XX:XX:XX:D9  D2:XX:XX:XX:XX:DA  em_fh  yes        no        0%   33%  0  129      64   50
+</code></pre>
+<p>The STA table lists connected clients and backhaul stations:</p>
+<pre><code class="language-ros">[admin@cAP] &gt; /interface/wifi/easymesh/sta/print
+Columns: BSSID, SSID, ALMAC, MAC-ADDRESS, UPTIME, LAST-ACTIVITY, SIGNAL, BACKHAUL
+#  BSSID              SSID   ALMAC              MAC-ADDRESS        UPTIME  LAST-ACTIVITY  SIGNAL  BACKHAUL
+0  4A:XX:XX:XX:XX:76  em_fh  48:XX:XX:XX:XX:74  3C:XX:XX:XX:XX:AD  6s      1s510ms        -32     no
+1  48:XX:XX:XX:XX:77  em_bh  48:XX:XX:XX:XX:74  D0:XX:XX:XX:XX:D8  16s     1s820ms        -22     yes
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<ul>
+<li>If the agent does not appear in <code>topology</code>, check that both devices are in the same Layer 2 network, that the agent's bridge includes the correct ports, and that <code>enabled=yes</code>, <code>role=agent</code>, and <code>configuration.manager=easymesh</code> are set.</li>
+<li>If the wireless backhaul does not come up, run the WPS push-button command on both devices again. Start with the controller.</li>
+<li>If clients do not see the network, check that the controller has the correct <code>fhaul-configurations</code> value and that the agent has completed onboarding.</li>
+<li>A radio can use only one manager. Do not combine EasyMesh and CAPsMAN on the same interface.</li>
+</ul>
+<h2 id="notes">Notes</h2>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<ul>
+<li>Use one controller per EasyMesh network.</li>
+<li>All controllers and agents must be in the same Layer 2 network.</li>
+<li>Cross-vendor interoperability requires certified EasyMesh devices. Test the specific controller and agent combination before deployment.</li>
+</ul>
+</div>
+<hr />
+<h1 id="configuring-meshpoint">Configuring MeshPoint</h1>
+<blockquote>
+<p>Configure an IEEE 802.11s MeshPoint network in RouterOS: set the Mesh ID and WPA3-PSK security, bridge the mesh and AP interfaces, and verify peer links.</p>
+</blockquote>
+<h1 id="configuring-meshpoint_1">Configuring MeshPoint</h1>
+<p><strong>Package:</strong> <code>wifi-qcom-be</code>, <code>wifi-mediatek</code></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<ul>
+<li>MeshPoint works on <code>wifi-qcom-be</code> and <code>wifi-mediatek</code>. It does not work on <code>wifi-qcom</code> or <code>wifi-qcom-ac</code>.</li>
+<li>MeshPoint is configured in the CLI. GUI support is not available.</li>
+<li>The mesh peer link uses WPA3-PSK (SAE). WPA2-PSK is not supported for 802.11s.</li>
+</ul>
+</div>
+<p>MeshPoint is the RouterOS implementation of an IEEE 802.11s Layer 2 mesh. Use it to connect access points without Ethernet cabling and extend a Layer 2 network over multiple wireless hops.</p>
+<p>Mesh nodes discover each other over Wi-Fi by Mesh ID and form WPA3-PSK (SAE) peer links. WPA2-PSK is not supported for the mesh link. MeshPoint self-heals: it chooses the lowest-cost path and reroutes traffic when a link fails.</p>
+<p>Every device in the mesh is a mesh node. A mesh gate is a node with a wired uplink to the LAN; it announces the path to the wired network over Wi-Fi, so other nodes can reach the LAN and internet. Nodes without a wired uplink form wireless peer links with each other and forward client traffic over one or more wireless hops to a mesh gate. A mesh can have more than one gate. Each node can also run a normal AP interface for local clients; clients connect to that AP, not to the mesh link. The mesh, AP, and Ethernet interfaces are bridged together, so clients see one Layer 2 network.</p>
+<p>The mesh link is the backhaul between nodes. The AP interface is the fronthaul for clients.</p>
+<p>In simple terms:</p>
+<ul>
+<li>All ports of the mesh node are bridged. Every node uses the same Mesh ID (<code>configuration.ssid</code>) and WPA3-PSK passphrase.</li>
+<li>The Wi-Fi interface used for the mesh link (for example, <code>wifi1</code>) runs in MeshPoint mode.</li>
+<li>A second Wi-Fi interface (for example, <code>wifi2</code>) runs in AP mode, so client devices can reach the LAN through the mesh.</li>
+<li>Client traffic is forwarded from node to node until it reaches a node with a wired uplink.</li>
+<li>The mesh automatically reroutes traffic if a link fails.</li>
+</ul>
+<h2 id="topology_1">Topology</h2>
+<p>A MeshPoint network has these roles:</p>
+<ul>
+<li>Mesh gate - a mesh node with an Ethernet uplink to the LAN. It announces the path to the wired network with HWMP Root Announcements (RANN).</li>
+<li>Mesh point - a node that joins the mesh by Mesh ID and forwards traffic over peer links. It can serve local clients with an AP interface.</li>
+</ul>
+<p>All nodes use the same Mesh ID, WPA3-PSK passphrase, and country settings. The radios must support a common band and channel. The mesh forwards Ethernet frames at Layer 2, so all nodes are in the same Layer 2 network and client MAC addresses are preserved across hops.</p>
+<pre><code class="language-mermaid">flowchart LR
+  R[Router] ---|Ethernet| G[Mesh gate]
+  G -.-&gt;|802.11s| B[Mesh point]
+  G -.-&gt;|802.11s| C[Mesh point]
+  C -.-&gt;|802.11s| D[Mesh point]
+  B --- BC[Client devices]
+  C --- CC[Client devices]
+  D --- DC[Client devices]
+</code></pre>
+<p>A mesh point peers with every neighbor in range. HWMP selects the active path to the mesh gate by comparing the airtime link metric of each path: data rate, frame error rate, and channel overhead. The path with the lowest total metric is used. Multiple mesh gates can be present, and each node selects the best path to a gate. If a link fails, HWMP reroutes traffic.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Path selection cannot remove interference, and every extra hop reduces throughput and adds latency.</p>
+<p>In a single-radio mesh, all nodes share one channel and its airtime. For example, in a 3-hop chain A-B-C-D, a frame from D to A is transmitted three times on the same channel: D→C, C→B, B→A. Only one node can transmit at a time, so every hop consumes the same airtime again. Throughput drops roughly by half per hop. Hidden-node collisions and nearby APs on the same channel make long chains worse.</p>
+<p>For long chains, use 5 GHz for the mesh backhaul, fewer hops, or wired uplinks.</p>
+</div>
+<h2 id="configuration">Configuration</h2>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Wi-Fi and bridge changes can interrupt the management connection. Connect through an Ethernet port or use the <a href="../../management-tools/winbox.md">Winbox</a> Neighbors tab by MAC address.</p>
+</div>
+<p>A mesh gate can be the router with a DHCP server, or a Layer 2 access point that bridges the mesh to the LAN. A mesh node is an access point and bridges client traffic into the mesh through its MeshPoint Wi-Fi interface.</p>
+<p>If the mesh gate is a router with a DHCP server, make sure the required LAN Ethernet ports, the MeshPoint Wi-Fi interface, and the AP Wi-Fi interface are in the same bridge.</p>
+<p>If the mesh gate is a pure Layer 2 AP, make sure all ports (Ethernet, Wi-Fi MeshPoint, and AP) are bridged together and that the bridge has an IP address, either assigned manually or obtained with DHCP.</p>
+<p>There are no other configuration differences between the mesh gate and the mesh node. Configure the MeshPoint Wi-Fi interface identically on the mesh gate and the mesh node (just make sure that Wi-Fi interfaces are put into correct bridges).</p>
+<h3 id="meshpoint-interface">MeshPoint interface</h3>
+<p>Set one radio to MeshPoint mode:</p>
+<pre><code class="language-ros">/interface/wifi
+set [find default-name=wifi1] configuration.country=Latvia .mode=meshpoint .ssid=mesh-mesh datapath.bridge=bridge disabled=no security.authentication-types=wpa3-psk .passphrase=mesh-password
+</code></pre>
+<ul>
+<li><code>configuration.mode=meshpoint</code> - selects IEEE 802.11s MeshPoint mode.</li>
+<li><code>configuration.ssid=mesh-mesh</code> - sets the Mesh ID. This value is not a client SSID.</li>
+<li><code>configuration.country=Latvia</code> - sets the regulatory domain. Use your country.</li>
+<li><code>security.authentication-types=wpa3-psk</code> - authenticates mesh peers with SAE.</li>
+<li><code>security.passphrase=mesh-password</code> - sets the mesh password. Use the same password on every node.</li>
+<li><code>datapath.bridge=bridge</code> - adds the mesh interface to the bridge.</li>
+</ul>
+<p>Apply the same MeshPoint Wi-Fi interface configuration on every mesh gate and mesh node so that every device in the network has one of its interfaces configured as a MeshPoint.</p>
+<h3 id="optional-ap-interface">Optional AP interface</h3>
+<p>Configure the second Wi-Fi interface to be an AP:</p>
+<pre><code class="language-ros">set [find default-name=wifi2] configuration.country=Latvia .mode=ap .ssid=SSID-for-clients datapath.bridge=bridge disabled=no security.authentication-types=wpa2-psk .passphrase=client-password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> - AP mode.</li>
+<li><code>configuration.ssid=SSID-for-clients</code> - client SSID.</li>
+<li><code>security.authentication-types=wpa2-psk</code> and <code>security.passphrase=client-password</code> - client security.</li>
+<li><code>datapath.bridge=bridge</code> - adds the AP interface to the bridge.</li>
+</ul>
+<p>If no other interface is available, create a virtual AP on top of the MeshPoint interface:</p>
+<pre><code class="language-ros">/interface/wifi
+add name=wifi3 master-interface=wifi1 configuration.mode=ap .ssid=SSID-for-clients datapath.bridge=bridge disabled=no security.authentication-types=wpa2-psk .passphrase=client-password
+</code></pre>
+<p>The virtual AP uses the same channel as the MeshPoint interface. It shares airtime with the mesh link, so throughput is lower than with a dedicated radio.</p>
+<h3 id="optional-channel-control">Optional channel control</h3>
+<p>At startup, a MeshPoint scans for a matching Mesh ID and selects a channel with a peer. If the mesh is visible on more than one channel, the nodes converge to the channel of the peer with the lowest MAC address (the smallest address value, used as a deterministic tie-breaker). After the initial scan, the mesh radio runs a background scan periodically, by default every 2–3 hours.</p>
+<p>Control the background scans with <code>channel.reselect-interval</code> or <code>channel.reselect-time</code>:</p>
+<pre><code class="language-ros">/interface/wifi
+set [find default-name=wifi1] channel.reselect-interval=02:00..03:00
+# or use a clock-time window instead:
+set [find default-name=wifi1] channel.reselect-time=03:00..04:00
+</code></pre>
+<p>Both settings schedule the same background scan. A reselection can trigger a channel switch and briefly disrupt the mesh.</p>
+<p>To keep the mesh radio on a fixed channel, set a single <code>channel.frequency</code>:</p>
+<pre><code class="language-ros">/interface/wifi
+set [find default-name=wifi1] channel.frequency=5180
+</code></pre>
+<h2 id="verification">Verification</h2>
+<p>The registration table shows mesh peers:</p>
+<pre><code class="language-ros">[admin@hAP] &gt; /interface/wifi/registration-table/print
+Flags: A - AUTHORIZED
+Columns: INTERFACE, SSID, MAC-ADDRESS, DHCP-ADDRESS, DHCP-HOSTNAME, UPTIME, LAST-ACTIVITY, SIGNAL, AUTH-TYPE, BAND
+#   INTERFACE  SSID        MAC-ADDRESS        DHCP-ADDRESS    DHCP-HOSTNAME  UPTIME  LAST-ACTIVITY  SIGNAL  AUTH-TYPE  BAND
+0 A wifi1      mesh-mesh   XX:XX:XX:XX:XX:02                                 49m14s  0ms            -14                2ghz-ax
+</code></pre>
+<p>Use <code>/interface/wifi/meshpoint-paths</code> to display the HWMP path table for a MeshPoint interface:</p>
+<pre><code class="language-ros">/interface/wifi/meshpoint-paths wifi1
+
+Flags: V - SN-VALID
+Columns: DESTINATION, NEXT-HOP, HOPS, METRIC, PACKETS-QUEUED, SN, EXPIRATION, DISCOVERY-TIMEOUT, DISCOVERY-RETRIES, PATH-CHANGES
+  DESTINATION        NEXT-HOP           HOPS  METRIC  PACKETS-QUEUED   SN  EXPIRATION  DISCOVERY-TIMEOUT  DISCOVERY-RETRIES  PATH-CHANGES
+  XX:XX:XX:XX:XX:01  00:00:00:00:00:00     0       0               0    0           0               1600                  0             0
+V XX:XX:XX:XX:XX:02  XX:XX:XX:XX:XX:02     1    8257               0  120           0                100                  0             1
+</code></pre>
+<h2 id="troubleshooting_1">Troubleshooting</h2>
+<ul>
+<li>If a peer does not appear in the registration table, check that both nodes use the same Mesh ID (<code>ssid</code>), WPA3-PSK passphrase, country, and band. Run <code>/interface/wifi/scan</code> on each node to confirm that the Mesh ID is visible.</li>
+<li>If a client cannot get an IP address, check that both the MeshPoint interface and the AP interface use <code>datapath.bridge=bridge</code>, that the bridge has a DHCP client, and that only one DHCP server exists in the network.</li>
+<li>If a node loses management access after you unplug its Ethernet cable, wait for the peer link to form and check the registration table and bridge ports.</li>
+<li>If throughput is low, use a separate radio for the mesh backhaul. A shared radio time-shares the channel between mesh and client traffic, and each additional hop reduces throughput.</li>
+</ul>
+<h2 id="notes_1">Notes</h2>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<ul>
+<li>MeshPoint works on <code>wifi-qcom-be</code> and <code>wifi-mediatek</code>. It does not work on <code>wifi-qcom</code> or <code>wifi-qcom-ac</code>.</li>
+<li>All mesh nodes must use the same Mesh ID, WPA3-PSK passphrase, and country.</li>
+<li>WPA2-PSK is not supported for 802.11s peer links.</li>
+<li>MeshPoint is configured in the CLI. GUI support is not available.</li>
+<li>Multiple mesh gates are allowed. Each node selects the best path to a gate.</li>
+<li>A mesh point peers with every neighbor in range. HWMP selects the active path.</li>
+</ul>
+</div>
+<hr />
+<h1 id="configuring-outdoor-cpe-to-ap-links">Configuring outdoor CPE to AP links</h1>
+<blockquote>
+<p>Guide for configuring outdoor CPE-to-AP Wi-Fi links using MikroTik RouterOS's wifi-qcom package, covering frequency selection, country regulations, AP mode setup, security, and distance considerations for long-range...</p>
+</blockquote>
+<h1 id="configuring-outdoor-cpe-to-ap-links_1">Configuring outdoor CPE to AP links</h1>
+<p><strong>Package:</strong> <code>wifi-qcom</code></p>
+<p>It is no secret that Wi-Fi range for indoor access points is limited. It is affected, mostly, by local regulations, which restrict the device's output power (depending on which frequency channel is used). A typical indoor Wi-Fi connection is established between an AP (access point) and a client (station) device (smartphone, laptop, etc.).</p>
+<p>Indoor APs are, usually, equipped with omnidirectional antennas (which allow broadcasting the signal in a "donut" shape around the AP), which have a relatively low antenna gain. For indoor and short distance outdoor installations, it is a perfect antenna to use. Using a simple home AP with omnidirectional antennas, you can achieve a distance of up to ±100 meters in the "ideal" interference-free line of sight setup, which is reduced much further inside buildings.</p>
+<p>However! If you were to increase the antenna gain of the AP and "direct" the signal at a smaller angle towards a specific destination (instead of broadcasting the signal in 360°), you could achieve a much longer distance connection (if the station device is positioned within the directed angle). This is where outdoor long-range APs and CPEs come into play. They allow establishing Wi-Fi connections over multiple kilometer distances.</p>
+<p>Long distance connections require you to have a device running in "AP" mode and a client-side device, running in "station" mode. Multiple stations can be connected to a single AP.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This guide is meant for 802.11 AX devices running <code>wifi-qcom</code> package/drivers.</p>
+</div>
+<h2 id="ap-setup">AP setup</h2>
+<h3 id="frequency-selection">Frequency selection</h3>
+<p>As mentioned in the introduction, local authorities regulate Wi-Fi devices' output powers. Different frequency ranges in different countries can have different allowed powers. You can check which limitations apply to your country profile using the command:</p>
+<pre><code class="language-ros">/interface/wifi/radio/reg-info country=Latvia 0           
+  ranges: 2402-2482/20dBm/40MHz            
+          5170-5250/23dBm/160MHz/indoor    
+          5250-5330/23dBm/160MHz/indoor/dfs
+          5490-5730/30dBm/160MHz/dfs       
+          5735-5875/14dBm/80MHz 
+</code></pre>
+<p>As per the table, we can see that the most power (using the "Latvia" country profile) we can get is <code>30 dBm</code> on channels <code>5490-5730</code>.</p>
+<p>"dBm" shown in this table represents "allowed EIRP" (EIRP=Tx power + antenna gain). Not to break any regulations and "laws", the more antenna gain the device has, the lower Tx power is set (if the device has a built-in antenna, it will happen <strong>automatically</strong>), to match the allowed "EIRP" value.</p>
+<p>Also note that it could be that the highest "EIRP" channels are "DFS" channels (meaning that if a radar is detected on the channel, the broadcasting stops). This is something to keep in mind!</p>
+<p>With this information, per the table, we can see that it would be wise to avoid using the <code>5735-5875</code> range, as it only allows <code>14 dBm</code>.</p>
+<p>The more "EIRP" is allowed on the channel = the more output power will be available = the stronger the signal will be = the bigger distance you can get.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Please note that there is a country profile called "Superchannel". In this profile, there are no software limitations applied to output powers. This mode should only be used in controlled environments, or if you have special permission to use it in your region. You can combine it with "reducing" the Tx power value directly in the settings to get "custom" power output.</p>
+</div>
+<p>Frequency-wise, additionally, remember that the lower the channel width is, the less interference and the bigger the distance you can get. Meaning, for longer distances, use 20 MHz.</p>
+<h3 id="wifi-interface-configuration">WiFi interface configuration</h3>
+<p>To configure AP mode, run the command:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] channel.frequency=5500 configuration.country=Latvia .mode=ap .ssid=input_your_SSID_here security.authentication-types=wpa2-psk .passphrase=input_your_password_here channel.width=20mhz
+</code></pre>
+<ul>
+<li><code>channel.frequency</code> → selects a frequency channel on which to run the AP. You can skip this, if you want to use "automatic" channel selection.</li>
+<li><code>configuration.country</code> → applies the country profile, so that the device follows output power regulations.</li>
+<li><code>.mode=ap</code> → sets the WiFi interface to operate in "access point" mode.</li>
+<li><code>.ssid=input_your_SSID_here</code> → configures the SSID name the AP is going to broadcast.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → specifies which authentication types to support.</li>
+<li><code>.passphrase=input_your_password_here</code> → sets the password for the SSID.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>There is a "distance" parameter that you have to configure additionally if your link is longer than 2km. This setting does not work for <code>wifi-qcom-ac</code> drivers.</p>
+</div>
+<ul>
+<li><code>configuration.distance=distance_in_km</code> → sets maximum link distance in kilometers. The value should reflect the distance to the AP or station that is furthest from the device. The unconfigured value allows usage of 2 km links.</li>
+<li><code>channel.width=20mhz</code> → sets channel width. The lower the width of the channel, the longer the distance (less interference).</li>
+</ul>
+<h3 id="other-settings-to-consider">Other settings to consider</h3>
+<h4 id="scenario-1">Scenario #1</h4>
+<p>In case you already have a DHCP-server in the topology that is responsible for providing IP addresses to the network, and you want to install the AP behind it:</p>
+<ol>
+<li>Ensure that the AP has a <a href="../../bridging-and-switching/index.md#example">bridge interface</a> added and that all Ethernet and WiFi ports <a href="../../bridging-and-switching/index.md#example-1">are a part of it</a>.</li>
+<li>Set up <a href="../../network-management/dhcp/client">DHCP-client</a> on that bridge or, statically, add an <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">IP address</a> and a <a href="../../user-guides/routing-and-networking-protocols/routing-decision.md#default-route">default route</a>, instead.</li>
+<li>Change <a href="../../cli-reference/interface/list/member">interface list members</a> roles if required.</li>
+</ol>
+<h4 id="scenario-2">Scenario #2</h4>
+<p>In case you want to have the AP itself act as a DHCP-server for stations:</p>
+<ol>
+<li>Configure an ethernet port as an uplink/WAN port, i.e. set up a <a href="../../network-management/dhcp/client">DHCP-client</a> or <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">static IP</a> for the ethernet interface, set up a default <a href="../../user-guides/routing-and-networking-protocols/routing-decision.md">route</a> and categorize the port as a "WAN" port in the <a href="../../cli-reference/interface/list">interface list</a> settings.</li>
+<li>Set up a <a href="../../network-management/dhcp/server">DHCP-server</a> on top of the WiFi interface (or on top of the bridge, which WiFi port is a part of) and add a respective  <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">IP address</a> to that interface.</li>
+</ol>
+<h2 id="station-setup">Station setup</h2>
+<h3 id="wifi-interface-configuration_1">WiFi interface configuration</h3>
+<p>To configure station mode, run the command:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] channel.frequency=5500 configuration.country=Latvia .mode=station .ssid=input_your_SSID_here security.authentication-types=wpa2-psk .passphrase=input_your_password_here
+</code></pre>
+<ul>
+<li><code>channel.frequency</code> → selects a frequency channel, which the AP uses. You can skip this if you want to use "automatic" channel selection.</li>
+<li><code>configuration.country</code> → applies the country profile, so that the device follows output power regulations.</li>
+<li><code>.mode=station</code> → sets the WiFi interface to operate in "station" mode.</li>
+<li><code>.ssid=input_your_SSID_here</code> → input the SSID name that the AP is broadcasting.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → specifies which authentication types to support.</li>
+<li><code>.passphrase=input_your_password_here</code> → set the password which the AP expects.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>There is a "distance" parameter that you have to configure additionally if your link is longer than 2km. This parameter does not work for <code>wifi-qcom-ac</code> drivers.</p>
+</div>
+<ul>
+<li><code>configuration.distance=distance_in_km</code> → Sets maximum link distance in kilometers. The value should reflect the distance to the AP or station that is furthest from the device. An unconfigured value allows usage of 2 km links.</li>
+</ul>
+<h3 id="other-settings-to-consider_1">Other settings to consider</h3>
+<h4 id="scenario-1_1">Scenario #1</h4>
+<p>Scenario where station's WiFi interface is categorized as a "WAN" interface, which allows station's clients to stay hidden behind <a href="../../firewall-and-quality-of-service/firewall/nat.md">NAT</a>. This is a factory configuration applied to most CPE devices.</p>
+<p>An example of such a topology:</p>
+<p>This type of setup requires the CPE to have:</p>
+<ol>
+<li>The WiFi interface categorized as "WAN" port in the <a href="../../cli-reference/interface/list/member">interface list members</a> menu.</li>
+<li>a <a href="../../network-management/dhcp/server">DHCP-server</a> running on the "other/ethernet" interfaces (it is suggested to ensure that AP's DHCP server and Station's DHCP server networks do not use the same subnet, as it can lead to layer3/routing issues).</li>
+<li>a <a href="../../network-management/dhcp/client">DHCP-client</a> or a <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">static IP</a> applied to the WiFi interface and a <a href="../../user-guides/routing-and-networking-protocols/routing-decision.md">default route</a> configured.</li>
+<li><a href="../user-guides/wireless-station-modes.md#mode-station"><code>mode=station</code></a> configured in the WiFi settings.</li>
+</ol>
+<h4 id="scenario-2_1">Scenario #2</h4>
+<p>Scenario where you can bridge station's ports, so that the CPE itself and all CPE's clients obtain DHCP addresses from the AP.</p>
+<p>An example of such a topology:</p>
+<p>This type of setup requires the CPE to have:</p>
+<ol>
+<li>All ports (WiFi and Ethernet) are added into the same <a href="../../bridging-and-switching/index.md#example">bridge interface</a>.</li>
+<li>The bridge is categorized as a "LAN" interface in the <a href="../../cli-reference/interface/list/member">interface list members</a> menu.</li>
+<li>A <a href="../../network-management/dhcp/server">DHCP-server</a> is disabled.</li>
+<li>A <a href="../../network-management/dhcp/client">DHCP-client</a> or a <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">static IP</a> is applied to the bridge interface.</li>
+<li><a href="../user-guides/wireless-station-modes.md#mode-station-bridge"><code>mode=station-bridge</code></a> is configured in the WiFi settings:</li>
+</ol>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] configuration.mode=station-bridge
+</code></pre>
+<h2 id="verification_1">Verification</h2>
+<p>On a successful connection, both the AP and the Station should display a new entry in the "Registration" table:</p>
+<pre><code class="language-ros">/interface/wifi/registration-table/print
+Flags: A - AUTHORIZED
+Columns: INTERFACE, SSID, MAC-ADDRESS, UPTIME, LAST-ACTIVITY, SIGNAL, AUTH-TYPE, BAND
+#   INTERFACE  SSID        MAC-ADDRESS        UPTIME    LAST-ACTIVITY  SIGNAL  AUTH-TYPE  BAND   
+0 A wifi1      input_SSID  XX:YY:ZZ:AA:30:6E  6h24m21s  0ms            -72     wpa2-psk   5ghz-ax
+</code></pre>
+<p>You can also check, via the CPE, whether it properly sees/recognizes the AP using the "scan" command:</p>
+<pre><code class="language-ros">/interface/wifi/scan [find where name=wifi1]
+Flags: A - ACTIVE
+Columns: ADDRESS, SSID, CHANNEL, SECURITY, SIGNAL, STA-COUNT
+  ADDRESS            SSID               CHANNEL           SECURITY                              SIGNAL  STA-COUNT
+A XX:YY:ZZ:AA:F4:28  SSID_Y             5620/ax           WPA2-PSK/WPA3-PSK                     -60             0
+A XX:YY:ZZ:BB:0B:DA  SSID_X             5745/ax/Ce        WPA3-PSK                              -68             0
+A XX:YY:ZZ:CC:0B:DA  input_SSID         5745/ax/Ce        WPA2-PSK                              -68             0
+A XX:YY:ZZ:DD:0B:DA                     5745/ax/Ce        WPA2-PSK                              -68             0
+</code></pre>
+<hr />
+<h1 id="configuring-a-wireless-repeater">Configuring a wireless repeater</h1>
+<blockquote>
+<p>This guide explains how to configure a wireless repeater using MikroTik RouterOS's wifi-qcom package, detailing setup steps for dual-band interfaces (2.4 GHz and 5 GHz), SSID management, security settings, and...</p>
+</blockquote>
+<h1 id="configuring-a-wireless-repeater_1">Configuring a wireless repeater</h1>
+<p><strong>Package:</strong> <code>wifi-qcom</code></p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This guide is meant for 802.11 AX devices running <code>wifi-qcom</code> package/drivers.</p>
+</div>
+<p>WiFi range is limited. APs (devices that broadcast Wi-Fi networks) run on 2.4 and/or 5 GHz frequency. 5 GHz networks enable much better throughput, but with reduced range. 2.4 GHz networks ensure better coverage, but with less throughput.</p>
+<p>Indoor APs are, usually, equipped with omnidirectional antennas (which allow broadcasting the signal in a "donut" shape around the AP, 360°). For indoor and short distance outdoor installations, it is a perfect antenna to use. Using a simple home AP with omnidirectional antennas, you can achieve a distance of up to ±100 meters in an "ideal" interference-free line of sight setup, which is reduced much further inside buildings. Concrete, pipes, metal, water...and all kinds of other different materials affect WiFi indoors. Some items can absorb, some deflect, some diffract and some can scatter the signal.</p>
+<p>With that in mind, it is not always possible to cover the required range with a single AP/router, and additional APs need to be installed.</p>
+<p>For the best possible throughput, each AP should be connected to the main network via an ethernet cable. However! It is not always possible to pass the cable from the AP to the main router for whatever reason...most likely, aesthetics.</p>
+<p>This is where "<strong>repeaters</strong>" or "<strong>extenders</strong>" can help.</p>
+<p>The Extender's/Repeater's job is to establish a Wi-Fi connection with your main router as a "client" or a "station", use this connection as an uplink connection, and also broadcast the extender's own WiFi network at the same time.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Throughput!</strong></p>
+<p>When a device is used as an extender, the throughput you get from it is reduced, at least, by half.</p>
+<p>Half of the resources are allocated to keep an ongoing connection with the router, while you are left with the other half for retransmission. It doubles the overall air time.</p>
+<p>Also! Since you are installing the extender at a distance from the main router... with distance, WiFi throughput is reduced further.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Roaming!</strong></p>
+<p>If you copy the SSID name from your router settings and configure the extender to broadcast the same SSID name →  roaming will be purely client dependent.</p>
+<p>Roaming is when your client device transitions between different APs which use the same WiFi name. There are standards that can help "accelerate" and "smoothen" the transition (like 802.11 r/k/v) but, unfortunately, they can not be used in this setup and so, the decision, "to roam" or "not to roam" is up to the client fully. Different vendors have different algorithms implemented that decide how and when your client device should switch.</p>
+<p>Keep that in mind! Some devices, which have a good algorithm (decision-making), will roam properly, while others might stick to the furthest AP with a poor signal.</p>
+</div>
+<h2 id="repeater-setup">Repeater setup</h2>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Which frequency to use?</strong></p>
+<p>Dual-band routers and access points, from the get-go, should have two Wi-Fi interfaces → wifi1 and wifi2, each representing a certain frequency, 5 and 2.4 GHz respectively. For repeater setup, one of the interfaces needs to be turned into a <strong>station</strong> interface (which will act as a client to another network), while, the other, should be set in <strong>ap</strong> mode (which will allow the device to broadcast its own network).</p>
+<p>If we use 2.4 GHz as a <strong>station</strong> interface, it would increase the distance at which we can install the repeater, but it would also reduce the throughput we can get from it. If we use 5 GHz as a <strong>station</strong> interface, we reduce the range but increase the throughput.</p>
+</div>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Because we will be changing Wi-Fi and port-related configurations, it is advised to connect to the device's settings via Ethernet port/cable, using the MAC address. You can use the <a href="../../management-tools/winbox.md">Winbox</a> "Neighbors" tab and double-click on the MAC address of the device in the list. This way, you will not lose access later on when changing interface-related settings.</p>
+</div>
+<p>In our example, we want to use wifi2 (2.4 GHz) as a "station" interface, while having wifi1 (5 GHz) broadcast repeater's own SSID (and also, potentially re-broadcast router's SSID over 2.4 GHz as well):</p>
+<p>Overall configuration:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi2 ] configuration.mode=station-bridge configuration.country=Latvia .ssid=router.ssid.2 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+set [ find default-name=wifi1 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.5 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+add configuration.mode=ap .ssid=router.ssid.2 disabled=no master-interface=wifi2 name=wifi3 security.authentication-types=wpa2-psk .passphrase=router.password
+/interface/list
+add comment=defconf name=WAN
+add comment=defconf name=LAN
+/interface/bridge
+add auto-mac=no comment=defconf name=bridge
+/interface/bridge/port
+add interface=all bridge=bridge 
+/interface/list/member
+add comment=defconf interface=bridge list=LAN
+/ip/dhcp-client
+add interface=bridge
+</code></pre>
+<h3 id="24-ghz-interface-configuration">2.4 GHz interface configuration</h3>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi2 ] configuration.mode=station-bridge .ssid=router.ssid.2 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=station-bridge</code> → selects the <a href="../user-guides/wireless-station-modes.md">station mode</a>.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>Which station mode to use?</strong></p>
+<p>For <strong>MikroTik Wi-Fi 6 AX</strong> (router that uses <code>wifi-qcom</code> package/drivers) to <strong>MikroTik Wi-Fi 6 AX</strong> (repeater/station that uses <code>wifi-qcom</code> package/drivers) connection, use <strong><code>station-bridge</code></strong> mode.</p>
+<p>For <strong>3rd-party-vendor</strong> or <strong>MikroTik legacy WiFi 5 AC and below</strong> (router) to <strong>Wi-Fi 6 AX</strong> (repeater) connection, use <strong><code>station-pseudobridge</code></strong> mode.</p>
+<p><code>station-pseudobridge</code> does something similar to "Network Address Translation" but with MAC addresses. With this mode, if you have multiple devices connected to the repeater and they all access the internet, the router would see all those attempts coming from a single MAC address. Basically, all client devices would be hidden behind one MAC address, which could potentially cause networking issues. It is not advised to use this mode, but, in such cases, there are no other options.</p>
+<p>Additionally, when using <code>station-pseudobridge</code> on legacy MikroTik devices, ensure that the legacy device has disabled <a href="../../bridging-and-switching/user-guides/spanning-tree-protocol.md">RSTP</a> on its bridge port with the command <code>/interface/bridge/set protocol-mode=none</code>. Otherwise, RSTP could result in issues with DHCP-client functionality and issues passing IP addresses through the bridge ports.</p>
+</div>
+<ul>
+<li><code>configuration.country=Latvia</code> → Select your actual country, so that you do not break any regulations (your country's "laws"). Different country profiles have different allowed output powers per different frequency ranges.</li>
+<li><code>ssid=router.ssid.2</code> → It is the 2.4 GHz SSID network name that the router broadcasts (where the repeater should connect).</li>
+<li><code>security.authentication-types=wpa2-psk</code> → Selects which authentication types the main router uses.</li>
+<li><code>passphrase=router.password</code> → Configures the password from the main router network. It is the password configured in your router's settings.</li>
+</ul>
+<h3 id="5-ghz-interface-configuration">5 GHz interface configuration</h3>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.5 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> → configures interface to work in "access point" mode.</li>
+<li><code>configuration.country=Latvia</code> → selects your actual country, so that you do not break any regulations (your country "laws"). Different country profiles have different allowed output powers per different frequency ranges.</li>
+<li><code>ssid=router.ssid.5</code> → configures wireless network name (SSID), which the repeater needs to re-broadcast. It can be the same network name as the main router uses, or it can be a different name. For testing, better use a "unique" name so you can differentiate networks. For "client roaming" to happen, use the exact same WiFi name from the router settings.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → selects which authentication types to use. For "client roaming" to happen, use the exact same authentication type from the router settings.</li>
+<li><code>passphrase=router.password</code> → sets the password from the repeater's WiFi network. For "client roaming" to happen, use the exact same password from the router settings.</li>
+</ul>
+<h3 id="optional-step-adding-virtual-interface">Optional step - adding virtual interface</h3>
+<p>In case you want to make the extender re-broadcast wireless networks using both frequencies (e.g. <code>wifi2</code> is reserved for <code>mode=station-bridge</code>, and you are left only with <code>wifi1</code> for <code>mode=ap</code>), create a virtual interface on top of the <code>station</code> interface:</p>
+<pre><code class="language-ros">/interface/wifi
+add configuration.mode=ap .ssid=router.ssid.2 disabled=no master-interface=wifi2 name=wifi3 security.authentication-types=wpa2-psk .passphrase=router.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> → Ensures that it will act as an "access point" interface.</li>
+<li><code>ssid=router.ssid.2</code> → Configures the wireless network name (SSID), which the repeater needs to re-broadcast. For "client roaming" to happen, use the exact same WiFi name from the router settings.</li>
+<li><code>master-interface=wifi2</code> → Specify which interface to "base" the "virtual" interface on (specify on-top of which interface to create it). Select the interface, which is used as a <code>station</code> interface.</li>
+<li><code>name=wifi3</code> → Name the virtual interface.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → Select which authentication types to use. For "client roaming" to happen, use the exact same authentication type from the router settings.</li>
+<li><code>passphrase=router.password</code> → Sets the password from the repeater's WiFi network. For "client roaming" to happen, use the exact same password from the router settings.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The virtual interface will use the exact same frequency channel, which is used by the <code>station</code> interface to connect to the router. The Wi-Fi frequency channel for this interface can not be changed.</p>
+</div>
+<h3 id="bridging-and-listing">Bridging and listing</h3>
+<p><a href="../../bridging-and-switching/index.md#example-1">Bridge all ports</a> (Ethernet, Wi-Fi and virtual Wi-Fi interfaces):</p>
+<pre><code class="language-ros">/interface/bridge
+add auto-mac=no comment=defconf name=bridge
+/interface/bridge/port
+add interface=all bridge=bridge 
+</code></pre>
+<p>And ensure that the bridge is listed as a "LAN" interface (<code>/interface list member add comment=defconf interface=bridge list=LAN</code>), so that the firewall rules do not block access to extender's management:</p>
+<pre><code class="language-ros">/interface/list/member
+add comment=defconf interface=bridge list=LAN
+</code></pre>
+<p>That is, of course, if you have proper firewall and access restrictions added on the main router. Otherwise, restrict it.</p>
+<h3 id="dhcp">DHCP</h3>
+<pre><code class="language-ros">/ip/dhcp-client
+add interface=bridge
+</code></pre>
+<p>Apply <a href="../../network-management/dhcp/client#configuration-examples">DHCP-client</a> on top of the bridge interface, so that the repeater itself and all its connected clients get IP addresses from the main router.</p>
+<p>Disable <a href="../../network-management/dhcp/server">DHCP-server</a> functionality.</p>
+<h3 id="address">Address</h3>
+<p>Remove/disable default configuration bridge's assigned <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">IP Address</a>, in case your router's network uses the same subnet, so that it does not "conflict" with the gateway IP.</p>
+<hr />
+<h1 id="configuring-standalone-access-point">Configuring standalone access point</h1>
+<blockquote>
+<p>This guide provides instructions for configuring standalone access points (APs) using MikroTik RouterOS's wifi-qcom package, detailing setup steps for 2.4/5 GHz networks, antenna selection, and bridge configurations...</p>
+</blockquote>
+<h1 id="configuring-standalone-access-point_1">Configuring standalone access point</h1>
+<p><strong>Package:</strong> <code>wifi-qcom</code></p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This guide is meant for 802.11 AX devices running <code>wifi-qcom</code> package/drivers.</p>
+</div>
+<p>Wi-Fi devices can play different roles. The most common device that almost every household has is called a Wi-Fi router. A typical Wi-Fi router, usually, has a WAN port (for ISP connection), LAN ports (for local PCs, wired printers etc) and a WLAN network (Wi-Fi network). Routers are also called "gateways" and "firewalls" because they act as a "doorway" for your local network clients into the Internet (those devices "hide" LAN-connected clients behind them and protect them).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The router is a firewall/gateway device, which has an ISP cable connected to it, and is <a href="../../firewall-and-quality-of-service/firewall/index.md">firewall protected</a> and has <a href="../../network-management/dhcp/server">DHCP-server</a> functionality enabled (which provides an IP address to the connected, both wirelessly and via a wire, LAN clients).</p>
+</div>
+<p>Another role for a Wi-Fi device is called an "access point" or an "AP" for short. Those devices, typically, are connected to the main "router/gateway/firewall" via an ethernet connection (to the router's LAN port); they are not firewall protected, and do not have DHCP-server functionality enabled (they do not provide IP addresses). APs have all their Wi-Fi and LAN interfaces/ports bridged, and thus, APs "take" IP addresses from the router connection, and "pass" them down to AP-connected clients (acting as a "layer2" bridge/switch).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Access points are "bridge" devices, which are connected to the router using an Ethernet cable; they are not <a href="../../firewall-and-quality-of-service/firewall/index.md">firewall protected</a>, and they have <a href="../../network-management/dhcp/server">DHCP-server</a> functionality disabled (they "bridge" DHCP requests from the router to AP's clients).</p>
+</div>
+<p>In other words, a <strong>Wi-Fi router</strong> <strong>is</strong> <strong>an AP with additional functionality</strong>.</p>
+<p>APs (devices that broadcast Wi-Fi networks) run on 2.4 and/or 5 GHz frequency. 5 GHz networks enable much better throughput, but with reduced range. 2.4 GHz networks ensure better coverage, but with less throughput.</p>
+<p>Indoor APs are, usually, equipped with omnidirectional antennas (which allow broadcasting the signal in a "donut" shape around the AP, 360°). For indoor and short distance outdoor installations, it is a perfect antenna to use. Using a simple home AP with omnidirectional antennas, you can achieve a distance of up to ±100 meters in an "ideal" interference-free line of sight setup, which is reduced much further inside buildings. Concrete, pipes, metal, water...and all kinds of other different materials affect WiFi indoors. Some items can absorb, some deflect, some diffract and some can scatter the signal.</p>
+<p>With that in mind, it is not always possible to cover the required range with a single AP/router, and additional APs need to be installed, meaning that if you have a problematic spot in your home, where Wi-Fi signal is poor or non-existent, consider installing a new AP closer to the problematic spot.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p><strong>This guide is meant for</strong> a "basic" or a so-called <strong>"standalone" AP setup</strong>. You can use it, if you have a 3rd-party vendor Wi-Fi router (non-MikroTik), if you have a legacy Wi-Fi 5 (AC) MikroTik router, or if your previous setup did not have any Wi-Fi APs at all.</p>
+<p><strong>For setups that consist of <code>wifi-qcom</code> package/driver APs, use <a href="./capsman.md">CAPSMAN management</a></strong>, as it enables 802.11 r/k/v roaming standards, which smooth the client's transition.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p><strong>Non-802.11 r/k/v roaming!</strong></p>
+<p>In "standalone" AP setups, if you simply copy the SSID name from your router settings and configure the AP to broadcast the same SSID name →  roaming will be purely client dependent.</p>
+<p>Roaming is when your client device transitions between different APs which use the same WiFi name. There are standards that can help "accelerate" and "smoothen" the transition (like 802.11 r/k/v) but, unfortunately, they cannot be used in this setup (because there is no "manager" device) and so, the decision, "to roam" or "not to roam" is up to the client fully. Different vendors have different algorithms implemented that decide how and when your client device should switch.</p>
+<p>Keep that in mind! Some devices that have a good algorithm (decision-making), will roam properly, while others might stick to a poor signal (furthest) AP.</p>
+</div>
+<p>Most, if not all, of our MikroTik Wi-Fi devices come pre-configured in the <a href="../../getting-started/first-time-configuration.md">"router" role</a>. This guide will show you how to turn them into standalone AP role devices (layer2 bridged APs).</p>
+<h2 id="access-point-setup">Access point setup</h2>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Because we will be changing Wi-Fi and port-related configurations, it is advised to connect to the device's settings via an Ethernet port/cable, using the MAC-address. You can use the <a href="../../management-tools/winbox.md">Winbox</a> "Neighbors" tab and double-click on the MAC-address of the device in the list. This way, you will not lose access later on when changing interface-related settings.</p>
+</div>
+<p>Overall configuration:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi2 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.2 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+set [ find default-name=wifi1 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.5 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+add configuration.mode=ap .ssid=guest.ssid.2 disabled=no master-interface=wifi2 name=wifi3 security.authentication-types=wpa2-psk .passphrase=guest.password
+/interface/list
+add comment=defconf name=WAN
+add comment=defconf name=LAN
+/interface/bridge
+add auto-mac=no comment=defconf name=bridge
+/interface/bridge/port
+add interface=all bridge=bridge 
+/interface/list/member
+add comment=defconf interface=bridge list=LAN
+/ip/dhcp-client
+add interface=bridge
+</code></pre>
+<h3 id="24-ghz-interface-configuration_1">2.4 GHz interface configuration</h3>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi2 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.2 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> → configures the interface to work in "access point" mode.</li>
+<li><code>configuration.country=Latvia</code> → selects your actual country, so that you do not break any regulations (your country "laws"). Different country profiles have different allowed output powers per different frequency ranges.</li>
+<li><code>ssid=router.ssid.2</code> → configures the wireless network name (SSID), which the AP needs to broadcast. It can be the same network name as the main router uses, or it can be a different name. For testing, it is better to use a "unique" name so you can differentiate networks. For "client roaming" to happen, use the exact same WiFi name from the router settings.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → selects which authentication types to use. For "client roaming" to happen, use the exact same authentication type from the router settings.</li>
+<li><code>passphrase=router.password</code> → sets the password from the AP's WiFi network. For "client roaming" to happen, use the exact same password from the router settings.</li>
+</ul>
+<h3 id="5-ghz-interface-configuration_1">5 GHz interface configuration</h3>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] configuration.mode=ap configuration.country=Latvia .ssid=router.ssid.5 disabled=no security.authentication-types=wpa2-psk .passphrase=router.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> → Configures the interface to work in "access point" mode.</li>
+<li><code>configuration.country=Latvia</code> → Select your actual country, so that you do not break any regulations (your country's "laws"). Different country profiles have different allowed output powers per different frequency ranges.</li>
+<li><code>ssid=router.ssid.5</code> → Configures the wireless network name (SSID), which the AP needs to broadcast. It can be the same network name as the main router uses, or it can be a different name. For testing, it is better to use a "unique" name so you can differentiate networks. For "client roaming" to happen, use the exact same WiFi name from the router settings.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → Select which authentication types to use. For "client roaming" to happen, use the exact same authentication type from the router settings.</li>
+<li><code>passphrase=router.password</code> → Sets the password from the AP's WiFi network. For "client roaming" to happen, use the exact same password from the router settings.</li>
+</ul>
+<h4 id="increasing-5-ghz-range"><strong>Increasing 5 GHz range</strong></h4>
+<p>Local authorities regulate Wi-Fi devices' output powers. Different frequency ranges in different countries can have different allowed powers. You can check which limitations apply to your country profile using the command:</p>
+<pre><code class="language-ros">/interface/wifi/radio/reg-info country=Latvia 0      
+  ranges: 2402-2482/20dBm/40MHz   
+          5170-5250/23dBm/160MHz/indoor    
+          5250-5330/23dBm/160MHz/indoor/dfs
+          5490-5730/30dBm/160MHz/dfs     
+          5735-5875/14dBm/80MHz 
+</code></pre>
+<p>As per the table, we can see that the most power (using the "Latvia" country profile) we can get is <code>30 dBm</code> on channels <code>5490-5730</code>.</p>
+<p>"dBm" shown in this table represents "allowed EIRP" (EIRP=Tx power + antenna gain). In order not to break any regulations and "laws", the more antenna gain the device has, the lower Tx power is set (if the device has a built-in antenna, it will happen <strong>automatically</strong>), to match the allowed "EIRP" value.</p>
+<p>Also note that it could be that the highest "EIRP" channels are "DFS" channels (meaning that if a radar is detected on the channel, the broadcasting stops). This is something to keep in mind!</p>
+<p>With this information, per the table, we can see that it would be wise to avoid using the <code>5735-5875</code> range, as it only allows <code>14 dBm</code>.</p>
+<p>The more "EIRP" is allowed on the channel = the more output power will be available = the stronger the signal will be = the bigger the distance you can get.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Please note that there is a country profile called <code>Superchannel</code>. In this profile, there are no software limitations applied to output power. This mode should only be used in controlled environments, or if you have special permission to use it in your region. You can combine it with "reducing" Tx power value directly in the settings to get "custom" power output.</p>
+</div>
+<p>To set a channel or a range, run the command:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] channel.frequency=5490-5730
+</code></pre>
+<h3 id="optional-step-adding-virtual-interface_1">Optional step - adding virtual interface</h3>
+<p>In case you want to create an additional network (an additional SSID name), you can create a <code>virtual</code> interface on top of another interface:</p>
+<pre><code class="language-ros">/interface/wifi
+add configuration.mode=ap .ssid=guest.ssid.2 disabled=no master-interface=wifi2 name=wifi3 security.authentication-types=wpa2-psk .passphrase=guest.password
+</code></pre>
+<ul>
+<li><code>configuration.mode=ap</code> → Ensures that it will act as an "access point" interface.</li>
+<li><code>ssid=guest.ssid.2</code> → Configures the wireless network name (SSID), which the AP needs to broadcast. For "client roaming" to happen, use the exact same WiFi name from the router settings.</li>
+<li><code>master-interface=wifi2</code> → Specify which interface to "base" the "virtual" interface on (specify on top of which interface to create it).</li>
+<li><code>name=wifi3</code> → Name the virtual interface.</li>
+<li><code>security.authentication-types=wpa2-psk</code> → Select which authentication types to use. For "client roaming" to happen, use the exact same authentication type from the router settings.</li>
+<li><code>passphrase=guest.password</code> → Sets the password from the AP's WiFi network. For "client roaming" to happen, use the exact same password from the router settings.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The virtual interface will use the exact same frequency channel, which is used by the <code>master</code> interface. The Wi-Fi frequency channel for this interface can not be changed.</p>
+</div>
+<h3 id="bridging-and-listing_1">Bridging and listing</h3>
+<p><a href="../../bridging-and-switching/index.md#example-1">Bridge all ports</a>:</p>
+<pre><code class="language-ros">/interface/bridge
+add auto-mac=no comment=defconf name=bridge
+/interface/bridge/port
+add interface=all bridge=bridge 
+</code></pre>
+<p>And ensure that the bridge is listed as a "LAN" interface (<code>/interface list member add comment=defconf interface=bridge list=LAN</code>), so that the firewall rules do not block access to the AP's management:</p>
+<pre><code class="language-ros">/interface/list/member
+add comment=defconf interface=bridge list=LAN
+</code></pre>
+<p>That is, of course, if you have proper firewall and access restrictions added on the main router. Otherwise, restrict it.</p>
+<h3 id="dhcp_1">DHCP</h3>
+<pre><code class="language-ros">/ip/dhcp-client
+add interface=bridge
+</code></pre>
+<p>Apply <a href="../../network-management/dhcp/client#configuration-examples">DHCP-client</a> on top of the bridge interface, so that the AP itself and all its connected clients get IP addresses from the main router.</p>
+<p>Disable <a href="../../network-management/dhcp/server">DHCP-server</a> functionality.</p>
+<h3 id="address_1">Address</h3>
+<p>Remove/disable the default configuration bridge-assigned <a href="../../getting-started/networking-fundamentals/index.md#address-configuration">IP Address</a>, in case your router's network uses the same subnet, so that it does not "conflict" with the gateway IP.</p>
+<hr />
+<h1 id="interworking-for-wifi6">Interworking for WiFi6</h1>
+<blockquote>
+<p>This page documents MikroTik RouterOS's Interworking for WiFi6, enabling secure network discovery and access point selection via IEEE 802.11u/Hotspot 2.0 standards. It explains configuration methods, interworking...</p>
+</blockquote>
+<h1 id="interworking-for-wifi6_1">Interworking for WiFi6</h1>
+<h2 id="interworking">Interworking</h2>
+<p>Interworking is the occurrence of two or more things working together. For a better Wireless network experience, information about the network must be exchanged between Access Points and Wireless client devices. The information that can be found in basic Wireless beacons and probe requests is limited. For this reason, the IEEE 802.11u™-2011 (Interworking with External Networks) standard was created that specifies how devices should exchange information between each other. The Network discovery and Access Point selection process can be enhanced with the interworking service. Wireless client devices can have more criteria upon which they can choose the network with which to associate.</p>
+<h2 id="hotspot-20">Hotspot 2.0</h2>
+<p>Hotspot 2.0 is a specification developed and owned by the Wi-Fi Alliance. It was designed to enable a more cellular-like experience when connecting to Wi-Fi networks. In an attempt to increase Wireless network security, Hotspot 2.0 access points use mandatory WPA2 authentication. Hotspot 2.0 relies on Interworking and adds some of its own properties and procedures.</p>
+<p>Interworking profiles are implemented according to IEEE 802.11u and Hotspot 2.0 Release 1 specifications.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This manual page describes the configuration for the <strong>wifi-qcom</strong> package devices.</p>
+</div>
+<h2 id="configuration-properties">Configuration Properties</h2>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>There are two ways you can go about configuring <strong>Interworking.</strong></p>
+<p>You can configure it as a "profile" in the "<code>WiFi&gt;Interworking"</code> tab and apply it onto the interface in the <code>WiFi&gt;WiFi</code> tab, by selecting the wifi interface, and then choosing the profile in the "Interworking" tab, "Interworking" field.</p>
+<p>Alternatively, you can configure it directly in the interface settings, without using "profiles", by selecting the wifi interface in the <code>WiFi&gt;WiFi</code> tab, in the "Interworking" tab.</p>
+</div>
+<p><strong>Sub-menu:</strong> <code>/interface/wifi/interworking</code></p>
+<h3 id="information-elements-in-beacon-and-probe-response">Information elements in beacon and probe response</h3>
+<p>Some information can be added to beacon and probe response packets with an Interworking element. The following parameters of an Interworking element can be configured:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>esr</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Emergency services reachable (ESR). Set to <code>yes</code> in order to indicate that emergency services are reachable through the access point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hessid</strong> (<em>MAC address</em>; Default: )</td>
+<td style="text-align: left;">Homogenous extended service set identifier (HESSID). Devices that provide access to the same external networks are in one homogenous extended service set. This service set can be identified by HESSID that is the same on all access points in this set. The 6-byte value of HESSID is represented as a MAC address. It should be globally unique, therefore it is advised to use one of the MAC addresses of an access point in the service set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>internet</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether the internet is available through this connection or not. This information is included in the Interworking element.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network-type</strong> (<em>emergency-only | personal-device | private | private-with-guest | public-chargeable | public-free | test | wildcard</em>; Default: <strong>wildcard</strong>)</td>
+<td style="text-align: left;">Information about network access type.<code>emergency-only</code> - a network dedicated and limited to accessing emergency services;<code>personal-device</code> - a network of personal devices. An example of this type of network is a camera that is attached to a printer, thereby forming a network for the purpose of printing pictures;<code>private</code> - network for users with user accounts. Usually used in enterprises for employees, not guests;<code>private-with-guest</code> - same as private, but guest accounts are available;<code>public-chargeable</code> - a network that is available to anyone willing to pay. For example, a subscription to Hotspot 2.0 service or in-room internet access in a hotel;<code>public-free</code> - network is available to anyone without any fee. For example, municipal network in city or airport Hotspot;<code>test</code> - network used for testing and experimental uses. Not used in production;<code>wildcard</code> - is used on Wireless clients. Sending a probe request with a wildcard as the network type value will make all Interworking Access Points respond despite their actual network-type setting.A client sends a probe request frame with network-type set to the value it is interested in. It will receive replies only from access points with the same value (except the case of wildcard).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uesa</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Unauthenticated emergency service accessible (UESA).<code>no</code> - indicates that no unauthenticated emergency services are reachable through this Access Point;<code>yes</code> - indicates that higher layer unauthenticated emergency services are reachable through this Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>venue</strong> (<em>venue</em>; Default: <strong>unspecified</strong>)</td>
+<td style="text-align: left;">Specify the venue in which the Access Point is located. Choose the value from the available ones. Some examples:<code>venue=business-bank``venue=mercantile-shopping-mall``venue=educational-university-or-college</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="anqp-elements">ANQP elements</h3>
+<p>Access network query protocol (ANQP). Not all necessary information is included in probe response and beacon frames. For a client device to get more information before choosing an access point to associate with, ANQP is used. The Access Point can have stored information in multiple ANQP elements. The client device will use ANQP to query only for the information it is interested in. This reduces the time needed before association.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>3gpp-raw</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Cellular network advertisement information - country and network codes. This helps Hotspot 2.0 clients in the selection of an Access Point to access 3GPP network. Please see 3GPP TS 24.302. (Annex H) for a format of this field. This value is sent in ANQP response if queried.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3gpp-info</strong>(<em>number/number</em>; Default: )</td>
+<td style="text-align: left;">Cellular network advertisement information - country and network codes. This helps Hotspot 2.0 clients in the selection of an Access Point to access 3GPP network.  Written as "mcc/mnc". Multiple mcc/mnc pairs can be defined, by separating them with a comma.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>authentication-types</strong> (<em>dns-redirection:<code>url</code> | https-redirection:<code>url</code> | online-enrollment:<code>url</code> | terms-and-conditions:<code>url</code></em>; Default: )</td>
+<td style="text-align: left;">This property is only effective when asra is set to <code>yes</code>. Value of <code>url</code> is optional and not needed if <code>dns-redirection</code> or <code>online-enrollment</code> is selected. To set the value of <code>url</code> to empty string use double quotes. For example:<code>authentication-types=online-enrollment:""</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connection-capabilities</strong> (<em>number:number:closed|open|unknown</em>; Default: )</td>
+<td style="text-align: left;">This option allows providing information about the allowed IP protocols and ports. This information can be provided in ANQP response. The first number represents the IP protocol number, the second number represents a port number.<code>closed</code> - set if protocol and port combination is not allowed;<code>open</code> - set if protocol and port combination is allowed;<code>unknown</code> - set if protocol and port combination is either open or closed. Example: <code>connection-capabilities=6:80:open,17:5060:closed</code> Setting such a value on an Access Point informs the Wireless client, which is connecting to the Access Point, that HTTP (6 - TCP, 80 - HTTP) is allowed and VoIP (17 - UDP; 5060 - VoIP) is not allowed. This property does not restrict or allow usage of these protocols and ports, it only gives information to the station device which is connecting to the Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>domain-names</strong> (<em>list of strings</em>; Default: )</td>
+<td style="text-align: left;">None or more fully qualified domain names (FQDN) that indicate the entity operating the Hotspot. A station that is connecting to the Access Point can request this ANQP property and check if there is a suffix match with any of the domain names it has credentials to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ipv4-availability</strong> (<em>double-nated | not-available | port-restricted | port-restricted-double-nated | port-restricted-single-nated | public | single-nated | unknown</em>; Default: <strong>not-available</strong>)</td>
+<td style="text-align: left;">Information about what IPv4 address and access are available.<code>not-available</code> - Address type not available;<code>public</code> - public IPv4 address available;<code>port-restricted</code> - port-restricted IPv4 address available;<code>single-nated</code> - single NATed private IPv4 address available;<code>double-nated</code> - double NATed private IPv4 address available;<code>port-restricted-single-nated</code> -port-restricted IPv4 address and single NATed IPv4 address available;<code>port-restricted-double-nated</code> - port-restricted IPv4 address and double NATed IPv4 address available;<code>unknown</code> - availability of the address type is not known.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ipv6-availability</strong> (<em>available | not-available | unknown</em>; Default: <strong>not-available</strong>)</td>
+<td style="text-align: left;">Information about what IPv6 address and access are available.<code>not-available</code> - Address type not available;<code>available</code> - address type available;<code>unknown</code> - availability of the address type is not known.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>realms</strong> (<em>string:eap-sim|eap-aka|eap-tls|not-specified</em>; Default: )</td>
+<td style="text-align: left;">Information about supported realms and the corresponding EAP method.<code>realms=example.com:eap-tls,foo.ba:not-specified</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>realms-raw</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Set NAI Realm ANQP-element manually.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>roaming-ois</strong> (<em>octet string in hex</em>; Default: )</td>
+<td style="text-align: left;">Organization identifier (OI) usually is a 24-bit unique identifier like organizationally unique identifier (OUI) or company identifier (CID). In some cases, OI is longer for example OUI-36. A subscription service provider (SSP) can be specified by its OI. roaming-ois property can contain zero or more SSP OIs whose networks are accessible via this AP. Multiple OI values can be specified as comma-separated hex strings. For example: <code>roaming-ois=f4f5e8f5f4,baa2D00100,baa2d00000</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>venue-names</strong> (<em>string:lang</em>; Default: )</td>
+<td style="text-align: left;">Venue name can be used to provide additional info on the venue. It can help the client to choose a proper Access Point. The Venue-names parameter consists of zero or more pairs that contain Venue Name and Language Code: <code>venue-names=CoffeeShop:eng,TiendaDeCafe:es</code>The Language Code field value is a two or three-character language code selected from ISO-639.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="realms-raw">Realms raw</h4>
+<p><strong>realms-raw</strong> - list of strings with hex values. Each string specifies the contents of "NAI Realm Tuple", excluding the "NAI Realm Data Field Length" field.</p>
+<p>Each hex encoded string must consist of the following fields:</p>
+<pre><code>- NAI Realm Encoding (1 byte)
+- NAI Realm Length (1 byte)
+- NAI Realm (variable)
+- EAP Method Count (1 byte)
+- EAP Method Tuples (variable)
+</code></pre>
+<p>For example, the value "00045465737401020d00" decodes as:</p>
+<pre><code>- NAI Realm Encoding: 0 (rfc4282)
+- NAI Realm Length: 4
+- NAI Realm: Test
+- EAP Method Count: 1
+- EAP Method Length: 2
+- EAP Method Tuple: TLS, no EAP method parameters
+</code></pre>
+<p>Note that setting "realms-raw=00045465737401020d00" produces the same advertisement contents as setting "realms=Test:eap-tls".</p>
+<p>Refer to 802.11-2016, section 9.4.5.10 for full NAI Realm encoding.</p>
+<h3 id="hotspot-20-anqp-elements">Hotspot 2.0 ANQP elements</h3>
+<p>Hotspot 2.0 specification introduced some additional ANQP elements. These elements use an ANQP vendor specific element ID. Here are the available properties to change these elements.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>hotspot20</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Indicates Hotspot 2.0 capability of the Access Point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hotspot20-dgaf</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Downstream Group-Addressed Forwarding (DGAF). Sets value of DGAF bit to indicate whether multicast and broadcast frames to clients are disabled or enabled.<code>yes</code> - multicast and broadcast frames to clients are enabled;<code>no</code> - multicast and broadcast frames to clients are disabled.To disable multicast and broadcast frames set <code>multicast-helper=full</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>operational-classes</strong> (<em>list of numbers</em>; Default: )</td>
+<td style="text-align: left;">Information about other available bands of the same ESS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>operator-names</strong> (<em>string:lang</em>; Default: )</td>
+<td style="text-align: left;">Set operator name. Language must be specified for each operator name entry. Operator-names parameter consists of zero or more duple that contain Operator Name and Language Code: <code>operator-names=BestOperator:eng,MejorOperador:es</code>The Language Code field value is a two or three-character language code selected from ISO-639.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-at-capacity</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the Access Point or the network is at its max capacity. If set to <code>yes</code> no additional mobile devices will be permitted to associate to the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-downlink</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The downlink speed of the WAN connection set in kbps. If the downlink speed is not known, set to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-downlink-load</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The downlink load of the WAN connection measured over <code>wan-measurement-duration</code>. Values from 0 to 255.<code>0</code> - unknown;<code>255</code> - 100%.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-measurement-duration</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Duration during which wan-downlink-load and <code>wan-uplink-load</code> are measured. Value is a numeric value from 0 to 65535 representing tenths of seconds.<code>0</code> - not measured;<code>10</code> - 1 second;<code>65535</code> - 1 hour 49 minutes or more.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-status</strong> (<em>down | reserved | test | up</em>; Default: <strong>reserved</strong>)</td>
+<td style="text-align: left;">Information about the status of the Access Point's WAN connection. The value <code>reserved</code> is not used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-symmetric</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the WAN link is symmetric (upload and download speeds are the same) or not.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-uplink</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The uplink speed of the WAN connection set in kbps. If the uplink speed is not known, set to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wan-uplink-load</strong> (<em>number</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">The uplink load of the WAN connection measured over wan-measurement-duration. Values from 0 to 255.<code>0</code> - unknown;<code>255</code> - 100%.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="other-properties">Other Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the Interworking profile.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration-guide-using-native-radsec-and-orion-wifi">Configuration guide using native RadSec and Orion Wifi</h2>
+<p>This guide describes how to set up your MikroTik devices so you can use them with RadSec proxy and Orion Wifi, though the main configuration steps remain the same and will work with different providers as well.</p>
+<p>It is important to set up a secure RADIUS connection between the wireless LAN controller and Orion Wifi.<br />
+Orion Wifi uses RADIUS over TLS (RadSec) to ensure end-to-end encryption of AAA traffic.</p>
+<h3 id="import-radsec-certificates">Import RadSec certificates</h3>
+<p>In this step, we will import RadSec certificates you should have downloaded from the Orion (from the Orion portal, in the "Manage" tab, under "RadSec Certificates" &gt; "Download Orion Certificates" &gt; "Generate Client Certificate Bundle").</p>
+<p>1) Drag and drop certificates into WinBox or use FTP/SFTP to upload them into the router instead.</p>
+<p>Ensure that you have all 3 certificate files in the file system (with the <code>/file/print</code> command):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print
+Columns: NAME, TYPE, SIZE, LAST-MODIFIED
+# NAME                      TYPE       SIZE      LAST-MODIFIED      
+0 bw.radsec.cacert.pem      .pem file  716       2025-08-19 15:01:56
+1 key.pem                   .pem file  227       2025-08-19 15:01:54
+2 cert.pem                  .pem file  895       2025-08-19 15:01:54
+</code></pre>
+<p>1) Import certificate files 1 by 1.</p>
+<p>Start with the RadSec CA certificate:</p>
+<pre><code class="language-ros">/certificate/import file-name=bw.radsec.cacert.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Then, import client certificate (which the AP will use for RadSec connection):</p>
+<pre><code class="language-ros">/certificate/import file-name=cert.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Lastly, import client certificate's key:</p>
+<pre><code class="language-ros">/certificate/import file-name=key.pem passphrase=&quot;&quot;
+</code></pre>
+<p>Once certificates are imported, they should look like this (CA RadSec certificate should be trusted, while client/AP certificate should be flagged "Trusted" and "Private-Key"):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /certificate/print
+Flags: K - PRIVATE-KEY; T - TRUSTED
+Columns: NAME, COMMON-NAME, SUBJECT-ALT-NAME, SKID
+#    NAME                    COMMON-NAME                                      SUBJECT-ALT-NAME                                     SKID                                    
+0  T bw.radsec.cacert.pem_0  Buttonwood Radsec CA                                                                                  XXYYXXYYXXYYXXYYXXYYXXYYXXYYXXYYXXYYXXY
+1 KT cert.pem_0              xxxxx.yyyyyyyyyyyyyyyyyyy.orion.area120.com  DNS:xxxxx.yyyyyyyyyyyyyyyyyyy.orion.area120.com                                          
+</code></pre>
+<h3 id="configure-radius-client">Configure Radius client</h3>
+<p>Configure RadSec client:</p>
+<pre><code class="language-ros">/radius
+add address=216.239.32.91 certificate=cert.pem_0 protocol=radsec radsec-timeout=1s500ms service=wireless
+</code></pre>
+<h3 id="setup-wifi-interfaces">Setup WiFi interfaces</h3>
+<p>1) Create a wireless security profile that would perform 802.1x authentication:</p>
+<pre><code class="language-ros">/interface/wifi/security
+add authentication-types=wpa2-eap disabled=no eap-accounting=yes management-protection=allowed name=orion_password_profile wps=disable
+</code></pre>
+<p>1) Configure interworking profile (hotspot 2.0):</p>
+<pre><code class="language-ros">/interface/wifi/interworking
+add disabled=no domain-names=orion.area120.com hotspot20=yes hotspot20-dgaf=yes internet=yes ipv4-availability=public ipv6-availability=not-available name=interworking network-type=public-chargeable operator-names=Orion:eng \
+    realms=orion.area120.com:eap-tls roaming-ois=f4f5e8f5f4,baa2D00100,baa2d00000 venue=business-unspecified venue-names=Orion:eng wan-downlink=50 wan-status=up wan-uplink=50
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Pay special attention to "wan-downlink" and "wan-uplink", in this scenario the value of "50" is used as a placeholder, make sure to adjust the values according to your setup, some client devices use it to evaluate if they should join the network. Set “venue” – venue type, ”venue-names” and other attributes as applicable. “domain-names” should be of the hotspot 2.0 Operator.</p>
+</div>
+<p>1) Configure SSID + apply security and interworking profiles to the interface:</p>
+<pre><code class="language-ros">/interface/wifi
+set [ find default-name=wifi1 ] configuration.country=Latvia .mode=ap .ssid=Orion disabled=no interworking=interworking security=orion_password_profile
+</code></pre>
+<p>Make sure the correct country profile is configured. In this example, we are using “wifi1”, but the same command would work with other interfaces.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>NAS-id that's used by Orion to differentiate networks is equal to the system identity. To adjust the nas-id, you can do "/system/identity/set name=exampleName".</p>
+</div>
+<h2 id="troubleshooting_2">Troubleshooting</h2>
+<p>To check the status of RADIUS messages, you can use the radius menu.  </p>
+<p>Or alternatively via the command line run "/radius/monitor X", X being the numerical ID, you can see the IDs with <code>/radius/print</code>.<br />
+For more information, additional logging can be configured under "/system/logging/add topics=radius,debug,packet". You can view results under <a href="../../diagnostics-monitoring-and-troubleshooting/log/index.md">"/log"</a>.</p>
+<p>To view active wireless connections check the WiFi registration table (<em><code>/interface/wifi/registration-table/print</code></em>).</p>
+<hr />
+<h1 id="wi-fi-5-80211ac">Wi-Fi 5 (802.11ac)</h1>
+<blockquote>
+<p>MikroTik 802.11ac (Wi-Fi 5) ARM devices can be driven two ways: through the new /interface/wifi menu using the wifi-qcom-ac package (WPA3, fast roaming, new CAPsMAN) or through the legacy /interface/wireless menu...</p>
+</blockquote>
+<h1 id="wi-fi-5-80211ac_1">Wi-Fi 5 (802.11ac)</h1>
+<p>This section covers MikroTik <strong>802.11ac (Wi-Fi 5)</strong> ARM-based devices. These products are special: the <strong>same hardware can be configured through either of two RouterOS menus</strong>, depending on which driver package is installed. Pick the one that matches the features you need.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p><code>wifi-qcom-ac</code> drivers are very resource-heavy. We suggest using our WiFi 5 (802.11ac) devices with their original <code>wireless</code> drivers as they are lightweight.</p>
+</div>
+<h2 id="two-ways-to-run-an-80211ac-device">Two ways to run an 802.11ac device</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">If you need…</th>
+<th style="text-align: left;">Install package</th>
+<th style="text-align: left;">Configure under</th>
+<th style="text-align: left;">Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">WPA3, fast roaming (802.11r), the new CAPsMAN</td>
+<td style="text-align: left;"><code>routeros</code> + <code>wifi-qcom-ac</code></td>
+<td style="text-align: left;"><code>/interface/wifi</code></td>
+<td style="text-align: left;"><a href="../wifi/index.md">Wi-Fi 6 / 7 (802.11ax/be)</a> — the <code>/interface/wifi</code> menu is shared</td>
+</tr>
+<tr>
+<td style="text-align: left;">Nstreme, Nv2, WDS, HWMP+ mesh, the old CAPsMAN</td>
+<td style="text-align: left;"><code>routeros</code> + <code>wireless</code></td>
+<td style="text-align: left;"><code>/interface/wireless</code></td>
+<td style="text-align: left;"><a href="../abgn/index.md">802.11 a/b/g/n</a> — the <code>/interface/wireless</code> menu is shared</td>
+</tr>
+</tbody>
+</table>
+<p>You cannot use both packages at the same time on the built-in radios — see <a href="../wifi/index.md">Replacing the 'wireless' package</a> for how to switch.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The new <code>/interface/wifi</code> menu manages <strong>Wi-Fi 5 wave2 and newer</strong> interfaces, so 802.11ac devices running <code>wifi-qcom-ac</code> use exactly the same configuration as the 802.11ax/be devices documented under <a href="../wifi/index.md">Wi-Fi 6 / 7 (802.11ax/be)</a>. This section therefore links to that reference rather than duplicating it.</p>
+</div>
+<h2 id="devices-with-a-choice-of-driver">Devices with a choice of driver</h2>
+<p>The following 802.11ac ARM models can run either <code>wifi-qcom-ac</code> (new <code>/interface/wifi</code> menu) or <code>wireless</code> (legacy <code>/interface/wireless</code> menu):</p>
+<blockquote>
+<p>Audience, Audience LTE kit, Chateau (all variants of D53), hAP ac², hAP ac³, cAP ac, cAP XL ac, LDF 5 ac, LHG XL 5 ac, LHG XL 52 ac, NetMetal ac², mANTBox 52 15s, wAP ac (RBwAPG-5HacD2HnD), SXTsq 5 ac</p>
+</blockquote>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The <code>wifi-qcom-ac</code> driver upgrade is primarily meant for indoor devices. Even though it can also be installed on our outdoor models (LDF 5 ac, LHG XL 5 ac, LHG XL 52 ac, NetMetal ac², mANTBox 52 15s, SXTsq 5 ac), <code>wifi-qcom-ac</code> is not tailored for outdoor usage. This is primarily because the drivers do not support the <strong>distance</strong> setting, which is required for links longer than 2 km. We therefore recommend using the <code>wireless</code> drivers on all our outdoor boards.</p>
+</div>
+<p>For choosing packages by device type and CAPsMAN scenario, see the decision tables on the <a href="../index.md">Wireless overview</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

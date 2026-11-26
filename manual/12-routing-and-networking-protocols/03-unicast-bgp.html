@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unicast / BGP · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="unicast-bgp">Unicast / BGP</h1>
+<h1 id="bgp">BGP</h1>
+<blockquote>
+<p>This page introduces BGP (Border Gateway Protocol) configuration in MikroTik RouterOS, covering basic setup and routing concepts for establishing external network connectivity using BGP.</p>
+</blockquote>
+<h1 id="bgp_1">BGP</h1>
+<hr />
+<h1 id="understanding-bgp">Understanding BGP</h1>
+<blockquote>
+<p>Overview of BGP protocol basics.</p>
+</blockquote>
+<h1 id="understanding-bgp_1">Understanding BGP</h1>
+<p>The <strong>Border Gateway Protocol</strong> (<strong>BGP</strong>) is an exterior gateway protocol (<strong>EGP</strong>). It lets you set up an inter-domain dynamic routing system. The system automatically updates routing tables on BGP routers when network topology changes.</p>
+<p>BGP is an inter-autonomous-system routing protocol based on the <strong>path-vector</strong> algorithm. It exchanges routing information across the Internet and is the only protocol designed to operate at Internet scale and handle multiple connections to unrelated routing domains.</p>
+<p>BGP is designed to allow administrators to implement sophisticated routing policies. It does not exchange information about network topology but rather reachability information. As such, BGP is better suited to <strong>inter-AS</strong> environments and special cases like informational feeds. If you need to enable dynamic routing in your network, use OSPF instead.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>BGP is not supported on SMIPS devices (hAP lite, hAP lite TC, and hAP mini).</p>
+</div>
+<h2 id="terminology">Terminology</h2>
+<ul>
+<li><strong>AS</strong> - An Autonomous System is a set of routers under a single technical administration with common set of metrics.</li>
+<li><strong>ASN</strong> - Autonomous System Number is a unique identifier for an Autonomous System. ASNs can be private or public. Public ASNs are unique globally and are assigned by regulatory organizations such as RIPE.</li>
+<li><strong>AS Path</strong> - Sequence of autonomous systems the route traverses.</li>
+<li><strong>Path Attributes</strong> - Contain additional information about the AS path and are used in routing policy.</li>
+<li><strong>Routing policy</strong> - A set of rules to control the redistribution of routing information and to choose the best path among multiple available paths.</li>
+<li><strong>NLRI</strong> - Network Layer Reachability Information is what is exchanged between BGP peers and represents how to reach prefixes.</li>
+<li><strong>IGP</strong> - an Interior Gateway Protocol such as OSPF or ISIS.</li>
+<li><strong>EGP</strong> - an Exterior Gateway Protocol such as BGP.</li>
+<li><strong>RR</strong> - A route reflector is a BGP router that reflects routing information between <strong>iBGP</strong> speakers, eliminating the need for full mesh connectivity.</li>
+<li><strong>Route server</strong> - A BGP router that does not participate in traffic forwarding. Routes are typically not even installed in the FIB.</li>
+<li><strong>Loopback address</strong> - A /32 (IPv4) or /128 (IPv6) address configured on a dummy bridge interface that can act as a loopback.</li>
+</ul>
+<p>There are two types of BGP connections:</p>
+<ul>
+<li><strong>iBGP</strong> - An "internal" link connecting peers from the same AS.</li>
+<li><strong>eBGP</strong> - An "external" link connecting peers belonging to two different AS-es.</li>
+</ul>
+<h2 id="protocol-basics">Protocol basics</h2>
+<p>BGP routers exchange reachability information by means of a transport protocol; in the case of BGP, that protocol is TCP (port 179). Upon forming a TCP connection, these routers exchange <strong>OPEN</strong> messages to negotiate and confirm supported capabilities.</p>
+<p>After agreeing on capabilities to use, the session is considered to be <strong>established</strong> and peers can start to exchange NLRIs via <strong>UPDATE</strong> messages. These messages indicate the sequence of AS‑es (AS Path) the route should take to reach the destination network (NLRI prefix).</p>
+<p>The peers initially exchange their full routing tables and after the initial exchange, incremental updates are sent as the routing tables change. Thus, BGP does not require a periodic refresh of the entire BGP routing table.</p>
+<p>BGP maintains the routing table version number which must be the same between any two given peers for the duration of the connection.</p>
+<p><strong>KEEPALIVE</strong> messages are sent periodically to ensure the connection is up and running. If the messages are not received within the <strong>Hold Time</strong> interval, the connection closes.</p>
+<p>To respond to errors or special conditions, <strong>NOTIFICATION</strong> messages can be generated and sent to the remote peer; this message type also indicates whether the connection should close immediately.</p>
+<p>An AS might have multiple BGP speakers and provide transit service to other AS‑es. This implies that BGP speakers must maintain a consistent view of routing within the AS. A consistent view of routes exterior to the AS is provided by having all BGP routers within the AS establish direct <strong>iBGP</strong> connections with each other (full mesh) or by utilizing a <strong>route reflector</strong> setup.</p>
+<p>Using a set of administrative policies (routing policies), BGP speakers within the AS come to an agreement about which entry or exit point to use for a particular destination. This information is communicated to the interior routers of the AS using the interior routing protocol (<strong>IGP</strong>), for example, OSPF, RIP, or static routing. In certain setups, iBGP can take the IGP protocol role as well.</p>
+<p>For certain BGP attributes, handling behavior may change depending on the type of connection; for example, the <strong>LOCAL-PREF</strong> attribute is not advertised to <strong>eBGP</strong> peers.</p>
+<p>RouterOS divides configuration and session monitoring into four menus:</p>
+<ul>
+<li>instance menu (<a href="../../../../cli-reference/routing/bgp/instance.md"><code>/routing/bgp/instance</code></a>)</li>
+<li>connection menu (<a href="../../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a>)</li>
+<li>sessions menu (<a href="../../../../cli-reference/routing/bgp/session/session.md"><code>/routing/bgp/session</code></a>)</li>
+<li>template menu (<a href="../../../../cli-reference/routing/bgp/template.md"><code>/routing/bgp/template</code></a>)</li>
+</ul>
+<h2 id="route-origin">Route origin</h2>
+<p>A BGP router that first advertises a route assigns its origin and writes it in the <strong>ORIGIN</strong> attribute.<br />
+There are three origin types:</p>
+<ul>
+<li>0 - Router originally learned the route through an <strong>IGP</strong>. RouterOS assigns this value if the route is learned via BGP <a href="../../../../cli-reference/routing/bgp/connection.md#output.network"><code>output.network</code></a>.</li>
+<li>1 - Router originally learned the route through an <strong>EGP</strong>.</li>
+<li>2 - Origin is unknown/incomplete. RouterOS assigns this value if route is learned via BGP <a href="../../../../cli-reference/routing/bgp/connection.md#output.redistribute"><code>output.redistribute</code></a>.</li>
+</ul>
+<h2 id="best-path-selection">Best-Path Selection</h2>
+<p>BGP routers can receive multiple copies of the global routing table from multiple providers, but by default BGP can have only one best path. To select the best route, BGP uses the <strong>Best Path Selection Algorithm</strong>.</p>
+<p>The route is evaluated by the algorithm only if it is valid. In general, the route is considered valid if:</p>
+<ul>
+<li>The <strong>NEXT_HOP</strong> of the route is valid and reachable</li>
+<li>The <strong>AS_PATH</strong> received from external peers does not contain the local AS</li>
+<li>The route is not rejected by <a href="../../../../cli-reference/routing/filter/rule">routing filters</a></li>
+</ul>
+<p>For more information read <a href="./nexthop-selection.md">nexthop selection and validation</a>.</p>
+<p>The best path algorithm also compares routes received only by a <strong>single BGP instance</strong>. Routes installed by different BGP instances are compared by the general algorithm; i.e., route distances are compared, and the route with a lower distance is preferred.</p>
+<p>If all the criteria are met, then the following actions take place:</p>
+<ol>
+<li>The first path received is automatically considered the 'best path'. Any further received paths are compared to the first received to determine if the new path is better.</li>
+<li>Prefer the path with the highest <strong>WEIGHT</strong>.
+   This parameter is not a part of the BGP standard, it is invented to quickly locally select the best route. A parameter is local to the router (assigned with routing filters in the BGP input) and cannot be advertised. A route without assigned WEIGHT has a default value of 0.</li>
+<li>Prefer the path with the highest <strong>LOCAL_PREF</strong>.
+   This attribute is used only within an AS. A path without the LOCAL_PREF attribute has a value of 100 by default.</li>
+<li>Prefer the path with the shortest <strong>AS_PATH</strong> (skipped if <a href="../../../../cli-reference/routing/bgp/instance.md#ignore-as-path-len"><code>ignore-as-path-len</code></a> is set to <strong>yes</strong>).<br />
+   Each <strong>AS_SET</strong> counts as 1, regardless of the set size. The <strong>AS_CONFED_SEQUENCE</strong> and <strong>AS_CONFED_SET</strong> are not included in the <strong>AS_PATH</strong> length.</li>
+<li>~~Prefer the path that was locally originated via aggregate or BGP network~~</li>
+<li>Prefer the path with the lowest <a href="#route-origin"><strong>ORIGIN</strong> type</a>.</li>
+</ol>
+<p>Interior Gateway Protocol (IGP) is lower than Exterior Gateway Protocol (EGP), and EGP is lower than INCOMPLETE.</p>
+<p>In other words, <strong>IGP &lt; EGP &lt; INCOMPLETE</strong>.
+7. Prefer the path with the lowest <strong>multi-exit discriminator</strong> (MED).</p>
+<p>The router compares the MED attribute only for paths that have the same neighboring (leftmost) AS. Confederations are not considered when determining the neighboring AS.<br />
+   Paths without an explicit MED value are treated with a MED of 0.
+8. Prefer <strong>eBGP</strong> over <strong>iBGP</strong> paths.
+9. If <code>multipath</code> is enabled, break here and consider paths equal. This will install BGP <a href="../../routing-decision.md#multipath-ecmp-routes">ECMP</a> routes.
+10. Prefer the lowest <strong>IGP metric</strong>.
+11. Prefer the route that comes from the BGP router with the lowest <a href="../../../../cli-reference/routing/bgp/instance.md#router-id"><strong>router ID</strong></a>. If a route carries the <strong>ORIGINATOR_ID</strong> attribute, then the <strong>ORIGINATOR_ID</strong> is used instead of the router ID.
+12. Prefer the route with the shortest <strong>route reflection cluster list</strong>. Routes without a cluster list are considered to have a cluster list of length 0.
+13. Prefer the path that comes from the lowest neighbor address.</p>
+<h2 id="multiple-instances">Multiple instances</h2>
+<p>There might be a need to run multiple instances of BGP for instance‑dependent features like Layer3 VPN and <a href="../evpn.md">EVPN</a>. RouterOS allows you to add more than one instance in the <a href="../../../../cli-reference/routing/bgp/instance.md"><code>/routing/bgp/instance</code></a> menu.</p>
+<p>Keep in mind that <a href="#best-path-selection">best path selection</a> does not work on routes from different instances. Also, the default redistribution policy does not redistribute BGP routes received from sessions that do not belong to the same instance. In such cases, set <a href="../../../../cli-reference/routing/bgp/connection.md#output.redistribute"><code>output.redistribute</code></a><code>=bgp</code> if such redistribution is needed.</p>
+<h2 id="supported-standards">Supported standards</h2>
+<ul>
+<li><a href="https://tools.ietf.org/html/rfc4271">RFC 4271</a> Border Gateway Protocol 4</li>
+<li><a href="https://tools.ietf.org/html/rfc4456">RFC 4456</a> BGP Route Reflection</li>
+<li><a href="https://tools.ietf.org/html/rfc5065">RFC 5065</a> Autonomous System Confederations for BGP</li>
+<li><a href="https://tools.ietf.org/html/rfc1997">RFC 1997</a> BGP Communities Attribute</li>
+<li><a href="https://tools.ietf.org/html/rfc8092">RFC 8092</a> BGP Large Communities</li>
+<li><a href="https://tools.ietf.org/html/rfc4360">RFC 4360</a>, <a href="https://tools.ietf.org/html/rfc5668">5668</a> BGP Extended Communities</li>
+<li><a href="https://tools.ietf.org/html/rfc2385">RFC 2385</a> TCP MD5 Authentication for BGPv4</li>
+<li><a href="https://tools.ietf.org/html/rfc5492">RFC 5492</a> Capabilities Advertisement with BGP-4</li>
+<li><a href="https://tools.ietf.org/html/rfc2918">RFC 2918</a> Route Refresh Capability</li>
+<li><a href="https://tools.ietf.org/html/rfc4760">RFC 4760</a> Multiprotocol Extensions for BGP-4</li>
+<li><a href="https://tools.ietf.org/html/rfc2545">RFC 2545</a> Use of BGP-4 Multiprotocol Extensions for IPv6 Inter-Domain Routing</li>
+<li><a href="https://tools.ietf.org/html/rfc4893">RFC 4893</a> BGP Support for Four-octet AS Number Space</li>
+<li><a href="https://tools.ietf.org/html/rfc4364">RFC 4364</a> BGP/MPLS IP Virtual Private Networks (VPNs)</li>
+<li><a href="https://tools.ietf.org/html/rfc4761">RFC 4761</a> Virtual Private LAN Service (VPLS) Using BGP for Auto-Discovery and Signalling</li>
+<li>draft-ietf-l2vpn-signaling-08 Cisco VPLS BGP-based auto-discovery</li>
+<li><a href="https://tools.ietf.org/html/rfc6286">RFC 6286</a> AS-wide Unique BGP Identifier for BGP-4</li>
+<li><a href="https://tools.ietf.org/html/rfc4273">RFC 4273</a> SNMP peer table monitoring (OID 1.3.6.1.2.1.15.3.1) (IPv4 only)</li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc6793">RFC 6793</a> 4-byte ASN support and Aggregator attribute.</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc4486">RFC 4486</a> Subcodes for BGP Cease Notification Message</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc4659">RFC 4659</a> MPLS VPN Extension for IPv6</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc8950">RFC 8950</a> Advertising IPv4 Network Layer Reachability Information (NLRI) with an IPv6 Next Hop</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc6811">RFC 6811</a> BGP Prefix Origin Validation</li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc6996.html">RFC 6996</a> Autonomous System (AS) Reservation for Private Use</li>
+<li><a href="https://datatracker.ietf.org/doc/rfc9234/">RFC 9234</a> Route Leak Prevention and Detection Using Roles in UPDATE and OPEN Messages</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc5549">RFC 5549</a> Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop</li>
+</ul>
+<hr />
+<h1 id="peering-sessions">Peering Sessions</h1>
+<blockquote>
+<p>Introduction on how to establish BGP sessions.</p>
+</blockquote>
+<h1 id="peering-sessions_1">Peering Sessions</h1>
+<p>The purpose of an <strong>eBGP</strong> session is to exchange routing information between Autonomous Systems (ASes). Typically, an eBGP session is established on a directly connected physical or logical network (on a single‑hop link) at network exit points, and with default parameters it will fail to connect if the peer is multiple hops away.<br />
+In an EVPN setup, operators typically run eBGP sessions on loopback addresses routed by an IGP. This means that the connection is no longer on a connected network and will fail unless <a href="../../../../cli-reference/routing/bgp/connection.md#multihop"><code>multihop</code></a><code>=yes</code> is configured.</p>
+<p>The AS_PATH attribute is used to prevent routing loops. If the list contains its own AS number (ASN), the route is discarded; but in some specific setups this is not desired behavior. For example, MPLS L3VPN setups need to override the default loop‑prevention mechanism with the <a href="../../../../cli-reference/routing/bgp/connection.md#input.allow-as"><code>input.allow-as</code></a> parameter to allow a CE router to accept routes that contain its own ASN from multi‑homed or interconnected sites.</p>
+<p>The next hop, by default, is changed to itself for obvious reasons, but again this behavior is not desirable in some setups, for example an EVPN overlay. To override the default behavior, set the <a href="../../../../cli-reference/routing/bgp/connection.md#nexthop-choice"><code>nexthop-choice</code></a> parameter to <code>propagate</code>.</p>
+<h2 id="internal-bgp-ibgp-peering">Internal BGP (iBGP) peering</h2>
+<p>Contrary to <strong>eBGP</strong>, <strong>iBGP</strong> is used to exchange routing information within an Autonomous System. It propagates external routes learned from eBGP peers across an internal network.</p>
+<p>By default, <strong>iBGP</strong> sessions are considered multihop and run on top of an Interior Gateway Protocol (IGP), like <a href="../ospf/areas-and-virtual-links.md">OSPF</a> or ISIS, which provides reachability between the loopback addresses. Next hops of external routes are propagated and the IGP is responsible for the next‑hop resolution. In smaller setups, to reduce configuration complexity, iBGP can be used without an underlying IGP by setting the <a href="../../../../cli-reference/routing/bgp/connection.md#nexthop-choice"><code>nexthop-choice</code></a> parameter to <code>force-self</code> and running iBGP sessions on directly connected networks.</p>
+<p>The own AS number is not added to the AS Path list when routes are propagated between iBGP peers; instead, split‑horizon is used for loop protection, which dictates that a route learned from an iBGP peer is not advertised to another iBGP peer. To overcome the split‑horizon limitation, every iBGP router must connect to every other iBGP router, creating a <strong>full mesh</strong>.</p>
+<pre><code class="language-mermaid">graph LR
+    R1 &lt;--&gt; R2
+    R2 &lt;--&gt; R3
+    R3 &lt;--&gt; R1
+</code></pre>
+<p>The problem with a full mesh is scalability, where the total number of connections is <code>n*(n-1)/2</code>. To simplify large-scale iBGP networks, a <a href="#dynamic-sessions">Route reflector (RR)</a> is used to eliminate the need for a full mesh. It establishes a client–server relationship, where clients peer only with the route reflector, thus reducing the number of connections to <code>n-1</code>.</p>
+<pre><code class="language-mermaid">graph TB
+    R2(R2 RR) &lt;--&gt; R1
+    R2 &lt;--&gt; R3
+</code></pre>
+<p>Introduction of RR breaks the standard split-horizon rule to enable route reflection, which is why <strong>ORIGINATOR_ID</strong> and <strong>CLUSTER_LIST</strong> attributes are used to prevent routing loops.</p>
+<h2 id="session-configuration">Session configuration</h2>
+<p>The <a href="../../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a> menu defines BGP outgoing connections as well as acts as a template matcher for incoming BGP connections.</p>
+<p>A very basic BGP configuration example follows. Assume Router1's IP is 192.168.1.1 with AS 65531, and Router2's IP is 192.168.1.2 with AS 65532:</p>
+<pre><code class="language-ros">#Router1
+/routing/bgp/instance
+add name=myInstance as=65531
+
+/routing/bgp/connection
+add name=toR2 remote.address=192.168.1.2 instance=myInstance local.role=ebgp
+</code></pre>
+<pre><code class="language-ros">#Router2
+/routing/bgp/instance
+add name=myInstance as=65532
+
+/routing/bgp/connection
+add name=toR1 remote.address=192.168.1.1 instance=myInstance local.role=ebgp
+</code></pre>
+<p><a href="../../../../cli-reference/routing/bgp/connection.md#local.role"><code>local.role</code></a> is a mandatory parameter and describes the nature of the session, whether it is an <strong>eBGP</strong> session (as in our example), an <a href="#internal-bgp-ibgp-peering"><strong>iBGP</strong></a> session, or if it will act as an iBGP <strong>route-reflector</strong>. In addition, there are other modes for <strong>route leak prevention and detection</strong> from <a href="https://datatracker.ietf.org/doc/rfc9234/">RFC 9234</a>.</p>
+<p>The connection does not require a remote AS number to be specified; RouterOS determines it dynamically from the first received <strong>OPEN</strong> message.</p>
+<p>The parameter equivalent to other vendors and older RouterOS <code>update-source</code> is <a href="../../../../cli-reference/routing/bgp/connection.md#local.address"><code>local.address</code></a>. In most cases, it can be left unconfigured and the router will determine the address.</p>
+<p>When a local address is not specified, BGP will try to guess it depending on the current setup:</p>
+<ul>
+<li>If the peer is iBGP</li>
+<li>If a loopback is available<ul>
+<li>Pick the highest loopback address</li>
+</ul>
+</li>
+<li>If a loopback is not available<ul>
+<li>Pick the highest IP address on the router</li>
+</ul>
+</li>
+<li>If the peer is eBGP</li>
+<li>If a remote peer's IP is not from a directly connected network:<ul>
+<li>If multihop is not set, BGP throws an error</li>
+<li>And if multihop is enabled:</li>
+<li>If a loopback is available<ul>
+<li>Pick the highest loopback address</li>
+</ul>
+</li>
+<li>If a loopback is not available<ul>
+<li>Pick the highest IP address on the router</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>If a remote peer's IP is from a directly connected network:<ul>
+<li>If multihop is not set:</li>
+<li>Pick the router's IP address from that connected network</li>
+<li>And if multihop is set:</li>
+<li>If a loopback is available<ul>
+<li>Pick the highest loopback address</li>
+</ul>
+</li>
+<li>If a loopback is not available<ul>
+<li>Pick the highest IP address on the router</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>This menu also exposes template-specific parameters directly, which makes configuration easier in simple scenarios when templates are not necessary.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Listening on subnets should not be enabled in unsafe environments; denial of service (DoS) is possible with such a configuration.<br />
+Firewall must be configured to protect the router.<br />
+See the <a href="../../../../cli-reference/routing/bgp/connection.md#listen"><code>listen</code></a> parameter for more details.</p>
+</div>
+<h3 id="active-session-list">Active session list</h3>
+<p>Check the <a href="../../../../cli-reference/routing/bgp/session/session.md"><code>/routing/bgp/session</code></a> menu to see if the session is established:</p>
+<pre><code class="language-ros">[admin@MikroTik] /routing/bgp/session&gt; print 
+Flags: E - established 
+ 0 E name=&quot;toR2&quot; instance=myInstance 
+     remote.address=192.168.1.2 .as=65532 .id=192.168.1.1 .refused-cap-opt=no 
+     .capabilities=mp,rr,as4 .afi=ip,ipv6 .messages=43346 .bytes=3635916 .eor=&quot;&quot; 
+     local.address=192.168.1.1 .as=65531 .id=192.168.44.2 .capabilities=mp,rr,gr,as4 .messages=2 
+     .bytes=71 .eor=&quot;&quot; 
+     output.procid=97 .keep-sent-attributes=no 
+     .last-notification=ffffffffffffffffffffffffffffffff0015030601 
+     input.procid=97 .limit-process-routes=500000 ebgp limit-exceeded 
+     hold-time=3m keepalive-time=1m uptime=4s70ms
+</code></pre>
+<p>It shows read-only cached BGP session information: current status, flags, last received notification, and negotiated session parameters.</p>
+<p>Even if the BGP session is not active anymore, the cache can still be stored for some time. Routes received from a particular session are removed only if the cache expires, and this allows mitigating extensive routing table recalculations if the BGP session is flapping.</p>
+<p>If BGP tries to establish a session for the first time and the TCP connection fails to initiate because of MD5 authentication errors, a blocked firewall, or any other reason that blocks the connection, then there will be no session entry created.</p>
+<h3 id="parameter-grouping">Parameter grouping</h3>
+<p>If you noticed, most of the parameters are grouped in the <code>output</code>, <code>input</code>, <code>local</code>, and <code>remote</code> sections, making the configuration more readable and easier to understand whether the option is applied to <code>input</code> or <code>output</code>, or if it influences values local to the router or tries to match parameters of the remote peer.<br />
+For example:</p>
+<ul>
+<li>To specify the output selection chain, you set <a href="../../../../cli-reference/routing/bgp/connection.md#output.filter-chain"><code>output.filter-chain</code></a><code>=myBgpChain</code>.</li>
+<li><code>local.bytes</code> in the session list indicates how many bytes have been sent.</li>
+<li><code>remote.messages</code> indicates how many packets the remote peer has sent.</li>
+<li>and so on.</li>
+</ul>
+<h3 id="bgp-unnumbered">BGP unnumbered</h3>
+<p>RouterOS is capable of establishing a BGP session dynamically without a global IPv6 address on an interface and without specifying a remote link-local address (BGP Unnumbered connection). The mechanism relies on IPv6 neighbor discovery (<a href="https://datatracker.ietf.org/doc/html/rfc4861">RFC 4861</a>) to get the neighbor's link-local address and <a href="https://datatracker.ietf.org/doc/html/rfc5549">RFC5549</a> to advertise IPv4 NLRIs with IPv6 nexthops.</p>
+<p>An unnumbered connection is configured if <a href="../../../../cli-reference/routing/bgp/connection.md#remote.address"><code>remote.address</code></a> is empty and <a href="../../../../cli-reference/routing/bgp/connection.md#local.address"><code>local.address</code></a> is an interface. In this mode, only one connection per interface is accepted.
+It is useful in setups with a lot of point-to-point links, for example, if eBGP is used as an EVPN underlay.</p>
+<p>For a router without configured global addresses to send replies for RAs, apply the following ND config:</p>
+<pre><code class="language-ros">/ipv6/nd/prefix/add prefix=none interface=sfp-sfpplus1
+</code></pre>
+<pre><code class="language-ros">[admin@CCR2004_2XS_111] /ipv6/neighbor&gt; print 
+Flags: D - DYNAMIC; R - ROUTER
+Columns: ADDRESS, MAC-ADDRESS, INTERFACE, VRF
+#    ADDRESS                    MAC-ADDRESS        INTERFACE     VRF 
+0 DR fe80::de2c:6eff:fec5:a7ff  DC:2C:6E:C5:A7:FF  sfp-sfpplus1  main
+</code></pre>
+<p>Add the unnumbered connection config:</p>
+<pre><code class="language-ros">/routing bgp connection
+add instance=myInstance local.address=sfp-sfpplus1 .role=ibgp name=unnumbered_2
+</code></pre>
+<pre><code class="language-ros">[admin@CCR2004_2XS_111] /routing/bgp/connection&gt; print 
+Flags: D - DYNAMIC, X - DISABLED, I - INACTIVE 
+ 0   name=&quot;unnumbered_2&quot; instance=myInstance 
+     local.address=sfp-sfpplus1 .default-address=fe80::de2c:6eff:fea4:b42f%sfp-sfpplus1 .role=ibgp 
+     routing-table=main as=333 
+
+[admin@CCR2004_2XS_111] /routing/bgp/session&gt; print 
+Flags: E - ESTABLISHED 
+ 0 E name=&quot;unnumbered_2-1&quot; instance=v6_test 
+     remote.address=fe80::de2c:6eff:fec5:a7ff%sfp-sfpplus1 .as=333 .id=203.0.113.2 .capabilities=mp,rr,enhe,gr,as4 .afi=ipv6 
+     .messages=5181 .bytes=98439 .eor=&quot;&quot; 
+     local.role=ibgp .address=fe80::de2c:6eff:fea4:b42f%sfp-sfpplus1 .as=333 .id=203.0.113.1 .cluster-id=203.0.113.1 
+     .capabilities=mp,rr,enhe,gr,as4 .afi=ipv6 .messages=5181 .bytes=98439 .eor=&quot;&quot; 
+     output.procid=20 
+     input.procid=20 ibgp 
+     multihop=yes hold-time=3m keepalive-time=1m uptime=3d14h20m55s640ms last-started=2026-02-12 18:26:59 prefix-count=0 
+</code></pre>
+<h3 id="dynamic-sessions">Dynamic sessions</h3>
+<p>BGP peer configuration can be quite complex and not very scalable; for example, hub-and-spoke setups or iBGP route reflector setups.</p>
+<p>Let's say we have a setup with a route reflector where two peers are connected. To simplify the configuration and make it scalable, we will utilize a BGP template to set common parameters and configure the connection to listen on a loopback address range, which will allow us to add more peers without any configuration on the route reflector.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>IP connectivity on interfaces</li>
+<li>Configured and running OSPF on interfaces</li>
+</ul>
+<p><strong>Route reflector</strong></p>
+<p>Before configuring BGP, we need to add a loopback address and enable OSPF to distribute the loopback route:</p>
+<pre><code class="language-routeros">/ip address
+add address=203.0.255.1 interface=lo
+/routing ospf interface-template add interfaces=lo area=backbone passive
+</code></pre>
+<p>Next create a BGP template with common parameters and a BGP session to listen on our loopback (203.0.255.0/24) address range:</p>
+<pre><code class="language-routeros">/routing bgp instance
+add as=65000 name=bgp_inst
+/routing bgp template
+set default afi=ip multihop=yes nexthop-choice=propagate hold-time=10s
+/routing bgp connection
+add instance=bgp_inst local.address=203.0.255.1 .role=ibgp-rr name=rr remote.address=\
+    203.0.255.0/24 templates=default listen=yes
+</code></pre>
+<p>To add a new BGP peer, create an IP connection between the peer and the route reflector, and configure BGP to connect to the reflector's loopback address:</p>
+<p><strong>Peer_1</strong></p>
+<pre><code class="language-routeros">/ip address
+add address=203.0.255.11 interface=lo
+/routing ospf interface-template add interfaces=lo area=backbone passive
+
+/routing bgp instance
+add as=65000 name=bgp_inst
+/routing bgp connection
+add instance=bgp_inst local.role=ibgp name=to_rr remote.address=203.0.255.1
+</code></pre>
+<p><strong>Peer_2</strong></p>
+<pre><code class="language-routeros">/ip address
+add address=203.0.255.12 interface=lo
+/routing ospf interface-template add interfaces=lo area=backbone passive
+
+/routing bgp instance
+add as=65000 name=bgp_inst
+/routing bgp connection
+add instance=bgp_inst local.role=ibgp name=to_rr remote.address=203.0.255.1
+</code></pre>
+<p><strong>Peer_N</strong></p>
+<pre><code class="language-routeros">/ip address
+add address=203.0.255.1N interface=lo
+/routing ospf interface-template add interfaces=lo area=backbone passive
+
+/routing bgp instance
+add as=65000 name=bgp_inst
+/routing bgp connection
+add instance=bgp_inst local.role=ibgp name=to_rr remote.address=203.0.255.1
+</code></pre>
+<p>For further use cases, see EVPN, where this method is used in the <a href="../evpn.md#bgp-evpn-overlay">EVPN Overlay</a> setup.</p>
+<hr />
+<h1 id="nexthop-selection">Nexthop Selection</h1>
+<blockquote>
+<p>BGP nexthop selection procedures on input and output.</p>
+</blockquote>
+<h1 id="nexthop-selection_1">Nexthop Selection</h1>
+<p>RouterOS does not perform strict nexthop checks on BGP input; instead, it relies on <a href="../../../../cli-reference/routing/filter/rule">filter rules</a> created by the user.</p>
+<p>Actions performed on input:</p>
+<ul>
+<li>Read the nexthop from the BGP <strong>NEXT_HOP</strong> attribute.</li>
+<li>For multi-protocol NLRI, check whether the nexthop has a valid length:</li>
+<li>Send an Update error notification and exit if the length is invalid.</li>
+<li>Store the nexthop value.</li>
+<li>If a link-local nexthop appears in the update message:<ul>
+<li>Determine the connection interface.</li>
+<li>Store the link-local address and interface.</li>
+</ul>
+</li>
+<li>Apply nexthop actions from input filter rules.</li>
+<li>Send the route to the main calc process, where nexthop reachability is determined.</li>
+</ul>
+<h2 id="bgp-output">BGP Output</h2>
+<ul>
+<li>If <a href="../../../../cli-reference/routing/bgp/connection.md#nexthop-choice"><code>nexthop-choice</code></a> is not <code>force-self</code> or the route AFI is not IPv4 or IPv6:</li>
+<li>If the peer is a route reflector, or <a href="../../../../cli-reference/routing/bgp/connection.md#nexthop-choice"><code>nexthop-choice</code></a> is <code>propagate</code>, or the peer is not eBGP:<ul>
+<li>Check the nexthop AFI and try to set the outgoing link-local nexthop.</li>
+<li>Check the nexthop AFI and try to set the outgoing nexthop.</li>
+</ul>
+</li>
+<li>If the outgoing nexthop is still unset and the BGP peer is not multihop:<ul>
+<li>Loop through available immediate nexthops and try to set the outgoing nexthop and the LL nexthop.</li>
+</ul>
+</li>
+<li>If the outgoing nexthop equals the remote <a href="../../../../cli-reference/routing/bgp/instance.md#router-id"><code>router-id</code></a>, unset the outgoing nexthop.</li>
+<li>If the outgoing nexthop equals the remote peer's address, unset the outgoing nexthop.</li>
+<li>If the interface of the peer's address is not equal to the LL nexthop's interface, unset the outgoing LL nexthop.</li>
+<li>If the outgoing LL nexthop equals the remote peer's address, unset the outgoing LL nexthop.</li>
+<li>If the outgoing nexthop is still not set, check the AFI and set the peer's local-address.</li>
+<li>If the outgoing nexthop is still unset and the route AFI is IPv6 or L2VPN:</li>
+<li>If the peer's local address is IPv4, set the outgoing nexthop to the IPv6-mapped peer's local address.</li>
+</ul>
+<hr />
+<h1 id="route-leak-prevention">Route Leak Prevention</h1>
+<blockquote>
+<p>Prevent and detect route leaks using BGP roles defined in RFC 9234.</p>
+</blockquote>
+<h1 id="route-leak-prevention_1">Route Leak Prevention</h1>
+<p>A route leak occurs when a BGP speaker announces routes to a peer that, according to the configured business relationship, should not receive them. For example, a transit customer that re-announces routes learned from one provider to another provider can cause traffic to be routed through the customer's network, potentially bypassing the intended path and creating routing loops or traffic interception.</p>
+<p><a href="https://datatracker.ietf.org/doc/rfc9234/">RFC 9234</a> — <em>Route Leak Prevention and Detection Using Roles in UPDATE and OPEN Messages</em> — defines a mechanism to prevent and detect route leaks by assigning each eBGP session a role that describes the relationship between the two peers. RouterOS implements this mechanism through the <code>local.role</code> parameter, which is mandatory for every BGP connection and defines the role of the local router in a BGP session.</p>
+<p>The <code>ibgp</code>, <code>ibgp-rr</code>, and <code>ebgp</code> roles do not participate in RFC 9234 role negotiation. The session is established as a traditional BGP session without exchanging the Role capability.</p>
+<p>The remaining five roles participate in RFC 9234 role negotiation:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Role</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ebgp-provider</code></td>
+<td style="text-align: left;">Transit provider.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-rs</code></td>
+<td style="text-align: left;">Route server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-rs-client</code></td>
+<td style="text-align: left;">Route server client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-customer</code></td>
+<td style="text-align: left;">Transit customer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-peer</code></td>
+<td style="text-align: left;">Lateral peer (peering relationship).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="relationship-types">Relationship types</h3>
+<p>These roles describe the business relationship between two eBGP peers:</p>
+<ul>
+<li><strong>Transit provider—customer</strong>: A provider sells transit to a customer, giving the customer access to the provider's full routing table (typically the entire Internet). The customer announces its own prefixes and those of its downstream customers to the provider. The provider announces all routes it has learned (including routes from other customers and peers) to the customer. In this relationship, the provider is the upstream and the customer is the downstream.</li>
+<li><strong>Route server—client</strong>: A route server is a neutral BGP speaker typically deployed at Internet Exchange Points (IXPs). It does not forward traffic itself — it only reflects routing information between its clients. A route server client connects to the route server to exchange routes with other clients without needing direct peering sessions with each of them. The route server does not modify the AS_PATH or NEXT_HOP, and it does not appear in the data path.</li>
+<li><strong>Lateral peer</strong>: Two networks with a peering relationship exchange only their own routes and the routes of their respective customers. Neither announces routes learned from other peers or providers. Peering is typically settlement-free, meaning no money is exchanged between the two networks.</li>
+</ul>
+<p>Both peers must be configured with matching roles for the session to establish successfully.</p>
+<h2 id="role-negotiation">Role negotiation</h2>
+<p>When a BGP session is configured with an RFC 9234 role, the router sends the BGP Role capability (Capability Code 9) in the OPEN message. When the local router receives the remote peer's OPEN message, it checks the received role against the expected role based on the locally configured <code>local.role</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Local role</th>
+<th style="text-align: left;">Expected remote role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ebgp-provider</code></td>
+<td style="text-align: left;"><code>ebgp-customer</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-customer</code></td>
+<td style="text-align: left;"><code>ebgp-provider</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-rs</code></td>
+<td style="text-align: left;"><code>ebgp-rs-client</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-rs-client</code></td>
+<td style="text-align: left;"><code>ebgp-rs</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ebgp-peer</code></td>
+<td style="text-align: left;"><code>ebgp-peer</code></td>
+</tr>
+</tbody>
+</table>
+<p>If the remote peer does not send the Role capability, or if the received role does not match the expected role, the router sends a NOTIFICATION message with Error Code 2 (OPEN Message Error), Error Subcode 11 (Role Mismatch), and the session is terminated.</p>
+<p>The negotiated roles are visible in the session monitoring output:</p>
+<ul>
+<li><code>remote.role</code> — the role received from the remote peer in the OPEN message.</li>
+<li><code>local.role</code> — the locally configured role.</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<p>The <code>local.role</code> parameter is configured in the <a href="../../../../cli-reference/routing/bgp/connection"><code>/routing/bgp/connection</code></a> menu.</p>
+<p>If the session is established, negotiated capabilites and selected roles can be monitored in <a href="../../../../cli-reference/routing/bgp/session"><code>/rouring/bgp/session</code></a> menu.</p>
+<p>The <code>remote.capabilities</code> field includes <code>role</code> when the remote peer supports the BGP Role capability. The <code>remote.role</code> field shows the actual role received from the remote peer.</p>
+<p>If the session fails to establish due to a role mismatch, the <code>input.last-notification</code> field contains the hex-encoded NOTIFICATION message received from the peer.</p>
+<h3 id="example-transit-provider-to-customer">Example: Transit provider to customer</h3>
+<p>A transit provider connecting to a downstream customer:</p>
+<pre><code class="language-ros"># Provider side (AS 64500)
+/routing/bgp/instance
+add name=instance1 as=64500
+/routing/bgp/connection
+add name=to-customer remote.address=198.51.100.1 instance=instance1 local.role=ebgp-provider
+
+# Customer side (AS 64501)
+/routing/bgp/instance
+add name=instance1 as=64501
+/routing/bgp/connection
+add name=to-provider remote.address=192.0.2.1 instance=instance1 local.role=ebgp-customer
+</code></pre>
+<p>Both peers must be configured with matching roles. A peer configured as <code>ebgp-provider</code> expects the remote to be <code>ebgp-customer</code>, and vice versa.</p>
+<h3 id="example-route-server-with-multiple-clients">Example: Route server with multiple clients</h3>
+<p>An IXP route server connecting to multiple clients:</p>
+<pre><code class="language-ros"># Route server side (AS 65500)
+/routing/bgp/instance
+add name=instance1 as=65500
+/routing/bgp/connection
+add name=rs-client1 remote.address=203.0.113.1 instance=instance1 local.role=ebgp-rs
+add name=rs-client2 remote.address=203.0.113.2 instance=instance1 local.role=ebgp-rs
+
+# Route server client side (AS 64601)
+/routing/bgp/instance
+add name=instance1 as=64601
+/routing/bgp/connection
+add name=to-rs remote.address=203.0.113.254 instance=instance1 local.role=ebgp-rs-client
+</code></pre>
+<h3 id="example-peering-between-two-networks">Example: Peering between two networks</h3>
+<p>Two networks with a peering relationship:</p>
+<pre><code class="language-ros"># Network A (AS 64500)
+/routing/bgp/instance
+add name=instance1 as=64500
+/routing/bgp/connection
+add name=to-peer-b remote.address=192.0.2.2 instance=instance1 local.role=ebgp-peer
+
+# Network B (AS 64700)
+/routing/bgp/instance
+add name=instance1 as=64700
+/routing/bgp/connection
+add name=to-peer-a remote.address=192.0.2.1 instance=instance1 local.role=ebgp-peer
+</code></pre>
+<h3 id="example-ibgp-and-route-reflector">Example: iBGP and route reflector</h3>
+<p>Internal BGP sessions do not use RFC 9234 role negotiation:</p>
+<pre><code class="language-ros"># iBGP peer
+/routing/bgp/instance
+add name=instance1 as=64500
+/routing/bgp/connection
+add name=ibgp-peer1 remote.address=10.0.0.2 instance=instance1 local.role=ibgp
+
+# iBGP route reflector client
+/routing/bgp/connection
+add name=rr-client1 remote.address=10.0.0.3 instance=instance1 local.role=ibgp-rr
+</code></pre>
+<hr />
+<h1 id="faq">FAQ</h1>
+<blockquote>
+<p>Frequently asked questions.</p>
+</blockquote>
+<h1 id="faq_1">FAQ</h1>
+<h2 id="why-ebgp-does-not-connect-to-loopback-address">Why eBGP does not connect to loopback address?</h2>
+<p>eBGP by default can connect only one hop away. Loopback address is plus one more hop, because it is routed over the connected network. For multihop sessions set <a href="../../../../cli-reference/routing/bgp/connection.md#multihop"><code>multihop</code></a><code>=yes</code>.</p>
+<h2 id="what-does-bgp-network-synchronization-exactly-mean">What does BGP network synchronization exactly mean?</h2>
+<p>BGP will not announce the network unless there is a matching active IGP or connected route (exact prefix match) in the routing table. The main reason for synchronization is to avoid routing loops. If IGP is not reliable or it is necessary to always advertise the network, then add static blackhole route for each network prefix to be advertised or set <a href="../../../../cli-reference/routing/bgp/connection.md#output.network"><code>output.network-blackhole=yes</code></a> in <a href="../../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a> configuration to automatically add active blackhole route for each BGP network.</p>
+<h2 id="how-to-hide-my-own-as">How to hide my own AS?</h2>
+<p>Peer's own AS is removed from <strong>AS_PATH</strong> if <a href="../../../../cli-reference/routing/bgp/connection.md#output.default-prepend"><code>output.default-prepend</code></a> in <a href="../../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a> configuration is set to 0 or <code>bgp-path-prepend</code> is set to 0 in output <a href="../../../../cli-reference/routing/filter/rule">routing filters</a>.</p>
+<h2 id="remote-peer-prepends-its-as-several-times-how-to-override-the-prepend">Remote peer prepends its AS several times. How to override the prepend?</h2>
+<p>Remote peers prepend can be removed by setting <code>bgp-path-peer-prepend 1</code> in BGP input <a href="../../../../cli-reference/routing/filter/rule">routing filter</a>.</p>
+<h2 id="bgp-does-not-pick-route-with-shortest-as-path-or-other-metrics-are-ignored">BGP does not pick route with shortest AS path or other metrics are ignored</h2>
+<p>BGP best path selection works only on routes received by the same <a href="../../../../cli-reference/routing/bgp/instance.md">BGP instance</a>.</p>
+<h2 id="bgp-routes-received-from-one-peer-are-not-advertised-to-another-peer">BGP routes received from one peer are not advertised to another peer</h2>
+<p>Most common misconfiguration:</p>
+<ul>
+<li>Output <a href="../../../../cli-reference/routing/filter/rule">filter</a> is blocking redistribution.</li>
+<li>Both peers are not running on the same <a href="../../../../cli-reference/routing/bgp/instance.md">BGP instance</a>.</li>
+</ul>
+<h2 id="why-does-snmp-monitoring-degrade-performance-with-a-full-bgp-feed">Why does SNMP monitoring degrade performance with a full BGP feed?</h2>
+<p>With a full feed, the routing table holds hundreds of thousands of routes. Some monitoring tools collect the routing table by walking the <code>ipCidrRouteTable</code> MIB subtree (<code>1.3.6.1.2.1.4.24.4</code>). Walking this table makes the SNMP agent read and encode every route, which uses CPU and memory and can degrade routing performance on a busy router.</p>
+<p>When a tool does not need routing-table data, deny the OID for the community that the tool uses. For the default <code>public</code> community:</p>
+<pre><code class="language-ros">/snmp/community/set [find name=public] denied-oids=1.3.6.1.2.1.4.24.4
+</code></pre>
+<p>A denied OID returns no-such-object and a walk skips the blocked subtree, so the rest of the monitoring continues to work. The setting is per <a href="../../../../cli-reference/snmp/community#denied-oids">community</a>; set it on every community that can be used to poll the routing table.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

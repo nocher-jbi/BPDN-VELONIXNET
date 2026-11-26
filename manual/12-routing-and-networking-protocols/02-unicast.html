@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unicast · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="unicast">Unicast</h1>
+<h1 id="unicast-routing-protocols">Unicast routing protocols</h1>
+<blockquote>
+<p>This section provides guides for configuring and understanding unicast routing protocols including BGP, OSPF, RIP, IS-IS, BFD, RPKI, and EVPN in MikroTik RouterOS.</p>
+</blockquote>
+<h1 id="unicast-routing-protocols_1">Unicast routing protocols</h1>
+<p>This section covers unicast routing protocol guides. Use it to configure and understand BGP, OSPF, RIP, IS-IS, BFD, RPKI, and EVPN behavior in RouterOS.</p>
+<hr />
+<h1 id="bfd">BFD</h1>
+<blockquote>
+<p>Bidirectional Forwarding Detection (BFD) is a low-latency protocol for detecting faults in network paths, operating independently of routing protocols. It uses UDP encapsulation with configurable ports and supports...</p>
+</blockquote>
+<h1 id="bfd_1">BFD</h1>
+<p><strong>Bidirectional Forwarding Detection</strong> (<strong>BFD</strong>) is a low‑overhead, short‑duration protocol that detects faults in the bidirectional path between two forwarding engines. This includes physical interfaces, sub‑interfaces, data links, and — as far as possible — the forwarding engines themselves, all with very low latency. It operates independently of media, data protocols, and routing protocols.</p>
+<p><strong>BFD</strong> is a hello protocol that checks bidirectional neighbor reachability. It provides sub‑second link failure detection and is not specific to any routing protocol, unlike protocol hello timers.</p>
+<p><strong>Control</strong> data is encapsulated in a <strong>UDP</strong> frame with destination port 3784; port 4784 is used for multihop paths. The source port range is 49152 – 65535.<br />
+<strong>Echo</strong> is encapsulated in a UDP frame with destination port 3785.</p>
+<p>Standards and Technologies:</p>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/rfc5880/">RFC 5880 Bidirectional Forwarding Detection (BFD)</a></li>
+<li><a href="https://datatracker.ietf.org/doc/rfc5881/">RFC 5881 BFD for IPv4 and IPv6</a></li>
+<li><a href="https://datatracker.ietf.org/doc/rfc5882/">RFC 5882 Generic Application of BFD</a></li>
+<li><a href="https://datatracker.ietf.org/doc/rfc5883/">RFC 5883 Bidirectional Forwarding Detection (BFD) for Multihop Paths</a></li>
+</ul>
+<h2 id="features-not-yet-supported">Features not yet supported</h2>
+<ul>
+<li>Echo mode.</li>
+<li>Enabling BFD for ip route gateways.</li>
+<li>Authentication.</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<p>Allowing or forbidding <strong>BFD</strong> sessions can be done from the <a href="../../../cli-reference/routing/bfd/configuration.md"><code>/routing/bfd/configuration</code></a> menu. For example:</p>
+<pre><code class="language-ros">/routing bfd configuration
+add interfaces=sfp12 forbid-bfd=yes
+add interfaces=static
+</code></pre>
+<p>Configuration entries are order sensitive, which means that in the example above we are forbidding BFD sessions explicitly on the "sfp12" interface (using <a href="../../../cli-reference/routing/bfd/configuration.md#forbid-bfd"><code>forbid-bfd</code></a>) and allowing on the rest of the interfaces belonging to the "static" interface list.</p>
+<p>To be able to filter multi-hop sessions, <a href="../../../cli-reference/routing/bfd/configuration.md#addresses"><code>addresses</code></a> or <a href="../../../cli-reference/routing/bfd/configuration.md#address-list"><code>address-list</code></a> properties can be used to match the destination, as well as the appropriate <a href="../../../cli-reference/routing/bfd/configuration.md#vrf"><code>vrf</code></a>, if a session is not running in the "main" VRF.</p>
+<pre><code class="language-ros">/ip firewall address-list
+add address=10.155.255.183 list=bgp_allow_bfd
+add address=10.155.255.217 list=bgp_allow_bfd
+
+/routing bfd configuration
+add addresses=111.111.0.0/16 vrf=vrf1
+add address-list=bgp_allow_bfd
+</code></pre>
+<p>Anything not explicitly listed in the configuration is forbidden by default.</p>
+<h3 id="bfd-with-bgp">BFD with BGP</h3>
+<p>To enable BFD for <a href="./bgp/index.md">BGP</a> sessions, set <a href="../../../cli-reference/routing/bgp/connection.md#use-bfd"><code>use-bfd</code></a> on the required entries in the <a href="../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a> menu.</p>
+<p>The BGP session output shows when the associated BFD session is down:</p>
+<pre><code class="language-ros">[admin@dr_02_BGP_MUM] /routing/bgp/session&gt; print 
+Flags: E - established 
+ 0 E ;;; BFD session down
+     name=&quot;ovpn_test1-1&quot; 
+     remote.address=111.111.11.11@vrf1 .as=65530 .id=10.155.101.217 
+     .capabilities=mp,rr,as4 .hold-time=infinity .messages=40717 
+     .bytes=3436281 .eor=&quot;&quot; 
+     local.address=111.111.11.12@vrf1 .as=555 .id=111.111.11.12 
+     .capabilities=mp,rr,gr,as4 .messages=1 .bytes=19 .eor=&quot;&quot; 
+     output.procid=20 
+     input.procid=20 .filter=bgp-in ebgp 
+     hold-time=infinity use-bfd=yes uptime=3s210ms 
+     last-started=2023-05-19 09:54:04 prefix-count=3853 
+</code></pre>
+<h3 id="bfd-with-ospf">BFD with OSPF</h3>
+<p>To enable BFD for <a href="./ospf/index.md">OSPF</a> neighbors, set <a href="../../../cli-reference/routing/ospf/interface-template.md#use-bfd"><code>use-bfd</code></a> on the required entries in the <a href="../../../cli-reference/routing/ospf/interface-template.md"><code>/routing/ospf/interface-template</code></a> menu.</p>
+<h2 id="session-status">Session Status</h2>
+<p>View the status of current sessions in the <a href="../../../cli-reference/routing/bfd/session.md"><code>/routing/bfd/session</code></a> menu:</p>
+<pre><code class="language-ros">[admin@dr_02_BGP_MUM] /routing/bfd/session&gt; print 
+Flags: U - up, I - inactive 
+ 0 I ;;; BFD forbidden for destination address
+     multihop=yes remote-address=10.155.101.183 local-address=&quot;&quot; desired-tx-interval=0ms required-min-rx=0ms 
+     multiplier=0 
+
+ 1   multihop=no remote-address=111.111.11.11%ovpn-out1@vrf1 local-address=111.111.11.12@vrf1 state=down 
+     state-changes=0 desired-tx-interval=200ms required-min-rx=200ms remote-min-rx=1us multiplier=5 
+     packets-rx=0 packets-tx=7674 
+</code></pre>
+<p>BFD picks the higher of the local tx interval and the remote minimum rx interval as the desired transmit interval. If the session is not established, the desired minimum tx interval defaults to 1 second.</p>
+<hr />
+<h1 id="evpn">EVPN</h1>
+<blockquote>
+<p>This page introduces EVPN technology for Layer 2 and 3 VPN services, detailing BGP control planes, MPLS/VXLAN encapsulations, and EVPN route types (Type-1 to Type-5). It explains NVO terminology like NVE, VNI, and...</p>
+</blockquote>
+<h1 id="evpn_1">EVPN</h1>
+<p>Ethernet Virtual Private Network (EVPN) is a technology that extends Layer 2 and Layer 3 connectivity between different network segments. MPLS or VXLAN encapsulations transfer Ethernet frames over MPLS or IP‑based networks.</p>
+<p>BGP EVPN is used as the control plane for multiple data‑plane encapsulations (both Layer 2 and Layer 3 VPN services). MP‑BGP carries MAC addresses, MAC/IP bindings, and IP prefixes.</p>
+<p>RFC7432 is the initial EVPN standard that defines BGP as the control plane for an MPLS data plane. RFC8365 extends support for additional data planes (VXLAN, NVGRE, and MPLS over GRE) and defines EVPN as a Network Virtualization Overlay (NVO).</p>
+<h2 id="terminology">Terminology</h2>
+<ul>
+<li>NVO: Network Virtualization Overlay used to deliver Layer2 and Layer 3 VPN services.</li>
+<li>NVE: Network Virtualization Endpoint is Provider Edge (PE) node within the NVO environment. It is responsible for encapsulation/decapsulation of VPN traffic. In case of VXLAN this defines VTEP (Virtual Tunnel End Point).</li>
+<li>VNI: Virtual Network Identifier</li>
+<li>EVI: EVPN Instance</li>
+<li>RD: <a href="../route-distinguisher-and-route-target.md#route-distinguisher">Route Distinguisher</a> is a 64-bit prefix appended to IP prefix to make it unique, multiple tenants can use overlapping IP range.</li>
+<li>RT: <a href="../route-distinguisher-and-route-target.md#route-targets">Route Target</a> is BGP extended community used to control import and export of routes. Typically, RT is based on the AS number and the VNI of the MAC-VRF</li>
+<li>MAC-VRF: <a href="../vrf.md">VRF</a> table for MAC addresses on a PE (VTEP). Requires RD and RT.</li>
+<li>BUM:  Broadcast, unknown Unicast and Multicast traffic is a multi-destination layer2 traffic in vxlan networks.</li>
+<li>Ingress replication: unicast approach to handle BUM traffic. It uses IMET routes to auto-discover remote peers.  Ingress device replicates BUM traffic to all the VTEPS associated with the Layer-2 VNI.</li>
+<li>ESI - Ethernet Segment Identifier</li>
+</ul>
+<p>For MP-BGP to carry EVPN, new AFI/SAFI was defined 25(L2 VPN)/70(EVPN). Next-hop address within the NLRI is an IP address of the VTEP advertising the EVPN route.</p>
+<p>There are five EVPN route types:</p>
+<ul>
+<li>Type‑1: (Ethernet A‑D) announces reachability of a multi‑homed Ethernet segment.</li>
+<li>Type‑2: (MAC advertisement / MACIP) advertises the MAC address of a MAC/IP binding learned by a specific EVI.</li>
+<li>Type‑3: (Inclusive multicast IMET) advertises membership of a Layer 2 domain, allowing auto discovery of VTEPs.</li>
+<li>Type‑4: (Ethernet segment) is used to discover VTEPs attached to the same shared Ethernet segment for the EVPN multi‑homing model (active‑active or active‑standby forwarding).</li>
+<li>Type‑5: (IP prefix) advertising an IP prefix into the EVPN domain allows creation of a classic Layer 3 VPN (see <a href="../../../cli-reference/routing/bgp/vpn.md"><code>/routing/bgp/vpn</code></a>).</li>
+</ul>
+<p>Data plane encapsulation is defined with encapsulation extended community value:</p>
+<ul>
+<li>8 - VXLAN (currently only one supported by ROS)</li>
+<li>9 - NVGRE</li>
+<li>10 - MPLS</li>
+<li>11 - MPLSoGRE</li>
+</ul>
+<p>There are two methods for supporting inter-subnet routing with EVPN: symmetric and asymmetric integrated routing and bridging (IRB). The main difference between the two methods is that the symmetric method supports both routing and bridged on both the ingress and egress VTEPs, where the asymmetric method supports routing on the ingress, but only bridging on the egress. Symmetric IRB requires a <a href="../vrf.md">VRF</a> instance for the L3VNI.</p>
+<h2 id="route-list">Route list</h2>
+<p>RouterOS will show local and received EVPN routes in the <a href="../../../cli-reference/routing/route.md"><code>/routing/route</code></a> list</p>
+<p>Locally generated routes will have the <strong>e-evpn</strong> flag. For example:</p>
+<pre><code class="language-routeros">[admin@ros_leaf_3] /routing/route&gt; print where evpn
+Flags: e - EVPN
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE
+  DST-ADDRESS                                     GATEWAY        AFI   DISTANCE  SCOPE  TARGET-SCOPE
+e [10.155.101.133:1010]macip:0|0C:50:85:84:00:01  203.0.255.133  evpn       200     40            10
+e [10.155.101.133:1010]imet:0|203.0.255.133       203.0.255.133  evpn       200     40            10
+e [203.0.255.133:4]imet:0|203.0.255.133           203.0.255.133  evpn       200     40            10
+
+</code></pre>
+<p>EVPN data is encoded in <code>dst-address</code> parameter:</p>
+<pre><code>    Dst [rd]type:x|y
+         ^  ^    ^
+         |  |    + - where x - tag or ESI; y - type specific data (can show mac addresses, ip addresses, ethernet segments etc.)
+         |  +------- name of the EVPN route type (macip, imet, es, ad, prefix)
+         +---------- route distinguisher in square brackets
+
+</code></pre>
+<h2 id="configuration-examples">Configuration Examples</h2>
+<h3 id="basic-configuration-example">Basic Configuration Example</h3>
+<p>Basic Layer2 EVPN Vxlan configuration:</p>
+<pre><code class="language-routeros">/interface/bridge
+add name=bridge1 vlan-filtering=yes pvid=40
+/interface/bridge/port
+add bridge=bridge1 interface=sfp-sfpplus3 pvid=40
+
+/ip/address
+add address=203.0.113.1 interface=lo
+
+/interface/vxlan
+add bridge=bridge1 bridge-pvid=40 local-address=203.0.113.1 name=vxlan1 vni=100040 learning=no
+
+/routing/bgp/instance
+add as=65000 name=evpn-inst
+
+/routing/bgp/connection
+add afi=evpn instance=evpn-inst local.address=203.0.113.1 .role=ebgp multihop=yes name=to-leaf-lo remote.address=203.0.113.2 .as=65001
+
+/routing/bgp/evpn
+add instance=evpn-inst name=bgp-evpn-1o vni=100040
+</code></pre>
+<p>For simple setups with only one VNI, there is no need to set a route distinguisher or <a href="../../../cli-reference/routing/bgp/evpn/#import.route-targets"><code>import.route-targets</code></a>/<a href="../../../cli-reference/routing/bgp/evpn/#export.route-targets"><code>export.route-targets</code></a>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>When <a href="../route-distinguisher-and-route-target.md#route-targets">RTs</a> or <a href="../route-distinguisher-and-route-target.md#route-distinguisher">RD</a> are not specified, values are derived automatically. Route targets are set to <code>&lt;PE ASN&gt;:&lt;VNI&gt;</code>, route distinguishers <code>&lt;PE address&gt;:&lt;num derived from config id&gt;</code>).</p>
+</div>
+<p>EVPN configuration is directly mapped to VXLAN configurations with matching VNIs</p>
+<h3 id="bridged-evpn-vxlan-overlay-with-aristas-eos-and-ros">Bridged EVPN VXLAN Overlay with Arista's Eos and ROS</h3>
+<h4 id="topology">Topology</h4>
+<p>For this example we will use the following topology:</p>
+<ul>
+<li>203.0.255.0/24 address range is used for loopback addresses</li>
+<li>Subnets from the 172.16.0.0/16 range are used for underlay connectivity of leaf and spine routers</li>
+<li>Subnets from the 192.168.0.0/16 range are used for host addressing on VLANs.</li>
+</ul>
+<h4 id="underlay-configuration">Underlay Configuration</h4>
+<p>Underlay connectivity depends on the existing network; it can use eBGP, <a href="./ospf/areas-and-virtual-links.md">OSPF</a>, ISIS, or even static routing. In this example we use OSPF as the underlay routing protocol to advertise routes for loopback interface addresses.</p>
+<p><strong>Ros_Spine</strong></p>
+<pre><code class="language-routeros">/ip/address
+add address=203.0.255.138 interface=lo
+add address=172.16.1.1/30 interface=ether3
+add address=172.16.2.1/30 interface=ether4
+add address=172.16.3.1/30 interface=ether5
+add address=172.16.4.1/30 interface=ether6
+add address=172.16.5.1/30 interface=ether7
+
+/routing/ospf/instance
+add name=evpn_underlay
+/routing/ospf/area
+add disabled=no instance=evpn_underlay name=evpn-underlay-bb
+/routing/ospf/interface-template
+add area=evpn-underlay-bb disabled=no networks=172.16.0.0/16
+add area=evpn-underlay-bb disabled=no interfaces=lo passive
+</code></pre>
+<p><strong>Ros_Leaf_3</strong></p>
+<pre><code class="language-routeros">/ip/address
+add address=203.0.255.133 interface=lo
+add address=172.16.3.2/30 interface=ether10
+
+/routing/ospf/instance
+add name=evpn_underlay
+/routing/ospf/area
+add disabled=no instance=evpn_underlay name=evpn-underlay-bb
+/routing/ospf/interface-template
+add area=evpn-underlay-bb disabled=no networks=172.16.0.0/16
+add area=evpn-underlay-bb disabled=no interfaces=lo passive
+</code></pre>
+<p><strong>Eos_Leaf</strong></p>
+<pre><code>interface Ethernet1
+   no switchport
+   ip address 172.16.5.2/30
+!
+interface Loopback0
+   ip address 203.0.255.128/32
+!
+ip routing
+!
+router ospf 100
+   router-id 203.0.255.135
+   redistribute connected
+   network 172.16.1.0/30 area 0.0.0.0
+!
+
+</code></pre>
+<h4 id="bgp-evpn-overlay">BGP EVPN Overlay</h4>
+<p>For the <a href="./bgp/understanding-bgp.md">BGP</a> overlay we use <a href="../../../cli-reference/routing/bgp/connection.md#multihop"><code>multihop</code></a> eBGP with loopback addresses.</p>
+<p>To simplify configuration, use a BGP <a href="../../../cli-reference/routing/bgp/template.md"><code>/routing/bgp/template</code></a> to set common parameters and configure the <a href="../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a> to listen on the entire loopback address range. This approach scales well: adding more leaf routers requires no changes on the spine routers.</p>
+<p>Also it is recommended to set <a href="../../../cli-reference/routing/bgp/connection.md#nexthop-choice"><code>nexthop-choice</code></a> to propagate especially if there is more than one spine. In case if iBGP is used as overlay then spines should be route reflectors and nexthop propagation is happening by default.</p>
+<p><strong>Ros_Spine</strong> — <a href="../../../cli-reference/routing/bgp/instance.md"><code>/routing/bgp/instance</code></a></p>
+<pre><code class="language-routeros">/routing/bgp/instance
+add as=65000 name=bgp-instance-1
+/routing/bgp/template
+set default afi=evpn multihop=yes nexthop-choice=propagate
+/routing/bgp/connection
+add instance=bgp-instance-1 local.address=203.0.255.138 .role=ebgp name=evpn_leafs remote.address=\
+    203.0.255.0/24 templates=default
+</code></pre>
+<p><strong>Ros_Leaf_3</strong> — <a href="../../../cli-reference/routing/bgp/instance.md"><code>/routing/bgp/instance</code></a>, <a href="../../../cli-reference/routing/bgp/connection.md"><code>/routing/bgp/connection</code></a></p>
+<pre><code class="language-routeros">/routing/bgp/instance
+add as=65003 disabled=no name=bgp-instance-1
+/routing/bgp/connection
+add afi=evpn instance=bgp-instance-1 local.address=203.0.255.133 .role=ebgp multihop=yes name=to_spine remote.address=\
+    203.0.255.138
+</code></pre>
+<p><strong>Eos_Leaf</strong></p>
+<pre><code>service routing protocols model multi-agent
+!
+router bgp 65005
+   neighbor SPINE_EVPN peer group
+   neighbor SPINE_EVPN remote-as 65000
+   neighbor SPINE_EVPN update-source Loopback0
+   neighbor SPINE_EVPN ebgp-multihop 10
+   neighbor SPINE_EVPN send-community extended
+   neighbor 203.0.255.138 peer group SPINE_EVPN
+   !
+   address-family evpn
+      neighbor SPINE_EVPN activate
+!
+</code></pre>
+<h5 id="verify-bgp-connectivity">Verify BGP Connectivity</h5>
+<p>Check the <a href="../../../cli-reference/routing/bgp/session/session.md"><code>/routing/bgp/session</code></a> to verify the BGP peering status.</p>
+<p><strong>Eos_Leaf</strong></p>
+<pre><code>localhost#show bgp summary
+BGP summary information for VRF default
+Router identifier 203.0.255.128, local AS number 65005
+Neighbor               AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
+------------- ----------- ------------- ----------------------- -------------- ---------- ----------
+203.0.255.138       65000 Established   IPv4 Unicast            Advertised              0          0
+203.0.255.138       65000 Established   L2VPN EVPN              Negotiated              6          6
+</code></pre>
+<p><strong>Ros_Leaf_3</strong></p>
+<pre><code class="language-routeros">[admin@ros_leaf_3] /routing/bgp/session&gt; print
+Flags: E - established
+ 0 E name=&quot;to_spine-1&quot; instance=bgp-instance-1
+     remote.address=203.0.255.138 .as=65000 .id=203.0.255.138 .capabilities=mp,rr,gr,as4 .afi=evpn .messages=7 .bytes=682 .eor=&quot;&quot;
+     local.address=203.0.255.133 .as=65003 .id=203.0.255.133 .cluster-id=203.0.255.133 .capabilities=mp,rr,gr,as4 .afi=evpn .messages=7
+     .bytes=698 .eor=&quot;&quot;
+     output.procid=20
+     input.procid=20 ebgp
+     multihop=yes hold-time=3m keepalive-time=1m uptime=1s620ms last-started=2025-05-29 11:01:38 prefix-count=0
+</code></pre>
+<h4 id="vxlan-and-evpn-configuration">VXLAN and EVPN configuration</h4>
+<p><strong>Ros_Leaf_3</strong></p>
+<p>Just for demonstration purposes, on RouterOS leaf we will be sending vlan tagged traffic to the host.</p>
+<p>VXLAN learning should be disabled as we are using <a href="../../../cli-reference/routing/bgp/evpn/">BGP EVPN</a> for discovery. The EVPN configuration is done under <a href="../../../cli-reference/routing/bgp/evpn/"><code>/routing/bgp/evpn</code></a> menu.</p>
+<pre><code class="language-routeros">/interface/bridge
+add name=bridge1 pvid=10 vlan-filtering=yes
+/interface/vxlan
+add bridge=bridge1 bridge-pvid=10 learning=no local-address=203.0.255.133 mac-address=C2:16:F6:B2:CC:D3 name=vxlan1 vni=1010
+/interface/bridge/port
+add bridge=bridge1 interface=ether11 pvid=10
+/ip/address
+add address=192.168.10.133/24 interface=bridge1
+/routing/bgp/evpn
+add disabled=no export.route-targets=1010:1010 import.route-targets=1010:1010 instance=bgp-instance-1 name=bgp-evpn-1 vni=1010
+</code></pre>
+<p><strong>Eos_Leaf</strong></p>
+<p>On the Arista router we are setting vlan trunk, untagged traffic will be sent to the host</p>
+<pre><code>vlan 10
+!
+interface Ethernet2
+   switchport trunk allowed vlan 10
+   switchport mode trunk
+!
+interface Vlan10
+   ip address 192.168.10.128/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan vlan 10 vni 1010
+!
+router bgp 65501
+   vlan 10
+      rd 203.0.255.128:1010
+      route-target both 1010:1010
+      redistribute learned
+</code></pre>
+<p><strong>Host_1</strong></p>
+<pre><code class="language-routeros">/ip/address
+add address=192.168.10.132/24 interface=ether2
+</code></pre>
+<p><strong>Host_3</strong></p>
+<pre><code class="language-routeros">/interface/vlan
+add interface=ether2 name=vlan10 vlan-id=10
+/ip/address
+add address=192.168.10.129/24 interface=vlan10
+</code></pre>
+<h4 id="validate-l2vpn-service">Validate L2VPN Service</h4>
+<p>Let's verify that <strong>IMET</strong> routes are present on the leaf routers and that <strong>VTEPs</strong> are discovered.</p>
+<pre><code class="language-routeros">[admin@ros_leaf_3] /routing/route&gt; print where dst-address~&quot;imet&quot;
+Flags: A - ACTIVE; b - BGP, e - EVPN
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE, IMMEDIATE-GW
+   DST-ADDRESS                               GATEWAY        AFI   DISTANCE  SCOPE  TARGET-SCOPE  IMMEDIATE-GW
+Ab [203.0.255.128:1010]imet:0|203.0.255.128  203.0.255.128  evpn        20     40            30  172.16.3.1%ether10
+ e [203.0.255.133:256]imet:0|203.0.255.133   203.0.255.133  evpn       200     40            10
+
+[admin@ros_leaf_3] /interface/vxlan/vteps&gt; print
+Flags: D - DYNAMIC
+Columns: INTERFACE, REMOTE-IP
+#   INTERFACE  REMOTE-IP
+0 D vxlan1     203.0.255.128
+</code></pre>
+<p>On Arista:</p>
+<pre><code>localhost#show bgp evpn route-type imet
+BGP routing table information for VRF default
+Router identifier 203.0.255.135, local AS number 65501
+Route status codes: * - valid, &gt; - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * &gt;      RD: 203.0.255.128:1010 imet 203.0.255.128
+                                 -                     -       -       0       i
+ * &gt;      RD: 203.0.255.133:256 imet 203.0.255.133
+                                 203.0.255.133         -       100     0       65000 65003 i
+
+localhost#show interfaces vxlan1
+Vxlan1 is up, line protocol is up (connected)
+  Hardware is Vxlan
+  Source interface is Loopback0 and is active with 203.0.255.128
+  Listening on UDP port 4789
+  Replication/Flood Mode is headend with Flood List Source: EVPN
+  Remote MAC learning via EVPN
+  VNI mapping to VLANs
+  Static VLAN to VNI mapping is
+    [10, 1010]
+  Note: All Dynamic VLANs used by VCS are internal VLANs.
+        Use 'show vxlan vni' for details.
+  Static VRF to VNI mapping is not configured
+  Headend replication flood vtep list is:
+    10 203.0.255.133
+  Shared Router MAC is 0000.0000.0000
+
+localhost#show vxlan flood vtep vlan 10
+          VXLAN Flood VTEP Table
+--------------------------------------------------------------------------------
+
+VLANS                            Ip Address
+-----------------------------   ------------------------------------------------
+10                              203.0.255.133
+
+</code></pre>
+<p>At this point we can try to ping <strong>host_3</strong> from <strong>host_1</strong>:</p>
+<pre><code class="language-routeros">[admin@host_1] /interface&gt; print
+...
+1 R ether2  ether           1500  0C:50:85:84:00:01
+
+[admin@host_1] /ip/address&gt; /ping 192.168.10.129
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 192.168.10.129                             56  64 17ms26us
+    1 192.168.10.129                             56  64 13ms119us
+    2 192.168.10.129                             56  64 17ms192us
+</code></pre>
+<p><strong>host-3</strong></p>
+<pre><code class="language-routeros">[admin@host_1] /interface&gt; print
+...
+1 R ether2  ether           1500  0C:74:39:88:00:01
+</code></pre>
+<p>Now we should be able to see that EVPN is used to learn remote MAC addresses by looking at MACIP routes.</p>
+<p>If we look at routes on <strong>ros_leaf</strong>, we can see that router 203.0.255.128 sent the macip route for 0C:74:39:88:00:01 mac address which is the <strong>host_1</strong> mac address located behind <strong>eos_leaf</strong>.</p>
+<p>Eos also sends MAC/IP binding which is used for arp/nd suppression. Unfortunately at the time of writing this article RouterOS does not have this functionality.</p>
+<pre><code class="language-routeros">[admin@ros_leaf_3] /routing/route&gt; print where dst-address~&quot;macip&quot;
+Flags: A - ACTIVE; b - BGP, e - EVPN
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE, IMMEDIATE-GW
+   DST-ADDRESS                                                   GATEWAY        AFI   DISTANCE  SCOPE  TARGET-SCOPE  IMMEDIATE-GW
+Ab [203.0.255.128:1010]macip:0|0C:74:39:88:00:01                 203.0.255.128  evpn        20     40            30  172.16.3.1%ether10
+ e [203.0.255.133:256]macip:0|0C:50:85:84:00:01                  203.0.255.133  evpn       200     40            10
+Ab [203.0.255.128:1010]macip:0|0C:74:39:88:00:01|192.168.10.129  203.0.255.128  evpn        20     40            30  172.16.3.1%ether10
+</code></pre>
+<p>Arista allows additionally to see remotely learned mac addresses in "vxlan mac table" and "vlan mac-address table" includes local mac addresses as well:</p>
+<pre><code>localhost#show bgp evpn route-type mac-ip detail
+BGP routing table information for VRF default
+Router identifier 203.0.255.128, local AS number 65005
+BGP routing table entry for mac-ip 0c50.8584.0001, Route Distinguisher: 203.0.255.133:256
+ Paths: 1 available
+  65000 65003
+    203.0.255.133 from 203.0.255.138 (203.0.255.138)
+      Origin IGP, metric -, localpref 100, weight 0, tag 0, valid, external, best
+      Extended Community: Route-Target-AS:1010:1010 TunnelEncap:tunnelTypeVxlan
+      VNI: 0 ESI: 0000:0000:0000:0000:0000
+BGP routing table entry for mac-ip 0c74.3988.0001, Route Distinguisher: 203.0.255.128:1010
+ Paths: 1 available
+  Local
+    - from - (0.0.0.0)
+      Origin IGP, metric -, localpref -, weight 0, tag 0, valid, local, best
+      Extended Community: Route-Target-AS:1010:1010 TunnelEncap:tunnelTypeVxlan
+      VNI: 1010 ESI: 0000:0000:0000:0000:0000
+BGP routing table entry for mac-ip 0c74.3988.0001 192.168.10.129, Route Distinguisher: 203.0.255.128:1010
+ Paths: 1 available
+  Local
+    - from - (0.0.0.0)
+      Origin IGP, metric -, localpref -, weight 0, tag 0, valid, local, best
+      Extended Community: Route-Target-AS:1010:1010 TunnelEncap:tunnelTypeVxlan
+      VNI: 1010 ESI: 0000:0000:0000:0000:0000
+
+localhost#show vxlan address-table vlan 10
+          Vxlan Mac Address Table
+----------------------------------------------------------------------
+
+VLAN  Mac Address     Type      Prt  VTEP             Moves   Last Move
+----  -----------     ----      ---  ----             -----   ---------
+  10  0c50.8584.0001  EVPN      Vx1  203.0.255.133    1       1:30:49 ago
+Total Remote Mac Addresses for this criterion: 1
+
+localhost#show mac address-table vlan 10
+          Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports      Moves   Last Move
+----    -----------       ----        -----      -----   ---------
+  10    0c50.8584.0001    DYNAMIC     Vx1        1       1:31:17 ago
+  10    0c74.3988.0001    DYNAMIC     Et2        1       1 day, 23:45:18 ago
+Total Mac Addresses for this criterion: 2
+
+          Multicast Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+Total Mac Addresses for this criterion: 0
+</code></pre>
+<h3 id="bridged-evpn-overlay-with-arista-esi-lag">Bridged EVPN Overlay with Arista ESI LAG</h3>
+<p><strong>ESI-LAG</strong> (Ethernet Segment Identifier - Link Aggregation) or <strong>EVPN-LAG</strong>  is a networking concept that enables multihoming using <strong>EVPN</strong> (Ethernet Virtual Private Network) technology, where client devices (like access switches) can connect to core devices (like distribution switches) through multiple links, forming a logical <strong>LAG</strong> interface.</p>
+<h4 id="topology_1">Topology</h4>
+<p>Let's extend the topology from the previous example. <strong>Host_2</strong> is a RouterOS device with <strong>LACP</strong> enabled on links connecting to two Arista leafs, forming an active‑active multihoming setup.</p>
+<h4 id="configuration-prerequisities">Configuration Prerequisities</h4>
+<p>For details on setting up the underlay and EVPN overlay, refer to the example above. This section focuses on ESI LAG configuration and validation.</p>
+<h4 id="port-channel-configuration">Port Channel configuration</h4>
+<p>Assuming that the underlay and overlay are configured and running, proceed to port‑channel configuration on the Arista switches:</p>
+<p><strong>leaf_2</strong> and <strong>leaf_4</strong> config is exactly the same</p>
+<pre><code>interface Port-Channel3
+   switchport access vlan 10
+   switchport trunk allowed vlan 10
+   switchport mode trunk
+   !
+   evpn ethernet-segment
+      identifier 0000:0000:0000:0333:3333
+      route-target import 00:00:03:33:33:33
+   lacp system-id 0000.0333.3333
+!
+interface Ethernet2
+   channel-group 3 mode active
+</code></pre>
+<p><strong>ros_host_2</strong></p>
+<pre><code class="language-routeros">/interface/bonding
+add mode=802.3ad name=bond1 slaves=ether2,ether3
+/interface/vlan
+add interface=bond1 mtu=1496 name=vlan10 vlan-id=10
+/ip/address
+add address=192.168.10.130/24 interface=vlan10
+</code></pre>
+<h4 id="validate-setup">Validate setup</h4>
+<p>Now if we look at evpn routes we should see some new route types. Both Arista switches are advertising Type-1 AD routes and Type-4 Ethernet Segment (ES) routes to discover multihoming VTEPs</p>
+<pre><code class="language-routeros">[admin@gns3_spine1_ros] /routing/route&gt;  print where afi=evpn dst-address~&quot;(ad|es)&quot;
+Flags: A - ACTIVE; b - BGP
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE
+   DST-ADDRESS                                                      GATEWAY        AFI   DISTANCE  SCOPE  TA
+Ab [203.0.255.127:1]ad:4294967295|00:00:00:00:00:00:03:33:33:33     203.0.255.127  evpn        20     40  30
+Ab [203.0.255.127:1]es:00:00:00:00:00:00:03:33:33:33|203.0.255.127  203.0.255.127  evpn        20     40  30
+Ab [203.0.255.127:1010]ad:0|00:00:00:00:00:00:03:33:33:33           203.0.255.127  evpn        20     40  30
+
+Ab [203.0.255.134:1]ad:4294967295|00:00:00:00:00:00:03:33:33:33     203.0.255.134  evpn        20     40  30
+Ab [203.0.255.134:1]es:00:00:00:00:00:00:03:33:33:33|203.0.255.134  203.0.255.134  evpn        20     40  30
+Ab [203.0.255.134:1010]ad:0|00:00:00:00:00:00:03:33:33:33           203.0.255.134  evpn        20     40  30
+
+</code></pre>
+<p>If we check both Eos leafs, we will see that designated forwarder 203.0.255.127 (<strong>eos_leaf_4</strong>) is selected:</p>
+<pre><code>eos_leaf_2#show bgp evpn instance vlan 10
+EVPN instance: VLAN 10
+  Route distinguisher: 203.0.255.134:1010
+  Route target import: Route-Target-AS:1010:1010
+  Route target export: Route-Target-AS:1010:1010
+  Service interface: VLAN-based
+  Local VXLAN IP address: 203.0.255.134
+  VXLAN: enabled
+  MPLS: disabled
+  Local ethernet segment:
+    ESI: 0000:0000:0000:0333:3333
+      Type: 0 (administratively configured)
+      Interface: Port-Channel3
+      Mode: all-active
+      State: up
+      ES-Import RT: 00:00:03:33:33:33
+      DF election algorithm: modulus
+      Designated forwarder: 203.0.255.127
+      Non-Designated forwarder: 203.0.255.134
+
+</code></pre>
+<p>Let's suspend the link from <strong>host2</strong> to <strong>eos_leaf_4</strong> and observe the result:</p>
+<pre><code>eos_leaf_2#show bgp evpn instance vlan 10
+EVPN instance: VLAN 10
+  Route distinguisher: 203.0.255.134:1010
+  Route target import: Route-Target-AS:1010:1010
+  Route target export: Route-Target-AS:1010:1010
+  Service interface: VLAN-based
+  Local VXLAN IP address: 203.0.255.134
+  VXLAN: enabled
+  MPLS: disabled
+  Local ethernet segment:
+    ESI: 0000:0000:0000:0333:3333
+      Type: 0 (administratively configured)
+      Interface: Port-Channel3
+      Mode: all-active
+      State: up
+      ES-Import RT: 00:00:03:33:33:33
+      DF election algorithm: modulus
+      Designated forwarder: 203.0.255.134
+
+[admin@spine1_ros] /routing/route&gt;  print interval=1 where dst-address~&quot;ad|es&quot;
+Flags: A - ACTIVE; b - BGP
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE
+   DST-ADDRESS                                                      GATEWAY        AFI   DISTANCE  SCOPE  TA
+Ab [203.0.255.134:1]ad:4294967295|00:00:00:00:00:00:03:33:33:33     203.0.255.134  evpn        20     40  30
+Ab [203.0.255.134:1]es:00:00:00:00:00:00:03:33:33:33|203.0.255.134  203.0.255.134  evpn        20     40  30
+Ab [203.0.255.134:1010]ad:0|00:00:00:00:00:00:03:33:33:33           203.0.255.134  evpn        20     40  30
+
+[admin@host_2] /interface/bonding&gt; /ping 192.168.10.132 interval=500ms
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 192.168.10.132                             56  64 2ms90us
+    1 192.168.10.132                             56  64 2ms172us
+    2 192.168.10.132                             56  64 2ms503us
+    3 192.168.10.132                                               timeout
+    4 192.168.10.132                                               timeout
+    5 192.168.10.132                                               timeout
+    6 192.168.10.132                             56  64 2ms191us
+    7 192.168.10.132                             56  64 2ms31us
+</code></pre>
+<p><strong>eos_leaf_2</strong> became forwarder, <strong>eos_leaf_4</strong> withdraw  ES and AD routes and traffic switched to other LACP link.</p>
+<hr />
+<h1 id="is-is">IS-IS</h1>
+<blockquote>
+<p>IS-IS is an Interior Gateway Protocol used for distributing IP routing information within a single Autonomous System, operating as a link-state protocol that exchanges topology data between neighbors. It supports...</p>
+</blockquote>
+<h1 id="is-is_1">IS-IS</h1>
+<p>The IS-IS (Intermediate System - Intermediate System) protocol is an Interior Gateway Protocol (IGP) used to distribute IP routing information throughout a single Autonomous System.</p>
+<p>It was originally developed as a routing protocol for CLNP but was later extended to include IP routing when IP became popular. An extended version is sometimes referred to as Integrated IS-IS.</p>
+<p>IS-IS belongs to the link-state protocol family, which exchanges topology information between nearest neighbors and floods it throughout the AS. The main advantage is that complete knowledge of the network topology allows the router to choose the best path to the destination. It can also serve traffic engineering purposes.</p>
+<p>Neighbors periodically exchange <strong>Hello</strong> packets, form adjacencies, and select the Designated IS (DIS) based on the negotiation. Hello packets are sent individually for <strong>Level-1</strong> and <strong>Level-2</strong>.</p>
+<h2 id="standards-and-technologies">Standards and Technologies</h2>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc1195">RFC 1195</a> Use of OSI IS-IS for Routing in TCP/IP and Dual Environments</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc5302">RFC 5302</a> Domain-Wide Prefix Distribution with Two-Level IS-IS</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc5303">RFC 5303</a> Three-Way Handshake for IS-IS Point-to-Point Adjacencies</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc5305">RFC 5305</a> IS-IS Extensions for Traffic Engineering (only wide metric support)</li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc5308">RFC 5308</a> Routing IPv6 with IS-IS</li>
+</ul>
+<h2 id="is-is-terminology">IS-IS Terminology</h2>
+<ul>
+<li><strong>IS</strong> - Intermediate System is a router capable of forwarding traffic between distantly located hosts.</li>
+<li><strong>LSP</strong> - Link State PDU contains information on the router local state (usable interfaces, reachable neighbors, and the cost of the interfaces). See <a href="../../../cli-reference/routing/isis/lsp.md"><code>/routing/isis/lsp</code></a>.</li>
+<li><strong>SPF</strong> - Shortest-path-first algorithm.</li>
+<li><strong>DIS</strong> - Designated Intermediate System. DIS ensures that all routers in the network maintain a synchronized database. Separate DISs are elected for L1 and L2 routing. Election of the DIS is based on the highest interface priority.</li>
+<li><strong>Level-1 (L1) routing</strong> - Controls distribution of routing information within an IS-IS area. L1 routing is based on system ID.</li>
+<li><strong>Level-2 (L2) routing</strong> - Controls distribution of routing information between IS-IS areas. L2 routing is based on area ID.</li>
+<li><strong>IS-IS Adjacency</strong> - Link between IS-IS neighbors (see <a href="../../../cli-reference/routing/isis/neighbor.md"><code>/routing/isis/neighbor</code></a>). The type of adjacency formed depends on the parameters exchanged in the IS-IS Hello packets. Each of the adjacent routers runs the DIS election process to determine whether it is eligible to be an L1 or L2 DIS on the broadcast network.</li>
+<li><strong>NSAP</strong> - Network Service Access Point address to identify the router.</li>
+<li><strong>NET</strong> - Network Entity Title. NSAP address with the last byte always set to zero.</li>
+</ul>
+<h2 id="protocol-basics">Protocol Basics</h2>
+<p>The IS-IS protocol is TLV (Type/Length/Value) based, which makes it easy to extend. It uses the OSI addressing principle, and the NSAP address is assigned per node, not per interface.</p>
+<p>The NSAP address is split into three parts:</p>
+<pre><code>+-----+------+-----------+----+
+| AFI | Area | System-ID | NS |
++-----+------+-----------+----+
+</code></pre>
+<ul>
+<li><strong>AFI</strong> - The first leftmost byte defines the meaning of the NSAP address. The IS-IS <a href="../../../cli-reference/routing/isis/instance.md#afi"><code>afi</code></a> parameter controls which address family the instance handles.</li>
+<li><strong>Area ID</strong> - 2 octets.</li>
+<li>Most IS-IS implementations use a 6-octet <strong>System-ID</strong>.</li>
+<li><strong>NS</strong> (N-selector) - One byte and is always set to zero by IS-IS.</li>
+</ul>
+<p>The address is written as a hexadecimal string with two-byte portions separated by a dot, with a few exceptions.
+For example, the NET address <code>49222211112222aded00</code> is written as <code>49.2222.1111.2222.aded.00</code>:</p>
+<ul>
+<li>The leftmost dot separates AFI (2 characters).</li>
+<li>Followed by Area ID (4 characters).</li>
+<li>Followed by System ID, which is split into 3 sets of 4 characters.</li>
+<li>The rightmost dot must be between the System ID and the N-selector.</li>
+</ul>
+<p>RouterOS splits the NET address into two configuration options. The first 3 bytes (AFI and Area) are configured with the <a href="../../../cli-reference/routing/isis/instance.md#areas"><code>areas</code></a> parameter, the next 6 bytes are the System ID and are configured with the <a href="../../../cli-reference/routing/isis/instance.md#system-id"><code>system-id</code></a> parameter, and the last NS byte is not explicitly configured anywhere. It is always assumed to be zero.</p>
+<p>Some other vendor implementations can require the AFI byte to be set to a specific value, for example, <code>0x47</code> indicating a classic ISO NSAP address.
+Also, <code>0x49</code> can be used as private address space, similar to IPv4 private address ranges (10.0.0.0/8 etc.).</p>
+<h2 id="basic-configuration-example_1">Basic Configuration Example</h2>
+<p>Basic configuration requires creating an instance (under <a href="../../../cli-reference/routing/isis/instance.md"><code>/routing/isis/instance</code></a>) with the area ID and system ID set, and enabling IS-IS on an interface via <a href="../../../cli-reference/routing/isis/interface-template.md"><code>/routing/isis/interface-template</code></a>.</p>
+<p>For example, an IS-IS setup between three routers, one Cisco and two RouterOS.</p>
+<p><strong>R1:</strong></p>
+<pre><code class="language-ros">/routing/isis/instance
+add afi=ip areas=49.2222 disabled=no name=isis-instance-1 system-id=90ab.cdef.0001
+/routing/isis/interface-template
+add instance=isis-instance-1 interfaces=ether1 levels=l1,l2
+
+[] /routing/isis/neighbor&gt; print 
+ 0 instance=isis-instance-1 interface=ether1 level-type=l2 snpa=08:00:27:22:B4:A2 srcid=&quot;1111.2222.aded&quot; state=up 
+
+ 1 instance=isis-instance-1 interface=ether1 level-type=l2 snpa=D4:CA:6D:78:2F:2E srcid=&quot;1111.2222.cded&quot; state=up 
+
+ 2 instance=isis-instance-1 interface=ether1 level-type=l1 snpa=08:00:27:22:B4:A2 srcid=&quot;1111.2222.aded&quot; state=up 
+
+ 3 instance=isis-instance-1 interface=ether1 level-type=l1 snpa=D4:CA:6D:78:2F:2E srcid=&quot;1111.2222.cded&quot; state=up 
+
+[] /routing/route&gt; print where is-is
+Flags: A - ACTIVE; i - IS-IS
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE, IMMEDIATE-GW
+   DST-ADDRESS        GATEWAY                AFI  DISTANCE  SCOPE  TARGET-SCOPE  IMMEDIATE-GW         
+ i 0.0.0.0/0          10.155.101.214%ether1  ip4       115     20            10  10.155.101.214%ether1
+ i 10.155.101.0/24    10.155.101.216%ether1  ip4       115     20            10  10.155.101.216%ether1
+Ai 10.255.255.162/32  10.155.101.216%ether1  ip4       115     20            10  10.155.101.216%ether1
+
+</code></pre>
+<p><strong>R2:</strong></p>
+<pre><code class="language-ros">/routing/isis/instance
+add afi=ip areas=49.2222 disabled=no l1.originate-default=always l2.originate-default=always name=isis-instance-1 \
+    system-id=1111.2222.cded
+/routing/isis/interface-template
+add instance=isis-instance-1 interfaces=sfp12 levels=l1,l2
+add instance=isis-instance-1 interfaces=lo levels=l2
+
+[] /routing/isis/neighbor&gt; print 
+ 0 instance=isis-instance-1 interface=sfp12 level-type=l1 snpa=08:00:27:22:B4:A2 srcid=&quot;1111.2222.aded&quot; state=up 
+
+ 1 instance=isis-instance-1 interface=sfp12 level-type=l1 snpa=C4:AD:34:43:EA:5C srcid=&quot;90ab.cdef.0001&quot; state=up 
+
+ 2 instance=isis-instance-1 interface=sfp12 level-type=l2 snpa=08:00:27:22:B4:A2 srcid=&quot;1111.2222.aded&quot; state=up 
+
+ 3 instance=isis-instance-1 interface=sfp12 level-type=l2 snpa=C4:AD:34:43:EA:5C srcid=&quot;90ab.cdef.0001&quot; state=up 
+
+</code></pre>
+<p><strong>R3 Cisco:</strong></p>
+<pre><code class="language-ros">interface Loopback0
+ ip address 10.255.255.162 255.255.255.255
+ ip router isis 
+!
+interface GigabitEthernet1
+ ip address dhcp
+ ip router isis 
+ negotiation auto
+!
+router isis
+ net 49.2222.1111.2222.aded.00
+!
+
+# show isis neighbors 
+
+Tag null:
+System Id      Type Interface   IP Address      State Holdtime Circuit Id
+90AB.CDEF.0001 L1   Gi1         10.155.101.183  UP    27       1111.2222.CDED.01  
+90AB.CDEF.0001 L2   Gi1         10.155.101.183  UP    27       1111.2222.CDED.01  
+1111.2222.CDED L1   Gi1         10.155.101.214  UP    9        1111.2222.CDED.01  
+1111.2222.CDED L2   Gi1         10.155.101.214  UP    9        1111.2222.CDED.01 
+
+# show ip route
+
+i*L1  0.0.0.0/0 [115/11] via 10.155.101.214, 4w5d, GigabitEthernet1
+      10.0.0.0/8 is variably subnetted, 5 subnets, 2 masks
+C        10.155.101.0/24 is directly connected, GigabitEthernet1
+L        10.155.101.216/32 is directly connected, GigabitEthernet1
+i L2     10.155.255.214/32 [115/10] via 10.155.101.183, 2w3d, GigabitEthernet1
+
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="is-is-does-not-work-and-prints-the-warning-message-invalid-3way-tlv">IS-IS does not work and prints the warning message "invalid 3way tlv"</h3>
+<p>This warning indicates that the remote neighbor most likely does not comply with the 3-way handshake for point-to-point networks from RFC 5303. For example, on Cisco you must enable "isis three-way-handshake ietf" on the interface to have the 15-byte TLV.</p>
+<hr />
+<h1 id="rip">RIP</h1>
+<blockquote>
+<p>MikroTik RouterOS supports RIP version 2 for exchanging routing information within autonomous systems, selecting optimal paths based on hop count. Configuration is available under /routing/rip.</p>
+</blockquote>
+<h1 id="rip_1">RIP</h1>
+<p>MikroTik RouterOS implements RIP version 2 (RFC 2453). Version 1 (RFC 1058) is not supported.</p>
+<p>RIP enables routers in an autonomous system to exchange routing information. It always uses the best path (the path with the fewest number of hops (i.e. routers)) available. Configuration is available under <a href="../../../cli-reference/routing/rip/instance.md"><code>/routing/rip</code></a>.</p>
+<hr />
+<h1 id="rpki">RPKI</h1>
+<blockquote>
+<p>RouterOS validates BGP prefix origin and AS paths with RPKI. It negotiates RTR protocol version 2 for ASPA data and falls back to version 1 for older validators.</p>
+</blockquote>
+<h1 id="rpki_1">RPKI</h1>
+<p>RouterOS implements the Resource Public Key Infrastructure (RPKI) to Router Protocol (RTR) defined in <a href="https://tools.ietf.org/html/rfc8210">RFC 8210</a>. It also supports RTR protocol version 2 as defined in <a href="https://datatracker.ietf.org/doc/draft-ietf-sidrops-8210bis/">draft-ietf-sidrops-8210bis</a>, which adds ASPA data. RTR is a lightweight, low-memory protocol for retrieving prefix origin data and Autonomous System Provider Authorization (ASPA) data from RPKI validators. See a validator setup example on the <a href="https://blog.apnic.net/2019/10/28/how-to-installing-an-rpki-validator/">RIPE blog</a>.</p>
+<p>Configuration is available under <a href="../../../cli-reference/routing/rpki/rpki.md"><code>/routing/rpki</code></a>.</p>
+<h2 id="rtr-protocol-version-2">RTR protocol version 2</h2>
+<p>RouterOS starts an RTR session with protocol version 2 (RTRv2). If the validator only supports version 1, RouterOS reconnects with version 1. The fallback is automatic; no parameter selects the protocol version.</p>
+<p>After the session synchronizes, the negotiated version is shown in the <a href="../../../cli-reference/routing/rpki/session.md#version"><code>version</code></a> field of the <code>/routing/rpki/session</code> menu:</p>
+<pre><code class="language-ros">/routing/rpki/session print detail
+</code></pre>
+<p>A version 2 session can receive ASPA PDUs. A version 1 session provides only prefix origin data. To validate AS paths with ASPA, use a validator that supports RTR protocol version 2 and publishes ASPA objects.</p>
+<h2 id="prefix-origin-validation">Prefix origin validation</h2>
+<p>Assume your network has an RTR server at IP address <code>192.168.1.1</code>:</p>
+<pre><code class="language-ros">/routing/rpki
+add group=myRpkiGroup address=192.168.1.1 port=8282 refresh-interval=20
+</code></pre>
+<p>The <a href="../../../cli-reference/routing/rpki/rpki.md#group"><code>group</code></a>, <a href="../../../cli-reference/routing/rpki/rpki.md#address"><code>address</code></a>, <a href="../../../cli-reference/routing/rpki/rpki.md#port"><code>port</code></a>, and <a href="../../../cli-reference/routing/rpki/rpki.md#refresh-interval"><code>refresh-interval</code></a> parameters configure the RTR connection. Additional parameters include <a href="../../../cli-reference/routing/rpki/rpki.md#vrf"><code>vrf</code></a>, <a href="../../../cli-reference/routing/rpki/rpki.md#preference"><code>preference</code></a>, <a href="../../../cli-reference/routing/rpki/rpki.md#retry-interval"><code>retry-interval</code></a>, and <a href="../../../cli-reference/routing/rpki/rpki.md#expire-interval"><code>expire-interval</code></a>.</p>
+<p>After the connection is established and the validator database is received, check prefix validity using <a href="../../../cli-reference/routing/rpki/rpki-check.md"><code>rpki-check</code></a>:</p>
+<pre><code class="language-text">[admin@MikroTik] /routing/rpki&gt; rpki-check group=myRpkiGroup prefix=70.132.18.0/24 origin-as=16509
+    valid
+</code></pre>
+<p>Use the cached database in <a href="../route-selection-and-filtering.md">routing filters</a> to accept or reject prefixes based on RPKI validity. First set up a <a href="../../../cli-reference/routing/filter/rule.md"><code>/routing/filter/rule</code></a> that defines which RPKI group performs verification. After that, filters can match the status from the RPKI database. Status can have one of four values:</p>
+<ul>
+<li><strong>valid</strong> - Database has a record and origin AS is valid.</li>
+<li><strong>invalid</strong> - The database has a record and origin AS is invalid.</li>
+<li><strong>unknown</strong> - The database does not have information about the prefix and origin AS.</li>
+<li><strong>unverified</strong> - Set when none of the RPKI group's sessions has synced the database. Use this value to handle total RPKI failure.</li>
+</ul>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=bgp_in rule=&quot;rpki-verify myRpkiGroup&quot;
+add chain=bgp_in rule=&quot;if (rpki invalid) { reject } else { accept }&quot;
+</code></pre>
+<h2 id="aspa-validation">ASPA validation</h2>
+<p>An ASPA object authorizes a set of provider ASes for a customer AS. RouterOS validates the BGP AS path against ASPA objects to detect route leaks that prefix origin validation cannot detect. ASPA validation complements prefix origin validation; use both to detect invalid origins and route leaks. The validation follows <a href="https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-verification/">draft-ietf-sidrops-aspa-verification</a>.</p>
+<p>ASPA validation requires:</p>
+<ul>
+<li>A validator that supports RTR protocol version 2 and publishes ASPA objects.</li>
+<li>An RFC 9234 role configured with <a href="../../../cli-reference/routing/bgp/connection.md#local.role"><code>local.role</code></a> on the eBGP connection. The <code>ibgp</code>, <code>ibgp-rr</code>, and <code>ebgp</code> roles do not provide the role information ASPA validation needs, so ASPA validation does not run for sessions that use them. See <a href="bgp/route-leak-prevention.md">Route leak prevention</a>.</li>
+<li>ASPA verification enabled in the routing filter chain with the <code>rpki-aspa-verify</code> command.</li>
+</ul>
+<p>The following example validates both the prefix origin and the AS path for routes received from a provider. The example assumes an existing BGP connection named <code>to-provider</code>:</p>
+<pre><code class="language-ros">/routing/rpki
+add group=rpki1 address=192.0.2.10 port=8282
+
+/routing/bgp/connection
+set [find where name=to-provider] local.role=ebgp-customer
+
+/routing/filter/rule
+add chain=bgp_in rule=&quot;rpki-verify rpki1&quot;
+add chain=bgp_in rule=&quot;rpki-aspa-verify rpki1&quot;
+add chain=bgp_in rule=&quot;if (rpki invalid || rpki-aspa invalid) { reject } else { accept }&quot;
+</code></pre>
+<p>The <code>rpki-verify</code> command selects the group for prefix origin validation. The <code>rpki-aspa-verify</code> command selects the group for ASPA validation. Both commands can use the same group.</p>
+<h3 id="aspa-validation-states">ASPA validation states</h3>
+<p>The <code>rpki-aspa</code> filter property and the <a href="../../../cli-reference/routing/route.md#rpki-aspa"><code>rpki-aspa</code></a> route attribute have the following values:</p>
+<ul>
+<li><code>valid</code> - The AS path is consistent with the ASPA data.</li>
+<li><code>invalid</code> - The AS path contains an unauthorized AS pair. The route is likely a route leak.</li>
+<li><code>unknown</code> - The ASPA data does not cover at least one AS pair in the path.</li>
+<li><code>unverified</code> - ASPA validation did not run, for example because the BGP session has no RFC 9234 role or the filter chain does not select an RPKI group for ASPA. The <code>/routing/route</code> output does not show the <code>rpki-aspa</code> attribute in this state.</li>
+</ul>
+<p>Use the status in filters to accept or reject routes:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=bgp_in rule=&quot;rpki-aspa-verify rpki1&quot;
+add chain=bgp_in rule=&quot;if (rpki-aspa invalid) { reject } else { accept }&quot;
+</code></pre>
+<p>ASPA validation only provides the status. The filter rules define the action. The <code>else</code> branch accepts routes with the <code>valid</code>, <code>unknown</code>, and <code>unverified</code> status. Add stricter rules to handle those states according to your routing policy.</p>
+<h3 id="verify-aspa-validation">Verify ASPA validation</h3>
+<p>Check the negotiated RTR version:</p>
+<pre><code class="language-ros">/routing/rpki/session print detail
+</code></pre>
+<p>Check the ASPA status of routes:</p>
+<pre><code class="language-ros">/routing/route print detail where rpki-aspa=invalid
+</code></pre>
+<p>The <a href="../../../cli-reference/routing/rpki/rpki-check.md"><code>rpki-check</code></a> and <a href="../../../cli-reference/routing/rpki/rpki-query.md"><code>rpki-query</code></a> commands check prefix origin data only. ASPA status depends on the complete AS path and the BGP role, so use the <code>rpki-aspa</code> route attribute or a filter rule to check it.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

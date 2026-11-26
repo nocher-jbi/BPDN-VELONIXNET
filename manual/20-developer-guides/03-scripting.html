@@ -1,0 +1,2402 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripting · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Developer Guides</p>
+      <h1 id="scripting">Scripting</h1>
+<h1 id="scripting_1">Scripting</h1>
+<blockquote>
+<p>RouterOS scripting enables automation through user-defined scripts triggered by events like system scheduling or traffic monitoring. Scripts use a command-line syntax with optional prefixes, named parameters, and...</p>
+</blockquote>
+<h1 id="scripting_2">Scripting</h1>
+<p>RouterOS includes a powerful scripting language for automating maintenance tasks. You create user-defined scripts and bind them to events.</p>
+<p>You can store scripts in the Script repository or write them directly in the CLI. Common triggers include the System Scheduler, Traffic Monitoring Tool, and Netwatch Tool events.</p>
+<p>If you are already familiar with scripting in RouterOS, you might want to see our <a href="./scripting-tips-and-tricks.md">Tips &amp; Tricks</a>.</p>
+<h2 id="line-structure">Line structure</h2>
+<p>The RouterOS script is divided into a number of command lines. Command lines are executed one by one until the end of the script or until a runtime error occurs.</p>
+<h3 id="command-line">Command-line</h3>
+<p>The RouterOS CLI uses the following command syntax:</p>
+<p><code>[prefix] [path] command [uparam] [param=[value]] .. [param=[value]]</code></p>
+<ul>
+<li>[prefix] - <code>:</code> or <code>/</code> character indicates if following word is a <a href="#global-commands">global command</a> or a path. Prefix is not required when called from root menu or from the menu relative to the called path/command.</li>
+<li>[path] - relative path to the desired menu level. It may not be required.</li>
+<li>command - one of the <a href="#commands">commands</a> available at the specified menu level.</li>
+<li>[uparam] - unnamed parameter, must be specified if the command requires it.</li>
+<li>[params] - a sequence of named parameters followed by values (if a parameter requires a value).</li>
+</ul>
+<p>The end of the command line is represented by the token <code>;</code> or <em>NEWLINE</em>.
+A command enclosed in <code>()</code>, <code>[]</code> or <code>{}</code> does not require any end-of-command character. The end of the command is determined by the content of the whole script</p>
+<pre><code class="language-ros">:if ( true ) do={ :put &quot;lala&quot; }
+</code></pre>
+<p>Each command line inside another command line starts and ends with square brackets <code>[]</code> <a href="#other-operators">(command concatenation operator)</a>.</p>
+<pre><code class="language-ros">:put [/ip route get [find gateway=1.1.1.1]];
+</code></pre>
+<p>Notice that the code above contains three command lines:</p>
+<ul>
+<li><code>:put</code></li>
+<li><code>/ip route get</code></li>
+<li><code>find gateway=1.1.1.1</code></li>
+</ul>
+<p>Notice that menu specific <code>find</code> command does not require a full path because the path is derived from the parent command's path.</p>
+<p>A command line can be constructed from more than one physical line by following <a href="#line-joining">line joining rules</a>.</p>
+<h3 id="physical-line">Physical Line</h3>
+<p>A physical line is a sequence of characters terminated by an end-of-line (<strong>EOL</strong>) sequence. Any of the standard platform line termination sequences can be used:</p>
+<ul>
+<li><strong>Unix</strong> – ASCII LF;</li>
+<li><strong>Windows</strong> – ASCII CR LF;</li>
+<li><strong>mac</strong> – ASCII CR;</li>
+</ul>
+<p>Standard C conventions for newline characters can be used ( <code>\n</code>, <code>\r\n</code> characters).</p>
+<h3 id="comments">Comments</h3>
+<p>The following rules apply to a comment:</p>
+<ul>
+<li>A comment starts with a hash character <code>#</code> and ends at the end of the physical line.</li>
+<li>RouterOS does not support multiline comments.</li>
+<li>If a <code>#</code> character appears inside the string it is not considered a comment.</li>
+</ul>
+<pre><code class="language-ros"># this is a comment
+# continued comment in the next line
+:global a; # comment describing variable
+
+:global myStr &quot;part of the string # is not a comment&quot;
+</code></pre>
+<h3 id="line-joining">Line joining</h3>
+<p>Two or more physical lines may be joined into logical lines using the <strong>backslash</strong> character (<code>\</code>).
+The following rules apply to using backslash as a line-joining tool:</p>
+<ul>
+<li>A line ending in a backslash cannot carry a comment.</li>
+<li>A backslash does not continue a comment.</li>
+<li>A backslash does not continue a token except for string literals.</li>
+<li>A backslash is illegal elsewhere on a line outside a string literal.</li>
+</ul>
+<pre><code class="language-ros">:if ($a = true \
+    and $b=false) do={ :put &quot;$a $b&quot;; }
+:if ($a = true \ # bad comment (syntax error)
+    and $b=false) do={ :put &quot;$a $b&quot;; }
+# comment \
+    continued is invalid (syntax error)
+</code></pre>
+<h3 id="whitespace-between-tokens">Whitespace between tokens</h3>
+<p>Whitespace can be used to separate tokens. Whitespace is necessary between two tokens only if their concatenation could be interpreted as a different token. Example:</p>
+<pre><code class="language-ros">{  
+    :local a true; :local b false;
+# whitespace is not required
+    :put (a&amp;&amp;b);
+# whitespace is required  
+    :put (a and b);
+}
+
+</code></pre>
+<p>Whitespace characters are not allowed:</p>
+<ul>
+<li>between <code>&lt;parameter&gt;=</code>.</li>
+<li>between <code>from=</code>, <code>to=</code>, <code>step=</code>, <code>in=</code>, <code>do=</code>, <code>else=</code>.</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-ros">#incorrect:
+:for i from = 1 to = 2 do = { :put $i }
+
+#correct syntax:
+:for i from=1 to=2 do={ :put $i }
+:for i from= 1 to= 2 do={ :put $i }
+
+#incorrect
+/ip route add gateway = 3.3.3.3
+
+#correct
+/ip route add gateway=3.3.3.3
+</code></pre>
+<h3 id="scopes">Scopes</h3>
+<p>Variables can be used only in certain regions of the script called scopes. These regions determine the visibility of the variable. A local variable declared within a block is accessible only within that block and its nested blocks, and only after the declaration point. A global variable is not limited by the block it is declared in.</p>
+<p>There are two types of scopes — <strong>global</strong> and <strong>local</strong>.</p>
+<h4 id="global-scope">Global scope</h4>
+<p>Global scope or root scope is the default scope of the script. It is created automatically and cannot be turned off.</p>
+<p>A global variable set by another script can be accessed by declaring it without assigning a value.</p>
+<p>For example, first script sets the myVar value to 3:</p>
+<pre><code class="language-ros">:global myVar 3
+</code></pre>
+<p>To access this variable from another script:</p>
+<pre><code class="language-ros">:global myVar
+:put &quot;myVar=$myVar&quot;
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">myVar=3
+</code></pre>
+<h4 id="local-scope">Local scope</h4>
+<p>You can define groups to limit variable access; these are called local scopes. Each local scope is enclosed in curly braces (<code>{}</code>).</p>
+<pre><code class="language-ros">{  
+    :local a 3;
+    {  
+    :local b 4;  
+    :put ($a+$b);
+    } #line below will show variable b in light red color since it is not defined in this scope  
+    :put ($a+$b);
+}
+
+</code></pre>
+<p>Variable <code>b</code> is declared in a local scope and is not accessible after the closing curly brace.</p>
+<p>Each line written in the interactive CLI is treated as a local scope. For example, a local variable defined on one command line is not visible on the next command line, where it reads as an empty value (type <code>nothing</code>). This does not work:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; :local myVar a;
+[admin@MikroTik] &gt; :put $myVar
+
+[admin@MikroTik] &gt; :put [:typeof $myVar]
+nothing
+</code></pre>
+<p>To use a local variable in several commands, put them on one line or enclose them in a block:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; { :local myVar a; :put $myVar }
+a
+</code></pre>
+<p>A global variable is not limited by blocks. Declare it at the top level of the script and it is visible in every block that follows, nested ones included:</p>
+<pre><code class="language-ros">:global b 4;
+{
+    :local a 3;
+    {
+        :put ($a+$b);
+    }
+}
+</code></pre>
+<p>The code outputs <code>7</code>.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Declare <strong>global</strong> variables at the top level of the script. A global variable declared inside a <strong>local</strong> scope (a block) is still global and stays visible after the block ends, but a reader of the outer code cannot see where it comes from, so declaring it there makes the script harder to read.</p>
+</div>
+<h2 id="keywords">Keywords</h2>
+<p>The following words are keywords and cannot be used as variable and function names:</p>
+<pre><code class="language-text">and       or       in
+
+</code></pre>
+<h2 id="delimiters">Delimiters</h2>
+<p>The following tokens serve as delimiters in the grammar:</p>
+<pre><code class="language-text">()  []  {}  :   ;   $   /
+
+</code></pre>
+<h2 id="data-types">Data types</h2>
+<p>RouterOS scripting language has the following data types:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>num (number)</strong></td>
+<td style="text-align: left;">64bit signed integer, possible hexadecimal input;</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bool (boolean)</strong></td>
+<td style="text-align: left;">values can be <code>true</code> or <code>false</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>str (string)</strong></td>
+<td style="text-align: left;">character sequence.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip</strong></td>
+<td style="text-align: left;">IP address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-prefix</strong></td>
+<td style="text-align: left;">IP prefix.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip6</strong></td>
+<td style="text-align: left;">IPv6 address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip6-prefix</strong></td>
+<td style="text-align: left;">IPv6 prefix.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>id (internal ID)</strong></td>
+<td style="text-align: left;">Hexadecimal value prefixed by <code>*</code> character. Each menu item has an assigned unique number - internal ID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>time</strong></td>
+<td style="text-align: left;">Date and time value.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>array</strong></td>
+<td style="text-align: left;">Sequence of values organized in an array.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nil</strong></td>
+<td style="text-align: left;">Default variable type if no value is assigned.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="constant-escape-sequences">Constant Escape Sequences</h2>
+<p>Following escape sequences can be used to define certain special characters within a string:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>\"</strong></td>
+<td style="text-align: left;">Insert double quote.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\</strong></td>
+<td style="text-align: left;">Insert backslash.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\n</strong></td>
+<td style="text-align: left;">Insert newline.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\r</strong></td>
+<td style="text-align: left;">Insert carriage return.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\t</strong></td>
+<td style="text-align: left;">Insert horizontal tab.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\$</strong></td>
+<td style="text-align: left;">Output $ character. Otherwise, $ is used to link the variable.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\_</strong></td>
+<td style="text-align: left;">Space.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\a</strong></td>
+<td style="text-align: left;">BEL (0x07).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\b</strong></td>
+<td style="text-align: left;">Backspace (0x08).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\f</strong></td>
+<td style="text-align: left;">Form feed (0x0C).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\v</strong></td>
+<td style="text-align: left;">Insert vertical tab.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>\xx</strong></td>
+<td style="text-align: left;">A print character from a hex value: two hex digits, with the letters A–F in uppercase. <code>\4A</code> is the letter <code>J</code>, and <code>\4a</code> produces a syntax error. A single-character escape letter (<code>a</code>, <code>b</code>, <code>f</code>, <code>n</code>, <code>r</code>, <code>t</code>, <code>v</code>) after <code>\</code> takes precedence: <code>\ff</code> is the form feed (<code>\f</code>) followed by the letter <code>f</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>For example:</p>
+<pre><code class="language-ros">:put &quot;\48\45\4C\4C\4F\r\nThis\r\nis\r\na\r\ntest&quot;;
+
+</code></pre>
+<p>will output:</p>
+<pre><code class="language-text">HELLO
+This
+is
+a
+test
+</code></pre>
+<h2 id="operators">Operators</h2>
+<h3 id="arithmetic-operators">Arithmetic Operators</h3>
+<p>Common arithmetic operators are supported in the RouterOS scripting language:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>+</code></strong></td>
+<td style="text-align: left;">binary addition</td>
+<td style="text-align: left;"><code>:put (3+4);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>-</code></strong></td>
+<td style="text-align: left;">binary subtraction</td>
+<td style="text-align: left;"><code>:put (1-6);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>*</code></strong></td>
+<td style="text-align: left;">binary multiplication</td>
+<td style="text-align: left;"><code>:put (4*5);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>/</code></strong></td>
+<td style="text-align: left;">binary division</td>
+<td style="text-align: left;"><code>:put (10 / 2); :put ((10)/2)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>%</code></strong></td>
+<td style="text-align: left;">modulo operation</td>
+<td style="text-align: left;"><code>:put (5 % 3);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>-</code></strong></td>
+<td style="text-align: left;">unary negation</td>
+<td style="text-align: left;"><code>{ :local a 1; :put (-a); }</code></td>
+</tr>
+</tbody>
+</table>
+<p>Note that for the division to work, you have to use braces or spaces around the dividend so it is not mistaken as an IP address.</p>
+<h3 id="relational-operators">Relational Operators</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>&lt;</code></strong></td>
+<td style="text-align: left;">less</td>
+<td style="text-align: left;"><code>:put (3&lt;4);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&gt;</code></strong></td>
+<td style="text-align: left;">greater</td>
+<td style="text-align: left;"><code>:put (3&gt;4);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>=</code></strong></td>
+<td style="text-align: left;">equal</td>
+<td style="text-align: left;"><code>:put (2=2);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&lt;=</code></strong></td>
+<td style="text-align: left;">less or equal</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&gt;=</code></strong></td>
+<td style="text-align: left;">greater or equal</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>!=</code></strong></td>
+<td style="text-align: left;">not equal</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>To negate an expression, you can use <code>&lt;expression&gt;=false</code>. For example, to print all interfaces that are not "ethernet", you can use expression negation like this:</p>
+<pre><code class="language-ros">/interface/print where (name~&quot;ether&quot;)=false
+</code></pre>
+<p>Or to do the opposite, you can use <code>&lt;expression&gt;=true</code>:</p>
+<pre><code class="language-ros">/interface/print where (name~&quot;ether&quot;)=true
+</code></pre>
+<h3 id="logical-operators">Logical Operators</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>!</code></strong></td>
+<td style="text-align: left;">logical NOT</td>
+<td style="text-align: left;"><code>:put (!true);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&amp;&amp;</code>, <code>and</code></strong></td>
+<td style="text-align: left;">logical AND</td>
+<td style="text-align: left;"><code>:put (true&amp;&amp;true)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>\|\|</code>, <code>or</code></strong></td>
+<td style="text-align: left;">logical OR</td>
+<td style="text-align: left;"><code>:put (true\|\|false);</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>in</code></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>:put (1.1.1.1/32 in 1.0.0.0/8);</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="bitwise-operators">Bitwise Operators</h3>
+<p>Bitwise operators work on integer numbers and on IP and IPv6 address <a href="#data-types">data types</a>. The only exception is the bit inversion operator (<code>~</code>), which works only on IP and IPv6 address data types — inverting an integer number produces an error.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>~</code></strong></td>
+<td style="text-align: left;">Bit inversion.</td>
+<td style="text-align: left;"><code>:put (~0.0.0.0)</code> <code>:put (~::ffff)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>\|</code></strong></td>
+<td style="text-align: left;">Bitwise OR performs logical OR operation on each pair of corresponding bits. In each pair the result is “1” if one of the bits or both bits is “1”, otherwise the result is “0”.</td>
+<td style="text-align: left;"><code>:put (192.168.88.0\|0.0.0.255)</code> <code>:put (2001::1\|::ffff)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>^</code></strong></td>
+<td style="text-align: left;">Bitwise XOR is the same as OR, but the result in each position is “1” if two bits are not equal, and “0” if the bits are equal.</td>
+<td style="text-align: left;"><code>:put (1.1.1.1^255.255.0.0)</code> <code>:put (2001::ffff:1^::ffff:0)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&amp;</code></strong></td>
+<td style="text-align: left;">Bitwise AND result is “1” if the first and second bit is “1”. Otherwise, the result is “0”.</td>
+<td style="text-align: left;"><code>:put (192.168.88.77&amp;255.255.255.0)</code> <code>:put (2001::1111&amp;ffff::)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&lt;&lt;</code></strong></td>
+<td style="text-align: left;">Left shift by a given amount of bits.</td>
+<td style="text-align: left;"><code>:put (192.168.88.77&lt;&lt;8)</code> <code>:put (::1&lt;&lt;8)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>&gt;&gt;</code></strong></td>
+<td style="text-align: left;">Right shift by a given amount of bits.</td>
+<td style="text-align: left;"><code>:put (192.168.88.77&gt;&gt;24)</code> <code>:put (::ffff&gt;&gt;4)</code></td>
+</tr>
+</tbody>
+</table>
+<p>For example, calculate a subnet address from a given IP and CIDR netmask with the <code>&amp;</code> operator:</p>
+<pre><code class="language-ros">{
+:local IP 192.168.88.77;
+:local CIDRnetmask 255.255.255.0;
+:put ($IP&amp;$CIDRnetmask);
+}
+</code></pre>
+<p>Get the last 8 bits from the given IP addresses:</p>
+<pre><code class="language-ros"> :put (192.168.88.77&amp;0.0.0.255);
+</code></pre>
+<p>Use the <code>|</code> operator and an inverted CIDR mask to calculate the broadcast address:</p>
+<pre><code class="language-ros">{
+:local IP 192.168.88.77;
+:local Network 192.168.88.0;
+:local CIDRnetmask 255.255.255.0;
+:local InvertedCIDR (~$CIDRnetmask);
+:put ($Network|$InvertedCIDR)
+}
+</code></pre>
+<h3 id="concatenation-operators">Concatenation Operators</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>.</code></strong></td>
+<td style="text-align: left;">Concatenates two strings.</td>
+<td style="text-align: left;"><code>:put ("concatenate" . " " . "string");</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>,</code></strong></td>
+<td style="text-align: left;">Concatenates two arrays or adds an element to the array.</td>
+<td style="text-align: left;"><code>:put ({1;2;3} , 5 );</code></td>
+</tr>
+</tbody>
+</table>
+<p>It is possible to add variable values directly to strings without a concatenation operator:</p>
+<pre><code class="language-ros">:global myVar &quot;world&quot;;
+
+# value can be added with concatenation operator
+:put (&quot;Hello &quot; . $myVar);
+# or without operator
+:put &quot;Hello $myVar&quot;;
+</code></pre>
+<p>Using <code>$[]</code> and <code>$()</code> you can execute expressions and insert the resulting value into strings:</p>
+<pre><code class="language-ros">:local a 5;
+:local b 6;
+:put &quot; 5x6 = $($a * $b)&quot;;
+
+:put &quot; We have $[ :len [/ip route find] ] routes&quot;;
+</code></pre>
+<h3 id="other-operators">Other Operators</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>[]</code></strong></td>
+<td style="text-align: left;">Command substitution can contain only a single command line<code>|</code>:put [ :len "my test string"; ];`</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>()</code></strong></td>
+<td style="text-align: left;">Subexpression or grouping operator.</td>
+<td style="text-align: left;"><code>:put ( "value is " . (4+5));</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>$</code></strong></td>
+<td style="text-align: left;">Substitution operator.</td>
+<td style="text-align: left;"><code>:global a 5; :put $a;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>~</code></strong></td>
+<td style="text-align: left;">The binary operator that matches value against POSIX extended regular expression.</td>
+<td style="text-align: left;">Print all routes whose gateway ends with 202: <code>/ip/route/print where gateway~"^[0-9 \\.]*202\$"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>-&gt;</code></strong></td>
+<td style="text-align: left;">Get an array element by key.</td>
+<td style="text-align: left;"><code>[admin@x86] &gt;:global aaa {a=1;b=2}``[admin@x86] &gt; :put ($aaa-&gt;"a")``1``[admin@x86] &gt; :put ($aaa-&gt;"b")``2</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="variables">Variables</h2>
+<p>The scripting language has two types of variables:</p>
+<ul>
+<li><strong>global</strong> - Accessible from all scripts created by the current user, defined by <a href="#global-scope"><code>global</code></a> keyword.</li>
+<li><strong>local</strong> - Accessible only within the current <a href="#local-scope">scope</a>, defined by <code>local</code> keyword.</li>
+</ul>
+<p>Variables may be undefined. When that happens, the parser looks for built-in variables provided by the application. For example, the DHCP <code>lease-script</code> supplies several built-in variables:</p>
+<pre><code class="language-ros">/system script
+add name=myLeaseScript policy=\
+    ftp,reboot,read,write,policy,test,winbox,password,sniff,sensitive,api \
+    source=&quot;:log info \$leaseActIP\r\
+    \n:log info \$leaseActMAC\r\
+    \n:log info \$leaseServerName\r\
+    \n:log info \$leaseBound&quot;
+
+/ip dhcp-server set myServer lease-script=myLeaseScript
+</code></pre>
+<p>Except for built-in RouterOS variables, every variable must be declared before you assign a value to it with the <code>local</code> or <code>global</code> keyword. Assigning a value to an undeclared variable results in a compilation error. For example:</p>
+<pre><code class="language-ros"># following code will result in compilation error, because myVar is used without declaration
+:set myVar &quot;my value&quot;;
+:put $myVar
+</code></pre>
+<p>Correct code:</p>
+<pre><code class="language-ros">:local myVar;
+:set myVar &quot;my value&quot;;
+:put $myVar;
+</code></pre>
+<p>Valid characters in variable names are letters and digits. If a variable name contains any character other than letters or digits (including operators), enclose it in double quotes (<code>""</code>). Example:</p>
+<pre><code class="language-ros">#valid variable name
+:local myVar;
+#invalid variable name
+:local my-var;
+#valid because double quoted
+:global &quot;my-var&quot;;
+</code></pre>
+<p>If a variable is initially defined without a value, the <a href="#data-types">variable data type</a> is set to <strong><em>nil</em></strong>; otherwise, the scripting engine determines the data type automatically. Sometimes conversion from one data type to another is required. It can be achieved using <a href="#global-commands">data conversion commands</a>. Example:</p>
+<pre><code class="language-ros">#convert string to array
+:local myStr &quot;1,2,3,4,5&quot;;
+:put [:typeof $myStr];
+:local myArr [:toarray $myStr];
+:put [:typeof $myArr]
+</code></pre>
+<p>Variable names are case-sensitive.</p>
+<pre><code class="language-ros">:local myVar &quot;hello&quot;
+# following line will generate error, because variable myVAr is not defined
+:put $myVAr
+# correct code
+:put $myVar
+</code></pre>
+<p>The <code>set</code> command without a value undefines a variable:</p>
+<pre><code class="language-ros">#remove variable from environment
+:global myVar &quot;myValue&quot;
+:set myVar;
+</code></pre>
+<h3 id="reserved-variable-names">Reserved variable names</h3>
+<p>All built-in RouterOS properties are reserved names. A variable named the same as a built-in property can be misinterpreted: inside a <code>where</code> expression the name resolves to the property of the currently printed item instead of your variable, and the filter behaves unexpectedly.</p>
+<p>For example, the following script prints nothing, even though an interface named <code>ether1</code> exists. Inside the <code>where</code> expression, <code>$type</code> is the <code>type</code> property of each item (for example, <code>ether</code> or <code>bridge</code>), not the local variable:</p>
+<pre><code class="language-ros">{
+:local type &quot;ether1&quot;;
+/interface print where name=$type;
+}
+</code></pre>
+<p>Using a different variable name works as expected:</p>
+<pre><code class="language-ros"> {
+:local customname &quot;ether1&quot;;
+/interface print where name=$customname;
+}
+</code></pre>
+<h2 id="commands">Commands</h2>
+<h3 id="global-commands">Global commands</h3>
+<p>Every global command should start with the <strong><code>:</code></strong> token; otherwise it is treated as a variable.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Syntax</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>/</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Go to the root menu.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>..</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Go back by one menu level.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>?</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">List all available menu commands and brief descriptions.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>global</strong></td>
+<td style="text-align: left;"><code>:global &lt;var&gt; [&lt;value&gt;]</code></td>
+<td style="text-align: left;">Define a global variable.</td>
+<td style="text-align: left;"><code>:global myVar "something"; :put $myVar;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>local</strong></td>
+<td style="text-align: left;"><code>:local &lt;var&gt; [&lt;value&gt;]</code></td>
+<td style="text-align: left;">Define the local variable.</td>
+<td style="text-align: left;"><code>{ :local myLocalVar "I am local"; :put $myLocalVar; }</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>beep</strong></td>
+<td style="text-align: left;"><code>:beep frequency=[num] length=[num]</code></td>
+<td style="text-align: left;">Beep the built-in speaker.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>convert</strong></td>
+<td style="text-align: left;"><code>:convert from=[arg] to=[arg] transform=[arg]</code></td>
+<td style="text-align: left;">Converts specified value from one format to another. By default uses an automatically parsed value, if the <code>from</code> format is not specified (for example, "001" becomes "1", "10.1" becomes "10.0.0.1", etc.).  <strong><code>from</code></strong> - Specifies the format of the value: <em>base32, base64, bit-array-lsb, bit-array-msb, byte-array, hex, num, raw, url</em>.  <strong><code>to</code></strong> - Specifies the format of the output value: <em>base32, base64, bit-array-lsb, bit-array-msb, byte-array, hex, num, raw, url</em>.   <strong><code>transform</code></strong> - Specifies how to transform values: <em>lc (transforms value to be in lowercases), uc (uppercases), lcfirst (first value to lowercase), ucfirst (first value to uppercase), crlf, ed25519-private-to-x25519-private, none, rot 13, x25519-private-to-x25519-public, ed25519-private-to-ed25519-public, ed25519-public-to-x25519-public, md5, reverse (reverses text), sha512.</em></td>
+<td style="text-align: left;"><code>:put [:convert 001 to=hex ]</code>  <code>31</code>  <code>:put [:convert [/ip dhcp-client/option/get hostname raw-value] from=hex to=raw ]</code>  <code>MikroTik</code>  <code>:put [:convert transform=lc "AAA"]</code>  <code>aaa</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>delay</strong></td>
+<td style="text-align: left;"><code>:delay &lt;time&gt;</code></td>
+<td style="text-align: left;">Do nothing for a given period of time.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>environment</strong></td>
+<td style="text-align: left;"><code>:environment print &lt;start&gt;</code></td>
+<td style="text-align: left;">Print initialized variable information.</td>
+<td style="text-align: left;"><code>:global myVar true; :environment print;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>error</strong></td>
+<td style="text-align: left;"><code>:error &lt;output&gt;</code></td>
+<td style="text-align: left;">Generate console error and stop executing the script.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>execute</strong></td>
+<td style="text-align: left;"><code>:execute &lt;expression&gt;</code></td>
+<td style="text-align: left;">Execute the script in the background. The result can be written in the file by setting a <code>file</code> parameter or printed to the CLI by setting <code>as-string</code>.  When using the <code>as-string</code> parameter executed script is blocked (not executed in the background).  Executed scripts cannot be larger than 64 kB.</td>
+<td style="text-align: left;"><code>{ :local j [:execute {/interface print follow where [:log info ~Sname~]}]; :delay 10s; :onerror e {/system script job remove $j}}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>find</strong></td>
+<td style="text-align: left;"><code>:find &lt;arg&gt; &lt;arg&gt; &lt;start&gt;</code></td>
+<td style="text-align: left;">Return position of a substring or array element.</td>
+<td style="text-align: left;"><code>:put [:find "abc" "a" -1];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>grep</strong></td>
+<td style="text-align: left;"><code>:grep script=[str] pattern=[expression] after=[num] before=[num] filename=[str]</code></td>
+<td style="text-align: left;">Execute provided <code>script</code> in the terminal and print the lines matched by a given <code>pattern</code>. Parameters <code>after</code> and <code>before</code> sets how many lines to print additionaly before and after the matched line. Results can be directly saved into a file with <code>filename</code> parameter.</td>
+<td style="text-align: left;"><code>:grep script="/interface print" pattern="ether" after=1 before=1 filename=results.txt</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>jobname</strong></td>
+<td style="text-align: left;">:jobname</td>
+<td style="text-align: left;">Return current script name.</td>
+<td style="text-align: left;"><strong>Limit script execution to single instance</strong>  <code>:if ([/system script job print count-only as-value where script=[:jobname] ] &gt; 1) do={  :error "script instance already running"  }</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>len</strong></td>
+<td style="text-align: left;"><code>:len &lt;expression&gt;</code></td>
+<td style="text-align: left;">Return the string length or the array element count.</td>
+<td style="text-align: left;"><code>:put [:len "length=8"];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>log</strong></td>
+<td style="text-align: left;"><code>:log &lt;topic&gt; &lt;message&gt;</code></td>
+<td style="text-align: left;">Write a message to the <a href="../../diagnostics-monitoring-and-troubleshooting/log/index.md">system log</a>. Available topics are <code>debug</code>, <code>error</code>, <code>info</code> and <code>warning</code>.</td>
+<td style="text-align: left;"><code>:log info "Hello from script";</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>onerror</strong></td>
+<td style="text-align: left;"><code>:onerror &lt;var_name&gt; in={&lt;command&gt;} do={&lt;expression&gt;}</code></td>
+<td style="text-align: left;">Catch errors and get error details. The <strong><code>do={...}</code></strong> block is executed, when <strong><code>in={...}</code></strong> block has an error,  and error details are written in <code>&lt;var_name&gt;</code> variable.   Parameter order is important. The <code>error</code> parameter must be set before <code>do</code> block, otherwise <code>do</code> block will not see the local variable.  <code>:onerror</code> will return <code>false</code> (if there is no error) and <code>true</code> (if there is an error) unless otherwise specified (with commands such as <code>:return</code> or <code>:error</code>), so it can be used in <strong><code>:if</code></strong> condition statement scripts.</td>
+<td style="text-align: left;"><code>:onerror errorName in={ :error "failure" } do={ :put "Critical $errorName" }</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>parse</strong></td>
+<td style="text-align: left;"><code>:parse &lt;expression&gt;</code></td>
+<td style="text-align: left;">Parse the string and return parsed console commands. Can be used as a function.</td>
+<td style="text-align: left;"><code>:global myFunc [:parse ":put hello!"]; $myFunc;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>pick</strong></td>
+<td style="text-align: left;"><code>:pick &lt;var&gt; &lt;start&gt; [&lt;end&gt;]</code></td>
+<td style="text-align: left;">Return range of elements or substring. If the count is not specified, it will return only one element from an array. <code>var</code> - value to pick elements from.<code>start</code> - element to start picking from (the first element index is 0).<code>end</code> - terminating index (element at this index is not included).</td>
+<td style="text-align: left;"><code>[admin@MikroTik] &gt; :put [:pick "abcde" 1 3]``bc</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>put</strong></td>
+<td style="text-align: left;"><code>:put &lt;expression&gt;</code></td>
+<td style="text-align: left;">Print the supplied argument to the terminal.</td>
+<td style="text-align: left;"><code>:put "Hello world"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>range</strong></td>
+<td style="text-align: left;"><code>:range &lt;var&gt; &lt;var&gt;</code></td>
+<td style="text-align: left;">Creates an array from the specified range.</td>
+<td style="text-align: left;"><code>:put [:range 2 8] 2;3;4;5;6;7;8</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>resolve</strong></td>
+<td style="text-align: left;"><code>:resolve &lt;arg&gt; [&lt;domain-name&gt;][&lt;server&gt;][&lt;server-port&gt;][&lt;type&gt;]</code></td>
+<td style="text-align: left;">Return the IP address of the given DNS name <code>domain-name</code> - DNS name that needs to be resolved.<code>server</code> - Specific server that will be used to resolve DNS name (returned results will not be cached).<code>server-port</code> - Server port to connect to.<code>type</code> - any/any6/ipv4/ipv6:<code>any</code> - Try to resolve ipv4, on failure try ipv6.<code>any6</code> - Try to resolve ipv6, on failure try ipv4.<code>ipv4</code> - Try to resolve only ipv4.<code>ipv6</code> - Try to resolve only ipv6.</td>
+<td style="text-align: left;"><code>:put [:resolve "www.mikrotik.com"];</code>  <code>:put [:resolve domain-name="www.mikrotik.com"];</code>  <code>:put [:resolve domain-name="www.mikrotik.com" server=192.168.88.1 server-port=53];</code>  <code>:put [:resolve domain-name="www.mikrotik.com" type=ipv6];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>retry</strong></td>
+<td style="text-align: left;"><code>:onerror e {:retry command=&lt;expr&gt; delay=[num] max=[num]} do={&lt;expr&gt;}</code></td>
+<td style="text-align: left;">Try to execute the given command <code>max</code> amount of times with a given <code>delay</code> in seconds between tries. On failure, execute the command in the <code>do={}</code> block.</td>
+<td style="text-align: left;"><code>:onerror e {:retry command={abc} delay=1 max=2} do={:put "got error"}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>typeof</strong></td>
+<td style="text-align: left;"><code>:typeof &lt;var&gt;</code></td>
+<td style="text-align: left;">Return data type of the given variable.</td>
+<td style="text-align: left;"><code>:put [:typeof 4];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rndnum</strong></td>
+<td style="text-align: left;"><code>:rndnum from=[num] to=[num]</code></td>
+<td style="text-align: left;">Random number generator.</td>
+<td style="text-align: left;"><code>:put [:rndnum from=1 to=99];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rndstr</strong></td>
+<td style="text-align: left;"><code>:rndstr from=[str] length=[num]</code></td>
+<td style="text-align: left;">Random string generator.  <strong><code>from</code></strong> specifies characters to construct the string from and defaults to all ASCII letters and numerals.  <strong><code>length</code></strong> specifies the length of the string to create and defaults to 16.</td>
+<td style="text-align: left;"><code>:put [:rndstr from="abcdef%^&amp;``" length=33];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>set</strong></td>
+<td style="text-align: left;"><code>:set &lt;var&gt; [&lt;value&gt;]</code></td>
+<td style="text-align: left;">Assign value to a declared variable.</td>
+<td style="text-align: left;"><code>:global a; :set a true;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>serialize</strong></td>
+<td style="text-align: left;"><code>:serialize [&lt;value&gt;] to=[arg]</code></td>
+<td style="text-align: left;">Serialize specified value/array to JSON or dsv (delimiter separated values) format.  <strong><code>value</code></strong> specifies which values to process.  <strong><code>to</code></strong> specifies the format - <em>json, dsv</em>  <strong><code>delimiter</code></strong> sets the "separator".  <strong><code>order</code></strong> specifies the order for variables.  <strong><code>options</code></strong> specifies additional options<em>:</em> json.pretty  - makes the JSON output more visually appealing;json.no-string-conversion - prevents implicit conversions from console string type to json number type;dsv.wrap-strings - wraps string values inside quotation marks;dsv.ignore-size - if array values have different sizes, e.g. <code>a=(1,2);b=(3,4);c=(5,6,7)</code>, this option will work around <code>array size mismatch</code> error and set "empty" values in those slots.dsv.remap - merges array of dictionaries into a single dictionary (useful when working with "<code>print as-value</code>") <strong>file-name</strong> enables the option to generate command's output into a file (available for download in the "/files" section).</td>
+<td style="text-align: left;"><code>:put [:serialize value=a,b,c to=json]``["a","b","c"]``:local test {a=(1,2,3);b=(4,5,6);c=(7,"text",9)}; :put [ :serialize to=dsv delimiter=";" value=$test order=("c","a","b") ]``c;a;b``7;1;4``text;2;5``9;3;6``:global var ({ "string"="1234"; "number"=1234 });:put [ :serialize to=json value=$var ]``{"number":1234,"string":1234.000000}``:put [ :serialize to=json value=$var options=json.no-string-conversion  ]``{"number":1234,"string":"1234"}``:put [:serialize to=dsv options=dsv.remap delimiter="#" [/ip/address/print as-value]]``.id#address#comment#interface#network``*1#192.168.88.1/24#defconf#bridge#192.168.88.0``*2#192.168.69.190/24##ether1#192.168.69.0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>deserialize</strong></td>
+<td style="text-align: left;"><code>:deserialize [&lt;value&gt;] from=[arg]</code></td>
+<td style="text-align: left;">Deserialize specified value/array from JSON or dsv (delimiter separated values) format.  <strong><code>from</code></strong> specifies the format - <em>json, dsv</em>  <strong><code>delimiter</code></strong> sets the "separator".  <strong><code>options</code></strong> specifies additional options<em>:</em> dsv.plain - deserializes every line as an array (input does not have a header or column names);dsv.array - expects a header (column names) and will return an array of dictionaries, where values are mapped to column names provided in the header.json.no-string-conversion - prevents implicit conversions from json string type to console values (number, ip, etc.).</td>
+<td style="text-align: left;"><code>:put [:deserialize from=json value="[\"a\",\"b\",\"c\"]"]``a;b;c``:put ([ :deserialize from=dsv delimiter=";" value="a;b;c\n1;findme;3" options=dsv.plain ]-&gt;1-&gt;1)</code> <code>findme``:put ([ :deserialize from=dsv delimiter=";" value="a;b;c\n1;findme;3" options=dsv.plain ]-&gt;0-&gt;1)   ``b``:put ([:deserialize from=dsv "a;b;c\n1;2;3\n4;5;6" delimiter=";" options=dsv.array]-&gt;1-&gt;"b") ``5``:put ([:deserialize from=dsv "a;b;c\n1;2;3\n4;5;6" delimiter=";" options=dsv.array]-&gt;0-&gt;"c")    ``3``:put [typeof ([:deserialize "{ \"str\": \"123\" }" from=json options=json.no-string-conversion]-&gt;"str")]``str``:deserialize [/file/get file.json contents] from=json</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>time</strong></td>
+<td style="text-align: left;"><code>:time &lt;expression&gt;</code></td>
+<td style="text-align: left;">Return interval of time needed to execute the provided expression.</td>
+<td style="text-align: left;"><code>:put [:time {:for i from=1 to=10 do={ :delay 100ms }}];</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>timestamp</strong></td>
+<td style="text-align: left;"><code>:timestamp [use-tz]</code></td>
+<td style="text-align: left;">Returns the time since <code>epoch</code>, where <code>epoch</code> is January 1, 1970 (Thursday), not counting leap seconds. The time is returned in UTC by default. Use the <code>use-tz</code> parameter to return the timestamp adjusted for the configured time zone on the router.</td>
+<td style="text-align: left;"><code>[admin@MikroTik] &gt; :put [:timestamp]``2735w21:41:43.481891543</code>or, on a later day of the week:<code>2735w1d21:41:43.481891543</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>toarray</strong></td>
+<td style="text-align: left;"><code>:toarray &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to an array.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tobool</strong></td>
+<td style="text-align: left;"><code>:tobool &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to a boolean.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>toid</strong></td>
+<td style="text-align: left;"><code>:toid &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to internal ID.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>toip</strong></td>
+<td style="text-align: left;"><code>:toip &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to an IP address.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>toip6</strong></td>
+<td style="text-align: left;"><code>:toip6 &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to an IPv6 address.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tonum</strong></td>
+<td style="text-align: left;"><code>:tonum &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to an integer.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tostr</strong></td>
+<td style="text-align: left;"><code>:tostr &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to a string.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>totime</strong></td>
+<td style="text-align: left;"><code>:totime &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a variable to time.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tonsec</strong></td>
+<td style="text-align: left;"><code>:tonsec &lt;var&gt;</code></td>
+<td style="text-align: left;">Convert a time to a nanoseconds.</td>
+<td style="text-align: left;"><code>:put [:tonsec value=10:00]                36000000000000</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tocrlf</strong></td>
+<td style="text-align: left;"><code>:tocrlf &lt;var&gt;</code></td>
+<td style="text-align: left;">Converts line endings to CRLFs.</td>
+<td style="text-align: left;"><code>:put [:tocrlf  "AAA\r\nBBB\r\nCCC" ]``AAA``BBB``CCC</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tolf</strong></td>
+<td style="text-align: left;"><code>:tolf &lt;var&gt;</code></td>
+<td style="text-align: left;">Converts line endings to LFs.</td>
+<td style="text-align: left;"><code>:put [:tolf  "AAA\nBBB\nCCC" ]``AAA``BBB``CCC</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nothing</strong></td>
+<td style="text-align: left;"><code>:nothing</code></td>
+<td style="text-align: left;">Return a value of nothing (nil). <code>:put [:nothing]</code> prints an empty line. In comparisons a nil value sorts below zero: <code>[:nothing] = 0</code> and <code>[:nothing] &gt; 0</code> return <code>false</code>, while <code>[:nothing] &lt; 0</code> returns <code>true</code>.</td>
+<td style="text-align: left;"><code>:put [:nothing]</code><em>(prints an empty line)</em></td>
+</tr>
+</tbody>
+</table>
+<p>If a variable type conversion function cannot apply the new format to the provided data, the output will be empty.</p>
+<p>For example, if you run the <code>:tonum &lt;var&gt;</code> command on a variable with a non-integer value such as "23.8" or "cow&amp;chicken", the result will be empty, and its data type will be shown as <code>nil</code>.</p>
+<h3 id="common-commands">Common commands</h3>
+<p>The following commands are available from most sub-menus:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Syntax</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>add</strong></td>
+<td style="text-align: left;"><code>add &lt;param&gt;=&lt;value&gt;..&lt;param&gt;=&lt;value&gt;</code></td>
+<td style="text-align: left;">Add new item. This command usually has all the same arguments as <strong>set</strong>, except the item number argument. It adds a new item with the values you have specified, usually at the end of the item list, in places where the order of items is relevant. There are some required properties that you have to supply, such as the interface for a new address, while other properties are set to defaults unless you explicitly specify them. Returns the internal number of the item it has added.Common parameters:<em>copy-from</em> - Copies an existing item. It takes the default values of a new item's properties from another item. If you do not want to make an exact copy, you can specify new values for some properties. When copying items that have names, you will usually have to give a new name to a copy.<em>place-before</em> - Places a new item before an existing item with a specified position. Thus, you do not need to use the move command after adding an item to the list.<em>disabled</em> - Controls the disabled/enabled state of the newly added item(-s).<em>comment</em> - Holds the description of a newly created item.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>remove</strong></td>
+<td style="text-align: left;"><code>remove &lt;id&gt;</code></td>
+<td style="text-align: left;">Remove selected item.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enable</strong></td>
+<td style="text-align: left;"><code>enable &lt;id&gt;</code></td>
+<td style="text-align: left;">Enable selected item.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable</strong></td>
+<td style="text-align: left;"><code>disable &lt;id&gt;</code></td>
+<td style="text-align: left;">Disable selected item.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>set</strong></td>
+<td style="text-align: left;"><code>set &lt;id&gt; &lt;param&gt;=&lt;value&gt;..&lt;param&gt;=&lt;value&gt;</code></td>
+<td style="text-align: left;">Change selected items parameter, more than one parameter can be specified at the time. The parameter can be unset by specifying '!' before the parameter.  Example: <code>/ip firewall filter add chain=blah action=accept protocol=tcp port=123 nth=4,2 print set 0 !port chain=blah2 !nth protocol=udp</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>get</strong></td>
+<td style="text-align: left;"><code>get &lt;id&gt; &lt;param&gt;=&lt;value&gt;</code></td>
+<td style="text-align: left;">Get the selected item's parameter value. Does not display it in the terminal by default. If used in combination with the :put command, it displays the retrieved value in the terminal, for example: <code>:put [/system/resource/get version]</code> will show the version of RouterOS installed on the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>print</strong></td>
+<td style="text-align: left;"><code>print &lt;param&gt;&lt;param&gt;=[&lt;value&gt;]</code></td>
+<td style="text-align: left;">Print menu items. Output depends on the <a href="#print-parameters">print parameters</a> specified. Shows all information accessible from a particular command level. Thus, <code>/system/clock/print</code> shows the system date and time, <code>/ip/route/print</code> shows all routes, etc. If there's a list of items in the current level and they are not read-only, the print command also assigns numbers used by all commands that operate with items in this list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>export</strong></td>
+<td style="text-align: left;"><code>export [file=&lt;value&gt;]</code></td>
+<td style="text-align: left;">Export configuration from the current menu and its sub-menus (if present). If the <code>file</code> parameter is specified, then output will be written to the file with the extension '.rsc', otherwise the output will be printed to the terminal. Exported commands can be imported by <a href="#import">import command</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>edit</strong></td>
+<td style="text-align: left;"><code>edit &lt;id&gt; &lt;param&gt;</code></td>
+<td style="text-align: left;">Edit selected items property in the built-in text editor. Can be used to edit values of properties that contain a large amount of text, such as scripts, but it works with all editable properties. Depending on the capabilities of the terminal, either a fullscreen editor or a single-line editor is launched. The edit field for console scripts is limited to 30 thousand characters.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>find</strong></td>
+<td style="text-align: left;"><code>find &lt;expression&gt;</code></td>
+<td style="text-align: left;">Returns a list of internal numbers for items that are matched by a given expression. Has the same arguments as <strong>set</strong>, plus the flag arguments like <em>disabled</em> or <em>active</em> that take values <em>yes</em> or <em>no</em> depending on the value of the respective flag. To see all flags and their names, look at the top of the <strong>print</strong> command's output.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>move</strong></td>
+<td style="text-align: left;"><code>move &lt;id&gt; [&lt;id&gt;]</code></td>
+<td style="text-align: left;">Changes the order of items in the list. The first argument specifies the item(-s) being moved. The second argument specifies the item before which to place all items being moved (placed at the end of the list if the second argument is omitted).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>reset</strong></td>
+<td style="text-align: left;"><code>reset &lt;id&gt; [&lt;param&gt;=&lt;value&gt;]</code></td>
+<td style="text-align: left;">Resets parameters to default values. You can also include parameters with arguments in the same command, allowing you to reset and configure settings at the same time.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong></td>
+<td style="text-align: left;"><code>comment &lt;id&gt; &lt;value&gt;</code></td>
+<td style="text-align: left;">Allows you to comment the selected item.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="import">import</h4>
+<p>The import command is available from the root menu and is used to import configuration from files created by an <a href="#common-commands">export</a> command or written manually by hand.</p>
+<pre><code class="language-ros">[admin@admin] &gt; do { import test.rsc } on-error={ :put &quot;Failure&quot; }
+Failure
+</code></pre>
+<p>Parameter <code>onerror</code> can be used to catch the errors:</p>
+<pre><code class="language-ros">[admin@admin] &gt; onerror e in={ import test.rsc } do={ :put &quot;Failure - $e&quot; }
+Failure - Script Error: bad command name this (line 1 column 1)
+</code></pre>
+<p>In addition, the <em><code>import</code></em> command has new options in <em><code>verbose</code></em> mode - the <em><code>dry-run</code></em> parameter is designed for debugging and can be used to find errors without changing the configuration.</p>
+<pre><code class="language-ros">[admin@admin] &gt; import test.rsc verbose=yes dry-run
+#line 1
+this
+bad command name this (line 1 column 1)
+...
+Script Error: found 5 error(s) in import file
+</code></pre>
+<h4 id="print-parameters">print parameters</h4>
+<p>Several common parameters are available for <code>print</code> command:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>append</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>as-value</strong></td>
+<td style="text-align: left;">Print output as an array of parameters and its values.</td>
+<td style="text-align: left;"><code>:put [/ip address print as-value]</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>brief</strong></td>
+<td style="text-align: left;">Brief output is typically is minimalist and is represented as a table of items with most commonly needed parameters.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>detail</strong></td>
+<td style="text-align: left;">Print detailed description, the output is not as readable as brief output but may be useful to view all parameters.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>count-only</strong></td>
+<td style="text-align: left;">Print only count of items in current menu.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>file</strong></td>
+<td style="text-align: left;">Write output to a file.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>follow</strong></td>
+<td style="text-align: left;">Print all current entries and track new entries until <kbd>ctrl</kbd>-<kbd>c</kbd> is pressed. Could be used when viewing, for example, log entries.</td>
+<td style="text-align: left;"><code>/log print follow</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>follow-only</strong></td>
+<td style="text-align: left;">Print and track only new entries until <kbd>ctrl</kbd>-<kbd>c</kbd> is pressed. Could be used when, for example, trying to see new log entries.</td>
+<td style="text-align: left;"><code>/log print follow-only</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>from</strong></td>
+<td style="text-align: left;">Print parameters only from a specified item.</td>
+<td style="text-align: left;"><code>/user print from=admin</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interval</strong></td>
+<td style="text-align: left;">Continuously print output in a selected time interval, useful to track down changes where <code>follow</code> is not acceptable</td>
+<td style="text-align: left;"><code>/interface print interval=2</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>terse</strong></td>
+<td style="text-align: left;">Show details in a compact and machine-friendly format.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>value-list</strong></td>
+<td style="text-align: left;">Data is displayed in a table, where parameters are split by lines and available items are split by columns (can be used for parsing purposes).</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>order-by</strong></td>
+<td style="text-align: left;">Sort output by one or more properties. Prefix the property name with <code>-</code> for descending order. Up to three sorting fields can be specified.</td>
+<td style="text-align: left;"><code>/ip/arp/print order-by=address``/interface/print order-by=-link-downs proplist=name,link-downs``/interface/ethernet/print stats order-by=-driver-rx-packet where running</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>without-paging</strong></td>
+<td style="text-align: left;">If the output does not fit in the console screen then print all information in a single piece without stops.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>where</strong></td>
+<td style="text-align: left;">Expressions followed by <code>where</code> parameters can be used to filter outmatched entries.</td>
+<td style="text-align: left;"><code>/ip route print where interface="ether1"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>about</strong></td>
+<td style="text-align: left;">Returns entries that have the <code>about</code> parameter, such as "managed by CAPsMAN " information or warnings</td>
+<td style="text-align: left;"><code>/interface wifi print where about</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>!comments</strong></td>
+<td style="text-align: left;">Print the entries without their comment banners; the entries themselves are still shown.</td>
+<td style="text-align: left;"><code>/ip/firewall/filter print !comments</code></td>
+</tr>
+</tbody>
+</table>
+<p>More than one parameter can be specified at a time, for example, <code>/ip route print count-only interval=1 where interface="ether1"</code></p>
+<h2 id="loops-and-conditional-statements">Loops and conditional statements</h2>
+<h3 id="loops">Loops</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Syntax</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>do..while</code></strong></td>
+<td style="text-align: left;"><code>:do { &lt;commands&gt; } while=( &lt;conditions&gt; ); :while ( &lt;conditions&gt; ) do={ &lt;commands&gt; };</code></td>
+<td style="text-align: left;">Execute commands until a given condition is met.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>for</code></strong></td>
+<td style="text-align: left;"><code>:for &lt;var&gt; from=&lt;int&gt; to=&lt;int&gt; step=&lt;int&gt; do={ &lt;commands&gt; }</code></td>
+<td style="text-align: left;">Execute commands over a given number of iterations</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>foreach</code></strong></td>
+<td style="text-align: left;"><code>:foreach &lt;var&gt; in=&lt;array&gt; do={ &lt;commands&gt; };</code></td>
+<td style="text-align: left;">Execute commands for each element in a list.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="conditional-statement">Conditional statement</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Syntax</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>if</code></strong></td>
+<td style="text-align: left;"><code>:if (&lt;condition&gt;) do={&lt;commands&gt;} else={&lt;commands&gt;}</code></td>
+<td style="text-align: left;">If a given condition is <code>true</code> then execute commands in the <code>do</code> block, otherwise execute commands in the <code>else</code> block (if specified).</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<pre><code class="language-ros">{  
+    :local myBool true;  
+    :if ($myBool = false) do={ :put &quot;value is false&quot; } else={ :put &quot;value is true&quot; }
+}
+</code></pre>
+<h2 id="functions">Functions</h2>
+<p>Functions are defined similar to global variables, with <code>global</code> keyword followed by <code>do=</code> operator after which body is enclosed in curly braces (<code>{}</code>).</p>
+<p>There are two ways to pass arguments:</p>
+<ul>
+<li>Pass arg with a specific name.</li>
+<li>Pass value without arg name, in such case arg "1", "2" .. "n" is used to reference the value.</li>
+</ul>
+<pre><code class="language-ros">#define function and run it
+:global myFunc do={:put &quot;hello from function&quot;}
+$myFunc
+
+output:
+hello from function
+
+#pass arguments to the function
+:global myFunc do={:put &quot;arg a=$a&quot;; :put &quot;arg '1'=$1&quot;}
+$myFunc a=&quot;this is arg a value&quot; &quot;this is arg1 value&quot;
+
+output:
+arg a=this is arg a value
+arg '1'=this is arg1 value
+</code></pre>
+<p>You can return a function value with the <strong><code>:return</code></strong> command.</p>
+<pre><code class="language-ros">:global myFunc do={ :return ($a + $b)}
+:put [$myFunc a=6 b=2]
+
+output:
+8
+</code></pre>
+<p>You can even clone an existing script from the script environment and use it as a function.</p>
+<pre><code class="language-ros">#add script
+/system script add name=myScript source=&quot;:put \&quot;Hello \$myVar !\&quot;&quot;
+
+:global myFunc [:parse [/system script get myScript source]]
+$myFunc myVar=world
+
+output:
+Hello world !
+</code></pre>
+<p>Scripting language allows to create functions indirectly as well by using <code>:parse</code> command.</p>
+<p>If the function contains a defined global variable that names match the name of the passed parameter, then the globally defined variable is ignored, for compatibility with scripts written for older versions. <strong>Avoid using parameters with the same name as global variables.</strong></p>
+<p>For example:</p>
+<pre><code class="language-ros">:global my2 &quot;123&quot;
+
+:global myFunc do={ :global my2; :put $my2; :set my2 &quot;lala&quot;; :put $my2 }
+$myFunc my2=1234
+:put &quot;global value $my2&quot;
+</code></pre>
+<p>The output will be:</p>
+<pre><code class="language-text">1234
+lala
+global value 123
+
+</code></pre>
+<p>To call one function from another (a nested function), refer to it by name. Declaring its name inside the calling function, as you would a variable, is optional, but it makes the dependency explicit:</p>
+<pre><code class="language-ros">:global funcA do={ :return 5 }
+:global funcB do={  
+    :global funcA;  
+    :return ([$funcA] + 4)
+}
+:put [$funcB]
+</code></pre>
+<pre><code class="language-text">Output:
+9
+</code></pre>
+<p>The called function must be defined before the calling function runs: earlier in the same script, or in another script of the same user that has already run. See <a href="./scripting-tips-and-tricks.md">Scripting Tips and Tricks</a>.</p>
+<h2 id="catch-run-time-errors">Catch run-time errors</h2>
+<p>RouterOS scripting allows to catch runtime errors, which otherwise would exit script unexpectedly. For example, the <code>:resolve</code> command will throw an error and break the script if failed.</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; { :put [:resolve www.example.com]; :put &quot;lala&quot;;}
+failure: dns name does not exist
+
+</code></pre>
+<p>You can catch this error and proceed with the script:</p>
+<pre><code class="language-ros">:onerror e {:put [:resolve www.example.com]} do={:put &quot;resolver failed&quot;}
+:put &quot;print after failure&quot;
+
+output:
+
+resolver failed
+print after failure
+</code></pre>
+<h2 id="operations-with-arrays">Operations with Arrays</h2>
+<p>If a key name in an array contains any character other than a lowercase character, it should be put in quotes.
+For example:</p>
+<pre><code class="language-ros">[admin@ce0] &gt; {:local a { &quot;aX&quot;=1; ay=2 }; :put ($a-&gt;&quot;aX&quot;)}
+1
+</code></pre>
+<p><code>foreach</code> command can be used to loop through keys and elements:</p>
+<pre><code class="language-ros">[admin@ce0] &gt; :foreach k,v in={2; &quot;aX&quot;=1; y=2; 5} do={:put (&quot;$k=$v&quot;)}
+
+0=2
+1=5
+aX=1
+y=2
+</code></pre>
+<p>If the <code>foreach</code> command is invoked with a single argument, it returns the element value:</p>
+<pre><code class="language-ros">[admin@ce0] &gt; :foreach v in={2; &quot;aX&quot;=1; y=2; 5} do={:put (&quot;$v&quot;)}
+
+2
+5
+1
+2
+</code></pre>
+<p>If an array element has a key, those elements are sorted alphabetically; elements without keys are placed before keyed elements and retain their order (as illustrated in the previous example).</p>
+<p>It is possible to change the value of the single element using key name:</p>
+<pre><code class="language-text">[admin@MikroTik] &gt; :global a {x=1; y=2}
+[admin@MikroTik] &gt; :set ($a-&gt;&quot;x&quot;) 5
+[admin@MikroTik] &gt; :environment print
+a={x=5; y=2}
+
+</code></pre>
+<h2 id="script-permissions">Script permissions</h2>
+<p>Depending on how a script is called, it may:</p>
+<ul>
+<li>Use its own permissions.</li>
+<li>Inherit caller permissions.</li>
+</ul>
+<p>For example, consider a user with full permissions and a script with no permissions set:</p>
+<pre><code class="language-text">/user/print
+Columns: NAME, GROUP, LAST-LOGGED-IN, INACTIVITY-POLICY
+# NAME   GROUP  LAST-LOGGED-IN       INACTIVITY-POLICY
+;;; system default user
+0 admin  full   2025-07-22 17:09:59  none
+</code></pre>
+<pre><code class="language-ros">/system script
+add dont-require-permissions=no name=add-dhcp-no-perms owner=admin policy=&quot;&quot; \
+source=&quot;/ip dhcp-client add interface=ether2; put \&quot;Added DHCP client on ether2!\&quot;&quot;
+
+</code></pre>
+<p>Let's see what happens if we run the script with and without the <code>use-script-permissions</code> parameter:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; system/script/run add-dhcp-no-perms  use-script-permissions
+not enough permissions (9)
+[admin@MikroTik] &gt; system/script/run add-dhcp-no-perms
+Added DHCP client on ether2!
+</code></pre>
+<p>The scheduler follows the same rule. A script called by name in <code>on-event</code>, or with <code>/system script run</code>, runs with the scheduler entry's permissions (its <code>policy</code>). Only <code>use-script-permissions</code> makes the script run with its own permissions.</p>
+<p>To compare, create two scheduler entries that run the same script in different ways:</p>
+<pre><code class="language-ros">/system scheduler
+add interval=10s name=run-script-use-script-perms on-event=&quot;/system script run add-dhcp-no-perms use-script-permissions&quot; policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+add interval=10s name=run-script-by-name on-event=add-dhcp-no-perms policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+</code></pre>
+<p>The log shows that the entry with <code>use-script-permissions</code> fails, because the script has no permissions. The entry that calls the script by name adds the DHCP client with the scheduler's permissions:</p>
+<pre><code class="language-ros">/log print
+ 2026-09-25 17:54:29 script,error executing script add-dhcp-no-perms
+ 2026-09-25 17:54:29 script,error,debug not enough permissions (9) (/ip/dhcp-client/add; line 1)
+ 2026-09-25 17:54:29 script,error executing script
+ 2026-09-25 17:54:29 script,error,debug (scheduler:run-script-use-script-perms) not enough permissions (9) (/ip/dhcp-client/add; line 1)
+ 2026-09-25 17:54:30 system,info dhcp client added by scheduler:run-script-by-name/script:add-dhcp-no-perms (*2 = /ip dhcp-client add interface=ether2)
+</code></pre>
+<p>A caller cannot run a script whose policy includes permissions the caller does not have: a scheduler entry with <code>policy=read</code> that calls a script with <code>policy=read,write</code> by name fails with <code>not enough permissions</code>. The <code>use-script-permissions</code> flag does not override this.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="./scripting-examples.md">Scripting Examples</a></li>
+<li><a href="./scripting-tips-and-tricks.md">Scripting Tips and Tricks</a></li>
+</ul>
+<hr />
+<h1 id="console-inspect">Console inspect</h1>
+<blockquote>
+<p>Use /console/inspect to discover RouterOS menus, commands and arguments, read command help, get tab-completion candidates and syntax highlighting, and check command lines from the console, scripts and the REST API.</p>
+</blockquote>
+<p>The <code>/console/inspect</code> command returns the data the console uses for command completion, syntax highlighting, and built-in help. Scripts and external tools use it to discover menus, commands, arguments, and value types, or to check a command line before running it. The same data is available over the REST API at <code>/rest/console/inspect</code>.</p>
+<h2 id="requests">Requests</h2>
+<p>The <code>request</code> argument is a set of flags. Combine values with commas, for example <code>request=child,completion</code>. Each returned row has a <code>type</code> field that names the request that produced it.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Request</th>
+<th style="text-align: left;">Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>self</code></td>
+<td style="text-align: left;">The addressed node and its children.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>child</code></td>
+<td style="text-align: left;">The same rows as <code>self</code>. Use it to walk the command tree.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;">Tab-completion candidates for <code>input</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>syntax</code></td>
+<td style="text-align: left;">Built-in help for a path, or the syntax that applies at the end of <code>input</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>highlight</code></td>
+<td style="text-align: left;">One style for each character of <code>input</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>error</code></td>
+<td style="text-align: left;">Accepted by the command but adds no rows. Use <code>highlight</code> to find invalid input.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="paths-and-input">Paths and input</h2>
+<ul>
+<li><code>path</code> selects a menu or command with a comma-separated list of names, for example <code>ip,address,add</code>. Omit it for the root menu.</li>
+<li>Do not use slashes or a leading slash in <code>path</code>. Names are case-sensitive.</li>
+<li><code>input</code> is the command line to analyze. It can be an absolute path such as <code>/ip/address/print</code>, or a path relative to <code>path</code>.</li>
+<li><code>self</code>, <code>child</code>, and <code>syntax</code> with <code>path</code> read <code>path</code>. <code>completion</code>, <code>highlight</code>, <code>syntax</code> with <code>input</code>, and <code>error</code> read <code>input</code>.</li>
+<li>In a REST body, pass <code>path</code> as a string, for example <code>"path":"ip,address,add"</code>. A JSON array is not accepted.</li>
+</ul>
+<h2 id="discover-menus-and-arguments">Discover menus and arguments</h2>
+<p>Use <code>child</code> to list the entries at a path. Without <code>path</code>, it lists the root menu.</p>
+<pre><code class="language-ros">/console/inspect request=child path=console,inspect
+</code></pre>
+<pre><code class="language-text">Columns: TYPE, NAME, NODE-TYPE
+TYPE   NAME            NODE-TYPE
+self   inspect         cmd
+child  as-value        arg
+child  input           arg
+child  path            arg
+child  proplist        arg
+child  request         arg
+child  without-paging  arg
+</code></pre>
+<p>The first row is the addressed node, and its <code>type</code> is <code>self</code>. The other rows are its children, and their <code>type</code> is <code>child</code>. The <code>node-type</code> field tells what each row is:</p>
+<ul>
+<li><code>path</code> — A top-level menu path, such as <code>ip</code> or <code>system</code>.</li>
+<li><code>dir</code> — A menu directory, such as <code>ip,address</code> or <code>console,settings</code>.</li>
+<li><code>cmd</code> — A command, such as <code>add</code> or <code>print</code>.</li>
+<li><code>arg</code> — A command argument, such as <code>address</code> or <code>interface</code>.</li>
+</ul>
+<p>To walk the whole command tree, start with <code>request=child</code> from the root, then use the name of each <code>dir</code> or <code>path</code> row as the next <code>path</code> value.</p>
+<h2 id="read-built-in-help">Read built-in help</h2>
+<p><code>syntax</code> returns the text of the built-in help. With <code>path</code>, it describes the entries at that path. The result is a flat table: the first row is only the collection container, and each following row is one entry with its help text. Read the <code>Symbol</code> and <code>Text</code> columns; the other columns describe the structure of the help tree.</p>
+<pre><code class="language-ros">/console/inspect request=syntax path=ip,address,add
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Symbol</th>
+<th style="text-align: left;">Symbol type</th>
+<th style="text-align: left;">Nested</th>
+<th style="text-align: left;">Nonorm</th>
+<th style="text-align: left;">Text</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">collection</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>address</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Local IP address</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>broadcast</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Broadcast address</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>comment</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Short description of the item</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>copy-from</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Item number</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>disabled</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Defines whether item is ignored or used</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>interface</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Interface name</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>netmask</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Network mask</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>network</code></td>
+<td style="text-align: left;">explanation</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Network prefix</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>symbol-type</code> field is <code>explanation</code> for each argument row. The first row has <code>symbol-type</code> set to <code>collection</code>, an empty <code>symbol</code>, and <code>nested</code> set to <code>0</code>; it is only the container for the list. The <code>nested</code> field is the depth in the help tree, and <code>nonorm</code> is a console-internal flag you can ignore.</p>
+<p>With <code>input</code>, <code>syntax</code> describes the syntax that applies at the end of the command line. When the line ends with an argument followed by <code>=</code>, the result is a type tree for that argument.</p>
+<pre><code class="language-ros">/console/inspect request=syntax input=&quot;/ip/address/add address=&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Symbol</th>
+<th style="text-align: left;">Symbol type</th>
+<th style="text-align: left;">Nested</th>
+<th style="text-align: left;">Nonorm</th>
+<th style="text-align: left;">Text</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>Address</code></td>
+<td style="text-align: left;">definition</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">Address[/Netmask]</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>Address</code></td>
+<td style="text-align: left;">definition</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">A.B.C.D (IP address)</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>Netmask</code></td>
+<td style="text-align: left;">definition</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">IpNetmask | Num</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>IpNetmask</code></td>
+<td style="text-align: left;">definition</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">A.B.C.D</td>
+</tr>
+<tr>
+<td style="text-align: left;">syntax</td>
+<td style="text-align: left;"><code>Num</code></td>
+<td style="text-align: left;">definition</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">0..32 (integer number)</td>
+</tr>
+</tbody>
+</table>
+<p>The table above is a type tree, not a list of command entries. It says that <code>address</code> expects an <code>Address[/Netmask]</code>. An <code>Address</code> is an IP address, and a <code>Netmask</code> is either an <code>IpNetmask</code> (<code>A.B.C.D</code>) or a <code>Num</code> from <code>0</code> to <code>32</code>. The <code>nested</code> column gives the depth in the tree: <code>0</code> for the argument type, <code>1</code> for its alternatives, and <code>2</code> for the parts of an alternative.</p>
+<h2 id="get-completion-candidates">Get completion candidates</h2>
+<p><code>completion</code> returns the candidates for the text in <code>input</code>. Completion assumes the cursor is at the end of the string. Add a trailing space to get the arguments of a command.</p>
+<pre><code class="language-ros">/console/inspect request=completion input=&quot;/ip/addr&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Completion</th>
+<th style="text-align: left;">Style</th>
+<th style="text-align: left;">Offset</th>
+<th style="text-align: left;">Preference</th>
+<th style="text-align: left;">Show</th>
+<th style="text-align: left;">Text</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">completion</td>
+<td style="text-align: left;"><code>address</code></td>
+<td style="text-align: left;">dir</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">96</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">Address management</td>
+</tr>
+<tr>
+<td style="text-align: left;">completion</td>
+<td style="text-align: left;"><code>/</code></td>
+<td style="text-align: left;">dir</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">95</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">top of command hierarchy</td>
+</tr>
+<tr>
+<td style="text-align: left;">completion</td>
+<td style="text-align: left;"><code></code></td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">-1</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">whitespace</td>
+</tr>
+<tr>
+<td style="text-align: left;">completion</td>
+<td style="text-align: left;"><code>{</code></td>
+<td style="text-align: left;">syntax-meta</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">40</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">start of command block</td>
+</tr>
+<tr>
+<td style="text-align: left;">completion</td>
+<td style="text-align: left;"><code>;</code></td>
+<td style="text-align: left;">syntax-meta</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">40</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">end of command</td>
+</tr>
+</tbody>
+</table>
+<p>The fields have these meanings:</p>
+<ul>
+<li><code>completion</code> — The text to insert.</li>
+<li><code>offset</code> — The zero-based character position in <code>input</code> where the candidate applies.</li>
+<li><code>preference</code> — The ordering weight. Higher values are offered before lower values.</li>
+<li><code>show</code> — Whether the candidate appears in the interactive Tab list.</li>
+<li><code>style</code> — The style class of the candidate.</li>
+<li><code>text</code> — The description of the candidate.</li>
+</ul>
+<p>Use <code>path</code> to set the menu for input that does not start with an absolute path. For example, <code>path=ip,address input="pr"</code> returns the <code>print</code> command.</p>
+<h2 id="check-syntax-with-highlighting">Check syntax with highlighting</h2>
+<p><code>highlight</code> returns one row. The <code>highlight</code> field holds one style for each character of <code>input</code>, in the same order.</p>
+<pre><code class="language-bash">curl -k -u monitoring -X POST \
+    https://192.168.88.1/rest/console/inspect \
+    -H &quot;Content-Type: application/json&quot; \
+    --data '{&quot;request&quot;:&quot;highlight&quot;,&quot;input&quot;:&quot;/badcmd&quot;}'
+</code></pre>
+<pre><code class="language-json">[{&quot;highlight&quot;:&quot;dir,obj-inactive,obj-inactive,obj-inactive,obj-inactive,obj-inactive,obj-inactive&quot;,&quot;type&quot;:&quot;highlight&quot;}]
+</code></pre>
+<p>The first character <code>/</code> is a valid directory separator and has the <code>dir</code> style. The rest of the input is an unknown command and has the <code>obj-inactive</code> style. Common style values are <code>dir</code>, <code>cmd</code>, <code>arg</code>, <code>none</code>, and <code>syntax-meta</code>. The values <code>error</code>, <code>obj-inactive</code>, and <code>syntax-obsolete</code> mark input the console cannot use.</p>
+<p>To find the first invalid character in a command line, check the styles in a script:</p>
+<pre><code class="language-ros">:local line &quot;/badcmd&quot;
+:local result [/console/inspect request=highlight input=$line as-value]
+:local styles ($result-&gt;&quot;highlight&quot;)
+:foreach index,style in=$styles do={
+    :if (($style=&quot;error&quot;) or ($style=&quot;obj-inactive&quot;) or ($style=&quot;syntax-obsolete&quot;)) do={
+        :put &quot;Invalid input at character $index ($style)&quot;
+    }
+}
+</code></pre>
+<h2 id="response-fields">Response fields</h2>
+<p>Each request fills only the fields it needs. Every value is a string.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Request</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>type</code></td>
+<td style="text-align: left;">All</td>
+<td style="text-align: left;">The request that produced the row: <code>self</code>, <code>child</code>, <code>completion</code>, <code>highlight</code>, <code>syntax</code>, or <code>error</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>name</code></td>
+<td style="text-align: left;"><code>self</code>, <code>child</code></td>
+<td style="text-align: left;">The name of the menu, command, or argument.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>node-type</code></td>
+<td style="text-align: left;"><code>self</code>, <code>child</code></td>
+<td style="text-align: left;">The kind of node: <code>path</code>, <code>dir</code>, <code>cmd</code>, or <code>arg</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;">The text to insert.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>style</code></td>
+<td style="text-align: left;"><code>completion</code>, <code>highlight</code></td>
+<td style="text-align: left;">The style class of a candidate or of a character.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>offset</code></td>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;">The zero-based character position in <code>input</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>preference</code></td>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;">The ordering weight of the candidate.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>show</code></td>
+<td style="text-align: left;"><code>completion</code></td>
+<td style="text-align: left;">Whether the candidate appears in the Tab list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>text</code></td>
+<td style="text-align: left;"><code>completion</code>, <code>syntax</code></td>
+<td style="text-align: left;">A description, help text, or value type description.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>symbol</code></td>
+<td style="text-align: left;"><code>syntax</code></td>
+<td style="text-align: left;">The name of the described symbol.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>symbol-type</code></td>
+<td style="text-align: left;"><code>syntax</code></td>
+<td style="text-align: left;"><code>collection</code>, <code>explanation</code>, or <code>definition</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nested</code></td>
+<td style="text-align: left;"><code>syntax</code></td>
+<td style="text-align: left;">The nesting level. The collection row is <code>0</code>, and its entries start at <code>1</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nonorm</code></td>
+<td style="text-align: left;"><code>syntax</code></td>
+<td style="text-align: left;">A console-internal flag. The collection row sets it to <code>true</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>highlight</code></td>
+<td style="text-align: left;"><code>highlight</code></td>
+<td style="text-align: left;">The style of each character in <code>input</code>, in order.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-over-the-rest-api">Use over the REST API</h2>
+<p>Send a POST request to <code>/rest/console/inspect</code> with the same arguments in a JSON body:</p>
+<pre><code class="language-bash">curl -k -u monitoring -X POST \
+    https://192.168.88.1/rest/console/inspect \
+    -H &quot;Content-Type: application/json&quot; \
+    --data '{&quot;request&quot;:&quot;completion&quot;,&quot;input&quot;:&quot;/ip/addr&quot;}'
+</code></pre>
+<pre><code class="language-json">[{&quot;completion&quot;:&quot;address&quot;,&quot;offset&quot;:&quot;4&quot;,&quot;preference&quot;:&quot;96&quot;,&quot;show&quot;:&quot;true&quot;,&quot;style&quot;:&quot;dir&quot;,&quot;text&quot;:&quot;Address management&quot;,&quot;type&quot;:&quot;completion&quot;},{&quot;completion&quot;:&quot;/&quot;,&quot;offset&quot;:&quot;8&quot;,&quot;preference&quot;:&quot;95&quot;,&quot;show&quot;:&quot;true&quot;,&quot;style&quot;:&quot;dir&quot;,&quot;text&quot;:&quot;top of command hierarchy&quot;,&quot;type&quot;:&quot;completion&quot;},{&quot;completion&quot;:&quot; &quot;,&quot;offset&quot;:&quot;8&quot;,&quot;preference&quot;:&quot;-1&quot;,&quot;show&quot;:&quot;false&quot;,&quot;style&quot;:&quot;none&quot;,&quot;text&quot;:&quot;whitespace&quot;,&quot;type&quot;:&quot;completion&quot;},{&quot;completion&quot;:&quot;{&quot;,&quot;offset&quot;:&quot;8&quot;,&quot;preference&quot;:&quot;40&quot;,&quot;show&quot;:&quot;false&quot;,&quot;style&quot;:&quot;syntax-meta&quot;,&quot;text&quot;:&quot;start of command block&quot;,&quot;type&quot;:&quot;completion&quot;},{&quot;completion&quot;:&quot;;&quot;,&quot;offset&quot;:&quot;8&quot;,&quot;preference&quot;:&quot;40&quot;,&quot;show&quot;:&quot;false&quot;,&quot;style&quot;:&quot;syntax-meta&quot;,&quot;text&quot;:&quot;end of command&quot;,&quot;type&quot;:&quot;completion&quot;}]
+</code></pre>
+<p>Use <code>.proplist</code> to limit the returned fields:</p>
+<pre><code class="language-bash">curl -k -u monitoring -X POST \
+    https://192.168.88.1/rest/console/inspect \
+    -H &quot;Content-Type: application/json&quot; \
+    --data '{&quot;request&quot;:&quot;child&quot;,&quot;path&quot;:&quot;ip,address,add&quot;,&quot;.proplist&quot;:&quot;name,node-type&quot;}'
+</code></pre>
+<p>The command requires read access to the menus and commands you inspect. It does not change the configuration.</p>
+<h2 id="see-also_1">See also</h2>
+<ul>
+<li><a href="../../cli-reference/console/inspect">CLI reference: console/inspect</a></li>
+<li><a href="../../management-tools/console">Console</a></li>
+<li><a href="../rest-api">REST API</a></li>
+</ul>
+<hr />
+<h1 id="scripting-examples">Scripting examples</h1>
+<blockquote>
+<p>This page provides scripting examples for MikroTik RouterOS, demonstrating how to create and modify files, append text, check IP changes, strip netmasks, and resolve hostnames using RouterOS scripting commands.</p>
+</blockquote>
+<h1 id="scripting-examples_1">Scripting examples</h1>
+<p>It is not possible to create a file directly; however, you can use the following workaround:</p>
+<pre><code class="language-ros">/file print file=myFile
+/file set myFile.txt contents=&quot;&quot;
+</code></pre>
+<h2 id="append-text-to-a-file-in-a-new-line">Append text to a file in a new line</h2>
+<p>There is no direct way to append text to a file; you can store the old content and append a new line with the additional text:</p>
+<pre><code class="language-ros">:local oldText [/file get myFile.txt contents as-string]
+:local addText &quot;test append&quot;
+:local newText ($oldText.&quot;\n&quot;.$addText)
+/file set myFile.txt contents=$newText
+</code></pre>
+<h2 id="check-if-ip-on-the-interface-has-changed">Check if IP on the interface has changed</h2>
+<p>Some providers assign dynamic IP addresses. This script compares the new address to the current one.</p>
+<pre><code class="language-ros">:global currentIP;
+
+:local newIP [/ip address get [find interface=&quot;ether1&quot;] address];
+
+:if ($newIP != $currentIP) do={
+    :put &quot;ip address $currentIP changed to $newIP&quot;;
+    :set currentIP $newIP;
+}
+</code></pre>
+<h2 id="strip-netmask">Strip netmask</h2>
+<p>This script is useful when you need an IP address without a netmask (for example, to use in a firewall), because <code>/ip address get [id] address</code> returns both the address and its netmask.</p>
+<pre><code class="language-ros">:global ipaddress 10.1.101.1/24
+
+:for i from=( [:len $ipaddress] - 1) to=0 do={
+    :if ( [:pick $ipaddress $i] = &quot;/&quot;) do={
+        :put [:pick $ipaddress 0 $i]
+    }
+}
+</code></pre>
+<p>A much simpler way is:</p>
+<pre><code class="language-ros">:global ipaddress 10.1.101.1/24
+:put [:pick $ipaddress 0 [:find $ipaddress &quot;/&quot;]]
+</code></pre>
+<h2 id="resolve-host-name">Resolve host name</h2>
+<p>Many users request the ability to use DNS names instead of IP addresses for RADIUS servers, firewall rules, etc.</p>
+<p>Here is an example that resolves the RADIUS server's IP.</p>
+<p>Assume the RADIUS server is configured as follows:</p>
+<pre><code class="language-ros">/radius
+add address=3.4.5.6 comment=myRad
+</code></pre>
+<p>The following script resolves the server's IP address, compares the result with the configured value, and replaces it if they differ:</p>
+<pre><code class="language-ros">/system script add name=&quot;resolver&quot; source= {
+
+:local resolvedIP [:resolve &quot;server.example.com&quot;];
+:local radiusID [/radius find comment=&quot;myRad&quot;];
+:local currentIP [/radius get $radiusID address];
+
+:if ($resolvedIP != $currentIP) do={
+   /radius set $radiusID address=$resolvedIP;
+   /log info &quot;radius ip updated&quot;;
+}
+
+}
+</code></pre>
+<p>Add this script to the scheduler to run every five minutes, for example.</p>
+<pre><code class="language-ros">/system scheduler add name=resolveRadiusIP on-event=&quot;resolver&quot; interval=5m
+</code></pre>
+<h2 id="write-simple-queue-stats-in-multiple-files">Write simple queue stats in multiple files</h2>
+<p>Assume queue names use the format <code>some text.1</code> so you can search by the number after the dot.</p>
+<pre><code class="language-ros">:local entriesPerFile 10;
+:local currentQueue 0;
+:local queuesInFile 0;
+:local fileContent &quot;&quot;;
+#determine needed file count
+:local numQueues [/queue simple print count-only] ;
+:local fileCount ($numQueues / $entriesPerFile);
+:if ( ($fileCount * $entriesPerFile) != $numQueues) do={
+   :set fileCount ($fileCount + 1);
+}
+
+#remove old files
+/file remove [find name~&quot;stats&quot;];
+
+:put &quot;fileCount=$fileCount&quot;;
+
+:for i from=1 to=$fileCount do={
+#create file
+   /file print file=&quot;stats$i.txt&quot;;
+#clear content
+   /file set [find name=&quot;stats$i.txt&quot;] contents=&quot;&quot;;
+
+   :while ($queuesInFile &lt; $entriesPerFile) do={
+     :if ($currentQueue &lt; $numQueues) do={
+         :set currentQueue ($currentQueue +1);
+         :put $currentQueue ;
+         /queue simple
+         :local internalID [find name~&quot;\\.$currentQueue\$&quot;];
+         :put &quot;internalID=$internalID&quot;;
+         :set fileContent ($fileContent . [get $internalID target-address] . \
+           &quot; &quot; . [get $internalID total-bytes] . &quot;\r\n&quot;);
+     }
+     :set queuesInFile ($queuesInFile +1);
+
+   }
+   /file set &quot;stats$i.txt&quot; contents=$fileContent;
+   :set fileContent &quot;&quot;;
+   :set queuesInFile 0;
+
+}
+
+</code></pre>
+<h2 id="generate-backup-and-send-it-by-e-mail">Generate backup and send it by e-mail</h2>
+<p>This script generates a backup file and sends it to a specified e-mail address. The mail subject contains the router's name, current date, and time.</p>
+<p>Note that the SMTP server must be configured before this script can be used. See <a href="../../system-information-and-utilities/e-mail.md">/tool e-mail</a> for configuration options.</p>
+<pre><code class="language-ros">/system backup save name=email_backup
+/tool e-mail send file=email_backup.backup to=&quot;me@test.com&quot; body=&quot;See attached file&quot; \
+   subject=&quot;$[/system identity get name] $[/system clock get time] $[/system clock get date] Backup&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The backup file contains sensitive information like passwords. Therefore, the script or scheduler must have a 'sensitive' policy to access generated backup files.</p>
+</div>
+<h2 id="use-string-as-a-function">Use String as a Function</h2>
+<pre><code class="language-ros">:global printA [:parse &quot;:local A; :put \$A;&quot; ];
+$printA
+</code></pre>
+<h2 id="check-bandwidth-and-add-limitations">Check bandwidth and add limitations</h2>
+<p>This script checks whether download on an interface exceeds 512 kbps; if it does, the script adds a queue limiting speed to 256 kbps.</p>
+<pre><code class="language-ros">:foreach i in=[/interface find] do={
+    /interface monitor-traffic $i once do={
+        :if ($&quot;received-bits-per-second&quot; &gt; 0 ) do={
+            :local tmpIP [/ip address get [/ip address find interface=$i] address] ;
+#            :log warning $tmpIP ;
+            :for j from=( [:len $tmpIP] - 1) to=0 do={
+                :if ( [:pick $tmpIP $j] = &quot;/&quot;) do={
+                    /queue simple add name=$i max-limit=256000/256000 dst-address=[:pick $tmpIP 0 $j] ;
+                }
+            }
+        }
+    }
+}
+</code></pre>
+<h2 id="block-access-to-specific-websites">Block access to specific websites</h2>
+<p>This script is useful when you want to block certain websites without using a web proxy.</p>
+<p>This example looks at entries "Rapidshare" and "youtube" in the DNS cache and adds IPs to the address list named "restricted". Before you begin, you must set up a router to catch all DNS requests:</p>
+<pre><code class="language-ros">/ip firewall nat
+add action=redirect chain=dstnat comment=DNS dst-port=53 protocol=tcp to-ports=53
+add action=redirect chain=dstnat dst-port=53 protocol=udp to-ports=53
+</code></pre>
+<p>Then add a firewall rule:</p>
+<pre><code class="language-ros">/ip firewall filter
+add chain=forward dst-address-list=restricted action=drop
+</code></pre>
+<p>Write a script and schedule it to run every 30 seconds.</p>
+<p>Script code:</p>
+<pre><code class="language-ros">:foreach i in=[/ip dns cache find] do={
+    :local bNew &quot;true&quot;;
+    :local cacheName [/ip dns cache all get $i name] ;
+#    :put $cacheName;
+
+    :if (([:find $cacheName &quot;rapidshare&quot;] &gt;= 0) || ([:find $cacheName &quot;youtube&quot;] &gt;= 0)) do={
+
+        :local tmpAddress [/ip dns cache get $i address] ;
+#   :put $tmpAddress;
+
+# if address list is empty do not check
+        :if ( [/ip firewall address-list find list=&quot;restricted&quot; ] = &quot;&quot;) do={
+            :log info (&quot;added entry: $[/ip dns cache get $i name] IP $tmpAddress&quot;);
+            /ip firewall address-list add address=$tmpAddress list=restricted comment=$cacheName;
+        } else={
+            :foreach j in=[/ip firewall address-list find list=&quot;restricted&quot;] do={
+                :if ( [/ip firewall address-list get $j address] = $tmpAddress ) do={
+                    :set bNew &quot;false&quot;;
+                }
+            }
+            :if ( $bNew = &quot;true&quot; ) do={
+                :log info (&quot;added entry: $[/ip dns cache get $i name] IP $tmpAddress&quot;);
+                /ip firewall address-list add address=$tmpAddress list=restricted comment=$cacheName;
+            }
+        }
+    }
+}
+</code></pre>
+<p>:::note Alternative approach
+Instead of scanning the DNS cache, you can match the hostname directly in the firewall. For HTTPS traffic, use the SNI-based <code>tls-host</code> matcher, which requires <code>protocol=tcp</code>:</p>
+<pre><code class="language-ros">/ip firewall filter
+add chain=forward protocol=tcp tls-host=*.youtube.com action=drop
+</code></pre>
+<p>For plaintext HTTP, match the payload with the <code>content</code> parameter:</p>
+<pre><code class="language-ros">/ip firewall filter
+add chain=forward content=youtube.com action=drop
+</code></pre>
+<p>These matchers inspect the traffic itself, so they do not depend on the router resolving the client's DNS queries or on the DNS cache being populated — the DNS-cache method above only catches sites that were recently queried through the router.</p>
+<p><code>tls-host=*.youtube.com</code> matches the subdomains, such as <code>www.youtube.com</code>; to match <code>youtube.com</code> itself, add a second rule with <code>tls-host=youtube.com</code>. <code>tls-host</code> sees only TLS over TCP: a browser that reaches the site over QUIC (HTTP/3 on UDP port 443) is not matched. Browsers fall back to TCP when UDP port 443 is blocked.
+:::</p>
+<h2 id="parse-file-to-add-ppp-secrets">Parse file to add ppp secrets</h2>
+<p>This script requires that entries inside the file are in the following format:</p>
+<p>username,password,local_address,remote_address,profile,service</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The file must use CR/LF line endings (Windows format), because the script searches for the <code>\r\n</code> sequence between lines. A file with bare <code>\n</code> line endings, such as a file uploaded in Unix format or written by a script with <code>\n</code>, does not match.</p>
+</div>
+<p>For example:</p>
+<pre><code class="language-ros">janis,123,1.1.1.1,2.2.2.1,ppp_profile,myService
+juris,456,1.1.1.1,2.2.2.2,ppp_profile,myService
+aija,678,1.1.1.1,2.2.2.3,ppp_profile,myService
+</code></pre>
+<pre><code class="language-ros">:global content [/file get [/file find name=test.txt] contents] ;
+:global contentLen [ :len $content ] ;
+
+:global lineEnd 0;
+:global line &quot;&quot;;
+:global lastEnd 0;
+
+:do {
+       :set lineEnd [:find $content &quot;\r\n&quot; $lastEnd ] ;
+       :set line [:pick $content $lastEnd $lineEnd] ;
+       :set lastEnd ( $lineEnd + 2 ) ;
+
+       :local tmpArray [:toarray $line] ;
+    :if ( [:pick $tmpArray 0] != &quot;&quot; ) do={
+    :put $tmpArray;
+         /ppp secret add name=[:pick $tmpArray 0] password=[:pick $tmpArray 1] \
+             local-address=[:pick $tmpArray 2] remote-address=[:pick $tmpArray 3] \
+             profile=[:pick $tmpArray 4] service=[:pick $tmpArray 5];
+}
+} while ($lineEnd &lt; $contentLen)
+</code></pre>
+<h2 id="detect-new-log-entry">Detect new log entry</h2>
+<p>This script checks whether a new log entry has been added to a particular buffer.</p>
+<p>In this example, use PPPoE logs:</p>
+<pre><code class="language-ros">/system logging action
+add name=&quot;pppoe&quot;
+/system logging
+add action=pppoe topics=pppoe,info,!ppp,!debug
+</code></pre>
+<p>The log buffer looks like the following:</p>
+<pre><code class="language-ros">[admin@mainGW] &gt; /log print where buffer=pppoe
+13:11:08 pppoe,info PPPoE connection established from 00:0C:42:04:4C:EE
+</code></pre>
+<p>The following script detects when a new entry is added.</p>
+<pre><code class="language-ros">:global lastTime;
+
+:global currentBuf [ :toarray [ /log find buffer=pppoe  ] ] ;
+:global currentLineCount [ :len $currentBuf ] ;
+:global currentTime [ :totime [/log get [ :pick $currentBuf ($currentLineCount -1) ] time   ] ];
+
+:global message &quot;&quot;;
+
+:if ( $lastTime = &quot;&quot; ) do={
+    :set lastTime $currentTime ;
+    :set message [/log get [ :pick $currentBuf ($currentLineCount-1) ] message];
+
+} else={
+    :if ( $lastTime &lt; $currentTime ) do={
+        :set lastTime $currentTime ;
+        :set message [/log get [ :pick $currentBuf ($currentLineCount-1) ] message];
+    }
+}
+</code></pre>
+<p>After detection, the new entry is saved in the <code>message</code> variable; you can later parse this variable for details such as a PPPoE client's MAC address.</p>
+<h2 id="allow-use-of-ntporg-pool-service-for-ntp">Allow use of <a href="http://ntp.org">ntp.org</a> pool service for NTP</h2>
+<p>This script resolves the hostnames of two NTP servers, compares the result with the current NTP settings, and changes the addresses if they're different. This script is required as RouterOS does not allow hostnames to be used in the NTP configuration. Two scripts are used. The first defines system variables for use by the second script, which performs the work:</p>
+<pre><code class="language-ros"># System configuration script - &quot;GlobalVars&quot;
+
+:put &quot;Setting system globals&quot;;
+
+# System name
+:global SYSname [/system identity get name];
+
+# E-mail address to send notifications to
+:global SYSsendemail &quot;mail@my.address&quot;;
+
+# E-mail address to send notifications from
+:global SYSmyemail &quot;routeros@my.address&quot;;
+
+# Mail server to use
+:global SYSemailserver &quot;1.2.3.4&quot;;
+
+# NTP pools to use (check www.pool.ntp.org)
+:global SYSntpa &quot;0.uk.pool.ntp.org&quot;;
+:global SYSntpb &quot;1.uk.pool.ntp.org&quot;;
+</code></pre>
+<pre><code class="language-ros"># Check and set NTP servers - &quot;setntppool&quot;
+
+# We need to use the following globals which must be defined here even
+# though they are also defined in the script we call to set them.
+:global SYSname;
+:global SYSsendemail;
+:global SYSmyemail;
+:global SYSemailserver;
+:global SYSntpa;
+:global SYSntpb;
+
+# Load the global variables with the system defaults
+/system script run GlobalVars
+
+# Resolve the two ntp pool hostnames
+:local ntpipa [:resolve $SYSntpa];
+:local ntpipb [:resolve $SYSntpb];
+
+# Get the current settings
+:local ntpcura [:pick [/system/ntp/client/get servers] 0];
+:local ntpcurb [:pick [/system/ntp/client/get servers] 1];
+
+# Define a variable so we know if anything's changed.
+:local bChange 0;
+
+# Debug output
+:put (&quot;Old: &quot; . $ntpcura . &quot; New: &quot; . $ntpipa);
+:put (&quot;Old: &quot; . $ntpcurb . &quot; New: &quot; . $ntpipb);
+
+# Change servers if required
+:if ($ntpipa != $ntpcura || $ntpipb != $ntpcurb) do={
+    :put &quot;Changing NTP servers&quot;;
+    /system/ntp/client/set servers=&quot;$ntpipa,$ntpipb&quot;;
+    :set bChange 1;
+    }
+
+# If we've made a change, send an e-mail to say so.
+:if (($bChange = 1)) do={
+    :put &quot;Sending e-mail.&quot;;
+    /tool e-mail send \
+        to=$SYSsendemail \
+        subject=($SYSname . &quot; NTP change&quot;) \
+        from=$SYSmyemail \
+        server=$SYSemailserver \
+        body=(&quot;Your NTP servers have just been changed:\n\nPrimary:\nOld: &quot; . $ntpcura . &quot;\nNew: &quot; \
+          . $ntpipa . &quot;\n\nSecondary\nOld: &quot; . $ntpcurb . &quot;\nNew: &quot; . $ntpipb);
+    }
+</code></pre>
+<p>Scheduler entry:</p>
+<pre><code class="language-ros">/system scheduler add \
+  comment=&quot;Check and set NTP servers&quot; \
+  disabled=no \
+  interval=12h \
+  name=CheckNTPServers \
+  on-event=setntppool \
+  policy=read,write,test \
+  start-date=1970-01-01 \
+  start-time=16:00:00
+</code></pre>
+<hr />
+<h1 id="scripting-tips-and-tricks">Scripting Tips and Tricks</h1>
+<blockquote>
+<p>This page provides scripting tips for MikroTik RouterOS, emphasizing the importance of using internal IDs instead of literal values to avoid errors when objects are renumbered. It explains how to correctly reference...</p>
+</blockquote>
+<h1 id="scripting-tips-and-tricks_1">Scripting Tips and Tricks</h1>
+<p>Let's start with the basics. When you work from the terminal, you are used to the following syntax for accessing parameters:</p>
+<pre><code class="language-text">[admin@r1] /interface&gt; print
+Flags: D - dynamic, X - disabled, R - running, S - slave
+ #     NAME                                TYPE       ACTUAL-MTU L2MTU  MAX-L2MTU
+ 0  R  ether1                              ether            1500  1580      1022
+[admin@r1] /interface&gt; set 0 name=LAN
+
+</code></pre>
+<p><code>print</code> command temporary saves buffer with id numbers referencing to internal ID numbers, so obviously if you are trying to use non-existent values script will fail, like, for example in this script:</p>
+<pre><code class="language-ros">/system script add name=script1 source={
+  /ip route set 1 gateway=3.3.3.3
+}
+
+</code></pre>
+<p>The script does not know what “1” refers to and throws an error. Proper way is to use internal ID numbers, those numbers can be seen if you are doing <code>print as-value</code> or returned by find command, for example:</p>
+<pre><code class="language-ros">[admin@r1] /ip route&gt; :put [find where dst-address=&quot;10.0.0.0/8&quot;]
+*1
+
+</code></pre>
+<p>So in this case the proper script would be:</p>
+<pre><code class="language-ros">/system script add name=script1 source={
+  /ip route set *1 gateway=3.3.3.3
+}
+
+</code></pre>
+<p>Note that using internal numbers directly is not recommended, because items can be removed and re‑added; the internal ID then changes and the script will fail. Use the <code>find</code> command in your code instead:</p>
+<pre><code class="language-ros">/system script add name=script1 source={
+  /ip route set [find dst-address=&quot;0.0.0.0/0&quot;] gateway=3.3.3.3
+}
+
+</code></pre>
+<h2 id="why-find-does-not-work-even-if-correct-value-is-specified">Why find does not work even if correct value is specified?</h2>
+<p>Let's say we want to print a specific address:</p>
+<pre><code class="language-text">[admin@r1] /ip address&gt; print where address=111.111.1.1/24
+Flags: X - disabled, I - invalid, D - dynamic
+ #   ADDRESS            NETWORK         INTERFACE
+
+</code></pre>
+<p>We know that such an address exists, so why is there no output?</p>
+<p>Because the scripting engine tries to convert variable types as aggressively as it can, but it does not always succeed. Let's look closely at why this particular example fails. First, let's check what variable type the <code>address</code> is:</p>
+<pre><code class="language-text">[admin@r1] /ip address&gt; :put [:typeof ([print as-value]-&gt;0-&gt;&quot;address&quot;)]
+str
+
+</code></pre>
+<p>So obviously we are comparing string to ip-prefix and conversion from ip-prefix to string does not happen automatically. To fix the problem we need to convert variable to correct format:</p>
+<pre><code class="language-text">[admin@r1] /ip address&gt; print where address=[:tostr 111.111.1.1/24]
+
+Flags: X - disabled, I - invalid, D - dynamic
+ #   ADDRESS            NETWORK         INTERFACE
+ 0   111.111.1.1/24     111.111.1.0     ether2
+
+</code></pre>
+<p>Or use a string directly by placing the query value in double quotes:</p>
+<pre><code class="language-text">[admin@r1] /ip address&gt; print where address=&quot;111.111.1.1/24&quot;
+
+Flags: X - disabled, I - invalid, D - dynamic
+ #   ADDRESS            NETWORK         INTERFACE
+ 0   111.111.1.1/24     111.111.1.0     ether2
+
+</code></pre>
+<p>Obviously the second method is not suitable if you obtain the IP prefix from a variable; in that case, convert it as demonstrated in the first example or write the variable to a string with <code>"$myVar"</code>.</p>
+<h2 id="how-to-define-empty-array">How to define empty array</h2>
+<p>RouterOS does not allow to define empty array in a way that you think it should:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /interface&gt; :global array {}
+syntax error (line 1 column 17)
+
+</code></pre>
+<p>Workaround is to convert empty string to an array:</p>
+<pre><code class="language-ros">[admin@r1] &gt; :global array [:toarray &quot;&quot;]
+[admin@r1] &gt; :environment print
+array={}
+</code></pre>
+<p>From here we can use this array to set elements:</p>
+<pre><code class="language-ros">[admin@r1] &gt; :set ($array-&gt;&quot;el0&quot;) &quot;el0_val&quot;
+[admin@r1] &gt; :environment print
+array={el0=&quot;el0_val&quot;}
+</code></pre>
+<h2 id="how-to-remove-variables">How to remove variables</h2>
+<p>You can use <code>/system script environment remove</code> to delete unused variables; however, the preferred method is to unset the variable.</p>
+<p>Setting no value for an existing parameter unsets it; for example:</p>
+<pre><code class="language-ros">[admin@MikroTik] /system script environment&gt; :global myVar 1
+[admin@MikroTik] /system script environment&gt; print
+ # NAME               VALUE
+ 0 myVar              1
+[admin@MikroTik] /system script environment&gt; :set myVar
+[admin@MikroTik] /system script environment&gt; print
+ # NAME               VALUE
+[admin@MikroTik] /system script environment&gt;
+
+</code></pre>
+<h2 id="get-values-for-properties-if-get-command-is-not-available">Get values for properties if 'get' command is not available</h2>
+<p>Some menus, such as the interactive <code>info</code> commands, have no <code>get</code> subcommand — use the <code>as-value</code> parameter to get a usable value for scripting.</p>
+<p>The example below uses the legacy <code>wireless</code> package (<code>/interface wireless info</code>), which is available only on devices with the legacy wireless stack. Devices with the newer <code>wifi</code> package (for example, hAP ax²) do not have these menus:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /interface wireless info&gt; :put [hw-info wlan1 as-value ]
+ranges=2312-2732/5/b;g;gn20;gn40;2484-2484/5/b;g;gn20;gn40;rx-chains=0;1;tx-chains=0;1
+
+</code></pre>
+<p>The output is a 1‑D array, so you can easily get the property value you are interested in.</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /interface wireless info&gt; :put ([hw-info wlan1 as-value ]-&gt;&quot;tx-chains&quot;)
+0;1
+
+</code></pre>
+<h2 id="always-check-what-value-and-type-command-returns">Always check what value and type command returns</h2>
+<p>Let's say we are trying to get the gateway of a specific route using <code>as-value</code>, but the script returns nothing:</p>
+<pre><code class="language-ros">[admin@r1] /ip address&gt; :put ([/ip route print as-value where gateway=&quot;ether1&quot;]-&gt;&quot;gateway&quot;)
+
+</code></pre>
+<p>First let's check if <code>print</code> actually finds anything:</p>
+<pre><code class="language-ros">[admin@r1] /ip address&gt; :put ([/ip route print as-value where gateway=&quot;ether1&quot;])
+
+.id=*400ae12f;distance=255;dst-address=111.111.111.1/32;gateway=ether1;pref-src=111.111.111.1
+
+</code></pre>
+<p>The command assumes the output will be a 1‑D array from which we can extract the element named <code>gateway</code>. Obviously there is something wrong with the variable or its type. Let's examine it more closely:</p>
+<pre><code class="language-ros">[admin@r1] /ip address&gt; :global aa ([/ip route print as-value where gateway=&quot;ether1&quot;])
+[admin@r1] /ip address&gt; :environment print
+
+aa={{.id=*400ae12f; distance=255; dst-address=111.111.111.1/32; gateway={&quot;ether1&quot;}; pref-src=111.11
+1.111.1}}
+
+</code></pre>
+<p>Now it is clear that returned value is 2D array with one element. So the right sequence to extract gateway should be:</p>
+<ul>
+<li>get 2d array</li>
+<li>get first element</li>
+<li>get <code>gateway</code> from picked element</li>
+</ul>
+<pre><code class="language-ros">[admin@r1] /ip address&gt; :put ([:pick [/ip route print as-value where gateway=&quot;ether1&quot;] 0]-&gt;&quot;gateway&quot;)
+
+ether1
+
+</code></pre>
+<h2 id="be-careful-when-adding-an-array-to-a-string">Be careful when adding an array to a string</h2>
+<p>If you print an array or append it to an existing string, be very careful, as the result may be unexpected. For example, with an array containing two elements:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /&gt; :global array {&quot;cccc&quot;, &quot;ddddd&quot;}
+[admin@1p_DUT_wAP ac] /&gt; :put (&quot;array value is: &quot; . $array )
+
+array value is: cccc;array value is: ddddd
+
+</code></pre>
+<p>Concatenation operator (<code>.</code>) is adding string to each array element and then prints the output. To fix the problem we need to convert to string first:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /&gt; :put (&quot;array value is: &quot; . [:tostr  $array] )
+
+array value is: cccc;ddddd
+
+</code></pre>
+<h2 id="getset-unnamed-elements-in-an-array">Get/Set unnamed elements in an array</h2>
+<p>Let's say we have an array with three elements <code>{ "el1"; "el2"; "el3" }</code>. You can pick elements with the <code>pick</code> command, but a better way is to access an element directly by its index:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /&gt; :global test { &quot;el1&quot;; &quot;el2&quot;; &quot;el3&quot; }
+[admin@1p_DUT_wAP ac] /&gt; :put ($test-&gt;1)
+
+el2
+
+</code></pre>
+<p>The same syntax can be used to set values:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /&gt; :set ($test-&gt;2) &quot;el3_changed&quot;
+[admin@1p_DUT_wAP ac] /&gt; :environment print
+
+test={&quot;el1&quot;; &quot;el2&quot;; &quot;el3_changed&quot;}
+
+</code></pre>
+<h2 id="set-element-value-in-2d-array">Set element value in 2D array</h2>
+<p>You can also set a value directly by index in a 2‑D array:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /&gt; :global test {{&quot;11&quot;;&quot;12&quot;;&quot;13&quot;};{&quot;21&quot;;&quot;22&quot;;&quot;23&quot;}}
+[admin@1p_DUT_wAP ac] &gt; :set ($test-&gt;1-&gt;1) &quot;22_changed&quot;
+[admin@1p_DUT_wAP ac] &gt; :put [($test-&gt;1-&gt;1)]
+22_changed
+[admin@1p_DUT_wAP ac] &gt; :environment print
+test={{&quot;11&quot;; &quot;12&quot;; &quot;13&quot;}; {&quot;21&quot;; &quot;22_changed&quot;; &quot;23&quot;}}
+
+</code></pre>
+<h2 id="read-the-value-of-a-global-variable-defined-in-another-script">Read the value of a global variable defined in another script</h2>
+<p>Let's say we have one script that declares a variable and sets its value:</p>
+<pre><code class="language-ros">/system script add name=script1 source={
+  :global myVar &quot;hello!&quot;
+}
+</code></pre>
+<p>Global variables are shared between all scripts of the same user. Another script can read the value of <code>myVar</code> even without declaring it first:</p>
+<pre><code class="language-ros">/system script add name=script2 source={
+  :log info &quot;value is: $myVar&quot;
+}
+</code></pre>
+<p>Declaring the variable (<code>:global myVar;</code>) before using it is still good practice — it makes the dependency explicit. In either case, the variable holds a value only after <code>script1</code> has been run at least once; reading a variable that was never set returns an empty value.</p>
+<p>To <strong>change</strong> the value of a global variable from a script, the variable must be declared first — see the example in the next section.</p>
+<h2 id="accessing-global-variable-from-function">Accessing global variable from function</h2>
+<p>A function can read a global variable (or call another function) that is defined earlier in the same session or script, without declaring it inside the function:</p>
+<pre><code class="language-ros">:global myVar &quot;test&quot;
+:global myFunc do={
+  :put &quot;global var=$myVar&quot;
+}
+[$myFunc]
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">global var=test
+</code></pre>
+<p>You need to declare the variable inside the function only when you want to <strong>change</strong> its value:</p>
+<pre><code class="language-ros">:global myVar &quot;test&quot;
+:global myFunc do={
+  :global myVar;
+  :set myVar &quot;new value&quot;;
+  :put &quot;global var=$myVar&quot;
+}
+[$myFunc]
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">global var=new value
+</code></pre>
+<p>Assigning a value to a variable that is not declared in the function (<code>:set myVar "new value"</code> without <code>:global myVar;</code>) results in a compilation error.</p>
+<h2 id="running-a-function-from-another-function">Running a function from another function</h2>
+<p>A function defined earlier in the current session or script can be called from another function directly, without declaring it:</p>
+<pre><code class="language-ros">:global addOne do={
+  :return ($1 + 1)
+}
+
+:global addOneAndReport do={
+  :local x 5
+  :local y [$addOne $x]
+  :put &quot;typeof = $[:typeof $y]&quot;
+  :put &quot;result=$y&quot;
+}
+
+$addOneAndReport
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">typeof = num
+result=6
+</code></pre>
+<p>The same applies when the called function is defined in another script of the same user — as long as that script has been run at least once, the function is available by name. Declaring the name (<code>:global addOne;</code>) inside the calling function is optional and only makes the dependency explicit.</p>
+<h2 id="always-use-unique-variable-names">Always use unique variable names</h2>
+<p>One of the most common mistakes is using non‑unique variable names. For example, a variable defined in a function may share the name of a global variable, leading to unexpected results:</p>
+<pre><code class="language-ros">:global my2 &quot;123&quot;
+
+:global myFunc do={ :global my2; :put $my2; :set my2 &quot;lala&quot;; :put $my2 }
+$myFunc my2=1234
+:put &quot;global value $my2&quot;
+
+</code></pre>
+<p>Output will be:</p>
+<pre><code class="language-text">1234
+lala
+global value 123
+
+</code></pre>
+<p>Another common problem occurs when a user‑defined variable has the same name as a RouterOS built‑in property. For example, to print a route with a <code>dst-address</code> defined in a variable:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /ip route&gt; :global &quot;dst-address&quot; &quot;0.0.0.0/0&quot;
+[admin@1p_DUT_wAP ac] /ip route&gt; print where dst-address=$&quot;dst-address&quot;
+Flags: X - disabled, A - active, D - dynamic, C - connect, S - static, r - rip, b - bgp, o - ospf, m - mme,
+B - blackhole, U - unreachable, P - prohibit
+ #      DST-ADDRESS        PREF-SRC        GATEWAY            DISTANCE
+ 0 ADS  0.0.0.0/0                          10.155.136.1              1
+ 1 ADC  10.155.136.0/24    10.155.136.41   ether1                    0
+
+</code></pre>
+<p>Obviously result is not as expected, simple solution, use unique variable name:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /ip route&gt; :global myDst &quot;0.0.0.0/0&quot;
+[admin@1p_DUT_wAP ac] /ip route&gt; print where dst-address=$myDst
+Flags: X - disabled, A - active, D - dynamic, C - connect, S - static, r - rip, b - bgp, o - ospf, m - mme,
+B - blackhole, U - unreachable, P - prohibit
+ #      DST-ADDRESS        PREF-SRC        GATEWAY            DISTANCE
+ 0 ADS  0.0.0.0/0                          10.155.136.1              1
+
+</code></pre>
+<h2 id="get-values-from-looped-interactive-commands-like-monitor">Get values from looped interactive commands like "monitor"</h2>
+<p>A frequently asked question is how to fetch values returned by interactive commands such as <code>monitor</code> in a script. The first problem is that these commands run indefinitely until a user intervenes, which a script cannot do. Instead run them with the <code>once</code> parameter, which executes the command a single time and then stops. Another issue is retrieving the returned variables: there is no <code>as-value</code> and no <code>get</code>, but there is <code>do</code>. It allows you to access variables returned by the command. For example:</p>
+<pre><code class="language-ros">[admin@1p_DUT_wAP ac] /interface&gt; monitor-traffic ether1 once do={:global myBps $&quot;rx-bits-per-second&quot; }
+...
+[admin@1p_DUT_wAP ac] /interface&gt; :environment print
+
+myBps=71464
+
+</code></pre>
+<h2 id="get-file-content-received-by-fetch-tool">Get file content received by fetch tool</h2>
+<p>The fetch tool makes it easy to download file content into memory and access it from a script. To do this, use the <code>as-value</code> parameter with <code>output=user</code>:</p>
+<pre><code class="language-ros">[admin@rack1_b34_CCR1036] &gt; :put ([/tool fetch ftp://admin:@10.155.136.41/test.txt
+ output=user as-value ]-&gt;&quot;data&quot;)
+
+my file content
+
+</code></pre>
+<h2 id="check-script-permissions">Check script permissions</h2>
+<p>Let's say we have a script that creates and writes content to a file:</p>
+<pre><code class="language-ros">/system script add name=script1 policy=ftp,read,write source={
+        /file print file=test;
+        /file set test.txt contents=&quot;my content&quot;
+}
+
+</code></pre>
+<p>Now let's add a scheduler that will try to execute this script:</p>
+<pre><code class="language-ros">/system scheduler
+add interval=10s name=test on-event=script1 policy=read,write
+
+</code></pre>
+<p>After waiting 10 seconds, we can see that file was not created. If you look closely, script requires policy "ftp", to create a file, but scheduler has only "read" and "write" policies. To fix the problem, set scheduler to run with correct policies "read,write,ftp".</p>
+<p>This also applies when you run a script from netwatch, ppp <code>on-event</code>, and similar hooks, which are limited to the policies <code>read,write,test,reboot</code>. In such cases you cannot execute advanced scripts that create backups or files.</p>
+<p>You can fix the limitation by using <code>dont-require-permissions</code>, but be very careful granting unrestricted permissions to scripts.</p>
+<h2 id="be-careful-when-using-dont-require-permissions">Be careful when using dont-require-permissions</h2>
+<p>It is possible to set script with <code>dont-require-permissions</code> parameter. Basically it allows anyone without adequate permissions to execute the script. For example, if a script has policies "read,write,test,sensitive", but user or application that executes the script has less, (for example, only "read,write"), then by setting <code>dont-require-permissions=yes</code> we will allow to run script anyway.</p>
+<p>This could potentially allow to change sensitive information using script even if user that executes the script does not have enough permissions.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

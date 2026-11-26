@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IP Address, Gateway &amp; Routing Dasar · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="ip-address-gateway-routing-dasar">IP Address, Gateway &amp; Routing Dasar</h1>
+<p>Mengatur alamat IP, default gateway, dan route statis — fondasi supaya router
+bisa berkomunikasi ke jaringan lain.</p>
+<h2 id="1-memberi-alamat-ip-ke-interface">1. Memberi alamat IP ke interface</h2>
+<pre><code>/ip/address/add address=192.168.88.1/24 interface=ether2
+/ip/address/print
+</code></pre>
+<ul>
+<li>IP dipasang di <strong>interface fisik</strong> (<code>ether</code>) atau di <strong>bridge</strong> kalau portnya
+  sudah jadi member bridge.</li>
+<li>Kolom <code>actual-interface</code> menunjukkan interface sebenarnya tempat IP terpasang.</li>
+</ul>
+<h2 id="2-menghubungkan-dua-router-langsung-back-to-back">2. Menghubungkan dua router langsung (back-to-back)</h2>
+<pre><code># Router A
+/ip/address/add address=10.10.10.1/30 interface=ether1
+# Router B
+/ip/address/add address=10.10.10.2/30 interface=ether1
+</code></pre>
+<p>Tes dari Router A: <code>/ping 10.10.10.2</code></p>
+<h2 id="3-default-gateway-route-ke-internet">3. Default gateway (route ke internet)</h2>
+<pre><code>/ip/route/add gateway=192.168.1.1
+</code></pre>
+<p>Kalau WAN pakai DHCP client, gateway biasanya otomatis.</p>
+<h2 id="4-route-statis-ke-jaringan-tertentu">4. Route statis ke jaringan tertentu</h2>
+<pre><code>/ip/route/add dst-address=10.20.0.0/24 gateway=192.168.88.2
+</code></pre>
+<p>Cek hasil: <code>/ip/route/print where dst-address=10.20.0.0/24</code></p>
+<h2 id="5-address-list-dipakai-firewallbgp">5. Address list (dipakai firewall/BGP)</h2>
+<pre><code>/ip/firewall/address-list/add list=LAN address=192.168.88.0/24
+</code></pre>
+<h2 id="6-dns">6. DNS</h2>
+<pre><code>/ip/dns/set servers=8.8.8.8,1.1.1.1
+/ip/dns/set allow-remote-requests=yes
+</code></pre>
+<h2 id="konsep-singkat">Konsep singkat</h2>
+<ul>
+<li><strong>connected route</strong> muncul otomatis saat IP dipasang</li>
+<li><strong>static route</strong> kita tentukan manual</li>
+<li><strong>dynamic route</strong> dari OSPF/BGP/DHCP</li>
+<li>route dibandingkan lewat <em>distance</em> (makin kecil makin diprioritaskan)</li>
+</ul>
+<h2 id="sering-bikin-gagal">Sering bikin gagal</h2>
+<ul>
+<li>Interface sudah jadi bridge port → pasang IP di bridge, bukan di ether</li>
+<li>ether1 masih ada DHCP client → bentrok, matikan dulu</li>
+<li>Lupa <code>gateway</code> → tidak ada jalan keluar ke internet</li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>02 Getting Started → Manual Network Setup</em></li>
+<li>Manual: <em>12 Routing and Networking Protocols</em></li>
+<li>Manual: <em>21 CLI Reference → /ip/address, /ip/route</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

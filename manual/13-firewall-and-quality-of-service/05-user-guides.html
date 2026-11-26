@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Firewall and Quality of Service</p>
+      <h1 id="user-guides">User Guides</h1>
+<h1 id="firewall-and-qos-case-studies">Firewall and QoS Case Studies</h1>
+<blockquote>
+<p>This page presents practical case studies for configuring firewall and QoS rules in MikroTik RouterOS, covering brute-force prevention, DDoS protection, connection rate limiting, port knocking, and advanced firewall...</p>
+</blockquote>
+<h1 id="firewall-and-qos-case-studies_1">Firewall and QoS Case Studies</h1>
+<p>The case studies are complete firewall and QoS configurations for one task each: brute-force prevention, DDoS protection, traffic prioritization by connection rate, port knocking and an advanced firewall for IPv4 and IPv6.</p>
+<hr />
+<h1 id="ssh-brute-force-protection">SSH brute-force protection</h1>
+<blockquote>
+<p>Protect an internet-facing SSH service on RouterOS with firewall rules that count new connections per source address and block a source that opens too many in a short time. Covers what to do before exposing SSH,...</p>
+</blockquote>
+<h1 id="ssh-brute-force-protection_1">SSH brute-force protection</h1>
+<p>Every public IP address receives a steady stream of automated login attempts. RouterOS delays its answer to each failed login, which slows guessing down, but it does not block the source address. If SSH on your router is reachable from the internet, a bot can keep guessing passwords for as long as it likes.</p>
+<p>The firewall rules on this page count the new SSH connections from each source address and block a source that opens too many in a short time. With the <a href="../../getting-started/configuration-management/default-configurations">default configuration</a>, the firewall drops all management access from the WAN side, and you do not need these rules.</p>
+<h2 id="reduce-the-exposure-first">Reduce the exposure first</h2>
+<p>Rate limiting only slows an attacker down. The following measures remove the risk instead; consider them before you open SSH to the internet:</p>
+<ul>
+<li>Reach the router through a VPN, for example <a href="../../virtual-private-networks/wireguard">WireGuard</a>, and keep SSH closed on the WAN side.</li>
+<li>Allow SSH only from the addresses you manage the router from, as described in <a href="../../getting-started/securing-your-router#opening-management-access-from-wan-advanced">Securing your router</a>.</li>
+<li>Log in with <a href="../../management-tools/ssh#log-in-with-a-public-key">SSH keys</a> and turn off password logins with <code>/ip/ssh/set password-authentication=no</code>. Password guessing then has nothing to find. With the default setting, <code>yes-if-no-key</code>, only users without a key can log in with a password.</li>
+<li>Hide the port behind <a href="port-knocking">port knocking</a>, so that SSH opens only for a client that knows the knock sequence.</li>
+</ul>
+<p>Use the rules on this page when SSH must stay reachable from the internet, or as an extra layer on top of these measures.</p>
+<h2 id="block-sources-that-open-repeated-ssh-connections">Block sources that open repeated SSH connections</h2>
+<p>The rules move a source address through three address lists, one stage per new SSH connection, and put it on a blacklist at the fourth connection:</p>
+<table>
+<thead>
+<tr>
+<th>Connection from the source</th>
+<th>Condition</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First</td>
+<td>None</td>
+<td>Added to <code>connection1</code> for 5 minutes</td>
+</tr>
+<tr>
+<td>Second</td>
+<td>Within 5 minutes of the previous connection</td>
+<td>Added to <code>connection2</code> for 15 minutes</td>
+</tr>
+<tr>
+<td>Third</td>
+<td>Within 15 minutes of the previous connection</td>
+<td>Added to <code>connection3</code> for 1 hour</td>
+</tr>
+<tr>
+<td>Fourth</td>
+<td>Within 1 hour of the previous connection</td>
+<td>Added to <code>bruteforce_blacklist</code> for 1 day, connection dropped</td>
+</tr>
+</tbody>
+</table>
+<p>The example assumes the default configuration: the internet-facing interfaces are in the <code>WAN</code> interface list, and the input chain ends with the rule <code>defconf: drop all not coming from LAN</code>. The rules must come before that rule, otherwise connections from the WAN side never reach them; <code>place-before</code> puts each rule there:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=22 connection-state=new \
+    in-interface-list=WAN src-address-list=connection3 \
+    address-list=bruteforce_blacklist address-list-timeout=1d \
+    comment=&quot;SSH brute force: blacklist&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=22 connection-state=new \
+    in-interface-list=WAN src-address-list=connection2 \
+    address-list=connection3 address-list-timeout=1h \
+    comment=&quot;SSH brute force: third connection&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=22 connection-state=new \
+    in-interface-list=WAN src-address-list=connection1 \
+    address-list=connection2 address-list-timeout=15m \
+    comment=&quot;SSH brute force: second connection&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=22 connection-state=new \
+    in-interface-list=WAN \
+    address-list=connection1 address-list-timeout=5m \
+    comment=&quot;SSH brute force: first connection&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept \
+    protocol=tcp dst-port=22 in-interface-list=WAN \
+    src-address-list=!bruteforce_blacklist \
+    comment=&quot;SSH brute force: accept&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=drop \
+    protocol=tcp dst-port=22 in-interface-list=WAN \
+    comment=&quot;SSH brute force: drop blacklisted&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>How the rules work:</p>
+<ul>
+<li>The first four rules only add the source to a list; <code>add-src-to-address-list</code> does not stop the packet, so it continues to the next rule. The rules are in reverse order, so each connection moves the source one stage further.</li>
+<li>The <code>accept</code> rule lets the connection through unless the source is on the blacklist, and the last rule drops it. Without the last rule, a blacklisted connection continues down the chain, and on a firewall that does not drop it later, the blacklist blocks nothing.</li>
+<li>The rules count new connections (<code>connection-state=new</code>). A session that is already open stays open, because the default configuration accepts established connections earlier in the chain.</li>
+<li><code>in-interface-list=WAN</code> keeps the rules away from connections from your LAN.</li>
+<li>If SSH listens on a different port, change <code>dst-port</code> in every rule.</li>
+<li>If a command fails with <code>no such item</code>, the router has no rule with the <code>defconf: drop all not coming from LAN</code> comment. On a router without the default firewall, leave out <code>place-before</code>, or place the rules before your own drop rule.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>You can block yourself. The rules count connections, not failed logins: successful logins count too, and a successful login does not remove the source from the lists. An SSH session, a file copy with <code>scp</code> and a second session can be enough when a script or backup tool adds one more connection, and that address is then blocked for a day. Exempt the addresses you manage the router from, as described in the next section.</p>
+</div>
+<h3 id="exempt-trusted-addresses">Exempt trusted addresses</h3>
+<p>Accept SSH from trusted addresses before the counting rules. The list name <code>secured</code> is the one the <a href="port-knocking">port knocking</a> example uses for clients that knocked correctly, so its accept rule already exempts those clients when it comes before these rules. Add fixed addresses to the same list:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/add list=secured address=198.51.100.7 \
+    comment=&quot;Office&quot;
+/ip/firewall/filter/add chain=input action=accept \
+    protocol=tcp dst-port=22 src-address-list=secured \
+    comment=&quot;SSH brute force: trusted&quot; \
+    place-before=[find comment=&quot;SSH brute force: blacklist&quot;]
+</code></pre>
+<h3 id="ipv6">IPv6</h3>
+<p>These rules apply to IPv4. When SSH is reachable over IPv6, add the same rules to <code>/ipv6/firewall/filter</code>, before the rule that drops IPv6 input from outside the LAN.</p>
+<h2 id="check-and-unblock">Check and unblock</h2>
+<p>List the sources the rules are tracking, with the time left for each entry, and see how many packets reached each rule:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/print where list~&quot;^connection|^bruteforce&quot;
+/ip/firewall/filter/print stats where comment~&quot;SSH brute force&quot;
+</code></pre>
+<p>Failed logins appear in the log as <code>login failure for user &lt;name&gt; from &lt;address&gt; via ssh</code>:</p>
+<pre><code class="language-ros">/log/print where message~&quot;login failure&quot;
+</code></pre>
+<p>A blocked address stays blocked until it has not tried to connect for a day: new connection attempts from a blacklisted source renew its entry. To unblock an address, remove its entries from all four lists, for example from the console or from another address:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/remove \
+    [find list~&quot;^connection|^bruteforce&quot; address=203.0.113.10]
+</code></pre>
+<h2 id="how-many-guesses-the-rules-allow">How many guesses the rules allow</h2>
+<p>The RouterOS SSH server accepts up to nine password attempts on one connection before it closes the connection. With the timeouts of the example:</p>
+<ul>
+<li>A source that connects quickly gets three connections, up to 27 password guesses, before it is blocked for a day.</li>
+<li>A source that waits more than 5 minutes between connections never leaves the first stage and is never blocked: up to 9 guesses every 5 minutes, about 2,600 guesses per day.</li>
+</ul>
+<p>The growing timeouts are what makes the rules effective. If all three lists used a 1-minute timeout, a source could open three connections every minute without being blocked, up to 27 guesses per minute. To slow down a patient attacker further, raise the timeout of <code>connection1</code>: with 30 minutes, the limit falls to 9 guesses every 30 minutes. A longer first stage also makes it easier to block yourself.</p>
+<p>Even with these rules, a weak password can be guessed over time. Keys or long, unique passwords remain the real protection.</p>
+<h2 id="related-topics">Related topics</h2>
+<ul>
+<li><a href="ddos-protection">DDoS protection</a> uses the same address-list technique with <code>dst-limit</code> to detect floods of new connections towards hosts behind the router.</li>
+<li><a href="port-knocking">Port knocking</a> keeps SSH closed until a client sends the right sequence of connection attempts.</li>
+<li>The <a href="connection-rate">connection rate</a> matcher measures the throughput of a single connection; it does not count connections.</li>
+</ul>
+<p>For all rule properties, see <a href="../../cli-reference/ip/firewall/filter/"><code>/ip/firewall/filter</code></a> and <a href="../../cli-reference/ip/firewall/address-list"><code>/ip/firewall/address-list</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="building-advanced-firewall">Building Advanced Firewall</h1>
+<blockquote>
+<p>This page guides building an advanced firewall on MikroTik RouterOS by configuring interface lists, filtering rules for IPv4 and IPv6, accepting ICMP/DHCPv6 while blocking invalid addresses, and managing traffic...</p>
+</blockquote>
+<h1 id="building-advanced-firewall_1">Building Advanced Firewall</h1>
+<p>This example builds a complete firewall for a router that connects a local network to the Internet. It uses as many firewall features as possible to show how they work together: interface lists, address lists, connection states, FastTrack, NAT, user-defined chains and RAW rules, for IPv4 and for IPv6.</p>
+<p>Most of the filtering is done in the <a href="../firewall/raw">RAW</a> table, before connection tracking. The <a href="../firewall/filter">filter</a> table has only a basic rule set: it accepts established, related and untracked connections and drops everything else that does not come from the LAN.</p>
+<h2 id="before-you-start">Before you start</h2>
+<ul>
+<li>The example is a complete rule set for a router that has no firewall rules. The default configuration has its own firewall rules, which do a part of the same work. On such a router, the rules of this example replace the default filter, NAT and IPv6 firewall rules; rules that are added after the default ones are duplicates.</li>
+<li>The LAN network of the example is 192.168.88.0/24 on the interface <code>bridge</code>, and the WAN interface is <code>ether1</code>. Two RAW rules contain the LAN network. Replace it with your network before you add the rules: the rule "drop local if not from default IP range" drops everything that a LAN device with another address sends, your own session included.</li>
+<li>Add the rules from a device in the LAN network, and use <a href="../../management-tools/console#safe-mode">Safe Mode</a>. The rules do not accept management access from the WAN side.</li>
+<li>Every interface must be in the <code>WAN</code> or the <code>LAN</code> list. The last RAW rule drops all packets that arrive on an interface that is in neither list, for example a PPPoE client, a VPN or a VLAN interface that is added later.</li>
+<li>Add the blocks in the order of the page, the address lists of a section before its rules. A rule that uses an address list without entries is added without an error.</li>
+<li>The IPv6 blocks are needed only if the router uses IPv6.</li>
+</ul>
+<h2 id="interface-lists">Interface lists</h2>
+<p>Two interface lists are used: <code>WAN</code> and <code>LAN</code>. The lists make the rules independent of interface names. The <code>WAN</code> list contains the interfaces that are connected to the Internet, in this example <code>ether1</code>. The <code>LAN</code> list contains the local network interfaces, in this example <code>bridge</code>.</p>
+<pre><code class="language-ros">/interface/list
+add name=WAN comment=defconf
+add name=LAN comment=defconf
+/interface/list/member
+add list=LAN interface=bridge comment=defconf
+add list=WAN interface=ether1 comment=defconf
+</code></pre>
+<p>The default configuration already has these lists and members. If your router has them, skip this block.</p>
+<h2 id="protect-the-router">Protect the router</h2>
+<p>The goal is to allow access to the router only from the LAN and to drop everything else.</p>
+<p>ICMP is accepted as well. This rule accepts the ICMP packets that have passed the RAW rules.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept protocol=icmp \
+    comment=&quot;defconf: accept ICMP after RAW&quot;
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;defconf: accept established,related,untracked&quot;
+add chain=input action=drop in-interface-list=!LAN \
+    comment=&quot;defconf: drop all not coming from LAN&quot;
+</code></pre>
+<p>The IPv6 part accepts, in addition, UDP traceroute, DHCPv6 client prefix delegation and IPsec (IKE, AH, ESP), as the RFC recommendations say.</p>
+<pre><code class="language-ros">/ipv6/firewall/filter
+add chain=input action=accept protocol=icmpv6 \
+    comment=&quot;defconf: accept ICMPv6 after RAW&quot;
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;defconf: accept established,related,untracked&quot;
+add chain=input action=accept protocol=udp dst-port=33434-33534 \
+    comment=&quot;defconf: accept UDP traceroute&quot;
+add chain=input action=accept protocol=udp dst-port=546 \
+    src-address=fe80::/10 \
+    comment=&quot;defconf: accept DHCPv6-Client prefix delegation&quot;
+add chain=input action=accept protocol=udp dst-port=500,4500 \
+    comment=&quot;defconf: accept IKE&quot;
+add chain=input action=accept protocol=ipsec-ah \
+    comment=&quot;defconf: accept IPSec AH&quot;
+add chain=input action=accept protocol=ipsec-esp \
+    comment=&quot;defconf: accept IPSec ESP&quot;
+add chain=input action=drop in-interface-list=!LAN \
+    comment=&quot;defconf: drop all not coming from LAN&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>In setups where a DHCPv6 relay is used, the source address of the packets may not be from the link-local range. In that case, remove the <code>src-address</code> parameter of the DHCPv6 rule or change it to the address of the relay.</p>
+</div>
+<h2 id="protect-the-clients">Protect the clients</h2>
+<p>Before you add the forward rules, create an address list with the IPv4 addresses that must not be forwarded.</p>
+<p>The multicast address range is in this list. Multicast is not forwarded in most networks, so this entry blocks it. If your network needs multicast forwarding, disable this address list entry.</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=no_forward_ipv4 address=0.0.0.0/8 comment=&quot;defconf: RFC6890&quot;
+add list=no_forward_ipv4 address=169.254.0.0/16 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=no_forward_ipv4 address=224.0.0.0/4 \
+    comment=&quot;defconf: multicast&quot;
+add list=no_forward_ipv4 address=255.255.255.255/32 \
+    comment=&quot;defconf: RFC6890&quot;
+</code></pre>
+<p>For IPv6, the same applies: if multicast forwarding is needed, disable the multicast entry.</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list
+add list=no_forward_ipv6 address=fe80::/10 \
+    comment=&quot;defconf: RFC6890 Link-Scoped Unicast&quot;
+add list=no_forward_ipv6 address=ff00::/8 comment=&quot;defconf: multicast&quot;
+</code></pre>
+<p>The forward chain does the following:</p>
+<ul>
+<li>FastTracks established and related connections.</li>
+<li>Accepts established, related and untracked connections.</li>
+<li>Drops packets with the invalid connection state.</li>
+<li>Drops new connections from the WAN that are not destination NATed.</li>
+<li>Drops the addresses that must not be forwarded.</li>
+</ul>
+<p>The rule that drops new connections from the WAN protects the clients from direct access if somebody on the WAN side knows the LAN network. The RAW rules of this example already drop these packets. The filter rule is one more layer of security in case the RAW rules are changed by mistake.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept ipsec-policy=in,ipsec disabled=yes \
+    comment=&quot;defconf: accept all that matches IPSec policy&quot;
+add chain=forward action=fasttrack-connection \
+    connection-state=established,related comment=&quot;defconf: fasttrack&quot;
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;defconf: accept established,related,untracked&quot;
+add chain=forward action=drop connection-state=invalid \
+    comment=&quot;defconf: drop invalid&quot;
+add chain=forward action=drop connection-state=new \
+    connection-nat-state=!dstnat in-interface-list=WAN \
+    comment=&quot;defconf: drop all from WAN not DSTNATed&quot;
+add chain=forward action=drop src-address-list=no_forward_ipv4 \
+    comment=&quot;defconf: drop bad forward IPs&quot;
+add chain=forward action=drop dst-address-list=no_forward_ipv4 \
+    comment=&quot;defconf: drop bad forward IPs&quot;
+</code></pre>
+<p>The IPv6 forward chain is similar. It also accepts IPsec and HIP, as the RFC recommendations say, and it drops ICMPv6 packets with a hop limit of 1. IPv6 has no NAT in this example, so the last rule drops everything that does not come from the LAN.</p>
+<pre><code class="language-ros">/ipv6/firewall/filter
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;defconf: accept established,related,untracked&quot;
+add chain=forward action=drop connection-state=invalid \
+    comment=&quot;defconf: drop invalid&quot;
+add chain=forward action=drop src-address-list=no_forward_ipv6 \
+    comment=&quot;defconf: drop bad forward IPs&quot;
+add chain=forward action=drop dst-address-list=no_forward_ipv6 \
+    comment=&quot;defconf: drop bad forward IPs&quot;
+add chain=forward action=drop protocol=icmpv6 hop-limit=equal:1 \
+    comment=&quot;defconf: rfc4890 drop hop-limit=1&quot;
+add chain=forward action=accept protocol=icmpv6 \
+    comment=&quot;defconf: accept ICMPv6 after RAW&quot;
+add chain=forward action=accept protocol=139 \
+    comment=&quot;defconf: accept HIP&quot;
+add chain=forward action=accept protocol=udp dst-port=500,4500 \
+    comment=&quot;defconf: accept IKE&quot;
+add chain=forward action=accept protocol=ipsec-ah \
+    comment=&quot;defconf: accept AH&quot;
+add chain=forward action=accept protocol=ipsec-esp \
+    comment=&quot;defconf: accept ESP&quot;
+add chain=forward action=accept ipsec-policy=in,ipsec \
+    comment=&quot;defconf: accept all that matches IPSec policy&quot;
+add chain=forward action=drop in-interface-list=!LAN \
+    comment=&quot;defconf: drop everything else not coming from LAN&quot;
+</code></pre>
+<p>Note the IPsec policy matcher rule of the IPv4 forward chain. IPsec traffic must not be FastTracked. For this reason, a disabled rule that accepts the traffic that matches an IPsec policy is placed before the FastTrack rule. Enable this rule when the router uses IPsec tunnels. The IPv6 rules of this example do not use FastTrack, so they do not need this.</p>
+<p>Another way to keep IPsec traffic out of FastTrack is a RAW rule, see <a href="../../virtual-private-networks/ipsec">IPsec</a>.</p>
+<h2 id="masquerade-the-local-network">Masquerade the local network</h2>
+<p>The devices of the local network need source NAT to reach the Internet. The example uses <code>masquerade</code>, which works with a WAN address that changes. See <a href="../firewall/nat">NAT</a> for the difference between <code>masquerade</code> and <code>src-nat</code>.</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=accept ipsec-policy=out,ipsec disabled=yes \
+    comment=&quot;defconf: accept all that matches IPSec policy&quot;
+add chain=srcnat action=masquerade out-interface-list=WAN \
+    comment=&quot;defconf: masquerade&quot;
+</code></pre>
+<p>The disabled policy matcher rule has the same purpose as in the filter rules. IPsec traffic must be excluded from NAT, except when the IPsec policy is configured to match the NATed address. Enable this rule when the router uses IPsec tunnels.</p>
+<h2 id="raw-filtering">RAW filtering</h2>
+<h3 id="ipv4-address-lists">IPv4 address lists</h3>
+<p>The RAW rules need several address lists. RFC 6890 is the reference.</p>
+<p>The first list has the IPv4 addresses that cannot be used as a source or destination address at all. A packet with such an address is dropped.</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=bad_ipv4 address=127.0.0.0/8 comment=&quot;defconf: RFC6890&quot;
+add list=bad_ipv4 address=192.0.0.0/24 comment=&quot;defconf: RFC6890&quot;
+add list=bad_ipv4 address=192.0.2.0/24 \
+    comment=&quot;defconf: RFC6890 documentation&quot;
+add list=bad_ipv4 address=198.51.100.0/24 \
+    comment=&quot;defconf: RFC6890 documentation&quot;
+add list=bad_ipv4 address=203.0.113.0/24 \
+    comment=&quot;defconf: RFC6890 documentation&quot;
+add list=bad_ipv4 address=240.0.0.0/4 \
+    comment=&quot;defconf: RFC6890 reserved&quot;
+</code></pre>
+<p>The second list has the IPv4 addresses that are not routed globally.</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=not_global_ipv4 address=0.0.0.0/8 comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=10.0.0.0/8 comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=100.64.0.0/10 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=169.254.0.0/16 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=172.16.0.0/12 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=192.0.0.0/29 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=192.168.0.0/16 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=not_global_ipv4 address=198.18.0.0/15 \
+    comment=&quot;defconf: RFC6890 benchmark&quot;
+add list=not_global_ipv4 address=255.255.255.255/32 \
+    comment=&quot;defconf: RFC6890&quot;
+</code></pre>
+<p>The last two lists have the addresses that cannot be used as a source address (<code>bad_src_ipv4</code>) and the addresses that cannot be used as a destination address (<code>bad_dst_ipv4</code>).</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add list=bad_src_ipv4 address=224.0.0.0/4 comment=&quot;defconf: multicast&quot;
+add list=bad_src_ipv4 address=255.255.255.255/32 \
+    comment=&quot;defconf: RFC6890&quot;
+add list=bad_dst_ipv4 address=0.0.0.0/8 comment=&quot;defconf: RFC6890&quot;
+add list=bad_dst_ipv4 address=224.0.0.0/4 comment=&quot;defconf: RFC6890&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The <code>bad_dst_ipv4</code> list contains the multicast range, so the RAW rules drop all packets with a multicast destination, also the ones that are sent to the router itself. If the router runs a service that receives multicast, for example OSPF, VRRP, IGMP proxy, UPnP or mDNS, or if the network needs multicast forwarding, disable this entry or accept the packets of the service before the drop rule.</p>
+</div>
+<h3 id="ipv4-raw-rules">IPv4 RAW rules</h3>
+<p>The IPv4 RAW rules do the following:</p>
+<ul>
+<li>A disabled accept rule at the start, with the comment "enable for transparent firewall". Enable it to switch the RAW filtering off without disabling all RAW rules.</li>
+<li>Accept DHCP discover packets. Most DHCP packets are not seen by the IP firewall, but some of them are, so make sure that they are accepted.</li>
+<li>Drop packets with bogon addresses.</li>
+<li>Drop packets with invalid source and destination addresses.</li>
+<li>Drop packets from the WAN with a source address that is not globally routable.</li>
+<li>Drop packets from the WAN that are sent to the 192.168.88.0/24 network. This protects the clients if somebody on the WAN side knows the internal network.</li>
+<li>Drop packets from the LAN with a source address that is not in 192.168.88.0/24.</li>
+<li>Drop bad ICMP, UDP and TCP.</li>
+<li>Accept everything else that comes from the WAN and the LAN.</li>
+<li>Accept local traffic between the interfaces of the router.</li>
+<li>Drop everything else, so that an interface that is added later (for example, a PPPoE connection to the service provider) and is not in a list is protected.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If the WAN network of the router uses private addresses, for example behind another router that does NAT or with an ISP that uses carrier-grade NAT (100.64.0.0/10), the rule "drop non global from WAN" drops all packets that come from the addresses of that network, for example the DNS replies of the upstream router. Disable the rule in such a network, or remove the range of the WAN network from the <code>not_global_ipv4</code> list.</p>
+</div>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=prerouting action=accept disabled=yes \
+    comment=&quot;defconf: enable for transparent firewall&quot;
+add chain=prerouting action=accept protocol=udp \
+    src-address=0.0.0.0 src-port=68 \
+    dst-address=255.255.255.255 dst-port=67 in-interface-list=LAN \
+    comment=&quot;defconf: accept DHCP discover&quot;
+add chain=prerouting action=drop src-address-list=bad_ipv4 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop dst-address-list=bad_ipv4 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop src-address-list=bad_src_ipv4 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop dst-address-list=bad_dst_ipv4 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop src-address-list=not_global_ipv4 \
+    in-interface-list=WAN comment=&quot;defconf: drop non global from WAN&quot;
+add chain=prerouting action=drop in-interface-list=WAN \
+    dst-address=192.168.88.0/24 \
+    comment=&quot;defconf: drop forward to local lan from WAN&quot;
+add chain=prerouting action=drop in-interface-list=LAN \
+    src-address=!192.168.88.0/24 \
+    comment=&quot;defconf: drop local if not from default IP range&quot;
+add chain=prerouting action=drop protocol=udp port=0 \
+    comment=&quot;defconf: drop bad UDP&quot;
+add chain=prerouting action=jump jump-target=icmp4 protocol=icmp \
+    comment=&quot;defconf: jump to ICMP chain&quot;
+add chain=prerouting action=jump jump-target=bad_tcp protocol=tcp \
+    comment=&quot;defconf: jump to TCP chain&quot;
+add chain=prerouting action=accept in-interface-list=LAN \
+    comment=&quot;defconf: accept everything else from LAN&quot;
+add chain=prerouting action=accept in-interface-list=WAN \
+    comment=&quot;defconf: accept everything else from WAN&quot;
+add chain=prerouting action=accept src-address-type=local \
+    comment=&quot;defconf: accept local traffic between router interfaces&quot;
+add chain=prerouting action=drop comment=&quot;defconf: drop the rest&quot;
+</code></pre>
+<p>The rules use two more chains. The <code>bad_tcp</code> chain drops TCP packets that are known to be invalid:</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=bad_tcp action=drop protocol=tcp \
+    tcp-flags=!fin,!syn,!rst,!ack comment=&quot;defconf: TCP flag filter&quot;
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=fin,syn \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=fin,rst \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=fin,!ack \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=fin,urg \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=syn,rst \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp tcp-flags=rst,urg \
+    comment=defconf
+add chain=bad_tcp action=drop protocol=tcp port=0 \
+    comment=&quot;defconf: TCP port 0 drop&quot;
+</code></pre>
+<p>The <code>icmp4</code> chain accepts only the listed ICMP types and limits the echo requests and echo replies. Such strict ICMP filtering is for a very strict firewall. In most cases it is not necessary, and it adds load to the CPU of the router.</p>
+<pre><code class="language-ros">/ip/firewall/raw
+add chain=icmp4 action=accept protocol=icmp icmp-options=0:0 \
+    limit=5,10:packet comment=&quot;defconf: echo reply&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=3:0 \
+    comment=&quot;defconf: net unreachable&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=3:1 \
+    comment=&quot;defconf: host unreachable&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=3:2 \
+    comment=&quot;defconf: protocol unreachable&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=3:3 \
+    comment=&quot;defconf: port unreachable&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=3:4 \
+    comment=&quot;defconf: fragmentation needed&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=8:0 \
+    limit=5,10:packet comment=&quot;defconf: echo&quot;
+add chain=icmp4 action=accept protocol=icmp icmp-options=11:0-255 \
+    comment=&quot;defconf: time exceeded&quot;
+add chain=icmp4 action=drop protocol=icmp \
+    comment=&quot;defconf: drop other icmp&quot;
+</code></pre>
+<h3 id="ipv6-address-lists">IPv6 address lists</h3>
+<p>The IPv6 addresses that are dropped at once:</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list
+add list=bad_ipv6 address=::1/128 comment=&quot;defconf: RFC6890 lo&quot;
+add list=bad_ipv6 address=::ffff:0:0/96 \
+    comment=&quot;defconf: RFC6890 IPv4 mapped&quot;
+add list=bad_ipv6 address=2001::/23 comment=&quot;defconf: RFC6890&quot;
+add list=bad_ipv6 address=2001:db8::/32 \
+    comment=&quot;defconf: RFC6890 documentation&quot;
+add list=bad_ipv6 address=2001:10::/28 comment=&quot;defconf: RFC6890 orchid&quot;
+add list=bad_ipv6 address=::/96 comment=&quot;defconf: ipv4 compat&quot;
+</code></pre>
+<p>The IPv6 addresses that are not globally routable:</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list
+add list=not_global_ipv6 address=100::/64 \
+    comment=&quot;defconf: RFC6890 Discard-only&quot;
+add list=not_global_ipv6 address=2001::/32 \
+    comment=&quot;defconf: RFC6890 TEREDO&quot;
+add list=not_global_ipv6 address=2001:2::/48 \
+    comment=&quot;defconf: RFC6890 Benchmark&quot;
+add list=not_global_ipv6 address=fc00::/7 \
+    comment=&quot;defconf: RFC6890 Unique-Local&quot;
+</code></pre>
+<p>The addresses that are invalid as a destination address and as a source address:</p>
+<pre><code class="language-ros">/ipv6/firewall/address-list
+add list=bad_dst_ipv6 address=::/128 comment=&quot;defconf: unspecified&quot;
+add list=bad_src_ipv6 address=::/128 comment=&quot;defconf: unspecified&quot;
+add list=bad_src_ipv6 address=ff00::/8 comment=&quot;defconf: multicast&quot;
+</code></pre>
+<h3 id="ipv6-raw-rules">IPv6 RAW rules</h3>
+<p>The IPv6 RAW rules do the following:</p>
+<ul>
+<li>A disabled accept rule at the start. Enable it to switch the RAW filtering off without disabling all RAW rules.</li>
+<li>Accept the neighbor solicitation that a host sends from the unspecified address to check that its address is not in use.</li>
+<li>Drop packets with bogon addresses.</li>
+<li>Drop packets with invalid source and destination addresses.</li>
+<li>Drop packets from the WAN with a source address that is not globally routable.</li>
+<li>Drop bad ICMPv6.</li>
+<li>Accept the link-local multicast scope and drop other multicast destinations.</li>
+<li>Accept everything else that comes from the WAN and the LAN.</li>
+<li>Drop everything else, so that an interface that is added later (for example, a PPPoE connection to the service provider) and is not in a list is protected.</li>
+</ul>
+<pre><code class="language-ros">/ipv6/firewall/raw
+add chain=prerouting action=accept disabled=yes \
+    comment=&quot;defconf: enable for transparent firewall&quot;
+add chain=prerouting action=accept protocol=icmpv6 \
+    icmp-options=135 src-address=::/128 \
+    dst-address=ff02:0:0:0:0:1:ff00::/104 \
+    comment=&quot;defconf: RFC4291, section 2.7.1&quot;
+add chain=prerouting action=drop src-address-list=bad_ipv6 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop dst-address-list=bad_ipv6 \
+    comment=&quot;defconf: drop bogon IP's&quot;
+add chain=prerouting action=drop src-address-list=bad_src_ipv6 \
+    comment=&quot;defconf: drop packets with bad SRC ipv6&quot;
+add chain=prerouting action=drop dst-address-list=bad_dst_ipv6 \
+    comment=&quot;defconf: drop packets with bad dst ipv6&quot;
+add chain=prerouting action=drop src-address-list=not_global_ipv6 \
+    in-interface-list=WAN comment=&quot;defconf: drop non global from WAN&quot;
+add chain=prerouting action=jump jump-target=icmp6 protocol=icmpv6 \
+    comment=&quot;defconf: jump to ICMPv6 chain&quot;
+add chain=prerouting action=accept dst-address=ff02::/16 \
+    comment=&quot;defconf: accept local multicast scope&quot;
+add chain=prerouting action=drop dst-address=ff00::/8 \
+    comment=&quot;defconf: drop other multicast destinations&quot;
+add chain=prerouting action=accept in-interface-list=WAN \
+    comment=&quot;defconf: accept everything else from WAN&quot;
+add chain=prerouting action=accept in-interface-list=LAN \
+    comment=&quot;defconf: accept everything else from LAN&quot;
+add chain=prerouting action=drop comment=&quot;defconf: drop the rest&quot;
+</code></pre>
+<p>The <code>icmp6</code> chain is as strict as the <code>icmp4</code> chain: in most cases it is not necessary, and it adds load to the CPU of the router. The first rule of the chain drops ICMPv6 packets to link-local addresses with a hop limit other than 255. Operating systems send packets with different default hop limits, so this rule also drops a ping to the link-local address of the router when the sender does not use 255. Neighbor solicitations, neighbor advertisements and router advertisements are accepted on every interface, because the router needs them to reach its neighbors on the WAN side too. Router solicitations and inverse neighbor discovery are accepted only from the LAN.</p>
+<pre><code class="language-ros">/ipv6/firewall/raw
+add chain=icmp6 action=drop protocol=icmpv6 dst-address=fe80::/10 \
+    hop-limit=not-equal:255 \
+    comment=&quot;defconf: rfc4890 drop ll if hop-limit!=255&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=1:0-255 \
+    comment=&quot;defconf: dst unreachable&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=2:0-255 \
+    comment=&quot;defconf: packet too big&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=3:0-1 \
+    comment=&quot;defconf: limit exceeded&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=4:0-2 \
+    comment=&quot;defconf: bad header&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=144:0-255 \
+    comment=&quot;defconf: Mobile home agent address discovery&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=145:0-255 \
+    comment=&quot;defconf: Mobile home agent address discovery&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=146:0-255 \
+    comment=&quot;defconf: Mobile prefix solic&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=147:0-255 \
+    comment=&quot;defconf: Mobile prefix advert&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=128:0-255 \
+    limit=5,10:packet comment=&quot;defconf: echo request limit 5,10&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=129:0-255 \
+    limit=5,10:packet comment=&quot;defconf: echo reply limit 5,10&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=133:0-255 \
+    hop-limit=equal:255 in-interface-list=LAN limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 router solic limit 5,10 only LAN&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=134:0-255 \
+    hop-limit=equal:255 limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 router advert limit 5,10&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=135:0-255 \
+    hop-limit=equal:255 limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 neighbor solic limit 5,10&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=136:0-255 \
+    hop-limit=equal:255 limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 neighbor advert limit 5,10&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=141:0-255 \
+    hop-limit=equal:255 in-interface-list=LAN limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 inverse ND solic limit 5,10 only LAN&quot;
+add chain=icmp6 action=accept protocol=icmpv6 icmp-options=142:0-255 \
+    hop-limit=equal:255 in-interface-list=LAN limit=5,10:packet \
+    comment=&quot;defconf: rfc4890 inverse ND advert limit 5,10 only LAN&quot;
+add chain=icmp6 action=drop protocol=icmpv6 \
+    comment=&quot;defconf: drop other icmp&quot;
+</code></pre>
+<h2 id="check-the-firewall">Check the firewall</h2>
+<p>The counters of the drop rules show what the firewall stops. In this output, a host on the WAN side has sent packets with a private source address to the router, and packets to an address of the LAN network:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/raw/print stats where action=drop and packets&gt;0
+Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN       ACTION  BYTES  PACKETS
+;;; defconf: drop non global from WAN
+0 prerouting  drop      168        3
+;;; defconf: drop forward to local lan from WAN
+1 prerouting  drop      168        3
+</code></pre>
+<p><code>/ip/firewall/filter/print stats</code>, <code>/ipv6/firewall/raw/print stats</code> and <code>/ipv6/firewall/filter/print stats</code> show the counters of the other tables. Check also that a LAN device reaches the Internet, and that the router does not answer a connection to its management ports from the WAN side.</p>
+<p>If the RAW rules stop traffic that you need, enable the first RAW rule. It accepts every packet, so the other RAW rules are not used, and the filter rules still protect the router and the clients. The IPv6 RAW table has its own rule with the same comment.</p>
+<pre><code class="language-ros">/ip/firewall/raw
+enable [find comment=&quot;defconf: enable for transparent firewall&quot;]
+</code></pre>
+<p>What the rules mean for normal traffic:</p>
+<ul>
+<li>The echo rules of the <code>icmp4</code> and <code>icmp6</code> chains limit all echo requests and all echo replies that the router receives, also the forwarded ones, to 5 packets per second with a burst of 10. A ping with a short interval, or pings from several devices at the same time, lose packets. The limit is shared by all senders, also by the pings that the router sends itself, for example to check a gateway.</li>
+<li>IPv6 hosts in the LAN answer pings from the WAN side, because the forward chain accepts ICMPv6. It also accepts IKE, AH, ESP and HIP to the LAN hosts. Other new connections from the WAN side to the LAN hosts are dropped.</li>
+</ul>
+<hr />
+<h1 id="connection-rate">Connection rate</h1>
+<blockquote>
+<p>Connection Rate is a MikroTik RouterOS firewall feature that monitors and filters traffic based on connection speed, using 'connection-bytes' and 'connection-rate' to detect high-speed connections for prioritization...</p>
+</blockquote>
+<h1 id="connection-rate_1">Connection rate</h1>
+<p>Connection rate is a firewall matcher that selects packets by the present speed of their connection. Together with the <code>connection-bytes</code> matcher it finds the connections that transfer a lot of data at a high rate, for example to give them a lower priority.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>Each entry in the <a href="../connection-tracking">connection tracking</a> table represents bidirectional communication. Every time a packet is associated with an entry, the size of the packet (including the IP header) is added to the byte counter of the entry. The <code>connection-bytes</code> matcher compares this counter, so it includes both directions, upload and download.</p>
+<p>The <code>connection-rate</code> matcher compares the present rate of the connection, in bits per second. It is the rate of both directions together. The connection table shows the rate of each direction as <code>orig-rate</code> and <code>repl-rate</code> in <code>/ip/firewall/connection/print detail</code>.</p>
+<p>Both matchers take a range:</p>
+<ul>
+<li><code>connection-rate=From-To</code>, for example <code>connection-rate=0-100k</code>. The values are from 0 to 4294967295, and the <code>k</code> and <code>M</code> suffixes are accepted. <code>!</code> before the range inverts the match.</li>
+<li><code>connection-bytes=From-To</code>, for example <code>connection-bytes=500000-0</code>.</li>
+</ul>
+<p>In both matchers, <code>0</code> as the second value means no upper limit.</p>
+<h3 id="rule-example">Rule example</h3>
+<p>These rules count the TCP and UDP packets that go through the router and belong to a connection with a rate below 100 kbit/s:</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=passthrough protocol=tcp \
+    connection-rate=0-100k comment=&quot;slow TCP&quot;
+add chain=forward action=passthrough protocol=udp \
+    connection-rate=0-100k comment=&quot;slow UDP&quot;
+</code></pre>
+<p><code>/ip/firewall/mangle/print stats</code> shows the counters of the rules.</p>
+<h2 id="application-example-traffic-prioritization">Application example: traffic prioritization</h2>
+<p>A common use of the connection rate is to detect heavy connections and give them a lower priority. Heavy connections keep a fast rate for a long time, for example downloads. All other traffic, which usually includes VoIP, web browsing and online gaming, then gets priority.</p>
+<p>The method of this example can be used together with other ways to detect and prioritize traffic. <code>connection-rate</code> alone also matches a short peak, so the example needs a margin that identifies heavy connections. If a normal web browsing connection is shorter than 500 kB (4 Mb) and VoIP needs no more than 200 kbit/s, then every connection that still has more than 200 kbit/s after its first 500 kB can be assumed to be heavy.</p>
+<p>Your network can have other values of <code>connection-bytes</code> for web browsing and of <code>connection-rate</code> for VoIP. Measure them before you use this example.</p>
+<p>The example assumes a 6 Mbit/s upload and download connection to the ISP. For another connection, set <code>max-limit</code> of the <code>upload</code> and <code>download</code> queues to its rate and keep the sum of the two <code>limit-at</code> values of each direction within <code>max-limit</code>. The rules mark IPv4 traffic. <code>ether1</code> is the WAN interface and <code>bridge</code> is the LAN interface, as in the default configuration.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The queues of this example select traffic by packet marks. Mangle rules do not process FastTracked packets, and the default configuration FastTracks established connections. This example marks every forwarded connection, so disable the FastTrack rule first, see <a href="../queues/simple-queue#before-you-start-fasttrack">Before you start: FastTrack</a>.</p>
+</div>
+<h3 id="mark-the-connections-and-packets">Mark the connections and packets</h3>
+<p>The mangle rules separate all connections into two groups and then mark the packets of each group. The traffic is client traffic, so the rules are in the forward chain.</p>
+<p>When a heavy connection has a lower priority and the queue reaches its <code>max-limit</code>, the heavy connection slows down, and its connection rate becomes lower. A rule that looks only at the rate then moves the connection back to the higher priority, the connection gets more traffic for a short while, its rate rises, and the priority changes again. To avoid this, a connection that is detected as heavy keeps its mark.</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=forward action=mark-connection \
+    new-connection-mark=all_conn connection-mark=no-mark
+add chain=forward action=mark-connection protocol=tcp \
+    new-connection-mark=heavy_traffic_conn connection-mark=all_conn \
+    connection-bytes=500000-0 connection-rate=200k-0
+add chain=forward action=mark-connection protocol=udp \
+    new-connection-mark=heavy_traffic_conn connection-mark=all_conn \
+    connection-bytes=500000-0 connection-rate=200k-0
+add chain=forward action=mark-packet new-packet-mark=heavy_traffic \
+    connection-mark=heavy_traffic_conn passthrough=no
+add chain=forward action=mark-packet new-packet-mark=other_traffic \
+    connection-mark=all_conn passthrough=no
+</code></pre>
+<ul>
+<li>The first rule marks every connection that has no connection mark yet with <code>all_conn</code>. A connection that is marked as heavy keeps its mark, because the rule matches only <code>no-mark</code>.</li>
+<li>The second and third rules mark the heavy TCP and UDP connections: a connection with the <code>all_conn</code> mark that has transferred more than 500 kB and has a rate above 200 kbit/s. Connections of other protocols stay in the <code>all_conn</code> group.</li>
+<li>The last two rules mark the packets of the two groups.</li>
+</ul>
+<h3 id="queue-the-traffic">Queue the traffic</h3>
+<p>The queue tree is attached to the interfaces. The <code>other</code> queues have the higher priority and a guaranteed 4 Mbit/s, and the <code>heavy</code> queues are guaranteed 2 Mbit/s. See <a href="../queues/htb-hierarchical-token-bucket">HTB</a> for <code>limit-at</code>, <code>max-limit</code> and <code>priority</code>.</p>
+<pre><code class="language-ros">/queue/tree
+add name=upload parent=ether1 max-limit=6M
+add name=other_upload parent=upload packet-mark=other_traffic \
+    limit-at=4M max-limit=6M priority=1
+add name=heavy_upload parent=upload packet-mark=heavy_traffic \
+    limit-at=2M max-limit=6M priority=8
+add name=download parent=bridge max-limit=6M
+add name=other_download parent=download packet-mark=other_traffic \
+    limit-at=4M max-limit=6M priority=1
+add name=heavy_download parent=download packet-mark=heavy_traffic \
+    limit-at=2M max-limit=6M priority=8
+</code></pre>
+<p>If the router has more than one WAN or more than one LAN interface, mark upload and download with different packet marks and attach the queues to <code>parent=global</code>, see <a href="../queues/queue-tree">Queue tree</a>.</p>
+<h3 id="check-that-it-works">Check that it works</h3>
+<p>Start a large upload from a LAN device. After its first 500 kB, the connection has the <code>heavy_traffic_conn</code> mark:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/connection/print where connection-mark=heavy_traffic_conn
+Flags: S - SEEN-REPLY; A - ASSURED; C - CONFIRMED; s - SRCNAT
+Columns: PROTOCOL, SRC-ADDRESS, SRC-PORT, DST-ADDRESS, DST-PORT, TCP-STATE, 
+         TIMEOUT, ORIG-RATE
+#      PRO  SRC-ADDRESS     SRC-P  DST-ADDR  DST-  TCP-STATE    TIMEO  ORIG-RA
+0 SACs tcp  192.168.88.101  46326  11.0.0.2  2000  established  4m59s  5.8Mbps
+</code></pre>
+<p>The queue statistics show the <code>rate</code> of each queue in bits per second. The upload goes through <code>heavy_upload</code>. Other traffic, in this output a 100 kbit/s stream, goes through <code>other_upload</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/tree/print stats proplist=name,rate,dropped
+0  name=&quot;upload&quot; rate=5629904 dropped=0
+
+1  name=&quot;other_upload&quot; rate=101072 dropped=1403
+
+2  name=&quot;heavy_upload&quot; rate=5528832 dropped=1922
+
+3  name=&quot;download&quot; rate=34576 dropped=0
+
+4  name=&quot;other_download&quot; rate=1152 dropped=1354
+
+5  name=&quot;heavy_download&quot; rate=36552 dropped=608
+</code></pre>
+<hr />
+<h1 id="ddos-protection">DDoS protection</h1>
+<blockquote>
+<p>Limit denial-of-service attacks with RouterOS firewall rules: count new connections per source and destination with dst-limit, put pairs that exceed the rate on address lists and drop them in the raw table. Covers...</p>
+</blockquote>
+<h1 id="ddos-protection_1">DDoS protection</h1>
+<p>A denial-of-service (DoS) or distributed denial-of-service (DDoS) attack is a malicious attempt to disrupt the regular traffic of a targeted server, service, or network by overwhelming the target or its surrounding infrastructure with a flood of Internet traffic. DDoS attacks come in several types, for example HTTP floods, SYN floods and DNS amplification.</p>
+<p><em>[gambar: Diagram of a DDoS attack: an attacker controls a botnet of several computers, and all of them send traffic through the gateway to one victim server]</em></p>
+<p>The firewall rules on this page count the new connections between each source and destination address. When a pair opens connections faster than the configured rate, both addresses go on address lists, and a rule in the raw table drops the traffic between them before connection tracking, so the flood costs the router as little as possible.</p>
+<p>No rule on the router can help against an attack that fills the internet connection itself: the traffic has already used the bandwidth when it arrives. Such an attack has to be filtered upstream, by your ISP.</p>
+<p>These rules add to a properly configured firewall; they do not replace it. See <a href="../../getting-started/securing-your-router">Securing your router</a> for the basics.</p>
+<h2 id="detect-and-drop-connection-floods">Detect and drop connection floods</h2>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=jump jump-target=detect-ddos \
+    connection-state=new
+add chain=detect-ddos action=return \
+    dst-limit=32,32,src-and-dst-addresses/10s
+add chain=detect-ddos action=add-dst-to-address-list \
+    address-list=ddos-targets address-list-timeout=10m
+add chain=detect-ddos action=add-src-to-address-list \
+    address-list=ddos-attackers address-list-timeout=10m
+/ip/firewall/raw
+add chain=prerouting action=drop \
+    src-address-list=ddos-attackers dst-address-list=ddos-targets
+</code></pre>
+<p>The address lists do not have to exist beforehand: RouterOS creates <code>ddos-attackers</code> and <code>ddos-targets</code> when the rules add the first entry.</p>
+<p>On a router with the default configuration, you can append the jump rule to the end of the forward chain. Established connections are accepted earlier in the chain, so only new connections reach it: connections from the LAN, and connections from the internet that a destination NAT rule forwards to a host behind the router.</p>
+<p>For such port-forwarded services, the raw rule does not match. The <a href="../firewall/raw">RAW</a> table handles packets before destination NAT, so it sees the router's public address as the destination, while <code>ddos-targets</code> holds the address of the host behind the router. To drop those floods as well, add a filter rule that drops the listed pairs after NAT, before the default fasttrack rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=forward action=drop \
+    src-address-list=ddos-attackers dst-address-list=ddos-targets \
+    comment=&quot;drop DDoS pairs after destination NAT&quot; \
+    place-before=[find comment=&quot;defconf: fasttrack&quot;]
+</code></pre>
+<h3 id="how-the-detection-works">How the detection works</h3>
+<ol>
+<li>The first rule sends every new connection that passes through the router to the <code>detect-ddos</code> chain.</li>
+<li>The <code>return</code> rule sends the connection back to the forward chain as long as the pair stays within the limit of <code>dst-limit=32,32,src-and-dst-addresses/10s</code>. The format is <code>rate[/time],burst,mode[/expire]</code>:
+   - <code>32</code> - The rate: 32 new connections per second (the time interval defaults to one second).
+   - <code>32</code> - The burst: a pair can open 32 connections without waiting; the allowance recharges at the rate, up to the burst.
+   - <code>src-and-dst-addresses</code> - Each source and destination address pair is counted separately.
+   - <code>10s</code> - A pair that sends nothing for 10 seconds is forgotten.</li>
+<li>When a pair exceeds the limit, the <code>return</code> rule no longer matches. The next two rules add the destination to <code>ddos-targets</code> and the source to <code>ddos-attackers</code>, both for 10 minutes.</li>
+<li>The raw rule drops all traffic from any listed attacker towards any listed target until the entries expire. For a port-forwarded target, the filter rule from the previous section drops it instead.</li>
+</ol>
+<p>With these rules, one source that opens new connections to one destination as fast as it can gets slightly more than 32 connections through: the burst plus the connections the rate allows during the burst. The next connection puts both addresses on the lists, and from then on the raw rule drops all traffic between them.</p>
+<h3 id="limits-of-the-detection">Limits of the detection</h3>
+<ul>
+<li>The rate is counted per source and destination pair. An attack from many sources that each stay below 32 new connections per second is not detected.</li>
+<li>A busy legitimate client, for example a proxy or the NAT gateway of an office, can exceed 32 new connections per second towards one server. Raise the rate, or accept connections from such addresses before the jump rule.</li>
+<li>The rules watch forwarded traffic only (<code>chain=forward</code>). To watch connections to the router itself as well, add the same jump rule to the input chain:</li>
+</ul>
+<p><code>ros
+  /ip/firewall/filter/add chain=input action=jump \
+      jump-target=detect-ddos connection-state=new</code></p>
+<h3 id="check-and-unblock_1">Check and unblock</h3>
+<p>List the detected pairs with the time left for each entry, and see how many packets the raw rule (and, for port-forwarded services, the filter rule) dropped:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/print where list~&quot;^ddos-&quot;
+/ip/firewall/raw/print stats
+/ip/firewall/filter/print stats where comment~&quot;DDoS pairs&quot;
+</code></pre>
+<p>To release an address that was listed by mistake, remove its entries from both lists:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/remove \
+    [find list~&quot;^ddos-&quot; address=198.51.100.7]
+</code></pre>
+<h2 id="protect-against-syn-floods">Protect against SYN floods</h2>
+<p>A SYN flood is a form of DoS attack in which an attacker sends a succession of SYN requests to a target's system in an attempt to consume enough server resources to make the system unresponsive to legitimate traffic. For the router's own TCP services, turn on TCP SYN cookies (the default is <code>no</code>):</p>
+<pre><code class="language-ros">/ip/settings/set tcp-syncookies=yes
+</code></pre>
+<p>RouterOS then sends SYN cookies when the SYN backlog queue of a socket overflows. A SYN cookie is a SYN-ACK packet that contains a small cryptographic hash, which the responding client echoes back in its ACK packet. If the router does not see this cookie in the reply packet, it treats the connection as bogus and drops it. SYN cookies prevent the use of TCP extensions, which can degrade some services, for example SMTP relaying.</p>
+<h2 id="syn-ack-floods">SYN-ACK floods</h2>
+<p>A SYN-ACK flood is an attack method that involves sending a target server spoofed SYN-ACK packets at a high rate. The server requires significant resources to process such packets out-of-order (outside the usual SYN, SYN-ACK, ACK TCP three-way handshake). It can become so busy handling the attack traffic that it cannot handle legitimate traffic, and the attackers achieve a DoS/DDoS condition.</p>
+<p>A SYN-ACK that belongs to no tracked connection has <code>connection-state=invalid</code>, also with <code>loose-tcp-tracking=yes</code>, the default. Such packets never reach the <code>detect-ddos</code> chain, which only sees new connections. The default configuration drops invalid packets in the input and forward chains; keep those rules to stop SYN-ACK floods.</p>
+<h2 id="related-topics_1">Related topics</h2>
+<ul>
+<li><a href="bruteforce-prevention">SSH brute-force protection</a> uses address lists in the same way to protect the router's own SSH service against password guessing.</li>
+<li><a href="port-knocking">Port knocking</a> keeps management ports closed until a client sends the right sequence of connection attempts.</li>
+<li><a href="../connection-tracking">Connection tracking</a> explains the connection states the rules match on.</li>
+</ul>
+<p>For all rule properties, see <a href="../../cli-reference/ip/firewall/filter/"><code>/ip/firewall/filter</code></a>, <a href="../../cli-reference/ip/firewall/raw/"><code>/ip/firewall/raw</code></a> and <a href="../../cli-reference/ip/settings"><code>/ip/settings</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="port-knocking">Port knocking</h1>
+<blockquote>
+<p>Port knocking keeps the management ports of a RouterOS router closed until a client connects to a secret sequence of ports; the firewall then adds the client to a trusted address list. Covers the knock rules in the...</p>
+</blockquote>
+<h1 id="port-knocking_1">Port knocking</h1>
+<p>Every public IP address is scanned constantly, by bots and by services such as Shodan, and anyone can use the results to try brute-force attacks or known exploits against the open ports. Port knocking keeps the ports closed instead: the router only watches for connection attempts to a secret sequence of ports. A client that knocks on the right ports in the right order is added to the <code>secured</code> address list, and the firewall accepts its connections.</p>
+<p>A typical use is a router at a remote site that you manage from changing addresses, where a fixed list of allowed source addresses does not work.</p>
+<p>Port knocking is an extra layer, not a replacement for real authentication. Knocks are plain packets, and anyone who can observe the traffic between you and the router can repeat them. You should reach management services through a VPN such as <a href="../../virtual-private-networks/wireguard">WireGuard</a> where you can; see <a href="../../getting-started/securing-your-router">Securing your router</a> for the other measures.</p>
+<h2 id="open-access-with-a-knock-sequence">Open access with a knock sequence</h2>
+<p>The example assumes the default configuration: the internet-facing interfaces are in the <code>WAN</code> interface list, and the input chain ends with the rule <code>defconf: drop all not coming from LAN</code>. The knock rules must come before that rule, otherwise knocks from the WAN side never reach them; <code>place-before</code> puts each rule there:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=888 in-interface-list=WAN \
+    address-list=888 address-list-timeout=30s \
+    comment=&quot;Port knocking: first knock&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=555 in-interface-list=WAN \
+    src-address-list=888 address-list=555 address-list-timeout=30s \
+    comment=&quot;Port knocking: second knock&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=222 in-interface-list=WAN \
+    src-address-list=555 address-list=secured address-list-timeout=30m \
+    comment=&quot;Port knocking: last knock&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept \
+    in-interface-list=WAN src-address-list=secured \
+    comment=&quot;Port knocking: accept knocked clients&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>How the rules work:</p>
+<ul>
+<li>The first knock, a connection attempt to TCP port 888, adds the source address to the <code>888</code> list for 30 seconds.</li>
+<li>The second knock, to port 555, counts only from an address on the <code>888</code> list, and adds it to the <code>555</code> list. You can chain as many knocks as you like in the same way: each rule requires the list of the previous knock.</li>
+<li>The last knock, to port 222, moves the address to the <code>secured</code> list for 30 minutes.</li>
+<li>The <code>accept</code> rule accepts all input from addresses on the <code>secured</code> list. To open only the management ports, add <code>protocol=tcp dst-port=22,8291</code> to it.</li>
+<li>Knocks in the wrong order do not grant access: a knock counts only when the address is already on the list of the previous knock.</li>
+<li>A session opened while the address is on the <code>secured</code> list stays open after the entry expires, because the default configuration accepts established connections earlier in the chain. New connections need a new knock sequence.</li>
+</ul>
+<h2 id="knock-from-a-client">Knock from a client</h2>
+<p>A dedicated port-knocking client works, but a shell one-liner with <code>nmap</code> does the job. Each <code>nmap</code> run sends a connection attempt to one port; the whole sequence takes a few seconds:</p>
+<pre><code class="language-bash">for x in 888 555 222; do nmap -p $x -Pn 203.0.113.1; done
+</code></pre>
+<p>Replace <code>203.0.113.1</code> with the public address of your router. The ports show as closed or filtered in the <code>nmap</code> output, depending on your firewall; that is expected, because nothing listens on them. After the last knock, connect to the router as usual within 30 minutes.</p>
+<h2 id="add-a-blacklist">Add a blacklist</h2>
+<p>A port scan that happens to hit the knock ports in the right order opens the router, and with only a few knocks that is not unlikely. A blacklist stops scanners before they get that far. The following rules are added disabled, so that you cannot lock yourself out while you add them:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=drop \
+    in-interface-list=WAN src-address-list=blacklist \
+    comment=&quot;Port knocking: drop blacklisted&quot; disabled=yes \
+    place-before=([find chain=input]-&gt;0)
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=666 in-interface-list=WAN \
+    address-list=blacklist address-list-timeout=1000m \
+    comment=&quot;Port knocking: bad port&quot; disabled=yes \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=add-src-to-address-list \
+    protocol=tcp dst-port=21,22,23,8291,10000-60000 \
+    in-interface-list=WAN src-address-list=!secured \
+    address-list=blacklist address-list-timeout=1m \
+    comment=&quot;Port knocking: slow down scans&quot; disabled=yes \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<ul>
+<li>The drop rule goes before the first rule of the input chain (<code>place-before=([find chain=input]-&gt;0)</code>), so a blacklisted address cannot knock or connect at all. Refer to rules with <code>find</code> in pasted commands: a plain number such as <code>place-before=0</code> works only after a <code>print</code> in the same session, and otherwise fails with <code>item referred by 'place-before' does not exist</code>.</li>
+<li>A bad port is one that a trusted user never uses. Any connection attempt to it puts the source on the blacklist for 1000 minutes.</li>
+<li>The second rule slows port scans down until they are pointless, without locking out a real user for long: a connection attempt to one of the listed ports puts the source on the blacklist for one minute. The list can hold every port apart from the knock ports. It skips addresses on the <code>secured</code> list, so after a successful knock you can use these ports.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>You can block yourself. When the rules are enabled, connecting to SSH or WinBox before you knock puts your own address on the blacklist for a minute, and your knocks are dropped during that time. A client that was blocked keeps retrying its connection for a while, and each retry can renew the entry: wait a minute after a blocked attempt before you knock again. Enable the rules only when you have another way to reach the router, or in <a href="../../getting-started/configuration-management/#work-safely-with-safe-mode">Safe Mode</a>.</p>
+</div>
+<p>When you are ready, enable the rules:</p>
+<pre><code class="language-ros">/ip/firewall/filter/enable [find comment~&quot;^Port knocking&quot;]
+</code></pre>
+<h2 id="use-a-passphrase-for-each-knock">Use a passphrase for each knock</h2>
+<p>You can go further and require a passphrase with a knock. A layer 7 protocol entry matches the passphrase in the packet payload, and a UDP knock rule requires it. Use the UDP rule instead of the first TCP knock:</p>
+<pre><code class="language-ros">/ip/firewall/layer7-protocol/add name=pass regexp=&quot;^passphrase\$&quot;
+/ip/firewall/filter/add chain=input action=add-src-to-address-list \
+    protocol=udp dst-port=888 in-interface-list=WAN \
+    layer7-protocol=pass address-list=888 address-list-timeout=30s \
+    comment=&quot;Port knocking: first knock with passphrase&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+/ip/firewall/filter/remove [find comment=&quot;Port knocking: first knock&quot;]
+</code></pre>
+<p>The <code>$</code> in the regular expression must be escaped as <code>\$</code>, otherwise RouterOS reads it as the start of a variable name; the stored expression is <code>^passphrase$</code>. The expression matches only the exact payload: a wrong passphrase or a trailing newline does not count. Send the passphrase without a newline, with <code>printf</code> or <code>echo -n</code>, then knock on the other ports:</p>
+<pre><code class="language-bash">printf 'passphrase' | nc -u -w1 203.0.113.1 888
+for x in 555 222; do nmap -p $x -Pn 203.0.113.1; done
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Layer 7 rules are very resource-intensive. Do not use them unless you know what you are doing.</p>
+</div>
+<h2 id="check-the-lists">Check the lists</h2>
+<p>See which addresses are in the middle of a knock sequence, which are trusted and which are blocked, with the time left for each entry:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/print \
+    where list~&quot;^(888|555|secured|blacklist)\$&quot;
+</code></pre>
+<p>To unblock an address, remove it from the blacklist:</p>
+<pre><code class="language-ros">/ip/firewall/address-list/remove \
+    [find list=blacklist address=203.0.113.10]
+</code></pre>
+<h2 id="ipv6_1">IPv6</h2>
+<p>These rules apply to IPv4. When the router is reachable over IPv6, add the TCP knock rules to <code>/ipv6/firewall/filter</code> in the same way, before the rule that drops IPv6 input from outside the LAN.</p>
+<h2 id="related-topics_2">Related topics</h2>
+<ul>
+<li><a href="bruteforce-prevention">SSH brute-force protection</a> limits repeated SSH connections from one address and uses the same <code>secured</code> list to exempt clients that knocked correctly.</li>
+<li><a href="ddos-protection">DDoS protection</a> detects floods of new connections towards hosts behind the router.</li>
+</ul>
+<p>For all rule properties, see <a href="../../cli-reference/ip/firewall/filter/"><code>/ip/firewall/filter</code></a>, <a href="../../cli-reference/ip/firewall/address-list"><code>/ip/firewall/address-list</code></a> and <a href="../../cli-reference/ip/firewall/layer7-protocol"><code>/ip/firewall/layer7-protocol</code></a> in the CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

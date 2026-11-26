@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMR · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Management Tools</p>
+      <h1 id="cmr">CMR</h1>
+<h1 id="cmr_1">CMR</h1>
+<blockquote>
+<p>CMR is the centralized monitoring platform for fleets of RouterOS devices. It allows for the fleet-wide updates, monitoring and alert management.</p>
+</blockquote>
+<h1 id="cmr_2">CMR</h1>
+<p>CMR is a centralized monitoring platform for fleets of RouterOS devices, allowing updates, monitoring, and alert management across the whole fleet.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The <code>cmr</code> <a href="../../getting-started/installation-and-upgrade/packages#extra-packages">package</a> is supported only on devices with the <strong>arm</strong>, <strong>arm64</strong>, and <strong>x86</strong> architectures. The CMR client is part of RouterOS, so every device can be a CMR client, except devices with the <strong>smips</strong> and <strong>powerpc</strong> architectures.</p>
+</div>
+<h2 id="overview">Overview</h2>
+<p>CMR manages a fleet of RouterOS devices from one of them. One device runs the CMR server, and the other devices connect to it as CMR clients. From the server you see the state of the whole fleet, upgrade it, receive alerts, run commands on many devices at once, draw network maps, and provision WiFi networks and VLAN ports.</p>
+<h3 id="what-cmr-does">What CMR does</h3>
+<ul>
+<li><strong>Device inventory</strong> - lists every client with its identity, board, RouterOS version, installed packages, connection state, and labels.</li>
+<li><strong>Fleet upgrades</strong> - upgrades groups of devices by rules: a channel or a pinned version, a schedule, an order of device groups, and a failure policy. Packages come from the MikroTik update servers or from a directory on the server.</li>
+<li><strong>Alerts</strong> - watches resource usage, health sensors, availability, upgrades, interfaces, and log lines, and writes a log message, runs a script, or calls a webhook when a condition is met.</li>
+<li><strong>Commands on many devices</strong> - runs a script on the selected devices and shows the output of each, and reboots, upgrades, or pairs devices.</li>
+<li><strong>Dashboard</strong> - shows a live summary of the selected devices: connection state, resource usage, interfaces, traffic, and WiFi clients.</li>
+<li><strong>Network topology</strong> - draws maps of the network, with links between devices built from neighbor and port data. The map is shown in the GUI.</li>
+<li><strong>Application traffic</strong> - collects statistics of the applications that pass through the selected routers, usually the gateway.</li>
+<li><strong>WiFi provisioning</strong> - defines WiFi networks and radio settings once and applies them to the selected access points, also per band.</li>
+<li><strong>VLAN provisioning</strong> - puts selected ports of the clients into VLANs as access or trunk ports.</li>
+</ul>
+<h3 id="what-cmr-does-not-do">What CMR does not do</h3>
+<ul>
+<li>CMR does not configure IP addresses, DHCP, routing, firewall, users, or other device settings. Configure them on the device with WinBox, WebFig, or the CLI. For a one-off change on many devices, use <code>run-script</code>.</li>
+<li>CMR does not edit or adopt the existing configuration of a device. It creates its own configuration objects next to it, and they take over where they overlap, for example a WiFi radio or a bridge port. VLAN provisioning adds its ports and VLAN entries to the existing bridge of a device and leaves the bridge and the rest of its configuration as they are.</li>
+<li>CMR WiFi writes the configuration to each access point. It does not coordinate roaming between access points or act as a central authentication server.</li>
+</ul>
+<h3 id="how-it-works">How it works</h3>
+<ul>
+<li>The server runs on a device with the <code>cmr</code> package. The client is part of RouterOS, so every device can be a client, except devices with the <strong>smips</strong> and <strong>powerpc</strong> architectures.</li>
+<li>A client finds the server through neighbor discovery (MNDP) or DNS, or connects to the addresses set in <code>controller-addresses</code>. For DNS, the client resolves <code>_cmr._tcp.lan</code> and <code>_cmr._tcp.&lt;domain&gt;</code>, where <code>&lt;domain&gt;</code> is the domain name it receives from DHCP (option 15, <code>domain-name</code>). The server does not need to be the gateway, and clients can connect across routed networks, including through NAT or a VPN.</li>
+<li>Both devices must agree before a client is managed. This is called pairing. After pairing, the server collects status data from the client and sends it configuration, for example WiFi networks.</li>
+<li>The configuration that CMR sends is stored on the client as managed objects, marked with the <strong>Y</strong> flag. They cannot be changed on the client, and they stay in effect when the server is unreachable. Disabling the client removes them.</li>
+<li>Use WinBox 4 or WebFig for the CMR menus. WinBox 3 does not support them.</li>
+</ul>
+<p>CMR works best with devices that run their default configuration, or a configuration close to it, for example devices taken out of the box. CMR does not adapt its objects to custom bridge, VLAN, or WiFi setups, so devices with extensive non-standard configuration can need manual adjustments before CMR provisioning works as expected.</p>
+<h3 id="getting-started">Getting started</h3>
+<ol>
+<li>Install the <code>cmr</code> package on the device that will be the server, and enable the server with <code>/cmr set enabled=yes</code>.</li>
+<li>On each device to manage, enable the client with <code>/cmr/client set enabled=yes</code>. Add <code>controller-addresses</code> if the client cannot discover the server by itself.</li>
+<li>Approve the pairing. In the default configuration the server waits for approval: the new devices are listed in <code>/cmr/device</code> with the <strong>P</strong> flag until you run <code>pair</code> for them. The Pairing section describes the options.</li>
+<li>Assign labels to the devices, for example by site and by role, so that rules can select groups of devices.</li>
+<li>Create upgrade rules and alert rules for the labels.</li>
+</ol>
+<p>The <a href="../../cli-reference/cmr"><code>CMR CLI Reference</code></a> provides detailed descriptions for every parameter and command in the <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu on the server. The <a href="./client"><code>CMR-Client</code></a> guide describes the client side, and the <a href="../../cli-reference/cmr/client"><code>CMR-Client CLI Reference</code></a> provides detailed descriptions for every parameter and command in the <a href="../../cli-reference/cmr/client"><code>/cmr/client</code></a> menu on the managed devices.</p>
+<p>The CMR server is configured from the <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu.</p>
+<h2 id="enable-the-cmr-server">Enable the CMR server</h2>
+<p>CMR clients connect to the server over TCP port <code>54321</code>. Allow incoming connections from the clients to this port in the server's firewall (<code>input</code> chain), and allow this traffic through any firewalls between the clients and the server.</p>
+<p>Enable the server:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr set enabled=yes
+</code></pre>
+<p>After you enable the server, the router is the management controller for the connected CMR clients. The device list, including the server itself, is shown in the <a href="../../cli-reference/cmr/device"><code>/cmr/device</code></a> menu.</p>
+<h3 id="server-settings">Server settings</h3>
+<p>The <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu also controls how the clients find the server and what the server collects from them:</p>
+<ul>
+<li><code>controller-addresses</code> - server IP addresses sent to the devices when they cannot discover the server automatically through neighbor discovery (MNDP) or DNS.</li>
+<li><code>track-topology</code> - fetches routes, the WiFi registration table, the ARP table, neighbors, DHCP state, and interface states from the clients. The automatic links of network topology layouts depend on this data. Default: <code>yes</code>.</li>
+<li><code>fetch-comments</code> - fetches the comments of interfaces, ports, and WiFi registration table entries from the clients. Default: <code>yes</code>.</li>
+<li><code>auto-labels</code> - selects which automatic labels the server fetches from the clients: any of <code>version</code>, <code>architecture</code>, <code>model</code>, <code>board-name</code>, <code>identity</code>, <code>address</code>, and <code>ssid</code>, or <code>all</code> or <code>none</code>. Default: <code>all</code>.</li>
+<li><code>apptraffic-devices</code> - selects, by labels, the devices to collect application traffic statistics from. Default: <code>gateway</code>, the devices with the <code>gateway</code> label. Set <code>all</code> to select every device.</li>
+<li><code>upgrade-check-interval</code> - how often the server checks the update servers for new versions. The minimum is 1 minute. Default: <code>10h</code>.</li>
+<li><code>packages-directory</code>, <code>packages-cache-type</code>, and <code>packages-cache-limit</code> - where the server takes and stores upgrade packages. The Upgrade sources section describes them.</li>
+</ul>
+<p>For now, <code>/cmr/get</code> returns an empty value for settings that are not set, instead of their default. To return a setting to its default, put <code>!</code> before its name, for example <code>/cmr set !upgrade-check-interval</code>.</p>
+<p>For now, changing <code>packages-directory</code>, <code>upgrade-check-interval</code>, or <code>pairing-requirement</code> restarts CMR on the server: every client reconnects, and state alerts that still match run their actions again.</p>
+<h2 id="pairing">Pairing</h2>
+<p>Pairing is established only when both devices agree to it. Each device has its own <code>pairing-requirement</code> setting, which defines what the remote device must do before this device accepts the pairing. Because each side has its own requirement, pairing succeeds only after the requirements of both devices have been satisfied.</p>
+<p>Running the <code>pair</code> command locally always approves the pairing from this device, regardless of its configured requirement. Both the CMR server and the client support <code>pairing-requirement=none</code>, <code>password</code>, and <code>confirm</code>:</p>
+<ul>
+<li><strong>none</strong> - no additional approval is required. This device accepts pairing automatically.</li>
+<li><strong>password</strong> - the remote device can approve pairing by giving the username and password of a RouterOS user on this device, with the <code>username</code> and <code>password</code> arguments of the <code>pair</code> command. CMR has no separate pairing password. Pairing can also be approved locally with the <code>pair</code> command.</li>
+<li><strong>confirm</strong> - pairing must be approved locally with the <code>pair</code> command of this device, <code>/cmr/device/pair</code> on the server or <code>/cmr/client/pair</code> on the client; approval from the remote side is not possible.</li>
+</ul>
+<p>Think of <code>pairing-requirement</code> as what must happen before this device agrees to the pairing. Pairing completes only after both devices have agreed.</p>
+<h3 id="typical-pairing-scenarios">Typical pairing scenarios</h3>
+<ul>
+<li><strong>none</strong> suits trusted environments where devices should pair automatically as soon as they discover each other. For example, a CMR server and a client on the same managed LAN can both use <strong>none</strong>, allowing pairing to complete without user interaction.</li>
+<li><strong>confirm</strong> forces explicit local approval on the server: discovering a new client is not enough by itself; an administrator must run the <code>pair</code> command on the server before it accepts that client.</li>
+<li><strong>password</strong> suits when remote approval is needed but physical or administrative access to both devices is inconvenient. For example, a client can use <strong>password</strong>, allowing the CMR server to satisfy the client's requirement remotely with the credentials of a user on the client.</li>
+</ul>
+<p>The requirements on the two devices are independent. The client accepts pairing automatically (<code>none</code>), when the server gives the credentials of a user on the client (<code>password</code>), or only after <code>/cmr/client/pair</code> is run on the client (<code>confirm</code>). For example:</p>
+<ul>
+<li>CMR server: <strong>none</strong>, client: <strong>none</strong> - both devices accept automatically.</li>
+<li>CMR server: <strong>none</strong>, client: <strong>password</strong> - the client accepts when the server gives the credentials of a user on the client.</li>
+<li>CMR server: <strong>password</strong>, client: <strong>none</strong> - the server accepts when the client gives the credentials of a user on the server.</li>
+<li>CMR server: <strong>password</strong>, client: <strong>password</strong> - each device must satisfy the other device's password requirement, unless pairing is approved locally with the <code>pair</code> command.</li>
+<li>CMR server: <strong>confirm</strong>, client: <strong>none</strong> - the client accepts automatically, but the <code>pair</code> command must be run on the server.</li>
+<li>CMR server: <strong>confirm</strong>, client: <strong>password</strong> - the client accepts when the server gives the credentials of a user on the client, but the <code>pair</code> command must also be run on the server.</li>
+</ul>
+<p>Each <code>pair</code> command takes the username and password of the <strong>other</strong> device: on the server, <a href="../../cli-reference/cmr/device/pair"><code>/cmr/device/pair</code></a> takes a user of the device being paired, and on the client, <a href="../../cli-reference/cmr/client/pair"><code>/cmr/client/pair</code></a> takes a user of the server. Running <code>pair</code> without credentials approves this device's side, and that satisfies both sides when the remote side's requirement is <code>none</code>. Pairing can usually be completed from one console: at the server, <code>/cmr/device/pair</code> already approves the server's side, so the server's own <code>password</code> is only ever typed at the client's console, never at the server. The server's <code>password</code> requirement matters only when pairing is started from the client. <code>confirm</code> is the one requirement that forces action on a device's own console: set on the server, pairing cannot complete from the client alone, and set on the client, it cannot complete from the server alone.</p>
+<p>Pairing by password also finds the device for you: the server presents the <code>username</code> and <code>password</code> to every selected device, so you do not need to know which device has which password. When the devices of a site each carry a different stock password and you have their boxes in front of you, run <a href="../../cli-reference/cmr/device/pair"><code>/cmr/device/pair</code></a> <code>username=admin password=&lt;password from one box&gt;</code> once per box: each run pairs the device that has that password, and the others stay pending. Use <code>labels</code> instead of <code>all</code> to limit a pairing run to part of the fleet.</p>
+<p>To start the pairing, run the <code>pair</code> command on one of the devices: <a href="../../cli-reference/cmr/device/pair"><code>/cmr/device/pair</code></a> on the CMR server or <a href="../../cli-reference/cmr/client/pair"><code>/cmr/client/pair</code></a> on the client. Pairing can also be performed by using the physical reset button: <a href="../../cli-reference/cmr/push-button"><code>/cmr/push-button</code></a> on the server or <a href="../../cli-reference/cmr/client/push-button"><code>/cmr/client/push-button</code></a> on the client.</p>
+<h2 id="managing-devices">Managing devices</h2>
+<p>The <a href="../../cli-reference/cmr/device"><code>/cmr/device</code></a> menu lists the devices managed by the server. A device appears in the list as soon as it connects to the server; until the pairing is approved it is marked with the <strong>P</strong> (pending) flag. The server itself is shown as the device with the <strong>L</strong> flag. Each entry shows the device identity, board, RouterOS version, labels, and uptime. For connected devices, the list also shows the connection address. A narrow console leaves out the columns that do not fit, so the address can be missing there, and <code>print detail</code> shows every value:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/device/print where labels~&quot;Group2&quot;
+Flags: C - CONNECTED; U - UPGRADE-AVAILABLE
+Columns: IDENTITY, BOARD, VERSION, LABELS, UPTIME, ADDRESS
+ #    IDENTITY  BOARD       VERSION  LABELS  UPTIME   ADDRESS
+ 2 CU MikroTik  RB4011iGS+  7.x      Group2  1h5m53s  192.168.1.98
+ 3 CU MikroTik  RB4011iGS+  7.x      Group2  1h3m8s   192.168.1.99
+ 9 CU MikroTik  RB4011iGS+  7.x      Group2  1h9m37s  192.168.1.100
+</code></pre>
+<p>The <code>address</code> of a device is the source address of its connection to the server. For a client behind NAT, it is the translated address, so several clients can show the same address.</p>
+<p>The flags mark the device state: <code>L</code> the server itself, <code>P</code> pairing pending, <code>C</code> connected, <code>S</code> stale (no connection), and <code>U</code> a different version available on the device's upgrade channel. The <code>U</code> version can also be earlier than the installed version, for example when the device runs a testing build and its upgrade rule uses the <code>stable</code> channel. The <a href="../../cli-reference/cmr/device"><code>/cmr/device</code></a> CLI reference lists every flag and every read-only value, such as the board, serial, installed packages, alert counts, and the upgrade rule that covers the device.</p>
+<h3 id="set-device-properties">Set device properties</h3>
+<p>You can change the following properties of a managed device from the server:</p>
+<ul>
+<li><code>identity</code> - rename the device. The new identity is applied to the device itself.</li>
+<li><code>labels</code> - assign labels to group devices. Labels are the common selection mechanism across CMR: upgrade rules, alert rules, <code>run-script</code>, and the other device commands select devices by label.</li>
+<li><code>port-labels</code> - assign labels per port. Write each port as <code>port:label</code>, separate the labels of one port with <code>/</code> and the ports with <code>,</code>, for example <code>port-labels=ether1:uplink/trunk,ether5:office</code>. The print output separates the ports with <code>;</code>. The <code>port-labels</code> of a <code>/cmr/vlan</code> rule select ports by these labels or by interface name.</li>
+<li><code>pairing-requirement</code> - override the server's pairing requirement for a single device.</li>
+</ul>
+<p>Filter the list with <code>where</code> on any of these properties, for example <code>/cmr/device/print where connected</code> or <code>/cmr/device/print where labels~"office"</code>. Use <code>~</code> for labels, because a device can have several labels: <code>labels=office</code> matches only a device whose whole label list is <code>office</code>. To remove all labels from a device, set <code>labels</code> to an empty value.</p>
+<p><code>/cmr/device/export</code> prints the device list as <code>add</code> commands, one for each device with its <code>identity</code>, <code>ids</code>, <code>labels</code>, and <code>pairing-requirement</code>, and <code>/cmr/device/add</code> creates a device entry from these values.</p>
+<h3 id="labels-and-device-selection">Labels and device selection</h3>
+<p>Labels group devices. Upgrade rules, alert rules, WiFi and VLAN provisioning, layouts, the <code>apptraffic-devices</code> setting, and the device commands select devices by labels.</p>
+<p>Besides the labels you assign, each device has automatic labels, shown in the read-only <code>auto-labels</code> value: for example its address, architecture, model, board name, and identity. Automatic labels select devices the same way as your own labels, so <code>labels=arm</code> selects all devices with the <code>arm</code> architecture, and <code>labels=Office-AP1</code> selects the device with that identity.</p>
+<p>A <code>labels</code> value is a comma-separated list. Plain labels are combined with OR. A label that starts with <code>+</code> must also match (AND), and a label that starts with <code>-</code> excludes devices (AND NOT). <code>all</code> selects every device, including the CMR server.</p>
+<table>
+<thead>
+<tr>
+<th>Selector</th>
+<th>Selected devices</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>labels=office,lab</code></td>
+<td>Devices with the <code>office</code> label or the <code>lab</code> label.</td>
+</tr>
+<tr>
+<td><code>labels=office,+ap</code></td>
+<td>Devices with both the <code>office</code> and <code>ap</code> labels.</td>
+</tr>
+<tr>
+<td><code>labels=office,-ap</code></td>
+<td>Devices with the <code>office</code> label, except devices with the <code>ap</code> label.</td>
+</tr>
+<tr>
+<td><code>labels=office,lab,-ap</code></td>
+<td>Devices with the <code>office</code> or <code>lab</code> label, except devices with the <code>ap</code> label.</td>
+</tr>
+<tr>
+<td><code>labels=all,-core</code> or <code>labels=-core</code></td>
+<td>All devices except devices with the <code>core</code> label.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The <code>+</code> and <code>-</code> signs must start a list element. Without the comma, <code>labels=office+ap</code> is a single label name. Labels that no device has are accepted without a warning, so check a selection before you rely on it, for example with <code>show-devices</code> of an upgrade rule or the <code>devices</code> count of an alert rule.</p>
+</div>
+<p>WiFi items can also select the radios of one band with a band label, and VLAN rules can select ports by port label. The WiFi configuration and VLAN provisioning sections describe them.</p>
+<h3 id="run-commands-on-devices">Run commands on devices</h3>
+<p>The device menu provides commands that operate on the selected devices, together with the read-only values they report:</p>
+<ul>
+<li><a href="../../cli-reference/cmr/device/run-script"><code>run-script</code></a> - run a single-line RouterOS script on each selected device and show its output. The script runs with limited permissions: commands that need the <code>policy</code> permission, for example adding a user, fail with "not enough permissions (9)".</li>
+<li><a href="../../cli-reference/cmr/device/upgrade"><code>upgrade</code></a> - start an upgrade job for the selected devices, regardless of the schedule of their upgrade rule.</li>
+<li><a href="../../cli-reference/cmr/device/reboot"><code>reboot</code></a> - reboot the selected devices. The command returns right away. When a device has restarted, the <code>rebooted</code> example alert rule logs <code>&lt;device&gt; rebooted</code>, where <code>&lt;device&gt;</code> is <code>identity@address</code>.</li>
+<li><a href="../../cli-reference/cmr/device/pair"><code>pair</code></a> - start pairing with the selected devices.</li>
+<li><a href="../../cli-reference/cmr/device/wifi-logs"><code>wifi-logs</code></a> - monitor the WiFi logs of the selected devices. Filter the entries by <code>event</code> (<code>connected</code>, <code>disconnected</code>, or <code>failed</code>), by client MAC address (<code>address</code>), by <code>bssid</code>, or by a time range (<code>time-start</code> and <code>time-end</code>). The events of access points managed by CAPsMAN are logged by the CAPsMAN device and appear under it. Without a device selection, the entries of all devices that log WiFi events are shown. Select the devices with <code>labels</code> to show only their entries. Press <code>c</code> to switch to the clients view, which lists each client with its last access point, its connect, disconnect, and failure counts, its IP address, SSID, and signal, and <code>l</code> to return to the log entries.</li>
+<li><a href="../../cli-reference/cmr/device/apptraffic"><code>apptraffic</code></a> - application traffic monitor for the selected devices.</li>
+<li><a href="../../cli-reference/cmr/device/dashboard"><code>dashboard</code></a> - a live view of the selected devices.</li>
+</ul>
+<p>Each command selects its devices by <code>labels</code> (or <code>numbers</code>) and reports the result per device. For example, run a command on all devices with the <code>Group2</code> label:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/device/run-script labels=Group2 script=&quot;/system/identity/print&quot;
+Columns: DEVICE, STATUS
+DEVICE                  STATUS
+MikroTik@192.168.1.98   running
+MikroTik@192.168.1.99   running
+MikroTik@192.168.1.100  running
+
+Columns: DEVICE, STATUS, OUTPUT
+DEVICE                  STATUS   OUTPUT
+MikroTik@192.168.1.98   success   name: MikroTik
+MikroTik@192.168.1.99   success   name: MikroTik
+MikroTik@192.168.1.100  success   name: MikroTik
+</code></pre>
+<p>The command first lists the selected devices as <code>running</code>, then shows each device's <code>STATUS</code> and <code>OUTPUT</code> when the script finishes. <code>run-script</code> refuses an empty selection: without <code>numbers</code> or <code>labels</code> it fails with "numbers and/or labels required", and with labels that match no device it fails with "no devices selected". Here, <code>labels</code> follows the same label syntax as everywhere in CMR: a comma-separated list where plain labels are combined with OR, a label that starts with <code>+</code> must also match (AND), and a label that starts with <code>-</code> excludes devices (AND NOT). For example, <code>labels=office,+ap</code> selects devices with both labels, and <code>labels=all,-core</code> selects all devices except those with the <code>core</code> label. Without the comma, <code>office+ap</code> is read as a single label name. For now, in a script, <code>as-value</code> combined with <code>labels</code> fails with <code>no such item</code>. Select the devices with <code>numbers</code> there, for example <code>numbers=[find where identity="Office-AP1"]</code>.</p>
+<h4 id="run-script-permissions">run-script permissions</h4>
+<p>Scripts sent with <a href="../../cli-reference/cmr/device/run-script"><code>/cmr/device/run-script</code></a> run on each client with the <code>read</code>, <code>write</code>, <code>test</code>, and <code>reboot</code> policies, without a user session. Commands that need other policies fail with "not enough permissions (9)", for example <code>/user add</code> needs the <code>policy</code> policy, and <code>/tool sniffer</code> needs the <code>sniff</code> policy. <code>/system backup save</code>, <code>/system reset-configuration</code> and <code>/file copy</code> fail with the same error. <code>/export</code> works: it returns the configuration of the client in the output, so <code>run-script</code> can collect configuration exports from the fleet. Sensitive values are not readable: <code>/export</code> leaves them out, <code>/export show-sensitive</code> does not show their values either, and <code>get</code> shows them as <code>*</code>. They can still be set, for example the PPP secret password.</p>
+<p>Scripts and scheduler entries created by <code>run-script</code> are saved with the same four policies, shown as <code>policy=reboot,read,write,test</code>. The <code>owner</code> is the system user (<code>*sys</code>), not the controller user. The policy set cannot be changed on the client: a script that tries to grant a wider policy has its <code>policy</code> reduced to the four policies. The table shows what each policy can do under <code>run-script</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Example command</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>read</code></td>
+<td><code>:put [/system identity get name]</code></td>
+<td>OK, the value is returned.</td>
+</tr>
+<tr>
+<td><code>read</code></td>
+<td><code>/export</code></td>
+<td>OK, the configuration is returned without sensitive values.</td>
+</tr>
+<tr>
+<td><code>write</code></td>
+<td><code>/file add contents=x</code>, <code>/ip service set telnet port=2323</code>, <code>/tool romon set enabled=no</code></td>
+<td>OK, the configuration is changed.</td>
+</tr>
+<tr>
+<td><code>write</code></td>
+<td><code>/system script add</code>, <code>/system scheduler add</code></td>
+<td>OK, the entries are saved with <code>policy=reboot,read,write,test</code>.</td>
+</tr>
+<tr>
+<td><code>write</code></td>
+<td><code>/ppp secret add name=test password=abc</code></td>
+<td>OK, the password is set even though the <code>sensitive</code> policy is missing.</td>
+</tr>
+<tr>
+<td><code>test</code></td>
+<td><code>/ping</code>, <code>/tool traceroute</code></td>
+<td>OK</td>
+</tr>
+<tr>
+<td><code>reboot</code></td>
+<td><code>/system reboot</code></td>
+<td>OK, the client reboots and reconnects to the server.</td>
+</tr>
+<tr>
+<td><code>policy</code></td>
+<td><code>/user add</code>, <code>/user group add</code></td>
+<td>Fail with "not enough permissions (9)".</td>
+</tr>
+<tr>
+<td><code>sniff</code></td>
+<td><code>/tool sniffer quick</code></td>
+<td>Fail with "not enough permissions (9)".</td>
+</tr>
+<tr>
+<td><code>sensitive</code></td>
+<td><code>:put [/ppp secret get ... password]</code></td>
+<td>The value is shown as <code>*</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="logging-of-changes-made-by-cmr">Logging of changes made by CMR</h4>
+<p>Changes that CMR makes on a client are recorded in the client's log. The <code>by</code> field of the message shows that the change came from CMR and includes the user and the server address: <code>cmr:&lt;user&gt;@&lt;address&gt;</code>, where <code>&lt;user&gt;</code> is the user that ran the command on the CMR server and <code>&lt;address&gt;</code> is the server's address as seen by the client. When CMR does not give a user, the field is <code>cmr@&lt;address&gt;</code>. If the server address is not available, only the known part is shown, for example <code>cmr:&lt;user&gt;</code>, or <code>cmr</code> alone when there is no user either. For example:</p>
+<pre><code class="language-ros">system,info device added by cmr:admin@192.168.1.2 (*E = /interface bridge add comment=cmr-perm name=cmrperm-br)
+</code></pre>
+<h2 id="dashboard">Dashboard</h2>
+<p>The <a href="../../cli-reference/cmr/device/dashboard"><code>/cmr/device/dashboard</code></a> command opens a live view of the selected devices: how many are connected, the CPU, memory, and disk usage, the interface state, the traffic throughput, and the access points and their stations. The view repeats every few seconds until you stop it. Press <code>m</code>, <code>l</code>, <code>a</code>, <code>p</code>, <code>w</code>, or <code>s</code> to switch between the main, alerts, devices, ports, WiFi, and resources views, <code>D</code> to write the current view to the <code>console-dump.txt</code> file, <kbd>Control</kbd>+<kbd>Z</kbd> to pause it, and <code>Q</code> to quit. In the devices view, <code>m</code> returns to the main view:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/device/dashboard labels=Group2
+DEVICES          TOTAL  PAIRED  ONLINE  RESOURCES                MIN  AVG  MAX
+                 3      3       3       CPU        ------------  0    0    1
+                                        Memory     =====-------  21   46   85
+                                        HDD        ==----------  15   23   29
+
+NETWORK INTERFACES -------------------  BANDWIDTH ----------------------------
+16     Ethernet                                             TX        RX
+16     Enabled   =====================  Total               336.9KiB  194.1KiB
+8      Running   =============--------  Uplink              37.9KiB   78.0KiB
+7      Wifi                             Ethernet            169.3KiB  173.0KiB
+7      Enabled   =====================  Wifi                167.5KiB  21.1KiB
+
+ACCESS POINTS ------------------------  STATIONS -----------------------------
+7      Total                            18     Total
+3      Slave                            16     2.4GHz  =====================--
+7      Running  ======================  2      5GHz    ==---------------------
+3      2.4GHz   ============----------  17     N       ======================-
+3      5GHz     ============----------  1      OFDM    -----------------------
+1      6GHz     ====------------------  18     WPA2    =======================
+2      BE       ========--------------
+2      AX       ========--------------
+3      N        ============----------
+</code></pre>
+<p>The <code>labels</code> argument accepts the same label syntax as the rest of CMR, so <code>labels=Group2</code> shows the devices with the <code>Group2</code> label, and <code>labels=house,-ap</code> shows the devices with the <code>house</code> label except those with the <code>ap</code> label. The <a href="../../cli-reference/cmr/device/dashboard"><code>/cmr/device/dashboard</code></a> CLI reference lists all its arguments.</p>
+<p>The same live view is shown in the WebFig GUI:</p>
+<center></center>
+
+<center>**The image shows the CMR dashboard in the WebFig GUI.**</center>
+
+<h3 id="dashboard-sections">Dashboard sections</h3>
+<p>The dashboard is split into eight sections:</p>
+<ul>
+<li><strong>Devices</strong> - the counts of paired and online devices. Only paired devices that are currently connected count as online, so a paired device that is offline, or a device that is not yet paired, is not shown online.</li>
+<li><strong>Resources</strong> - the current CPU, memory, and disk usage of each device.</li>
+<li><strong>Bandwidth</strong> - a live graph of the traffic throughput of the devices. The green area is the upload bandwidth and the red/brown area is the download bandwidth, plotted over the last few minutes. The summary shows the current, average, and maximum download and upload rates.</li>
+<li><strong>Active Alerts</strong> - the alert rules that are currently fired, with the number of devices each alert is active on.</li>
+<li><strong>Available Updates</strong> - the devices that have a different RouterOS version available on their upgrade channel, as offered by their upgrade rules.</li>
+<li><strong>Traffic</strong> - a table of the application traffic of the devices from the application traffic classifier, for the last hour. Each row is one application with its name, the downloaded amount with the share of the total (shown as a progress bar), and the uploaded amount with its share.</li>
+<li><strong>Access Points</strong> - the number of access points running on the devices. A WiFi band selector (2.4, 5, or 6 GHz) filters the view, and a bar chart shows how many access points run on each channel.</li>
+<li><strong>Stations</strong> - the number of client stations connected to those access points. A WiFi band selector filters the view as for access points, and a bar chart shows how many stations are connected on each channel.</li>
+</ul>
+<h2 id="fleet-upgrades">Fleet upgrades</h2>
+<p>CMR manages software upgrades for the whole fleet with upgrade rules in the <a href="../../cli-reference/cmr/upgrade"><code>/cmr/upgrade</code></a> menu. An upgrade rule selects the devices it covers by <code>labels</code>, schedules when the upgrade runs, and defines which channel or version to install.</p>
+<h3 id="upgrade-rules">Upgrade rules</h3>
+<p>A rule selects the devices it covers by <code>labels</code>, the same labels used across CMR. If <code>labels</code> is omitted, the rule covers all connected devices (<code>labels=all</code>). A plain list combines labels with OR, and list elements that start with <code>+</code> or <code>-</code> combine them with AND and AND NOT, for example <code>labels=all,-core</code>.</p>
+<p>For example, this rule creates a nightly upgrade of all connected devices to the newest <code>stable</code> release:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/upgrade/add name=nightly labels=all channel=stable schedule-time=&quot;00:00:00&quot; strategy=sequential fail-policy=continue
+</code></pre>
+<p>Each argument sets one property of the rule:</p>
+<ul>
+<li><code>name=nightly</code> names the rule. The name appears in the rule list and is used to select the rule for an immediate run.</li>
+<li><code>labels=all</code> selects every connected device. Giving <code>all</code> explicitly is the same as omitting <code>labels</code>.</li>
+<li><code>channel=stable</code> selects the upgrade channel: <code>long-term</code>, <code>stable</code>, <code>testing</code>, or <code>development</code>. To pin a specific version, set the version directly as the channel value, for example <code>channel=7.24.4</code>.</li>
+<li><code>strategy=sequential</code> upgrades the devices one after another and waits for each to finish. The alternative is <code>parallel</code>, which upgrades all covered devices at the same time.</li>
+<li><code>fail-policy=continue</code> skips a failed device and continues with the rest. Without <code>fail-policy</code>, a rule uses <code>stop</code>. The third fail policy is <code>continue-order</code>.</li>
+<li><code>schedule-time="00:00:00"</code> triggers this rule every day at midnight. <code>schedule-time</code> is a time with an optional weekday, for example <code>14:00:00</code> (every day at 14:00) or <code>00:00:00@sat</code> (every Saturday at midnight). Multiple times are comma-separated, for example <code>00:00:00@sat,00:00:00@sun</code>. Separate the weekday with <code>@</code>: with a space, for example <code>"14:00 sat"</code>, the weekday is dropped and the rule runs every day.</li>
+</ul>
+<center></center>
+
+<center>**The image shows the nightly rule as configured in the WinBox GUI.**</center>
+
+<p>A weekly rule is created the same way. For example, this rule upgrades two label groups every Saturday at 14:00 and stops on the first failure:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/upgrade/add name=weekly labels=Group1,Group2 channel=stable schedule-time=&quot;14:00:00@sat&quot; strategy=parallel fail-policy=stop order=Group1,Group2
+</code></pre>
+<ul>
+<li><code>schedule-time="14:00:00@sat"</code> starts the upgrade every Saturday at 14:00. The weekday comes after <code>@</code> and can be <code>sun</code>, <code>mon</code>, <code>tue</code>, <code>wed</code>, <code>thu</code>, <code>fri</code>, or <code>sat</code>.</li>
+<li><code>order=Group1,Group2</code> sets the label groups and the order in which they are processed.</li>
+<li><code>fail-policy=stop</code> stops the whole upgrade when a device fails. In this example, a failed device in <code>Group1</code> stops the upgrade, and <code>Group2</code> is not upgraded.</li>
+</ul>
+<center></center>
+
+<center>**The image shows the weekly rule as configured in the WinBox GUI.**</center>
+
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The order of the rules defines precedence. When several rules select overlapping devices (for example a <code>labels=all</code> rule and rules with specific labels), the first rule in the list matching a device claims the device. A <code>labels=all</code> rule placed first therefore covers every device, and the later rules show no devices in <a href="../../cli-reference/cmr/upgrade/show-devices"><code>/cmr/upgrade/show-devices</code></a>. List the specific-label rules before the <code>labels=all</code> rule when each label group needs its own rule, and verify the per-device assignment with <code>show-devices</code>.</p>
+</div>
+<p>After you enable the server, the rule list contains a dynamic rule named <code>default</code> (flag <code>D</code>, <code>labels=all</code>, <code>channel=stable</code>). It is listed after your own rules and covers the devices that no other rule claims. The rule has no schedule: it sets the channel that these devices are checked against for the <code>U</code> flag and <code>available-version</code>. If your devices run testing or development builds, create rules that cover them, so that <code>stable</code> is not offered to them as an upgrade.</p>
+<p>To change the position of a rule, use <a href="../../cli-reference/cmr/upgrade"><code>move</code></a>, for example <code>/cmr/upgrade/move [find name=weekly] 0</code>. For now, the <code>place-before</code> argument of <code>add</code> adds the new rule at the end of the list.</p>
+<h3 id="running-an-upgrade">Running an upgrade</h3>
+<p>After you create a rule, a job is scheduled according to its <code>schedule-time</code>. You can start an upgrade without waiting for the schedule:</p>
+<ul>
+<li><a href="../../cli-reference/cmr/upgrade/trigger"><code>/cmr/upgrade/trigger</code></a> - start the job of a chosen rule right away and upgrade its covered devices early, without waiting for the schedule-time.</li>
+<li><a href="../../cli-reference/cmr/upgrade/job/run-next"><code>/cmr/upgrade/job/run-next</code></a> - run a scheduled job right away. For a job of an upgrade rule, the scheduled job remains scheduled and the run is added as a new job. A job scheduled with <code>/cmr/device/upgrade</code> has no schedule to keep, so <code>run-next</code> starts that job itself.</li>
+<li><a href="../../cli-reference/cmr/device/upgrade"><code>/cmr/device/upgrade</code></a> - upgrade selected devices regardless of the schedule of their rule: right away, or at the next occurrence of <code>schedule-time</code>. Without <code>channel</code>, each device upgrades on its own upgrade channel, the <code>channel</code> value shown in <code>/cmr/device</code>.</li>
+</ul>
+<p>On the console, <code>/cmr/device/upgrade</code> shows the devices of the job it starts and their states until you press <kbd>Control</kbd>+<kbd>C</kbd> or the time given in <code>duration</code> ends. Stopping the output does not stop the job, which continues on the server. Follow it later with <a href="../../cli-reference/cmr/upgrade/job/show-devices"><code>/cmr/upgrade/job/show-devices</code></a>.</p>
+<p>Only one upgrade job runs at a time. Triggering a second job while another one is in progress places the new job in the <code>queued</code> state until the running job finishes. Use <a href="../../cli-reference/cmr/upgrade/version-check"><code>/cmr/upgrade/version-check</code></a> to see the newest version available for the channels configured in your upgrade rules.</p>
+<h3 id="upgrade-sources">Upgrade sources</h3>
+<p>The server checks the MikroTik update servers for the newest version of each channel used by an upgrade rule. <a href="../../cli-reference/cmr/upgrade/version-check"><code>/cmr/upgrade/version-check</code></a> shows the result, and a connected device shows the newest available version in the read-only <code>available-version</code> parameter of the <a href="../../cli-reference/cmr/device"><code>/cmr/device</code></a> menu. The <code>upgrade-check-interval</code> setting in the <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu controls how often the check runs.</p>
+<p>The server downloads the package files when an upgrade runs and the needed version is not already available locally, stores them, and sends them to the devices; the periodic version check only looks up which versions are available. The <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu has the cache settings: <code>packages-cache-type</code> selects whether downloaded packages are stored on the server's storage (<code>directory</code>, in a <code>cmrcache</code> subdirectory of <code>packages-directory</code>) or in RAM (<code>memory</code>), and <code>packages-cache-limit</code> sets the maximum cache size in megabytes. When the cache is full, the server evicts older entries to make room for a newly downloaded package.</p>
+<p>To let the server serve packages of your own, place the <code>.npk</code> files in a directory on the server's file system and set <code>packages-directory</code> to that directory. Packages are resolved individually: a package already in the directory for the required version is served from there without redownloading, and only the missing packages are downloaded into the cache.</p>
+<p>Use a package directory to install versions that the update servers do not offer. Place the packages of every architecture and every installed package of the covered devices in the directory, select it as <code>packages-directory</code>, and set the version as the channel. For example, for devices with the <code>arm</code> architecture and the <code>wifi-qcom</code> package:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file add name=cmr-packages type=directory
+</code></pre>
+<p>Upload <code>routeros-&lt;version&gt;-arm.npk</code> and <code>wifi-qcom-&lt;version&gt;-arm.npk</code> into <code>cmr-packages</code>, for example with SFTP, then select the directory and upgrade the devices:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr set packages-directory=cmr-packages/
+[admin@MikroTik] &gt; /cmr/device/upgrade labels=testgroup channel=7.24.4
+</code></pre>
+<p>The <code>packages-directory</code> value is selected from the existing directories and ends with <code>/</code>. For now, changing <code>packages-directory</code> restarts CMR on the server and all clients reconnect, so start upgrade jobs after the clients show as connected again in <code>/cmr/device</code>.</p>
+<p>If the directory is deleted after it is selected, <code>/cmr print</code> still shows it without a warning, and the server keeps the packages it downloads in RAM. Create the directory again with the same name, for example <code>/file add name=cmr-packages type=directory</code>, and place the packages in it. The setting does not change, so CMR does not restart.</p>
+<p>Before you upgrade a group of devices to a pinned version, upgrade one device of the group first. If a package is missing from the directory, the job leaves the device <code>pending</code> with the error <strong>no upgrade available</strong> and does not restart it.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A version set as the channel is installed even when it is earlier than the installed version, so a pinned channel can downgrade devices.</p>
+</div>
+<h3 id="job-states-and-results">Job states and results</h3>
+<p>Jobs are listed in the <a href="../../cli-reference/cmr/upgrade/job"><code>/cmr/upgrade/job</code></a> menu and represent a single upgrade run. A job goes through the states <code>scheduled</code>, <code>queued</code>, <code>waiting devices</code>, <code>version check</code>, <code>processing</code>, and finally <code>done</code> or <code>cancelled</code>. The <code>success</code> counter is <code>upgraded/total</code>, for example <code>6/7</code>. A job that an upgrade rule starts is marked with the <code>R</code> flag.</p>
+<p>A job that <code>/cmr/device/upgrade</code> starts for devices selected by number has no <code>labels</code>, and it shows a <code>channel</code> only when a version was given. Its devices are listed by <a href="../../cli-reference/cmr/upgrade/job/show-devices"><code>/cmr/upgrade/job/show-devices</code></a>.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The <code>success</code> counter counts only the devices the job actually upgraded. A covered device that the job cannot upgrade is left <code>pending</code> with an error: <strong>no upgrade available</strong> when it is already on the target version or disabled, or when the packages for a pinned version are neither in <code>packages-directory</code> nor on the update servers, and <strong>disconnected</strong> when it is not connected to the server.</p>
+<p>Such a device counts as a failure. With <code>fail-policy=stop</code>, it stops the job before any device is upgraded, and the other devices are left <code>pending</code> with <strong>skipped by fail-policy</strong>. Use <code>fail-policy=continue</code>, or select only the devices that are connected and have an upgrade available, for example with <code>/cmr/device/upgrade</code>.</p>
+</div>
+<p>When the server upgrades itself, its job ends as <code>done</code> with <code>0/1</code>, and <code>show-devices</code> keeps the server in the <code>rebooting</code> state, even when the upgrade succeeded: the server restarts before it records the result. Check the installed version in <code>/system/resource</code> or in the <code>version</code> of the server's own entry in <code>/cmr/device</code>. For now, the <code>start-time</code> of such a job is shown in UTC.</p>
+<p>A job can be removed to cancel it. Remove a job with <a href="../../cli-reference/cmr/upgrade/job"><code>/cmr/upgrade/job/remove</code></a>. Removing a scheduled or queued job marks it <code>cancelled</code>, and the job stays in the list. Removing a processing job stops the run and marks the remaining devices <code>cancelled</code>. An interrupted install is still able to finish when the device reboots. Removing a <code>cancelled</code> job deletes it from the list.</p>
+<h3 id="strategy-and-failure-handling">Strategy and failure handling</h3>
+<p><code>strategy</code> controls how the covered devices are upgraded. The optional <code>order</code> splits the covered devices into label groups and defines the sequence in which the groups are processed.</p>
+<ul>
+<li><strong>Parallel</strong> - upgrades all covered devices at the same time. Combined with <code>order</code>, the devices within one label group upgrade together, and the groups are processed one after another in the order given by <code>order</code>.</li>
+<li><strong>Sequential</strong> - upgrades the devices one after another and waits for each to finish. Combined with <code>order</code>, the groups in <code>order</code> are processed one after another, and within a group the devices upgrade one at a time.</li>
+</ul>
+<p>The <code>fail-policy</code> controls what happens when a device fails:</p>
+<ul>
+<li><code>continue</code> - skip the failed device and continue with the rest.</li>
+<li><code>stop</code> - stop the whole upgrade on the first failure. The job does not continue with the remaining devices or with the next label group in <code>order</code>. This is the default.</li>
+<li><code>continue-order</code> - skip the failed device and continue with the next label group in <code>order</code>. Requires <code>order</code>, which lists the labels to process one group after another. <code>continue-order</code> is not accepted without it. How the failed device's group is handled depends on the <code>strategy</code>:</li>
+<li><strong>sequential</strong> - the rest of the group is skipped (devices not yet started stay <code>pending</code>) and the job continues with the next group in <code>order</code>.</li>
+<li><strong>parallel</strong> - only the failed device is abandoned. Devices already in progress in the same group finish, and the job continues with the next group in <code>order</code>.</li>
+</ul>
+<h4 id="upgrade-in-network-order">Upgrade in network order</h4>
+<p>A device restarts during its upgrade. While it restarts, the devices that reach the server through it lose their connection to the server too. If a switch or a gateway is upgraded before the devices behind it, those devices disconnect in the middle of the job. The server does not derive the order from the network topology: <code>order</code> defines it.</p>
+<p>Give the devices labels by their place in the network, and list the labels in <code>order</code> from the edge of the network toward the server. For example, with access points labeled <code>ap</code>, the switches they connect through labeled <code>switch</code>, and the gateway labeled <code>gw</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/upgrade/add name=fleet labels=ap,switch,gw order=ap,switch,gw channel=stable strategy=sequential fail-policy=stop
+</code></pre>
+<ul>
+<li><code>order=ap,switch,gw</code> upgrades the access points first, then the switches, and the gateway last.</li>
+<li><code>strategy=sequential</code> upgrades one device at a time, so only one part of the network restarts at once.</li>
+<li><code>fail-policy=stop</code> stops the job when a device fails, before the devices it connects through are upgraded. A covered device that is already up to date or not connected also counts as a failure, as the note in the Job states and results section describes.</li>
+</ul>
+<p>Upgrade the CMR server itself after the job of the fleet is done, with a rule of its own or with <code>/cmr/device/upgrade</code>.</p>
+<h3 id="notes">Notes</h3>
+<ul>
+<li>Removing an upgrade rule does not cancel its already-started or queued jobs. Cancel a job explicitly with <code>/cmr/upgrade/job/remove</code>.</li>
+<li>Both <a href="../../cli-reference/cmr/upgrade/show-devices"><code>/cmr/upgrade/show-devices</code></a> and <a href="../../cli-reference/cmr/upgrade/job/show-devices"><code>/cmr/upgrade/job/show-devices</code></a> list the per-device coverage and state of a rule or job. They show per-device notes such as the "upgrade available" and "no upgrade available" states described in the previous sections.</li>
+<li>The example alert rules write the result of each device upgrade to the log with the <code>cmr</code> topic, for example <code>&lt;device&gt; has successfully upgraded to version &lt;version&gt;</code> or <code>&lt;device&gt; failed to upgrade from &lt;version&gt; to &lt;version&gt;, error: &lt;reason&gt;</code>, and log <code>&lt;device&gt; has new version available</code> when the upgrade channel of a device offers it a new version. The Example rules section of Alert rules describes them.</li>
+</ul>
+<h2 id="alert-rules">Alert rules</h2>
+<p>An alert rule defines conditions (when to fire) and actions (what to do): write a log message, run a RouterOS script, send an HTTP request, or combine these actions. Rules select devices by <code>labels</code> and run their actions on the CMR server. Manage rules in the <a href="../../cli-reference/cmr/alert"><code>/cmr/alert</code></a> menu.</p>
+<p>The configured conditions determine whether a rule is a <strong>state alert</strong> or an <strong>event alert</strong>. A state alert stays active while its conditions are satisfied. An event alert runs its actions for each matching occurrence and never stays active.</p>
+<table>
+<thead>
+<tr>
+<th>Behavior</th>
+<th>State alert</th>
+<th>Event alert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Represents</td>
+<td>An ongoing condition, such as high CPU usage.</td>
+<td>Something that happened, such as a matching log message.</td>
+</tr>
+<tr>
+<td>Evaluation</td>
+<td>When fresh device data arrives or a timer runs.</td>
+<td>When the event occurs.</td>
+</tr>
+<tr>
+<td>Actions run</td>
+<td>Once when the alert becomes active; run again only after it clears and becomes active again.</td>
+<td>Immediately for each matching occurrence.</td>
+</tr>
+<tr>
+<td>Active alerts and dashboard counters</td>
+<td>Remains visible and counted while active.</td>
+<td>Does not appear as an active alert or add to active-alert counters.</td>
+</tr>
+<tr>
+<td>Conditions per rule</td>
+<td>Multiple state conditions, combined with logical AND.</td>
+<td>At most one event condition.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-rules">Example rules</h3>
+<p>The server comes with example rules, marked with the comment <code>example</code>. They include rules for CPU usage above 95%, memory usage above 90%, failed and successful upgrades, available upgrades, unpaired devices that connect, and reboots. Each writes a log message, for example <code>[device] has successfully upgraded to version [version]</code> or <code>[device] rebooted</code>, so the log records these events without further configuration. Change, disable, or remove them like your own rules.</p>
+<p>The <code>upgrade available</code> example rule writes its message with <code>[upgrade-version]</code>, which only an upgrade-finished event fills, so the logged message ends with <code>unknown</code>. Use <code>[available-version]</code> for the offered version in a rule of your own.</p>
+<h3 id="create-an-alert-rule">Create an alert rule</h3>
+<p>A rule needs at least one condition and one action. For example, create a state alert that logs a warning when the CPU load of any device rises above 95%:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/alert/add name=cpu-load labels=all cpu-above=95 action.log=&quot;[device] CPU usage is above 95% ([cpu-usage]%)&quot; action.log-topics=cmr,warning severity=high category=performance
+[admin@MikroTik] &gt; /cmr/alert/print where name=cpu-load
+11  name=&quot;cpu-load&quot; labels=all cpu-above=95
+    action.log=&quot;[device] CPU usage is above 95% ([cpu-usage]%)&quot;
+    .log-topics=cmr,warning severity=high category=performance devices=9
+    devices-on=0 fired=0 action-failures=0
+</code></pre>
+<p>The <code>devices</code> value counts the devices selected by the rule's labels. The <code>devices-on</code> value counts devices with an active state alert, and <code>fired</code> counts how many times the rule has fired. This example logs once when a device starts to match the CPU condition. The device remains counted in <code>devices-on</code> while the condition holds, without repeated log messages.</p>
+<h3 id="conditions">Conditions</h3>
+<p>A rule selects the devices it applies to with <code>labels</code>, the same labels used across CMR. The <a href="../../cli-reference/cmr/alert"><code>/cmr/alert</code></a> CLI reference lists every condition and parameter.</p>
+<h4 id="state-alerts">State alerts</h4>
+<p>State conditions describe something that is continuously true or false. CMR re-evaluates them when fresh device data arrives, such as dashboard statistics or health readings, or on a timer. Multiple state conditions can be combined in one rule: the alert is active only when all of them match (logical AND). For example, <code>hdd-above=80 hdd-below=95</code> matches disk usage from 80% up to, but not including, 95%. For an either-or case, create two rules.</p>
+<p>Actions run once when the alert becomes active. The alert then stays visible and counted in the dashboard until its conditions stop matching. Actions run again only after the alert clears and becomes active again. For example, an active-alert count of five for a CPU rule means five devices satisfy the CPU condition, not that five CPU events have occurred.</p>
+<p>State conditions include:</p>
+<ul>
+<li><strong>Usage thresholds</strong> - <code>cpu-above</code> and <code>cpu-below</code>, <code>mem-above</code> and <code>mem-below</code>, and <code>hdd-above</code> and <code>hdd-below</code> compare CPU, RAM, or disk usage to a percentage.</li>
+<li><strong>Health sensors</strong> - <code>health-above</code> and <code>health-below</code> compare a health sensor to a value. <code>health-value</code> names the sensor and matches a name from <code>/system/health/print</code> (for example <code>cpu-temperature</code>). A rule compares a sensor only on devices that report it; devices without that sensor are ignored. A value equal to the threshold of an <code>above</code> condition also fires the rule; a <code>below</code> condition fires only for values strictly below the threshold.</li>
+<li><strong>Availability</strong> - <code>connected</code> matches whether a device is connected or disconnected. <code>disconnected-more-than</code> matches a device that has been disconnected longer than the given time.</li>
+<li><strong>Available upgrades</strong> - <code>upgrade-available</code> matches when a newer RouterOS version is available for a device.</li>
+</ul>
+<h4 id="event-alerts">Event alerts</h4>
+<p>Event conditions describe a single occurrence. The rule runs its actions immediately for each matching event. Event alerts never stay active, so they do not appear as active alerts in the dashboard or contribute to <code>devices-on</code>. A rule can contain at most one event condition.</p>
+<p>For example, a matching log message can cause CMR to write a log entry, run a script, or send an HTTP request. The message does not create a persistent alert state that must later clear. Another matching message runs the actions again.</p>
+<p>Event conditions include:</p>
+<ul>
+<li><strong>Interfaces</strong> - <code>interface-change</code> fires when an interface becomes <code>running</code> or <code>not-running</code>, or is <code>added</code> or <code>removed</code>. Optionally filter by <code>interface-type</code> (<code>ethernet</code>, <code>wifi</code>, or <code>bridge</code>). For now, disabling or enabling a CAPsMAN-managed WiFi interface on the access point does not fire an <code>interface-type=wifi</code> rule, because the interface stays running. Its <code>running</code> and <code>not-running</code> changes, for example while the access point restarts, fire the rule.</li>
+<li><strong>Device upgrades</strong> - <code>upgrade-done</code> fires when a device upgrade finishes. Select successful upgrades, failed upgrades, or both.</li>
+<li><strong>Upgrade jobs</strong> - <code>upgrade-job-done</code> fires when a multi-device upgrade job finishes as a whole. Select successful jobs, failed jobs, or both.</li>
+<li><strong>Reboots</strong> - <code>rebooted</code> fires when a device reboots, also when the reboot is part of an upgrade or comes from the <code>reboot</code> command.</li>
+<li><strong>Unpaired connections</strong> - <code>unpaired-device-connected</code> fires when an unpaired device connects.</li>
+<li><strong>Log lines</strong> - <code>log-topics</code> and <code>log-regex</code> define one log-message event condition, matching the configured topics and message regular expression. CMR automatically instructs the device to forward matching log messages. The forwarded messages also appear in the server's log, with the <code>cmrclnt</code> topic added to their own topics, for example <code>cmrclnt,script,info</code>. The matched values are available as <code>[message]</code> and <code>[message-topics]</code>.</li>
+</ul>
+<h3 id="device-and-system-scope">Device and system scope</h3>
+<p>Alert scope is separate from the state/event distinction:</p>
+<ul>
+<li><strong>Device alerts</strong> apply per managed device. Most alerts have device scope. Each device tracks a state alert independently, and statistics distinguish how many devices the rule selects from how many have the alert active. Device events, such as <code>upgrade-done</code>, run actions for the individual device that triggered them.</li>
+<li><strong>System alerts</strong> relate to the CMR server rather than an individual managed device. For example, <code>upgrade-job-done</code> is a system event alert: it reports the result of the whole multi-device upgrade job and has no individual device context.</li>
+</ul>
+<h3 id="actions">Actions</h3>
+<p>When a rule fires, it runs every action that is set:</p>
+<ul>
+<li><code>action.log</code> with the optional <code>action.log-prefix</code> and <code>action.log-topics</code> writes a message to the CMR log. The default topics are <code>cmr,info</code>, and <code>cmr,warning</code> for a log-line condition. For a log-line condition, the message starts with the device that sent the log line, as <code>identity|board|address:</code>, so <code>[message]</code> alone is enough as the message text, for example <code>action.log="[message]"</code>.</li>
+<li><code>action.script</code> runs a named system script and <code>action.script-vars</code> gives it the values for the device that fired. The script must allow itself to run with reduced rights (<code>dont-require-permissions=yes</code>) or the action logs "not enough permissions".</li>
+<li><code>action.http-url</code>, <code>action.http-method</code>, <code>action.http-body</code>, and <code>action.http-headers</code> call an HTTP or HTTPS webhook. Placeholders in the request body are substituted per device. The call does not set a <code>Content-Type</code> header by itself, so add one with <code>action.http-headers</code> when the receiver expects it (for example <code>Content-Type: application/json</code> for a JSON body). A failed call is written to the <code>cmr</code> topic with <code>warning</code> and counts in <code>action-failures</code>, for example <code>alert "name" HTTP action failed: request failed: Connection refused</code>. The webhook works also when the device mode of the server does not allow <code>fetch</code>.</li>
+</ul>
+<h3 id="variables-in-action-text">Variables in action text</h3>
+<p>Action text supports <code>[variable]</code> expansion, for example <code>[identity]</code>, <code>[severity]</code>, and <code>[alert-name]</code>. Placeholders are replaced with values from the alert and its device or event context. The same values are available to a script triggered by <code>action.script</code> when their names are listed in <code>action.script-vars</code> (for example <code>action.script-vars="device,version"</code> sets <code>$device</code> and <code>$version</code> in the script). Which variables are available depends on what fired the alert.</p>
+<p><strong>Device variables</strong> are available for every device alert, from the device that fired:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[device]</code></td>
+<td>Device identity and address (<code>identity@address</code>). When the address is not known, the identity is used alone, for example for the controller itself.</td>
+</tr>
+<tr>
+<td><code>[identity]</code>, <code>[address]</code>, <code>[board]</code>, <code>[version]</code></td>
+<td>Device identity, address, board, and RouterOS version.</td>
+</tr>
+<tr>
+<td><code>[arch]</code>, <code>[serial]</code></td>
+<td>Device architecture and serial number.</td>
+</tr>
+<tr>
+<td><code>[packages]</code></td>
+<td>Comma-separated list of the installed packages.</td>
+</tr>
+<tr>
+<td><code>[labels]</code></td>
+<td>Comma-separated list of the user and automatic labels.</td>
+</tr>
+<tr>
+<td><code>[state]</code></td>
+<td>The device state, for example the pairing or upgrade state. Empty for a paired device with nothing in progress.</td>
+</tr>
+<tr>
+<td><code>[available-version]</code></td>
+<td>The newer RouterOS version available for the device, or <code>unknown</code>.</td>
+</tr>
+<tr>
+<td><code>[upgrade-state]</code></td>
+<td>The current upgrade progress or result, or <code>unknown</code>.</td>
+</tr>
+<tr>
+<td><code>[cpu-usage]</code>, <code>[mem-usage]</code>, <code>[hdd-usage]</code></td>
+<td>CPU, RAM, and disk usage in percent, or <code>unknown</code> until the device reports them after it connects.</td>
+</tr>
+<tr>
+<td><code>[&lt;sensor&gt;]</code></td>
+<td>Current reading of the health sensor named by the rule, for example <code>[cpu-temperature]</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Event variables</strong> are available when the event condition of the rule matches:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[iface-name]</code>, <code>[iface-type]</code>, <code>[iface-change]</code></td>
+<td>Interface name, type, and change (<code>running</code>, <code>not-running</code>, <code>added</code>, or <code>removed</code>) of an interface-change condition.</td>
+</tr>
+<tr>
+<td><code>[upgrade-version]</code>, <code>[upgrade-error]</code>, <code>[upgrade-state]</code></td>
+<td>Version, error, and final state of the upgrade reported by an upgrade-finished condition. <code>[upgrade-error]</code> is the reason a device was not upgraded, for example <code>no upgrade available</code>, and is empty after a successful upgrade. <code>[upgrade-state]</code> is the final state of the device in the job, for example <code>done</code>, or <code>pending</code> for a device the job did not upgrade.</td>
+</tr>
+<tr>
+<td><code>[message]</code>, <code>[message-topics]</code></td>
+<td>Message and topics of a matching log line for a log-line condition.</td>
+</tr>
+<tr>
+<td><code>[job-device-count]</code>, <code>[job-success-count]</code></td>
+<td>Total devices and successfully upgraded devices of an upgrade-job-finished event.</td>
+</tr>
+<tr>
+<td><code>[job-start-time]</code>, <code>[job-end-time]</code>, <code>[job-run-time]</code></td>
+<td>Start time and end time of the finished job, for example <code>2026.10.06-14:20:36</code>, and its duration in seconds.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>An upgrade-job-finished event is a system event with no device context, so the device variables in the table above are not available for it. The other event conditions fire for a device, and the device variables are available alongside the event variables.</p>
+</div>
+<p><strong>Alert variables</strong> are available for every alert, whatever fired it:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[alert-name]</code></td>
+<td>The configured rule name, or one generated from the conditions.</td>
+</tr>
+<tr>
+<td><code>[severity]</code>, <code>[category]</code></td>
+<td>Rule severity and comma-separated categories.</td>
+</tr>
+<tr>
+<td><code>[alert-users]</code></td>
+<td>Number of devices the alert applies to.</td>
+</tr>
+<tr>
+<td><code>[alert-fired-count]</code></td>
+<td>Number of times the alert has fired.</td>
+</tr>
+<tr>
+<td><code>[action-fail-count]</code></td>
+<td>Number of failed action executions.</td>
+</tr>
+</tbody>
+</table>
+<p>A placeholder that does not apply to a rule is rendered as <code>unknown</code>. A placeholder whose value is not available is rendered as <code>(empty)</code>, for example <code>[address]</code> for the controller itself.</p>
+<h3 id="how-a-rule-fires">How a rule fires</h3>
+<p>A newly created state alert fires immediately for every paired device that already matches its conditions. When a device disconnects, a state alert keeps its state for that device by default; set <code>reset-on-disconnect=yes</code> to clear the state on disconnect, so that the device fires the rule again after it reconnects and still matches. State alerts are evaluated only for paired devices. Event alerts have no persistent state to reset and fire on each matching occurrence, including an unpaired connection for <code>unpaired-device-connected</code>.</p>
+<p>When CMR restarts on the server, for example after a reboot or a change of <code>packages-directory</code>, it evaluates the state alerts again: the alerts that still match become active again and run their actions. Changing an enabled rule, even only its comment, has the same effect for that rule: its state alert becomes active again on the devices that match and runs its actions. Its <code>fired</code> counter starts again from zero.</p>
+<p>Every rule has a <code>severity</code> (<code>critical</code>, <code>high</code>, <code>medium</code>, or <code>low</code>, default <code>medium</code>) and a <code>category</code> that the controller assigns according to the rule's conditions (for example <code>performance</code>, <code>availability</code>, or <code>version</code>); the category can be changed. The read-only values describe the state of a rule:</p>
+<ul>
+<li><code>devices</code> - Number of devices selected by the rule's labels.</li>
+<li><code>devices-on</code> - Number of devices with an active state alert. Event occurrences do not add to this count.</li>
+<li><code>fired</code> - Total number of times the rule fired, including event occurrences.</li>
+<li><code>action-failures</code> - Number of times an action failed.</li>
+</ul>
+<h3 id="test-and-inspect-a-rule">Test and inspect a rule</h3>
+<ul>
+<li><a href="../../cli-reference/cmr/alert/test"><code>test</code></a> runs the actions of a rule immediately and replaces the placeholders with <code>[placeholder]</code> values, which verifies that the actions work. For now, each test run also counts in the rule's <code>fired</code> value.</li>
+<li><a href="../../cli-reference/cmr/alert/show-devices"><code>show-devices</code></a> lists the devices on which the rule's state alert is active. An event alert never stays active, so <code>show-devices</code> lists no devices for it, and its <code>fired</code> value counts the occurrences instead.</li>
+<li>Messages written by <code>action.log</code> appear in the router log under the topics set in the rule, so read them with <code>/log/print where topics~"cmr"</code>.</li>
+</ul>
+<p>The <a href="../../cli-reference/cmr/alert"><code>/cmr/alert</code></a> CLI reference describes every parameter and read-only value in detail.</p>
+<h2 id="network-topology">Network topology</h2>
+<p>The <a href="../../cli-reference/cmr/layout"><code>/cmr/layout</code></a> menu stores network topologies. A topology is composed of nodes and links: <a href="../../cli-reference/cmr/layout/node"><code>node</code></a> maps a device or another layout to a position, and <a href="../../cli-reference/cmr/layout/link"><code>link</code></a> connects two nodes. Links can be generated automatically from port data with <a href="../../cli-reference/cmr/layout/rebuild-links"><code>rebuild-links</code></a>, and devices can be added in bulk with <a href="../../cli-reference/cmr/layout/add-devices"><code>add-devices</code></a>. The topology itself is displayed only in the GUI.</p>
+<p>Automatic links are built from the data that <code>track-topology</code> fetches from the clients, so keep <code>track-topology=yes</code> when you use <code>rebuild-links</code>. <code>rebuild-links</code> creates links only between devices that are directly connected. Add other connections, for example through a VPN or a switch that is not a CMR client, as links of your own. An automatic link shows the connected ports on both devices with their traffic counters and PoE state. A node can represent another layout (<code>target-layout</code>), so an overview layout can show and link site or building layouts that each contain their own devices. Node names must be unique across all layouts.</p>
+<p>For example, create a layout for one site, add the devices with the <code>office</code> label, and generate the links between them:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/layout/add name=Office
+[admin@MikroTik] &gt; /cmr/layout/add-devices [find name=Office] labels=office
+[admin@MikroTik] &gt; /cmr/layout/rebuild-links [find name=Office]
+</code></pre>
+<p>The topology in the screenshot below is stored as one layout, with a node for each device and a link between the connected ones:</p>
+<center></center>
+<center>**The image shows an example network topology in the WebFig GUI.**</center>
+
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/layout/print detail
+ 0  name=&quot;Example&quot; scale=110 file=&quot;Floor_0.png&quot;
+ 1  name=&quot;1_floor&quot; file=&quot;&quot;
+
+[admin@MikroTik] &gt; /cmr/layout/node/print detail
+ 0  name=&quot;RB5009UPr&quot; layout=Example device=RB5009UPr x=300 y=25
+ 1  name=&quot;CRS354&quot; layout=Example device=CRS354@192.168.255.2 x=308 y=99
+ 2  name=&quot;hAP&quot; layout=Example device=hAP@192.168.1.96 x=285 y=-113
+ 3  name=&quot;hAP-1&quot; layout=Example device=hAP@192.168.2.92 x=636 y=-104
+ 4  name=&quot;cAP ac 1&quot; layout=Example device=cAP ac 1@192.168.2.91 x=628 y=227
+ 5  name=&quot;To_Floor_1&quot; layout=Example target-layout=1_floor x=295 y=159
+
+[admin@MikroTik] &gt; /cmr/layout/link/print
+ #   LAYOUT   NODE1      NODE2
+ 0   Example  CRS354     RB5009UPr
+ 1   Example  RB5009UPr  hAP
+ 2   Example  CRS354     hAP-1
+ 3   Example  CRS354     cAP ac 1
+ 4   Example  CRS354     To_Floor_1
+</code></pre>
+<p>A layout stores its name, the <code>scale</code> of the background picture, and the picture itself in <code>file</code>. A node places, in a layout, either a device with <code>device</code> (for example <code>RB5009UPr</code> or <code>cAP ac 1@192.168.2.91</code>) or another layout with <code>target-layout</code>; <code>device</code> and <code>target-layout</code> are mutually exclusive. The <code>To_Floor_1</code> node above opens the <code>1_floor</code> layout from the example, so an overview layout can show and link whole site or building layouts.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In the GUI, right-click a free spot in the topology map to create a node:</p>
+<ul>
+<li>a device node, by picking a device, and</li>
+<li>a layout node, by picking another layout.</li>
+</ul>
+<p>Right-click an existing node to create a link to another node. The same can be done from the CLI with the <code>add</code>, <code>node</code>, and <code>link</code> commands.</p>
+</div>
+<p>A link connects two nodes of a layout. Links created by <a href="../../cli-reference/cmr/layout/rebuild-links"><code>rebuild-links</code></a> also show the connected ports on both devices with their traffic counters and PoE state:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/layout/link/print detail where layout=Example
+ 0  layout=Example node1=CRS354 node2=RB5009UPr
+     links=*ether47(poe=waiting-for-load,tx=520,rx=0)--
+        *ether2(poe=waiting-for-load,tx=132.0KiB,rx=160.9KiB),
+        ether49(,tx=913.0KiB,rx=30.8KiB)--
+        ether1(poe=waiting-for-load,tx=350.7KiB,rx=67.5KiB)
+ 1  layout=Example node1=RB5009UPr node2=hAP
+     links=*ether6(poe=powered-on,tx=0,rx=0)--*ether1(,tx=0,rx=0)
+</code></pre>
+<p>Here <code>ether2</code> on <code>CRS354</code> is linked to <code>ether1</code> on <code>RB5009UPr</code>, and <code>ether6</code> hands PoE power to <code>ether1</code> on <code>hAP</code>. A <code>*</code> before a port name marks a direct, physical link between the two ports; <code>poe=powered-on</code> and <code>poe=waiting-for-load</code> show the PoE state of each side, and <code>tx</code>/<code>rx</code> show the traffic counters. A link that only connects two layouts, such as the link between <code>CRS354</code> and <code>To_Floor_1</code>, carries no ports.</p>
+<p>Node coordinates are relative to the layout center, so <code>x=0, y=0</code> marks the center and negative values are allowed. <code>x</code> increases to the right and <code>y</code> increases downward, so a smaller <code>y</code> places a node higher on the map: in the screenshot above, the node with <code>y=-113</code> is near the top and the node with <code>y=227</code> is at the bottom. The <code>print</code> output shows the coordinates as signed numbers, for example <code>y=-113</code>.</p>
+<h2 id="application-traffic">Application traffic</h2>
+<p>CMR can collect application traffic statistics from selected devices. Select the devices by labels with the <code>apptraffic-devices</code> setting in the <a href="../../cli-reference/cmr"><code>/cmr</code></a> menu, which by default selects the devices with the <code>gateway</code> label; the server then enables the application traffic classifier (<code>/tool/apptraffic</code>) on the selected devices:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr set apptraffic-devices=gateway
+</code></pre>
+<p>The classifier sees the traffic that the device routes. An access point that bridges its clients' traffic in the bridge fast path sees only its own traffic, such as its DNS queries and management sessions. Select the routers that route the network's traffic, for example the gateway, to see the applications of the clients.</p>
+<p>The statistics are shown in the GUI under <strong>CMR &gt; Traffic</strong>, per application or per category, with the traffic in and out for the last minute, hour, day, and week. The CLI view (<a href="../../cli-reference/cmr/device/apptraffic"><code>/cmr/device/apptraffic</code></a>) lists each detected application with its traffic for the last minute, hour, day, and week. A narrow console leaves out the columns that do not fit.</p>
+<p>The classifier is not available on devices with the <strong>mmips</strong>, <strong>smips</strong>, and <strong>powerpc</strong> architectures.</p>
+<h2 id="wifi-configuration">WiFi configuration</h2>
+<p>The <a href="../../cli-reference/cmr/wifi"><code>/cmr/wifi</code></a> menu defines the WiFi networks of the fleet, and the <a href="../../cli-reference/cmr/wifi/radio"><code>/cmr/wifi/radio</code></a> menu defines the radio configuration. An item is applied to the devices that match its <code>labels</code>, the same label selection used by the upgrade and alert rules. The arguments continue the <a href="../../wireless/wifi"><code>/interface/wifi</code></a> configuration: a network item holds the connectivity and <code>security</code> settings, and a radio item holds the <code>configuration</code> and <code>channel</code> settings. Items have no name; the <code>labels</code> select the target devices and the <code>numbers</code> select an item for editing.</p>
+<h3 id="define-a-wifi-network">Define a WiFi network</h3>
+<p>Create a network for the devices with the <code>Group2</code> label that broadcasts the SSID <code>Office</code>, authenticates with WPA2 and the <code>ccmp</code> cipher, and tags the client traffic with VLAN 10:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/add labels=Group2 ssid=Office vlan-id=10 security.authentication-types=wpa2-psk security.encryption=ccmp security.passphrase=&quot;office-passphrase&quot; comment=office-wifi
+</code></pre>
+<p>The network appears in the list. The settings of a group have dotted names. In the <code>print</code> output the group name is written once and the remaining values of that group are written with a leading dot:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/print
+0  ;;; office-wifi
+   labels=Group2 ssid=&quot;Office&quot; security.encryption=ccmp
+   .authentication-types=wpa2-psk vlan-id=10
+</code></pre>
+<p>{/* Screenshot placeholder — add <code>../img/cmr_wifi_network.webp</code> when the WinBox screenshot is available:</p>
+<center></center>
+<center>**The image shows the WiFi network as configured in the WinBox GUI.**</center>
+
+<p>*/}</p>
+<p>The arguments of a network mirror the <a href="../../wireless/wifi"><code>/interface/wifi</code></a> network:</p>
+<ul>
+<li><code>labels</code> - the devices the network is applied to.</li>
+<li><code>ssid</code> - the network name broadcast to clients.</li>
+<li><code>mode</code> - the operating mode: <code>ap</code>, <code>station</code>, <code>station-bridge</code>, or <code>station-pseudobridge</code>.</li>
+<li><code>vlan-id</code> - the VLAN that the client traffic is tagged with.</li>
+<li><code>security.authentication-types</code> - the authentication methods, for example <code>wpa2-psk</code>, <code>wpa3-psk</code>, or <code>owe</code>.</li>
+<li><code>security.encryption</code> - the allowed ciphers, for example <code>ccmp</code> or <code>gcmp</code>.</li>
+<li><code>security.passphrase</code> - the network password for the personal authentication types. The passphrase is a sensitive value and does not appear in the print output. The REST API returns it to users with the <code>sensitive</code> policy.</li>
+</ul>
+<p>Disable a network to stop applying it without deleting it. A disabled network is marked with the <code>X</code> flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/set 0 disabled=yes
+[admin@MikroTik] &gt; /cmr/wifi/print
+Flags: X - DISABLED
+ 0  X ;;; office-wifi
+      labels=Group2 ssid=&quot;Office&quot; security.encryption=ccmp
+      .authentication-types=wpa2-psk vlan-id=10
+</code></pre>
+<h3 id="configure-the-radio">Configure the radio</h3>
+<p>The <a href="../../cli-reference/cmr/wifi/radio"><code>/cmr/wifi/radio</code></a> menu sets the radio parameters of the selected devices. A radio item applies to every radio of the devices it selects, so limit channel settings to one band with a band label, for example <code>+5ghz</code>. Without the band label, a 5 GHz frequency is also applied to the 2.4 GHz radio, which then stays inactive with "no available channels". Set the regulatory domain, radio chains, and channel of the 5 GHz radios of the devices with the <code>Group2</code> label:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/radio/add labels=Group2,+5ghz configuration.country=Latvia configuration.chains=0,1 channel.band=5ghz-ax channel.frequency=5180 channel.width=20mhz comment=office-radio
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/radio/print
+0  ;;; office-radio
+   labels=Group2,+5ghz configuration.country=Latvia .chains=0,1
+   channel.frequency=5180 .band=5ghz-ax .width=20mhz
+</code></pre>
+<p>The <code>configuration</code> and <code>channel</code> groups mirror the radio parameters of <a href="../../wireless/wifi"><code>/interface/wifi</code></a>: <code>configuration.country</code> sets the regulatory domain, <code>configuration.chains</code> the radio chains, and <code>channel.band</code>, <code>channel.frequency</code>, and <code>channel.width</code> the channel selection.</p>
+<p>The <a href="../../cli-reference/cmr/wifi"><code>/cmr/wifi</code></a> and <a href="../../cli-reference/cmr/wifi/radio"><code>/cmr/wifi/radio</code></a> CLI reference lists every argument of both menus.</p>
+<h3 id="how-the-configuration-is-applied">How the configuration is applied</h3>
+<p>On each selected device, a WiFi network is written as a managed entry (flag <strong>Y</strong>) in the device's <code>/interface/wifi/network</code> menu, and a radio item as a managed entry in <code>/interface/wifi/network/radio</code>. The managed entries apply to the radios that the item selects:</p>
+<ul>
+<li>Without a band label, a network or radio item applies to every radio of the selected devices. Add a band label to select the radios of one band: <code>+2ghz</code>, <code>+5ghz</code>, or <code>+6ghz</code>. For example, <code>labels=Group2,+5ghz</code> selects only the 5 GHz radios of the devices with the <code>Group2</code> label.</li>
+<li>A CMR network takes over the radios it selects and replaces their existing configuration, including radios managed by CAPsMAN and radios with a local configuration. Radios that no CMR network selects keep their configuration, so the 2.4 GHz radio of an access point can stay under CAPsMAN while its 5 GHz radio is configured by CMR.</li>
+<li>A radio item applies only to radios that a CMR network also selects.</li>
+<li>On devices with WiFi 7 radios, the device creates an MLD interface for the CMR network.</li>
+<li>The managed entries cannot be changed on the device. Change them on the CMR server.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>For now, removing or disabling a CMR WiFi network, or disabling the CMR client on the device, does not restore the previous configuration of the radios. A radio falls back to the local <code>/interface/wifi/network</code> entries that match it, and stays disabled when there are none. Its previous CAPsMAN or per-interface configuration must be set again on the device, so export the WiFi configuration of an access point before you apply a CMR network to it.</p>
+</div>
+<h3 id="bridge-and-vlan">Bridge and VLAN</h3>
+<p>For now, a CMR WiFi network cannot select a bridge, because <code>/cmr/wifi</code> has no <code>datapath</code> settings. The bridge depends on the <code>vlan-id</code> of the network:</p>
+<ul>
+<li>With <code>vlan-id</code>, the WiFi interfaces are added to the managed <code>cmr-bridge</code> (the same bridge that VLAN provisioning creates), with VLAN filtering enabled and the <code>vlan-id</code> as their PVID.</li>
+<li>Without <code>vlan-id</code>, the WiFi interfaces are not added to any bridge, and the clients have no network access. For now, set a <code>vlan-id</code> for every CMR WiFi network.</li>
+</ul>
+<p><code>cmr-bridge</code> is not connected to the rest of the network until a port of the device joins it. Add the access point's uplink port to <code>cmr-bridge</code> with a VLAN provisioning rule, so that the uplink carries the network's VLAN. For example, for an office network on VLAN 10 on the access points with the <code>office-ap</code> label, with <code>ether1</code> as the uplink:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/wifi/add labels=office-ap ssid=Office vlan-id=10 security.authentication-types=wpa2-psk,wpa3-psk security.passphrase=&quot;office-passphrase&quot;
+[admin@MikroTik] &gt; /cmr/vlan/add labels=office-ap port-labels=ether1 vlan-ids=10 role=trunk comment=ap-uplink
+</code></pre>
+<p>The switch port and the router on the other end of the uplink must carry VLAN 10 tagged. The router provides the IP addressing, DHCP, and firewall rules for the network; CMR does not configure them.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>When the uplink of an access point joins <code>cmr-bridge</code>, it leaves the access point's previous bridge, and management access through that bridge stops. A <code>trunk</code> port also accepts only VLAN-tagged frames, so untagged traffic on the uplink is dropped. Plan the management access of the access point before you add its uplink to <code>cmr-bridge</code>.</p>
+</div>
+<h2 id="vlan-provisioning">VLAN provisioning</h2>
+<p>The <a href="../../cli-reference/cmr/vlan"><code>/cmr/vlan</code></a> menu creates bridge and VLAN configuration on the selected CMR clients. A rule selects the devices by <code>labels</code>, selects the ports by <code>port-labels</code> (an interface name of a device, for example <code>ether1</code>, or a port label assigned to the port in <code>/cmr/device</code>, for example <code>uplink</code>), defines the <code>vlan-ids</code> (a comma-separated list or a range, for example <code>10,20</code> or <code>10-20</code>), and assigns each port a <code>role</code>: <code>access</code> (default) or <code>trunk</code>. The <code>port-labels</code> argument is required, so a rule always names the ports it configures and cannot apply to every port of a device by accident.</p>
+<p>On a selected device the rule adds the selected ports to a bridge. The bridge depends on the configuration of the device:</p>
+<ul>
+<li>If the device has one enabled bridge, CMR uses it. Your configuration on the bridge stays in place: its ports, VLAN interfaces, and IP addresses.</li>
+<li>If the device has no enabled bridge, CMR creates a managed bridge named <code>cmr-bridge</code> with VLAN filtering enabled.</li>
+</ul>
+<p>Keep only one enabled bridge on the device, and do not add the VLANs of a CMR rule manually in <code>/interface/bridge/vlan</code>.</p>
+<p>On the device, the ports and VLAN entries that CMR adds have the <strong>Y</strong> flag. Each selected port gets one of two roles:</p>
+<ul>
+<li>An <code>access</code> port belongs to a single VLAN, the first VLAN in <code>vlan-ids</code>, which is set as the port's PVID. It carries untagged frames. On the client, the VLAN appears as a dynamic untagged entry in the bridge's VLAN table while the port has link.</li>
+<li>A <code>trunk</code> port carries every VLAN in <code>vlan-ids</code>, tagged with 802.1Q headers, and accepts only VLAN-tagged frames.</li>
+</ul>
+<p>One rule can select several ports; every selected port is configured the same way. A <code>trunk</code> port accepts only VLAN-tagged frames, also when VLAN 1 is in <code>vlan-ids</code>, so a port cannot carry untagged and tagged VLANs at the same time. For now, when several rules select the same port, the first rule applies and the others are ignored without a warning.</p>
+<p>For example, give the devices with the <code>office</code> label one access port on VLAN 10 and one uplink carrying VLANs 10 and 20:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/vlan/add labels=office port-labels=ether5 vlan-ids=10 role=access comment=office-access
+[admin@MikroTik] &gt; /cmr/vlan/add labels=office port-labels=ether6 vlan-ids=10,20 role=trunk comment=office-uplink
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/vlan/print
+0  ;;; office-access
+   labels=office port-labels=ether5 vlan-ids=10 role=access
+
+1  ;;; office-uplink
+   labels=office port-labels=ether6 vlan-ids=10,20 role=trunk
+</code></pre>
+<p>Removing or disabling a rule removes the ports and VLAN entries that CMR manages. A port that was a port of the bridge before the rule returns to its previous port configuration. Your bridge and the rest of its configuration are not changed; <code>cmr-bridge</code> is removed when the last rule that uses it is removed.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Provisioning replaces the bridge port configuration of the selected ports with the VLAN settings of the rule, and on a device without an enabled bridge it moves them into the managed <code>cmr-bridge</code>. This can disconnect the port's current traffic and cut the device's management access if a management or uplink port is selected. The <code>port-labels</code> argument is required, so a rule always names the ports it changes, but a rule with no <code>labels</code> still applies those ports to all connected devices, including the CMR controller itself; applying such a rule can disconnect the whole fleet and the controller's own management access. Keep the device selection explicit too. Disabling or removing a rule restores the previous configuration, provided the device is still reachable from the controller; a rule that also configures the device's own uplink can cut that link, and the managed configuration is then kept until the CMR connection to the device is re-established, for example by re-enabling the CMR client.</p>
+</div>
+<hr />
+<h1 id="cmr-client">CMR-Client</h1>
+<blockquote>
+<p>The CMR-client is the device-side component that connects to a CMR server and is managed centrally from it.</p>
+</blockquote>
+<h1 id="cmr-client_1">CMR-Client</h1>
+<p>A CMR-client is a RouterOS device that connects to a CMR server and is managed centrally from it. The CMR-client functionality is included in the main RouterOS package.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>CMR-client is not supported on devices with the <strong>smips</strong> and <strong>powerpc</strong> architectures.</p>
+</div>
+<p>The <a href="../../cli-reference/cmr/client"><code>CMR-Client CLI Reference</code></a> provides detailed descriptions for every parameter and command in the <code>/cmr/client</code> menu.</p>
+<h2 id="enable-the-cmr-client">Enable the CMR client</h2>
+<p>The client must be able to reach the CMR server on TCP port <code>54321</code>. Allow connections to this port in the server's firewall and through any firewalls between the client and the server.</p>
+<p>Enable the client and specify the CMR server it should connect to:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/client set enabled=yes controller-addresses=192.168.88.1 pairing-requirement=password
+</code></pre>
+<p><code>controller-addresses</code> is not obligatory, but it is recommended to set it when you want the client to connect to a specific CMR server, or the client is unable to discover the server automatically through neighbor discovery or DNS (the <a href="./#how-it-works">How it works</a> section of the CMR guide describes both).</p>
+<p>The client contacts the server and reports its pairing status. The current state and the server it is connected to are shown in the read-only parameters <code>status</code>, <code>controller-address</code>, and <code>controller-identity</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/client print
+  enabled: yes
+  pairing-requirement: password
+  controller-addresses: 192.168.88.1
+  status: paired,connected
+  controller-identity: CMR-1
+  controller-address: 192.168.88.1
+</code></pre>
+<p>The client logs each change of its <code>status</code> with the <code>cmr</code> topic, for example <code>client status changed: paired,connected 192.168.88.1</code>, followed by the address of the server. When the connection to the server drops, for example while CMR restarts on the server, the client reconnects with its existing pairing.</p>
+<h2 id="pair-the-client-to-the-server">Pair the client to the server</h2>
+<p>Pairing links the client with a CMR server. Running the <code>pair</code> command locally always approves the pairing from the client side, regardless of the client's configured <code>pairing-requirement</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/client/pair username=admin password=secret
+Columns: ADDRESS, STATUS
+ADDRESS         STATUS
+192.168.88.1    paired
+</code></pre>
+<p>The client pairs with the server at <code>controller-addresses</code>. A username and password are only needed to satisfy the server's requirement when the server is configured with <code>pairing-requirement=password</code>. They are the credentials of a RouterOS user on the server; CMR has no separate pairing password. By giving them, the client satisfies the server's requirement remotely.</p>
+<p>The client also has its own <code>pairing-requirement</code> in the <code>/cmr/client</code> menu, which defines what the server must do before the client accepts the pairing. The client supports <code>none</code>, <code>password</code>, and <code>confirm</code>, like the CMR server, and the default is <code>password</code>. With <code>confirm</code>, the pairing completes only after <code>/cmr/client/pair</code> is run on the client. The <a href="./#pairing">Pairing</a> section explains how the requirements on both devices combine.</p>
+<h2 id="disconnect-the-client">Disconnect the client</h2>
+<p>To forget the pairing and disconnect the client from the server:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /cmr/client/forget
+</code></pre>
+<p>Disabling the client (<code>/cmr/client set enabled=no</code>) removes the configuration that CMR provisioned on the device. Enabling it again reconnects the client with its existing pairing.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>The <code>status</code> and <code>pairing-status</code> values in <code>/cmr/client print</code> show where the connection or the pairing stops. <code>pairing-status</code> lists the server address, the server's pairing state (<code>cmr:</code>), and the client's own pairing state (<code>device:</code>).</p>
+<ul>
+<li><code>status: searching</code> - the client has not found a CMR server. Set <code>controller-addresses</code> to the server's IP address, or check that the server is reachable from the client on TCP port <code>54321</code> and that firewalls allow the connection.</li>
+<li><code>status: waiting-for-pairing,connected</code> with <code>pairing-status: 192.168.88.1: cmr:waiting confirmation, device:ok</code> - the client accepted the pairing and is connected, and the server waits for local approval because its <code>pairing-requirement</code> is <code>confirm</code>. On the server, the device is listed in <code>/cmr/device</code> with the <strong>P</strong> (pending) flag. Run <a href="../../cli-reference/cmr/device/pair"><code>/cmr/device/pair</code></a> on the server for that device.</li>
+<li><code>status: paired,disconnected</code>, and the device is not listed on the server - the client keeps a pairing with a server it can no longer reach, for example an earlier CMR server. As a workaround, forget the pairing and enable the client again, so that it pairs with the server in <code>controller-addresses</code>:</li>
+</ul>
+<p><code>ros
+  [admin@MikroTik] &gt; /cmr/client/forget
+  [admin@MikroTik] &gt; /cmr/client set enabled=yes controller-addresses=192.168.88.1</code></p>
+<p>On the CMR server itself, <code>/cmr/client print</code> shows the comment "settings ignored because used by local controller". The server manages itself through its local controller, and the <code>/cmr/client</code> settings on the server have no effect.</p>
+<hr />
+<h1 id="branding">Branding</h1>
+<blockquote>
+<p>RouterOS Branding package enables customization of system elements including router name, company URLs, ASCII logos, and WebFig interfaces. It supports custom file inclusion for login pages, skins, and hotspot logos...</p>
+</blockquote>
+<h1 id="branding_1">Branding</h1>
+<p>RouterOS allows slight system customization with the help of a branding package (modify default configuration, LCD logo, WebFig homepage, etc.).</p>
+<p>This is a special system package, which you can generate from within your <a href="https://mikrotik.com">mikrotik.com</a> account, in the account section "Branding maker". The resulting file will have a .dpk extension and can be installed by all the same means as an .npk package.</p>
+<p>To install the package on a router, the branding package has to be uploaded to it and then the router has to reboot. The Netinstall tool can be used for the same effect.</p>
+<p>The generated package can be installed in any RouterOS version.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Note that specific branding features are available starting from specific RouterOS versions.</p>
+</div>
+<h2 id="options">Options</h2>
+<p>Options that can be configured using a branding package:</p>
+<ul>
+<li><strong>Router name</strong> - Branding package name, device identity and <a href="../diagnostics-monitoring-and-troubleshooting/resource.md">platform name</a> in RouterOS, can only be one word, don't use spaces or special characters.</li>
+<li><strong>Company URL</strong>- Value that appears in the console when you connect to a RouterOS device.</li>
+<li><strong>Manual URL</strong>- Documentation link, which can be opened in <a href="./webfig.md">WebFig</a>.</li>
+<li><strong>ASCII Logo</strong> - A text logo that is shown when logging into the command line interface, i.e., Telnet, SSH, WinBox Terminal. A logo can be created in the <a href="https://mikrotik.com/client/branding">branding maker</a> or copied from any other plaintext editor. A logo height cannot be larger than 8 lines, width is not limited, but note that in a narrow terminal window a logo might be distorted.</li>
+<li><strong>Hide "MikroTik" from SNMP information</strong> - The MikroTik name will be hidden in SNMP information.</li>
+<li><strong>Do not run script on install</strong> - Do not run Default configuration script on branding package install.</li>
+<li><strong>Hide Default configuration prompt</strong>- Hide the Default configuration prompt after configuration reset <em>(available starting from RouterOS 7.15)</em>.</li>
+<li><strong>Hide default caps-mode-script</strong> - Hide default caps-mode-script <em>(available starting from RouterOS 7.15)</em>.</li>
+</ul>
+<h2 id="custom-files">Custom files</h2>
+<p>Custom files such as the WebFig login page, WebFig logo, hotspot, skins, Default configuration, LCD logo and CAPs mode script can be included in the branding package.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Any reset button mode will restore the default configuration from the branding package.</p>
+</div>
+<h3 id="webfig-login-page">WebFig login page</h3>
+<p>The WebFig login page is a customized default RouterOS login interface that appears when accessing the router's IP address. This page can be customized to meet branding or functional requirements.</p>
+<ul>
+<li>
+<p><strong>Customization Files:</strong></p>
+</li>
+<li>
+<p><strong><code>/index2.html</code></strong>: Main template for the login page.</p>
+</li>
+<li><strong><code>/assets/style.css</code></strong>:  MikroTik RouterOS stylesheet.</li>
+<li><strong><code>/assets/script.js</code></strong> is responsible for handling the login functionality and contains code that gives the button interactivity.</li>
+<li><strong>Required Elements for the <code>script.js</code>:</strong></li>
+</ul>
+<ol>
+<li><strong>Form for Login:</strong><br />
+<code>&lt;form id="login"&gt;</code></li>
+<li><strong>Username Field:</strong><br />
+<code>&lt;input id="name" data-defaultuser="admin"&gt;</code><ul>
+<li>The <code>admin</code> value can be changed to another username or left blank.</li>
+</ul>
+</li>
+<li><strong>Password Field:</strong><br />
+<code>&lt;input id="password"&gt;</code></li>
+<li><strong>Error Display Section:</strong><br />
+<code>`
+- Here is an example of a user-customized login page with a "Show Password" button, achieved using a modified [</code>index2.html`](pathname:///assets/295239801_index2.html) along with additional <a href="pathname:///assets/295239803_toggle_button.css">toggle_button.css</a> and <a href="pathname:///assets/295239802_show_password.js">show_password.js</a> files.<br />
+  The HTML file must be named "index2.html" and should use properly nested HTML to ensure compatibility with all browsers.
+- The uploaded images or JavaScript files must reference the same path as the index file. No custom folder names can be used.</li>
+</ol>
+<hr />
+<h3 id="webfig-logo">WebFig logo</h3>
+<p>RouterOS WebFig page (configuration page) logo. To overwrite the MikroTik logo on the WebFig login page, upload your custom logo named "mikrotik_logo.png".</p>
+<h3 id="hotspot">hotspot</h3>
+<p>Hotspot login page logo. The file must be named "logobottom.png".</p>
+<h3 id="skins">skins</h3>
+<p>A skin file with the name "your_file_name.json". To apply a particular skin to a specific user group, you don't need to log into the router. You can do it with branding by uploading a Default configuration file.</p>
+<h3 id="default-configuration">Default configuration</h3>
+<p>A RouterOS default configuration file that will override the RouterOS default configuration. This configuration will persist even after a RouterOS reset. Factory passwords can be reapplied using the read-only variables <em>$defconfPassword</em> and <em>$defconfWifiPassword</em> (access to factory passwords is available starting RouterOS 7.10).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If a Default configuration or CAPs mode script execution takes more than 2 minutes, the script will fail, and LOG will contain <em>"runtime limit exceeded"</em> or in rare cases <em>"std failure: timeout"</em> error.</p>
+</div>
+<h3 id="lcd-logo">LCD logo</h3>
+<p>The LCD logo will be displayed on devices equipped with an LCD screen. The logo size cannot be larger than 160px width and 72px height. The CCR1xxx series has a white (0xffffff) background, the 2011 series have a black (0x000000) background.</p>
+<h3 id="other-files">Other files</h3>
+<p>Custom files will be copied into a folder named "branding" and will be accessible from within RouterOS.</p>
+<h3 id="caps-mode-script">CAPs mode script</h3>
+<p>A RouterOS CAPs mode script that will override the RouterOS default CAPs mode script. It is possible to reapply the factory passwords by utilizing the read-only variables <em>$defconfPassword</em> and <em>$defconfWifiPassword</em> (available starting from RouterOS 7.15).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The CAPs mode script can only be applied via the GUI or CLI by performing a <a href="../getting-started/configuration-management/index.md#reset-the-configuration">configuration reset</a> after the device has fully booted.</p>
+</div>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

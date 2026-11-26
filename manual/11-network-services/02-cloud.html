@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Network Services</p>
+      <h1 id="cloud">Cloud</h1>
+<h1 id="cloud_1">Cloud</h1>
+<blockquote>
+<p>MikroTik cloud services in RouterOS: a DDNS name for the router, the clock and time zone at startup, cloud backup, Back To Home VPN and File Share. Which services are on by default and how the router reaches the...</p>
+</blockquote>
+<h1 id="cloud_2">Cloud</h1>
+<p>MikroTik runs free cloud services for RouterOS devices. They give the router a DNS name, set its clock and time zone, store a backup, and let you reach your home network or share files from the router, even when the router has no public IP address. The router always opens the connection to the MikroTik servers, so none of the services needs port forwarding on another device.</p>
+<h2 id="services">Services</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Service</th>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">On by default</th>
+<th style="text-align: left;">Use it to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">DDNS</td>
+<td style="text-align: left;"><code>/ip/cloud</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Get a DNS name that follows the router's public IP address.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Time update</td>
+<td style="text-align: left;"><code>/ip/cloud</code>, <code>/system/clock</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Set the clock and time zone when the router starts.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./cloud-backup">Cloud backup</a></td>
+<td style="text-align: left;"><code>/system/backup/cloud</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Store an encrypted backup on the MikroTik servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./back-to-home">Back To Home</a></td>
+<td style="text-align: left;"><code>/ip/cloud</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Reach your home network over a WireGuard VPN from a phone or computer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./file-share">File Share</a></td>
+<td style="text-align: left;"><code>/ip/cloud/back-to-home-file</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Share files from the router's storage through an HTTPS link.</td>
+</tr>
+</tbody>
+</table>
+<p><a href="./communication-mikrotik-cloud-servers">Communication with MikroTik Cloud Services</a> lists every connection RouterOS makes to MikroTik servers and how to turn each one off.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Cloud services work on MikroTik devices and on Cloud Hosted Router (CHR) with a paid perpetual license. They are not available in RouterOS for x86.</p>
+</div>
+<h2 id="ddns">DDNS</h2>
+<p>Dynamic DNS (DDNS) gives the router a DNS name under <code>sn.mynetname.net</code> that follows its public IP address. Use it to reach the router by name when your ISP changes the address.</p>
+<p>To enable DDNS and see the name:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/cloud/set ddns-enabled=yes
+[admin@MikroTik] &gt; /ip/cloud/print
+          ddns-enabled: yes
+  ddns-update-interval: none
+           update-time: yes
+        public-address: 203.0.113.10
+              dns-name: hf1234abcd5.sn.mynetname.net
+                status: updated
+      back-to-home-vpn: revoked-and-disabled
+</code></pre>
+<p>The name stays the same for the device, and the router keeps it up to date by itself. To send an update right away, for example after you change the internet connection:</p>
+<pre><code class="language-ros">/ip/cloud/force-update
+</code></pre>
+<p>The name only makes the router easier to find. It does not open any access: the default firewall drops connections to the router from the internet. To reach the router remotely, use <a href="./back-to-home">Back To Home</a>, or <a href="../../getting-started/securing-your-router#opening-management-access-from-wan-advanced">allow the services in the firewall</a>. You can also get a <a href="../../authentication-authorization-accounting/certificates#lets-encrypt-certificate">Let's Encrypt certificate</a> for the name.</p>
+<p>To make the name resolve to the router's own address instead of the public one, for example to reach the router by name inside your network:</p>
+<pre><code class="language-ros">/ip/cloud/advanced/set use-local-address=yes
+</code></pre>
+<p>To turn DDNS off:</p>
+<pre><code class="language-ros">/ip/cloud/set ddns-enabled=auto
+</code></pre>
+<p>The router then asks the cloud server to delete the name. With <code>auto</code>, DDNS stays on while Back To Home is enabled, so turn off Back To Home first if you use it.</p>
+<h2 id="time-update">Time update</h2>
+<p>When the router starts, it sets its clock and time zone from the cloud server, unless the <a href="../../system-information-and-utilities/ntp">NTP client</a> is enabled. This does not need DDNS. The cloud time is approximate: for an accurate clock, use the NTP client.</p>
+<p>To stop the router from asking the cloud for the time and time zone:</p>
+<pre><code class="language-ros">/ip/cloud/set update-time=no
+/system/clock/set time-zone-autodetect=no
+</code></pre>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="how-the-router-reaches-the-cloud">How the router reaches the cloud</h3>
+<p>The router sends encrypted requests to <code>cloud2.mikrotik.com</code> on UDP port 15252. The cloud server replies with the address it received the request from, and the router shows it in <code>public-address</code>, and in <code>public-address-ipv6</code> when the router also reaches the server over IPv6. Behind NAT, this is the public address of the NAT device, not an address on the router. On a router with several internet connections, it is the address of the connection that the route to <code>cloud2.mikrotik.com</code> uses.</p>
+<p>When the router cannot be reached from the internet directly, Back To Home and File Share connect through MikroTik relay servers. The router keeps a connection open to the nearest relay, and clients reach the router through it. The traffic stays end-to-end encrypted: the keys are only on the router and on the client, so the relay cannot read the data.</p>
+<h3 id="ddns-updates">DDNS updates</h3>
+<ul>
+<li>The name is the serial number of the device in lower case followed by <code>.sn.mynetname.net</code>. It resolves to <code>public-address</code> with a time to live (TTL) of 60 seconds, and when the router also has <code>public-address-ipv6</code>, to that address as well.</li>
+<li>Behind NAT, where the router cannot see its public address on its own interfaces, the router sends an update every minute.</li>
+<li><code>force-update</code> does nothing while DDNS is off (<code>ddns-enabled=auto</code> without Back To Home).</li>
+<li>When DDNS turns off, the router sends a delete request to the cloud server, and the name stops resolving within a few minutes.</li>
+<li>With <code>use-local-address=yes</code>, the name resolves to the address the router sends its requests from, and <code>public-address</code> still shows the public address.</li>
+<li>While the cloud server does not answer, <code>status</code> shows <code>updating...</code> and the router retries with growing intervals. <code>failed to connect</code> means a request got no reply.</li>
+</ul>
+<h3 id="time-update-at-startup">Time update at startup</h3>
+<ul>
+<li>The router asks the cloud server for the time once after it starts, also with <code>ddns-enabled=auto</code>. DDNS updates and <code>force-update</code> do not set the clock again.</li>
+<li>While the NTP client is enabled, the router does not use the cloud time, even when the NTP client cannot reach any server.</li>
+<li>The router logs each change of the clock, for example:</li>
+</ul>
+<p><code>text
+  system,critical,info cloud change time Sep/24/2026 03:01:57 =&gt; Sep/24/2026 06:25:50</code></p>
+<ul>
+<li>For <code>time-zone-autodetect</code>, the cloud server looks up the location of the router's public IP address, and the router applies that time zone, including daylight saving time.</li>
+</ul>
+<p>For all properties, see <a href="../../cli-reference/ip/cloud/"><code>/ip/cloud</code></a> and <a href="../../cli-reference/ip/cloud/advanced"><code>/ip/cloud/advanced</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="back-to-home">Back To Home</h1>
+<blockquote>
+<p>Back To Home turns a RouterOS device into a WireGuard VPN server you can reach from anywhere, also behind NAT through a MikroTik relay. Set it up with the phone app, share tunnels with other people and computers, or...</p>
+</blockquote>
+<h1 id="back-to-home_1">Back To Home</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Back To Home works on devices with an ARM, ARM64 or TILE CPU, in RouterOS 7.12 and later.</p>
+</div>
+<p>Back To Home turns the router into a WireGuard VPN server that you can reach from anywhere, even when the router has no public IP address or is behind NAT. You set it up with the Back To Home app (<a href="https://play.google.com/store/apps/details?id=com.mikrotik.android.freevpn">Android</a>, <a href="https://apps.apple.com/lv/app/mikrotik-back-to-home/id6450679198">iPhone</a>), and the app can also share access with other people and computers.</p>
+<p>When the router has a public IP address, the phone connects to it directly. Otherwise, the connection goes through a MikroTik relay server. The connection is end-to-end encrypted in both cases, and the relay cannot read the traffic (see <a href="./#how-the-router-reaches-the-cloud">How the router reaches the cloud</a>). Through the relay, the speed can be lower. Your traffic leaves to the internet from your router, so websites see your home address.</p>
+<p>Back To Home is meant for simple access to your home network, not for anonymity. For finer control over VPN access, configure <a href="../../virtual-private-networks/wireguard">WireGuard</a> yourself.</p>
+<h2 id="set-up-back-to-home-with-the-app">Set up Back To Home with the app</h2>
+<p>You need a phone with the Back To Home app, connected to the router's local network, for example its Wi-Fi.</p>
+<ol>
+<li>Connect the phone to the router's Wi-Fi network.</li>
+<li>Open the Back To Home app.</li>
+<li>Select <strong>Create new</strong>.</li>
+<li>Enter the router's local IP address (<code>192.168.88.1</code> in the default configuration) and the user name and password of the router, and select <strong>Connect</strong>.</li>
+<li>Enter a name for the tunnel and select <strong>Create tunnel</strong>.</li>
+<li>Allow the phone to add the VPN configuration.</li>
+</ol>
+<p>The tunnel is ready. Disconnect from the router's Wi-Fi, and select <strong>Connect</strong> in the app to open the tunnel from any other network, for example mobile data.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><em>[gambar: Back To Home app start screen with the Create new button]</em></th>
+<th style="text-align: left;"><em>[gambar: Create tunnel screen with the router address, user name and password fields]</em></th>
+<th style="text-align: left;"><em>[gambar: App connected to the router and asking for a tunnel name]</em></th>
+<th style="text-align: left;"><em>[gambar: Phone asking for permission to add the VPN configuration]</em></th>
+<th style="text-align: left;"><em>[gambar: Error message saying Back To Home is not supported on this device]</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Select <strong>Create new</strong></td>
+<td style="text-align: left;">Enter the router address and credentials</td>
+<td style="text-align: left;">Name the tunnel</td>
+<td style="text-align: left;">Allow the VPN configuration</td>
+<td style="text-align: left;">Error on a device without Back To Home support</td>
+</tr>
+</tbody>
+</table>
+<h3 id="disable-vpn-when-home">Disable VPN when home</h3>
+<p>The app decides that the phone is home by looking for the router on the local network. When a tunnel is created with <strong>Create new</strong>, the app reads the router's unique RouterOS identifier and saves it in the tunnel profile. Each time the phone connects to a Wi-Fi network, the app runs MikroTik discovery, the same discovery WinBox uses. If it finds a router with the saved identifier, it considers the phone home and pauses the tunnel.</p>
+<p>The option does not work for tunnels imported from a QR code or a share link, because those profiles do not contain the router's identifier. The check only runs when the phone connects to Wi-Fi, so the option does not pause the tunnel on mobile data. The router must also be visible to MikroTik discovery on that network.</p>
+<h2 id="share-the-tunnel-with-other-people">Share the tunnel with other people</h2>
+<p>You can create guest tunnels for friends and family, with an expiration date. For each guest tunnel, you choose whether the person can reach your home network or only use the internet through your router. The person needs the Back To Home app.</p>
+<ol>
+<li>Connect to your own tunnel.</li>
+<li>Select <strong>...</strong> next to the tunnel, then <strong>Manage shares</strong>.</li>
+<li>Enter the router's user name and password. The app changes the router configuration.</li>
+<li>Select <strong>Create</strong>.</li>
+<li>Enter a name for the guest tunnel, for example the person's name.</li>
+<li>Set the expiration date.</li>
+<li>Turn on <strong>Home network access</strong> if the person should reach your local network. Leave it off for internet access only.</li>
+<li>Select <strong>Create tunnel</strong>. The phone's share sheet opens.</li>
+<li>Send the invite link, for example in a chat app.</li>
+</ol>
+<p>When the person opens the link, the Back To Home app opens and adds the tunnel, or asks them to install the app first. To invite someone in person, select <strong>...</strong> next to the share and <strong>View QR invite</strong>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><em>[gambar: Tunnel menu with the Edit and Manage shares items]</em></th>
+<th style="text-align: left;"><em>[gambar: Manage shares asking for the router user name and password]</em></th>
+<th style="text-align: left;"><em>[gambar: Shares manager with no shared tunnels]</em></th>
+<th style="text-align: left;"><em>[gambar: Share form with a tunnel name, an expiration date and home network access]</em></th>
+<th style="text-align: left;"><em>[gambar: Phone share sheet for the Back To Home invite link]</em></th>
+<th style="text-align: left;"><em>[gambar: Invite link pasted into a chat app]</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Select <strong>Manage shares</strong></td>
+<td style="text-align: left;">Enter the router credentials</td>
+<td style="text-align: left;">Select <strong>Create</strong></td>
+<td style="text-align: left;">Name the share and set its access</td>
+<td style="text-align: left;">The share sheet opens</td>
+<td style="text-align: left;">Send the invite link</td>
+</tr>
+</tbody>
+</table>
+<h2 id="connect-a-computer-with-the-wireguard-app">Connect a computer with the WireGuard app</h2>
+<p>The Back To Home app is only for phones. On a computer, use the <a href="https://www.wireguard.com/install/">WireGuard app</a> with a share you create for yourself:</p>
+<ol>
+<li>Create a share for the computer as described in the previous section.</li>
+<li>Select <strong>...</strong> next to the new share, then <strong>Share WireGuard config file</strong>.</li>
+<li>Send the file to the computer, for example with AirDrop or as an email attachment.</li>
+<li>In the WireGuard app on the computer, select <strong>Import Tunnel(s) from File</strong> and choose the file.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><em>[gambar: Shares manager with one share and the Create button]</em></th>
+<th style="text-align: left;"><em>[gambar: Share form for a computer with no expiration date and home network access]</em></th>
+<th style="text-align: left;"><em>[gambar: Shares manager with two shares]</em></th>
+<th style="text-align: left;"><em>[gambar: Share menu with the Share URL invite, View QR invite and Share WireGuard config file items]</em></th>
+<th style="text-align: left;"><em>[gambar: Phone share sheet for the WireGuard configuration file]</em></th>
+<th style="text-align: left;"><em>[gambar: WireGuard app for macOS with the Import Tunnel(s) from File menu item]</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Select <strong>Create</strong></td>
+<td style="text-align: left;">Name the share and set its access</td>
+<td style="text-align: left;">The new share in the list</td>
+<td style="text-align: left;">Select <strong>Share WireGuard config file</strong></td>
+<td style="text-align: left;">Send the file to the computer</td>
+<td style="text-align: left;">Import the file in the WireGuard app</td>
+</tr>
+</tbody>
+</table>
+<h2 id="manage-back-to-home-in-routeros">Manage Back To Home in RouterOS</h2>
+<p>You do not need to configure anything in RouterOS when you use the app. Without the app, for example to connect only a computer, enable Back To Home first:</p>
+<pre><code class="language-ros">/ip/cloud/set back-to-home-vpn=enabled
+</code></pre>
+<p>Wait until <code>/ip/cloud/print</code> shows <code>vpn-status: running</code>, which takes a few seconds. Until then, adding a user fails with <code>back-to-home vpn not enabled</code>. Then add a user and print its configuration:</p>
+<pre><code class="language-ros">/ip/cloud/back-to-home-user/add name=laptop allow-lan=yes
+/ip/cloud/back-to-home-user/show-client-config [find name=laptop]
+</code></pre>
+<p>The last command prints the WireGuard configuration of the user and a QR code of it. Import it in the <a href="https://www.wireguard.com/install/">WireGuard app</a> on the device:</p>
+<pre><code class="language-text"> # Name = laptop
+ # CloudDDNS = hf1234abcd5.sn.mynetname.net
+ [Interface]
+ PrivateKey = &lt;private key of the user&gt;
+ Address = 192.168.216.3/32, fc00:0:0:216::3/128
+ MTU = 1420
+ [Peer]
+ PublicKey = &lt;vpn-public-key of the router&gt;
+ AllowedIPs = 0.0.0.0/0, ::/0
+ Endpoint = hf1234abcd5.vpn.mynetname.net:24957
+ PersistentKeepalive = 30
+ [Peer]
+ PublicKey = //////////////////////////////////////////8=
+ AllowedIPs = 0.0.0.0/32
+ Endpoint = hf1234abcd5.sn.mynetname.net:24957
+ PersistentKeepalive = 15
+</code></pre>
+<p>The first peer is the router. The second one, with a placeholder key, carries no traffic.</p>
+<p>Each user is a separate WireGuard client with its own keys and addresses:</p>
+<ul>
+<li><code>allow-lan=no</code>, the default, lets the user reach only the internet through the router. With <code>yes</code>, the user can also reach your local network.</li>
+<li><code>client-allowed-address</code> limits what the client sends through the tunnel, for example <code>client-allowed-address=192.168.88.0/24</code> for access to the local network only. By default, the client sends all traffic through the tunnel.</li>
+<li><code>client-dns</code> sets the DNS server in the client configuration.</li>
+<li><code>expires</code> takes <code>never</code>, a date or a time interval such as <code>7d</code>. You cannot change it after you create the user: create the user again instead.</li>
+</ul>
+<h2 id="turn-off-back-to-home">Turn off Back To Home</h2>
+<p>The app adds the tunnel to the phone's VPN settings. To remove the tunnel from a phone, delete it in the phone's VPN settings. This does not change the router.</p>
+<p>To turn off Back To Home on the router:</p>
+<pre><code class="language-ros">/ip/cloud/set back-to-home-vpn=revoked-and-disabled
+</code></pre>
+<p>The router deletes all Back To Home users and revokes the keys. When you enable Back To Home again, the router creates new keys and a new port, so you set up every phone and computer again.</p>
+<h2 id="technical-details_1">Technical details</h2>
+<h3 id="what-back-to-home-adds-to-the-router">What Back To Home adds to the router</h3>
+<p>When you enable Back To Home, in the app or with <code>/ip/cloud/set back-to-home-vpn=enabled</code>, RouterOS adds:</p>
+<ul>
+<li>A WireGuard interface named <code>back-to-home-vpn</code>, which listens on the UDP port shown in <code>vpn-port</code> in <code>/ip/cloud</code>.</li>
+<li>The addresses 192.168.216.1/24 and fc00:0:0:216::1/64 on that interface. Each client gets the next free addresses from these networks.</li>
+<li>Dynamic firewall rules for IPv4 and IPv6: an input rule that accepts the WireGuard port, a masquerade rule for traffic from the tunnel, and a forward rule that drops traffic from restricted users to the <code>LAN</code> interface list.</li>
+<li>The DNS name <code>&lt;serial number&gt;.vpn.mynetname.net</code>, which clients use as the endpoint. It resolves to the router's public address, or to the relay the router uses. With <code>ddns-enabled=auto</code>, the default, DDNS also turns on.</li>
+</ul>
+<p>The IPv6 address fc00:0:0:216::1/64 is created with <code>advertise=yes</code>. Whether the router sends router advertisements for it on the tunnel interface depends on the <code>/ipv6/nd</code> settings.</p>
+<p>The users who may only use the internet (<code>allow-lan=no</code>) are in the dynamic address list <code>back-to-home-lan-restricted-peers</code>. The restriction relies on the <code>LAN</code> interface list of the default configuration, so keep your local interfaces in that list.</p>
+<p>Revoking removes the <code>back-to-home-vpn</code> interface with its peers, addresses and firewall rules, and all users, and asks the cloud server to delete the <code>vpn.mynetname.net</code> name.</p>
+<h3 id="direct-and-relayed-connections">Direct and relayed connections</h3>
+<p><code>vpn-relay-ipv4-status</code> and <code>vpn-relay-ipv6-status</code> in <code>/ip/cloud</code> show how clients reach the router. With <code>reachable directly</code>, the <code>vpn.mynetname.net</code> name resolves to the router's public address, and clients connect to the router itself. With <code>reachable via relay</code>, the name resolves to the relay, and the relay forwards the encrypted traffic. File Share decides separately: it can use the relay while Back To Home connects directly, for example when <code>www-ssl</code> uses TCP port 443 (see <a href="./file-share">File Share</a>).</p>
+<p>Tunnels that the Back To Home app creates are users in <code>/ip/cloud/back-to-home-user</code>. The app sets <code>name</code> to the model identifier of the phone, for example <code>iPhone18,1</code>, and the comment to the tunnel name shown in the app.</p>
+<h3 id="client-configuration">Client configuration</h3>
+<p>The lines that start with <code>#</code> are comments, because a WireGuard configuration has no field for a tunnel name. <code># Name</code> carries the user's comment, or its name when it has no comment, and the Back To Home app uses it as the tunnel name when it imports the configuration. Other WireGuard clients ignore these lines, so the same configuration works in any WireGuard app.</p>
+<p>The second peer in a client configuration has a placeholder key and <code>AllowedIPs = 0.0.0.0/32</code>, so it carries no traffic. A client connects without it, also through the relay.</p>
+<p><code>/ip/cloud</code> also has a built-in client configuration in <code>vpn-wireguard-client-config</code> and <code>vpn-wireguard-client-config-qrcode</code>. It works on one device at a time, because WireGuard identifies a client by its key. For more devices, add a user for each one.</p>
+<h3 id="contact-with-the-cloud-server">Contact with the cloud server</h3>
+<p>Enabling Back To Home takes a few seconds while the router contacts the cloud server: <code>vpn-status</code> changes from <code>checking rtt</code> to <code>running</code>.</p>
+<p>Revoking removes everything on the router right away, also when the cloud server does not answer (<code>status</code> in <code>/ip/cloud</code> shows <code>failed to connect</code>). The <code>vpn.mynetname.net</code> and <code>sn.mynetname.net</code> names then stay registered until the cloud server receives a delete request. To delete them, enable Back To Home and revoke it again while the router can reach the cloud server.</p>
+<p>For all properties, see <a href="../../cli-reference/ip/cloud/"><code>/ip/cloud</code></a> and <a href="../../cli-reference/ip/cloud/back-to-home-user/"><code>/ip/cloud/back-to-home-user</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="cloud-backup">Cloud backup</h1>
+<blockquote>
+<p>Store one encrypted RouterOS backup on the MikroTik cloud server, replace or delete it, and download or restore it on the same or another router with its secret download key.</p>
+</blockquote>
+<h1 id="cloud-backup_1">Cloud backup</h1>
+<p>Cloud backup stores an encrypted <a href="../../getting-started/configuration-management/backup">backup</a> of the router's configuration on the MikroTik cloud server. You can download it later to the same router, or with its secret download key to another router, for example a replacement device. Each device has one backup slot.</p>
+<h2 id="upload-a-backup">Upload a backup</h2>
+<p>To create a backup of the current configuration and upload it in one step:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/backup/cloud/upload-file action=create-and-upload name=home-router password=Str0ng-Passw0rd
+  status: finished
+[admin@MikroTik] &gt; /system/backup/cloud/print detail
+0  name=&quot;home-router&quot; size=31.5KiB ros-version=&quot;7.25&quot; date=2026-09-24 10:11:16
+   status=&quot;ok&quot; secret-download-key=&quot;Xy3kP9qLm2Rt7vWz8Bn4Cd5&quot;
+</code></pre>
+<p>The router encrypts the backup with <code>password</code>, which is required. Keep the password: you need it to restore the backup. <code>name</code> is only the name in the cloud list.</p>
+<p>To upload a backup file you saved earlier, save it with a password, so it is encrypted. The router refuses an unencrypted file with <code>src file must be AES encrypted</code>.</p>
+<pre><code class="language-ros">/system/backup/save name=home-router password=Str0ng-Passw0rd
+/system/backup/cloud/upload-file action=upload src-file=home-router.backup name=home-router
+</code></pre>
+<h2 id="replace-or-delete-the-backup">Replace or delete the backup</h2>
+<p>The slot holds one backup, so a second upload fails with <code>Server error: All slots used. Delete file to free up space.</code> To overwrite the stored backup, give its name in <code>replace</code>:</p>
+<pre><code class="language-ros">/system/backup/cloud/upload-file action=create-and-upload name=home-router password=Str0ng-Passw0rd replace=home-router
+</code></pre>
+<p>The new backup gets a new secret download key.</p>
+<p>To delete the backup and free the slot:</p>
+<pre><code class="language-ros">/system/backup/cloud/remove-file number=0
+</code></pre>
+<h2 id="download-or-restore-the-backup">Download or restore the backup</h2>
+<p>To download this router's backup to its storage:</p>
+<pre><code class="language-ros">/system/backup/cloud/download-file action=download number=0
+</code></pre>
+<p>The router saves the file as <code>&lt;name&gt;.backup</code>, or under the name you give in <code>dst-file</code>. To restore the configuration from it, use <a href="../../getting-started/configuration-management/backup#restore-a-backup"><code>/system/backup/load</code></a>.</p>
+<p>To download and restore in one step, give the backup password. The router restores the configuration and reboots:</p>
+<pre><code class="language-ros">/system/backup/cloud/download-file action=download-and-apply number=0 password=Str0ng-Passw0rd
+</code></pre>
+<p>On another router, for example a replacement device, download the backup with the secret download key of the original router:</p>
+<pre><code class="language-ros">/system/backup/cloud/download-file action=download secret-download-key=Xy3kP9qLm2Rt7vWz8Bn4Cd5
+</code></pre>
+<p>Anyone who has the key can download the backup file, but cannot read it without the password. Keep the key private and use a strong password. A backup also contains the MAC addresses of the device it was made on (see <a href="../../getting-started/configuration-management/backup">Backup</a>).</p>
+<h2 id="technical-details_2">Technical details</h2>
+<ul>
+<li>The router connects to <code>cloud2.mikrotik.com</code> on TCP port 15252 for cloud backup.</li>
+<li>Every command in <code>/system/backup/cloud</code> connects to the server, <code>print</code> too, so a command can take a while to finish. While a command runs, it shows <code>status: working...</code>.</li>
+<li><code>upload-file</code> checks the file on the router before it connects: without a password, <code>create-and-upload</code> fails with <code>missing password</code>, and <code>upload</code> refuses an unencrypted file with <code>src file must be AES encrypted</code>.</li>
+<li><code>download-file</code> saves the file also with <code>download-and-apply</code>, so the downloaded backup stays in <code>/file</code> after the restore.</li>
+</ul>
+<p>For all commands and properties, see <a href="../../cli-reference/system/backup/cloud/"><code>/system/backup/cloud</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="communication-with-mikrotik-cloud-services">Communication with MikroTik Cloud Services</h1>
+<blockquote>
+<p>Every connection RouterOS makes to MikroTik servers: the menu that starts it, the server, whether it runs by default, and how to turn it off.</p>
+</blockquote>
+<h1 id="communication-with-mikrotik-cloud-services_1">Communication with MikroTik Cloud Services</h1>
+<p>RouterOS connects to MikroTik servers only for the services in the following table. By default, the router asks the cloud server for the time and time zone when it starts, and a Cloud Hosted Router (CHR) checks its license. Everything else runs only after you enable it or run the command.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">Server</th>
+<th style="text-align: left;">On by default</th>
+<th style="text-align: left;">How to turn it off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>/system/clock</code> <code>time-zone-autodetect</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;"><code>/system/clock/set time-zone-autodetect=no</code> (see <a href="../../system-information-and-utilities/clock">Clock</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/cloud</code> <code>update-time</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;"><code>/ip/cloud/set update-time=no</code> (see <a href="./#time-update">Time update</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/cloud</code> <code>ddns-enabled</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;"><code>/ip/cloud/set ddns-enabled=auto</code>, with Back To Home off (see <a href="./#ddns">DDNS</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/cloud</code> <code>back-to-home-vpn</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code> and relay servers</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;"><code>/ip/cloud/set back-to-home-vpn=revoked-and-disabled</code> (see <a href="./back-to-home">Back To Home</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/ip/cloud/back-to-home-file</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code> and relay servers</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Remove all file shares (see <a href="./file-share">File Share</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/backup/cloud</code></td>
+<td style="text-align: left;"><code>cloud2.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Runs only for the <code>print</code>, <code>upload-file</code>, <code>download-file</code> and <code>remove-file</code> commands (see <a href="./cloud-backup">Cloud backup</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/license</code></td>
+<td style="text-align: left;"><code>licence.mikrotik.com</code></td>
+<td style="text-align: left;">Only on CHR</td>
+<td style="text-align: left;">Cannot be turned off on CHR (see <a href="../../getting-started/routeros-licensing/chr/chr-licensing">CHR licensing</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/lte</code> <code>firmware-upgrade</code></td>
+<td style="text-align: left;"><code>upgrade.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Runs only for the <code>firmware-upgrade</code> command (see <a href="../../mobile-networking/lte-5g#modem-firmware-upgrade-command">LTE firmware upgrade</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/interface/detect-internet</code></td>
+<td style="text-align: left;"><code>cloud.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;"><code>/interface/detect-internet/set detect-interface-list=none</code> (see <a href="../../diagnostics-monitoring-and-troubleshooting/detect-internet">Detect Internet</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/package/update</code></td>
+<td style="text-align: left;"><code>upgrade.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Runs only for the <code>check-for-updates</code> command and package downloads (see <a href="../../getting-started/installation-and-upgrade/packages">Packages</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/system/swos</code> <code>upgrade</code></td>
+<td style="text-align: left;"><code>upgrade.mikrotik.com</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Runs only for the <code>upgrade</code> command (see <a href="../../bridging-and-switching/marvell-prestera-switch-chip-features#configuring-swos-using-routeros">SwOS upgrade</a>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details_3">Technical details</h2>
+<p>The router uses the following ports:</p>
+<ul>
+<li><code>cloud2.mikrotik.com</code>: UDP port 15252 for DDNS and TCP port 15252 for cloud backup. The name resolves to more than one address, and the router tries another one when a server does not answer.</li>
+<li><code>cloud.mikrotik.com</code>: UDP port 30000 for Detect Internet.</li>
+</ul>
+<hr />
+<h1 id="file-share">File Share</h1>
+<blockquote>
+<p>File Share serves a directory or a single file from the router's storage over HTTPS through a secret link, with a Let's Encrypt certificate and a routingthecloud.net name, directly or through a MikroTik relay,...</p>
+</blockquote>
+<h1 id="file-share_1">File Share</h1>
+<p>File Share makes a directory or a single file on the router's storage, for example a USB drive, available on the internet through a link. The router serves each share over HTTPS at <code>https://&lt;serial&gt;.routingthecloud.net/s/&lt;key&gt;</code>, where <code>&lt;serial&gt;</code> is the router's serial number and <code>&lt;key&gt;</code> is the random key of the share. The router gets a Let's Encrypt certificate for the name by itself. When the router cannot be reached from the internet directly, the connection goes through a MikroTik relay server (see <a href="./#how-the-router-reaches-the-cloud">How the router reaches the cloud</a>). Visitors need only the link, and you can let them upload files as well.</p>
+<h2 id="share-a-directory-or-file">Share a directory or file</h2>
+<p>Find the path of the directory or file with <code>/file/print</code>, then add a share. The first share makes the router request its certificate, and the share shows the <code>I</code> flag until the certificate is ready, typically within a minute:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/cloud/back-to-home-file/add path=usb1/photos expires=never
+[admin@MikroTik] &gt; /ip/cloud/back-to-home-file/print detail
+Flags: I - INVALID
+0 I ;;; getting cert status: requesting SSL certificate
+    path=/usb1/photos allow-uploads=no expires=never
+    key=&quot;Ab3dE5gH7jK9mNp&quot;
+    url=&quot;https://hf1234abcd5.routingthecloud.net/s/Ab3dE5gH7jK9mNp&quot;
+    direct-url=&quot;https://hf1234abcd5.routingthecloud.net/s/Ab3dE5gH7jK9mNp?dl&quot;
+    downloads=0
+</code></pre>
+<p>When the <code>I</code> flag is gone, send the <code>url</code> to the people who should get the files. Anyone who has the link can open the share, so keep the link private, and set <code>expires</code> for shares that you need only for a while.</p>
+<ul>
+<li>A directory share opens a page that lists the files in the directory. Visitors can download single files or the whole directory. The <code>direct-url</code> (the <code>url</code> with <code>?dl</code>) downloads the whole directory as <code>download.zip</code>.</li>
+<li>A file share opens a page for that file. Its <code>direct-url</code> downloads the file itself.</li>
+</ul>
+<p>The share page shows the router's identity (<code>/system/identity</code>) in its title, and the page data includes the router's board model.</p>
+<p><code>expires</code> takes <code>never</code>, a date and time such as <code>"2026-10-01 00:00:00"</code>, or a time interval such as <code>1h</code> or <code>7d</code>. The router converts an interval to the date when the share expires. <code>downloads</code> counts the direct downloads of the share. Opening the page does not count.</p>
+<p>To stop a share for a while without deleting it, disable it. Its link then returns HTTP 404 until you enable the share again:</p>
+<pre><code class="language-ros">/ip/cloud/back-to-home-file/disable 0
+</code></pre>
+<h2 id="allow-uploads">Allow uploads</h2>
+<p>With <code>allow-uploads=yes</code>, visitors of a directory share can upload files to the directory and create folders in it. Without it, the router refuses uploads with HTTP 403. A file share does not offer uploads.</p>
+<pre><code class="language-ros">/ip/cloud/back-to-home-file/add path=usb1/inbox expires=7d allow-uploads=yes
+</code></pre>
+<p>Uploaded files use the router's storage, so allow uploads only for people you trust and only for as long as you need them.</p>
+<h2 id="winbox">WinBox</h2>
+<p>To share a file in WinBox, open <strong>IP</strong> &gt; <strong>Cloud</strong> and select <strong>Back To Home Files</strong> under <strong>Configuration</strong>.</p>
+<p><em>[gambar: WinBox IP Cloud window with Back To Home Files under Configuration]</em></p>
+<p>Select <strong>New</strong>, set <strong>Path</strong> and <strong>Expires</strong>, and select <strong>Allow Uploads</strong> to let visitors upload files.</p>
+<p><em>[gambar: WinBox Back To Home Files list and the form for a new file share]</em></p>
+<p>The shared directory opens in the visitor's web browser:</p>
+<p><em>[gambar: Shared directory in a web browser with the Upload files and Download all buttons]</em></p>
+<h2 id="stop-file-share">Stop File Share</h2>
+<p>File Share runs while at least one share exists. When you remove the last share, the service stops and the relay no longer forwards connections to the router:</p>
+<pre><code class="language-ros">/ip/cloud/back-to-home-file/remove [find]
+</code></pre>
+<p>The certificate stays on the router, so the next share starts without a new request. To delete the certificate as well, run <code>remove-certificate</code> after you remove all shares. While shares exist, the command fails with <code>cannot remove certificate while file shares active</code>. The next share then requests a new certificate.</p>
+<pre><code class="language-ros">/ip/cloud/back-to-home-file/settings/remove-certificate
+</code></pre>
+<h2 id="technical-details_4">Technical details</h2>
+<h3 id="how-file-share-works">How File Share works</h3>
+<p>When you add the first share, the router creates a private key and requests a Let's Encrypt certificate for <code>&lt;serial&gt;.routingthecloud.net</code> with the ACME protocol. It completes the DNS-01 challenge through the MikroTik cloud, so it needs no open port for it, also behind NAT. <code>status</code> in <code>/ip/cloud/back-to-home-file/settings</code> shows the steps, from <code>getting cert status: requesting SSL certificate</code> through <code>requesting validation</code>, <code>requesting authorization</code> and <code>requesting order finalization</code> to <code>running</code>. The private key stays on the router, so a visitor's TLS connection ends on the router, also through the relay.</p>
+<p>The router asks the relay server to test whether the router can be reached from the internet directly. When it cannot, for example behind NAT, the router keeps a connection to a relay open, and the name resolves to the relay. The relay forwards the encrypted connections of visitors to the router, and the router does not listen on TCP port 443 on its own addresses. When another service, such as <code>www-ssl</code> (WebFig over HTTPS), already uses TCP port 443 on the router, File Share also uses the relay. <code>relay-ipv4-status</code> and <code>relay-ipv6-status</code> in <code>/ip/cloud/back-to-home-file/settings</code> show the connection to the relay.</p>
+<p><a href="./back-to-home">Back To Home</a> users with <code>file-access</code> use the same service. Adding such a user also makes the router request the certificate.</p>
+<h3 id="what-changes-on-the-router">What changes on the router</h3>
+<ul>
+<li>Shared files and directories show the <code>S</code> (shared) flag in <code>/file/print</code>; <code>/file/print where shared</code> lists them.</li>
+<li>The certificate is stored in <code>/certificate</code> as <code>fileshare-&lt;serial&gt;.routingthecloud.net</code>. It is managed by the ACME client, and the router schedules its renewal; the <code>certificate,info</code> log shows when it was created, imported and when the next update is due.</li>
+<li>After the last share is removed, <code>enabled</code> in <code>/ip/cloud/back-to-home-file/settings</code> is <code>no</code>, but <code>dns-name</code> stays in the settings.</li>
+</ul>
+<p>For all properties, see <a href="../../cli-reference/ip/cloud/back-to-home-file/"><code>/ip/cloud/back-to-home-file</code></a> and <a href="../../cli-reference/ip/cloud/back-to-home-file/settings/"><code>/ip/cloud/back-to-home-file/settings</code></a> in the CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

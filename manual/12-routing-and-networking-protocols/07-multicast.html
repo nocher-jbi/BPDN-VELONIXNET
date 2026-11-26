@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multicast · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="multicast">Multicast</h1>
+<h1 id="multicast-routing-protocols">Multicast Routing Protocols</h1>
+<blockquote>
+<p>This section provides configuration guidance for RouterOS multicast routing protocols including IGMP Proxy, PIM-SM, and group management features to manage multicast traffic flows.</p>
+</blockquote>
+<h1 id="multicast-routing-protocols_1">Multicast Routing Protocols</h1>
+<p>This section covers RouterOS multicast routing protocols and related group-management features. Use it to configure IGMP Proxy, PIM-SM, and multicast group behavior.</p>
+<hr />
+<h1 id="group-management-protocol">Group Management Protocol</h1>
+<blockquote>
+<p>Group Management Protocol enables interfaces to receive multicast streams without dedicated clients, supporting IGMP and MLD protocols. It allows testing multicast routing by sending membership reports and responding...</p>
+</blockquote>
+<h1 id="group-management-protocol_1">Group Management Protocol</h1>
+<p>The Group Management Protocol allows any of the interfaces to become a receiver for the multicast stream. It allows testing the multicast routing and switching setups without using dedicated IGMP or MLD clients. The option has been available since RouterOS v7.4 and it supports IGMP v1, v2, v3 and MLD v1, v2 protocols.</p>
+<p>Interfaces are using IGMP v3 and MLD v2 by default. In case IGMP v1, v2 or MLD v1 queries are received, the interfaces will fall back to the appropriate version. Once the Group Management Protocol is created on the interface, it will send an unsolicited membership report (join) packet and respond to query messages. If the configuration is removed or disabled, the interface will send a leave message.</p>
+<h2 id="examples">Examples</h2>
+<hr />
+<p>This example shows how to configure a simple multicast listener on the interface.</p>
+<p>First, add an IP address on the interface:</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.10.10/24 interface=ether1 network=192.168.10.0
+</code></pre>
+<p>Then configure Group Management Protocol on the same interface:</p>
+<pre><code class="language-ros">/routing/gmp
+add groups=229.1.1.1 interfaces=ether1
+</code></pre>
+<p>It is now possible to check your multicast network to see if routers or switches have created the appropriate multicast forwarding entries and whether multicast data is being received on the interface (see the interface stats, or use a <a href="../../../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md">Packet Sniffer</a> and <a href="../../../diagnostics-monitoring-and-troubleshooting/torch.md">Torch</a>).</p>
+<hr />
+<h1 id="igmp-proxy">IGMP Proxy</h1>
+<blockquote>
+<p>The IGMP Proxy feature in RouterOS enables multicast routing by forwarding IGMP frames, offering a simpler alternative to PIM-SM for certain topologies. It supports basic multicast forwarding with minimal resource...</p>
+</blockquote>
+<h1 id="igmp-proxy_1">IGMP Proxy</h1>
+<p>The Internet Group Management Protocol (IGMP) proxy can implement multicast routing. It is forwarding IGMP frames and is commonly used when there is no need for a more advanced protocol like PIM.</p>
+<h2 id="igmp-proxy-features">IGMP proxy features</h2>
+<ul>
+<li>The simplest way to do multicast routing.</li>
+<li>Can be used in topologies where PIM-SM is not suitable for some reason.</li>
+<li>It takes slightly less resources than PIM-SM.</li>
+<li>Ease of configuration.</li>
+</ul>
+<p>On the other hand, IGMP proxy is not well suited for complicated multicast routing setups. Compared to PIM-based solutions, IGMP proxy does not support more than one upstream interface and routing loops are not detected or avoided.</p>
+<p>By default, the IGMP proxy upstream interface will send IGMPv3 membership reports and it will detect what IGMP version the upstream device (e.g. multicast router) is using based on received queries. If IGMPv1/v2 queries are received, the upstream port will fall back to the lower IGMP version. It will convert back to IGMPv3 when the IGMPv1/v2 querier present timer (400s) expires. Downstream interfaces of the IGMP proxy will only send IGMPv2 queries.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>RouterOS v7 has IGMP proxy configuration available in the main <strong>system</strong> package. Older RouterOS versions need an additional <strong>multicast</strong> package installed in order to use IGMP proxy. See more details about <a href="../../../getting-started/installation-and-upgrade/packages.md">Packages</a>.</p>
+</div>
+<h2 id="examples_1">Examples</h2>
+<hr />
+<p>To forward all multicast data coming from the ether2 interface to the downstream bridge interface, where subscribers are connected, use the configuration below. Both interfaces should have an IP address.</p>
+<pre><code class="language-ros">/routing/igmp-proxy/interface
+add interface=ether2 upstream=yes
+add interface=bridge1
+
+[admin@MikroTik] /routing/igmp-proxy/interface/print
+Columns: INTERFACE, UPSTREAM, THRESHOLD, ROBUSTNESS, QUERY-INTERVAL, 
+         QUERY-RESPONSE-INTERVAL, LAST-MEMBER-QUERY-INTERVAL
+#   INTERFACE  UPSTREAM  THRESHOLD  ROBUSTNESS  QUERY-INTERVAL  QU  LA
+0   ether2     yes               1                                    
+1   bridge1     no               1           2  2m5s           10s  1s
+</code></pre>
+<p>You may also need to configure <code>alternative-subnets</code> on the upstream interface in case the multicast sender address is in an IP subnet that is not directly reachable from the local router:</p>
+<pre><code class="language-ros">/routing/igmp-proxy/interface
+set [find upstream=yes] alternative-subnets=192.168.50.0/24,192.168.60.0/24
+</code></pre>
+<hr />
+<h1 id="pim-sm">PIM-SM</h1>
+<blockquote>
+<p>This page introduces IP Multicast and Protocol Independent Multicast - Sparse Mode (PIM-SM) in MikroTik RouterOS, explaining how it enables efficient data sharing across networks. It covers basic PIM-SM configuration...</p>
+</blockquote>
+<h1 id="pim-sm_1">PIM-SM</h1>
+<p>IP Multicast is a technology that allows data to be efficiently shared with many recipients over the Internet. Senders transmit their data to a specific multicast IP address, and receivers indicate their interest in receiving data sent to that address. The network then takes care of delivering the data from senders to receivers.</p>
+<p>If both the sender and receiver for a multicast group are on the same local network segment, routers are not required for the process. Communication can happen directly, and this can be enhanced with the use of <a href="../../../bridging-and-switching/user-guides/bridge-igmp-mld-snooping.md">IGMP snooping</a> switches. However, if the sender and receiver are on different network segments, a multicast routing protocol must be used to establish the path for data transmission between them.</p>
+<p>Protocol Independent Multicast - Sparse Mode (PIM-SM or PIM) enables RouterOS to support multicast streaming over the network area. PIM stands for Protocol Independent Multicast, meaning it's not tied to any particular unicast routing. SM stands for Sparse-Mode, which means that specific control messages ensure that data is delivered only to network segments where there are receivers that want it. In addition to the routing protocols that manage data transmission between network segments, routers need a way to discover local receivers on their directly connected network segment. For IPv4, this is achieved through the Internet Group Management Protocol (IGMP), and Multicast Listener Discovery (MLD) for IPv6.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>RouterOS v7 has PIM-SM configuration available in the main <strong>system</strong> package. Older RouterOS versions need an additional <strong>multicast</strong> package installed in order to use PIM-SM. See more details about <a href="../../../getting-started/installation-and-upgrade/packages.md">Packages</a>.</p>
+<p>The feature is not supported on SMIPS devices (hAP lite, hAP lite TC and hAP mini).</p>
+</div>
+<h2 id="basic-multicast-routing-on-single-device">Basic multicast routing on single device</h2>
+<p>Picture this scenario: you have got a router with two interfaces, namely ether1 and ether2, and each of them is set up in separate networks. Normally, the router will create connected routes and hosts on both networks will be able to communicate using unicast traffic. However, if you want to enable multicast communication between these networks, you'll need to configure multicast routing separately because it won't work otherwise. In this scenario, we are going to create a simple configuration. This involves creating a PIM instance and configuring the required interfaces.</p>
+<p>Begin by ensuring that IP addresses are set up on the router's interfaces.</p>
+<pre><code class="language-ros">/ip/address
+add address=192.168.10.1/24 interface=ether1 network=192.168.10.0
+add address=192.168.20.1/24 interface=ether2 network=192.168.20.0
+</code></pre>
+<p>Configure a PIM instance. For this example, the default settings should work fine.</p>
+<pre><code class="language-ros">/routing/pimsm/instance
+add name=pimsm-instance-1
+</code></pre>
+<p>Add the PIM interface template for the interface that will receive the multicast traffic.</p>
+<pre><code class="language-ros">/routing/pimsm/interface-template
+add interfaces=ether1 instance=pimsm-instance-1
+</code></pre>
+<p>Configure an IGMP querier on ether2 so the PIM instance can learn about local group memberships.</p>
+<pre><code class="language-ros">/routing/pimsm/igmp-interface-template
+add instance=pimsm-instance-1 interfaces=ether2
+</code></pre>
+<p>Now the router starts listening to IGMP membership reports (client join messages) and will route multicast traffic to clients interested in receiving it.</p>
+<p>To test the configuration, you can configure a multicast sender using RouterOS <a href="../../../diagnostics-monitoring-and-troubleshooting/traffic-generator.md">traffic-generator</a> and an IGMP client using <a href="./group-management-protocol.md">GMP</a>.</p>
+<pre><code class="language-ros"># Multicast Sender
+/ip/address
+add address=192.168.10.10/24 interface=ether1 network=192.168.10.0
+/tool/traffic-generator/packet-template
+add interface=ether1 ip-dst=229.1.1.2 mac-dst=01:00:5E:01:01:02/FF:FF:FF:FF:FF:FF name=multicast
+/tool/traffic-generator/quick tx-template=multicast mbps=10
+
+# Multicast Client
+/ip/address
+add address=192.168.20.10/24 interface=ether1 network=192.168.20.0
+/routing/gmp
+add disabled=no groups=229.1.1.2 interfaces=ether1
+</code></pre>
+<p>To verify whether multicast traffic is being properly routed, monitor the received packet counters on the client interface or use tools like <a href="../../../diagnostics-monitoring-and-troubleshooting/torch.md">Torch</a> or a <a href="../../../diagnostics-monitoring-and-troubleshooting/packet-sniffer.md">Packet Sniffer</a>.</p>
+<p>It is also possible to monitor active multicast groups on the router:</p>
+<pre><code class="language-ros">/routing/pimsm/uib-g/print
+Columns: INSTANCE, GROUP
+# INSTANCE          GROUP    
+0 pimsm-instance-1  229.1.1.2
+
+/routing/pimsm/uib-sg/print
+Flags: K - KEEPALIVE; S - SPT-BIT
+Columns: INSTANCE, GROUP, SOURCE
+#    INSTANCE          GROUP      SOURCE       
+0 KS pimsm-instance-1  229.1.1.2  192.168.10.10
+
+</code></pre>
+<h2 id="multicast-routing-with-static-rp">Multicast routing with static RP</h2>
+<p>In the upcoming example, we'll be working with multiple PIM routers, as shown in the diagram below. PIM-SM uses shared trees, and to make this work, we need to designate a specific node as the multicast root distribution point. In PIM, this router is called the Rendezvous Point, or RP. There are various methods for selecting an RP in PIM, such as the Bootstrap Router (BSR) method. However, for this example, we'll be using a straightforward approach known as static RP configuration. This means that the administrator can manually specify one or more RPs for specific multicast groups.</p>
+<p>To get started, we'll need to configure IP addresses and set up unicast routing. In this example, we'll use OSPF to exchange routing information between the routers. See more details about <a href="../unicast/ospf/index.md">OSPF</a>.</p>
+<pre><code class="language-ros"># R1 Rendezvous Point:
+/ip/address
+add address=10.0.0.1 interface=lo network=10.0.0.1
+add address=10.0.1.1/24 interface=ether2 network=10.0.1.0
+add address=10.0.2.1/24 interface=ether3 network=10.0.2.0
+/routing/ospf/instance
+add disabled=no name=ospf-instance-1 router-id=10.0.0.1
+/routing/ospf/area
+add disabled=no instance=ospf-instance-1 name=ospf-area-1
+/routing/ospf/interface-template
+add area=ospf-area-1 disabled=no interfaces=lo,ether2,ether3
+
+# R2:
+/ip/address
+add address=10.0.0.2 interface=lo network=10.0.0.2
+add address=10.0.1.2/24 interface=ether1 network=10.0.1.0
+add address=192.168.20.1/24 interface=ether12 network=192.168.20.0
+/routing/ospf/instance
+add disabled=no name=ospf-instance-1 router-id=10.0.0.2
+/routing/ospf/area
+add disabled=no instance=ospf-instance-1 name=ospf-area-1
+/routing/ospf/interface-template
+add area=ospf-area-1 disabled=no interfaces=lo,ether1,ether12
+
+# R3:
+/ip/address
+add address=10.0.0.3 interface=lo network=10.0.0.3
+add address=10.0.2.3/24 interface=ether1 network=10.0.2.0
+add address=192.168.30.1/24 interface=ether12 network=192.168.30.0
+/routing/ospf/instance
+add disabled=no name=ospf-instance-1 router-id=10.0.0.3
+/routing/ospf/area
+add disabled=no instance=ospf-instance-1 name=ospf-area-1
+/routing/ospf/interface-template
+add area=ospf-area-1 disabled=no interfaces=lo,ether1,ether12
+</code></pre>
+<p>As in the previous example with a single router, we need to configure the PIM instance and add the necessary interfaces on all routers.</p>
+<pre><code class="language-ros"># R1 Rendezvous Point:
+/routing/pimsm/instance
+add disabled=no name=pimsm-instance-1
+/routing/pimsm/interface-template
+add instance=pimsm-instance-1 interfaces=lo,ether2,ether3
+
+# R2:
+/routing/pimsm/instance
+add disabled=no name=pimsm-instance-1
+/routing/pimsm/interface-template
+add instance=pimsm-instance-1 interfaces=lo,ether1,ether12
+/routing/pimsm/igmp-interface-template
+add instance=pimsm-instance-1 interfaces=ether12
+
+# R3:
+/routing/pimsm/instance
+add disabled=no name=pimsm-instance-1
+/routing/pimsm/interface-template
+add instance=pimsm-instance-1 interfaces=lo,ether1,ether12
+/routing/pimsm/igmp-interface-template
+add instance=pimsm-instance-1 interfaces=ether12
+
+</code></pre>
+<p>Now, let's take a look at our PIM neighbors and their current statuses. On R1, there are two neighbors, while on R2 and R3, there's only one neighbor each.</p>
+<pre><code class="language-ros"># R1 Rendezvous Point:
+/routing/pimsm/neighbor/print
+Flags: R - DESIGNATED-ROUTER; J - JOIN-TRACKING
+Columns: INSTANCE, ADDRESS, PRIORITY
+#    INSTANCE          ADDRESS          PRIORITY
+0 RJ pimsm-instance-1  10.0.1.2%ether2  1       
+1 RJ pimsm-instance-1  10.0.2.3%ether3  1       
+
+# R2:
+/routing/pimsm/neighbor/print 
+Flags: R - DESIGNATED-ROUTER; J - JOIN-TRACKING
+Columns: INSTANCE, ADDRESS, PRIORITY
+#    INSTANCE          ADDRESS          PRIORITY
+0  J pimsm-instance-1  10.0.1.1%ether1  1       
+
+# R3:
+/routing/pimsm/neighbor/print 
+Flags: J - JOIN-TRACKING
+Columns: INSTANCE, ADDRESS, PRIORITY
+#   INSTANCE          ADDRESS          PRIORITY
+0 J pimsm-instance-1  10.0.2.1%ether1  1       
+
+</code></pre>
+<p>Finally, we will select one router to act as our Rendezvous Point (RP). We will configure the R1 loopback IP address on all PIM routers. It's important to ensure that each router has the correct routing information to reach the R1 loopback address.</p>
+<pre><code class="language-ros"># R1 Rendezvous Point:
+/routing/pimsm/static-rp
+add address=10.0.0.1 instance=pimsm-instance-1
+
+# R2:
+/routing/pimsm/static-rp
+add address=10.0.0.1 instance=pimsm-instance-1
+
+# R3:
+/routing/pimsm/static-rp
+add address=10.0.0.1 instance=pimsm-instance-1
+</code></pre>
+<hr />
+<h1 id="route-distinguisher-and-route-target">Route Distinguisher and Route Target</h1>
+<blockquote>
+<p>Route Distinguisher (RD) adds unique prefixes to customer addresses for VRF differentiation, while Route Targets control BGP routing information exchange between instances.</p>
+</blockquote>
+<h1 id="route-distinguisher-and-route-target_1">Route Distinguisher and Route Target</h1>
+<h2 id="route-distinguisher">Route Distinguisher</h2>
+<p>A Route Distinguisher is a unique prefix added to a customer's destination address to distinguish advertisements that might otherwise look the same. For example, overlapping VRF subnets can be distinguished by unique route distinguishers.</p>
+<p>An RD is a 64-bit (8-byte) integer and is split into three parts:</p>
+<ul>
+<li>Type (always 2 bytes).</li>
+<li>Administrator subfield.</li>
+<li>Value or service-provider subfield.</li>
+</ul>
+<p>Currently, three format types are defined.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>2 bytes</strong></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Type 0</strong></td>
+<td style="text-align: left;">2-byte ASN</td>
+<td style="text-align: left;">4-byte value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Type 1</strong></td>
+<td style="text-align: left;">4-byte IP</td>
+<td style="text-align: left;">2-byte value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Type 2</strong></td>
+<td style="text-align: left;">4-byte ASN</td>
+<td style="text-align: left;">2-byte value</td>
+</tr>
+</tbody>
+</table>
+<h2 id="route-targets">Route Targets</h2>
+<p>A Route Target is a BGP extended community that controls the import and export of routing information between routing instances.</p>
+<hr />
+<h1 id="route-selection-and-filtering">Route Selection and Filtering</h1>
+<blockquote>
+<p>Route filtering in MikroTik RouterOS uses script-like syntax to match prefixes and modify routing distances based on conditions, with properties categorized as readable or readable/writable for matchers and actions.</p>
+</blockquote>
+<h1 id="route-selection-and-filtering_1">Route Selection and Filtering</h1>
+<h2 id="route-filtering">Route Filtering</h2>
+<h3 id="filter-syntax">Filter Syntax</h3>
+<p>Routing filter rules use script-like syntax. The following example matches prefixes from subnet 192.168.1.0/24 with a prefix length greater than 24 and increments the default distance by 1. If there is no match, it subtracts the default distance by one.</p>
+<pre><code class="language-ros">/routing/filter/rule
+  add chain=myChain \
+  rule=&quot;if (dst in 192.168.1.0/24 &amp;&amp; dst-len&gt;24) {set distance +1; accept} else {set distance -1; accept}&quot;
+</code></pre>
+<p>A filter rule may consist of multiple matchers and actions:</p>
+<pre><code class="language-text">if ( [matchers] ) { [actions] } else { [actions] }
+</code></pre>
+<p>There are two types of properties:</p>
+<ul>
+<li>Only readable — properties whose values are read-only and cannot be rewritten. They can be used only by matchers.</li>
+<li>Readable/writable — properties whose values are readable and writable. They can be used by filter actions and by matchers.</li>
+</ul>
+<p>For numeric properties only, readable properties can be matched by other readable properties or by constant values with boolean operators.</p>
+<pre><code class="language-text">[matchers]:
+[prop readable] [bool operator] [prop readable]
+
+[actions]:
+[action] [prop writeable] [value]
+</code></pre>
+<p>You do not need a boolean operator if the matcher has only one possible operation.</p>
+<p>Example without a boolean operator:</p>
+<pre><code class="language-text">if ( protocol connected ) { accept }
+</code></pre>
+<p>Example with boolean operator:</p>
+<pre><code class="language-text">if ( bgp-med &lt; 30 ) { accept }
+</code></pre>
+<p>With readable flag properties, the matcher does not require a boolean operator or a value.</p>
+<pre><code class="language-text">if ( ospf-dn ) { reject }
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The default action of the routing filter chain is <code>reject</code>.</p>
+</div>
+<h4 id="only-readable-properties">Only Readable Properties</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><em>Numeric properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dst-len</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Destination prefix length</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-path-len</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The current length of the BGP AS-PATH</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-input-local-as</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">AS number of the local peer to which the prefix was sent</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-input-remote-as</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">AS number of the remote peer from which the prefix was received</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-output-local-as</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">AS number of the peer that will advertise the prefix</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-output-remote-as</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">AS number of the peer to which the prefix will be advertised</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-metric</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current OSPF metric</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-tag</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current OSPF tag</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rip-metric</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current RIP metric</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rip-tag</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current RIP tag</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><em>Flag properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>active</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">indicates whether the route is active</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-atomic-aggregate</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-communities-empty</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">indicates if the BGP Communities attribute is empty</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-ext-communities-empty</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">indicates if the BGP Extended Communities attribute is empty</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-large-communities-empty</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">indicates if the BGP Large Communities attribute is empty</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-network</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Indicates if the prefix is originated from BGP networks</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-dn</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Indicates if the OSPF route has the DN bit set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><em>Prefix properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>dst</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Destination</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-fwd</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Current OSPF forwarding address</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-input-local-addr</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The IP address of the local peer to which the prefix was sent</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-input-remote-addr</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The IP address of the remote peer from which the prefix was received</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-output-local-addr</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The IP address of the peer that will advertise the prefix</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-output-remote-addr</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The IP address of the peer to which the prefix will be advertised</td>
+</tr>
+<tr>
+<td style="text-align: left;">Other Properties</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>afi</code></td>
+<td style="text-align: left;"><code>ipv4 \| ipv6 \| l2vpn \| l2vpn-cisco \| vpnv4 \| vpnv6</code></td>
+<td style="text-align: left;">The address family of the route.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-as-path</code></td>
+<td style="text-align: left;"><code>numeric_regexp</code></td>
+<td style="text-align: left;">AS path <a href="#as-path-regexp-matching">regexp matching</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-as-path-slow-legacy</code></td>
+<td style="text-align: left;"><code>string_regexp</code></td>
+<td style="text-align: left;"><strong>Deprecated</strong>. Extremely slow old-style AS path matching. This parameter should be used only as a temporary matcher while migrating from an old ROS v6 config. <a href="#as-path-regexp-matching">Read more&gt;&gt;</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>chain</code></td>
+<td style="text-align: left;"><code>chain_name</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>origin</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Match route's origin instance, for example, it can match routes imported from a specific OSPF instance: <code>if (origin &lt;instance_name&gt;) {}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-type</code></td>
+<td style="text-align: left;"><code>ext1 \| ext2 \| inter \| intra \| nssa1 \| nssa2</code></td>
+<td style="text-align: left;">Type of the OSPF route: ext1 - external (Type 5 LSA) with type1 metricext2 - external (Type 5 LSA) with type2 metricinter - inter-area-route (Type 3 LSA)intra - intra-area-route (Type 1/2 LSA)nssa1 - Type 7 LSA with type1 metricnssa2 - Type 7 LSA with type2 metric</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>protocol</code></td>
+<td style="text-align: left;"><code>bgp \| connected \| dhcp \| fantasy \| modem \| ospf \| rip \| static \| slaac \| vpn</code></td>
+<td style="text-align: left;">Protocol type from which the route was imported.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rpki</code></td>
+<td style="text-align: left;"><code>invalid \| unknown \| valid \| unverified</code></td>
+<td style="text-align: left;"><a href="./unicast/rpki.md">RPKI</a> prefix origin validation status</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rpki-aspa</code></td>
+<td style="text-align: left;"><code>invalid \| unknown \| valid \| unverified</code></td>
+<td style="text-align: left;"><a href="./unicast/rpki.md#aspa-validation">ASPA</a> validation status of the AS path</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rtab</code></td>
+<td style="text-align: left;"><code>routing_table_name</code></td>
+<td style="text-align: left;">Name of the routing table the route was imported from</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vrf</code></td>
+<td style="text-align: left;"><code>vrf_name</code></td>
+<td style="text-align: left;">Name of the VRF the route was imported from</td>
+</tr>
+</tbody>
+</table>
+<h4 id="writeable-properties">Writeable Properties</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><em>Numeric properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>distance</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">route distance</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>scope</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>scope-target</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">target scope</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-weight</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BGP WEIGHT attribute</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-med</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BGP MED attribute is local to the router. It is also used in the output of iBGP peers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-out-med</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BGP MED attribute to be sent to a remote peer. Should be used in the output chain of eBGP peers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-local-pref</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BGP LOCALPREF attribute</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-igp-metric</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BGP IGP METRIC</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-path-peer-prepend</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Prepend last received remote peer's ASN. If the prefix is originated from the router, then this parameter will not do anything on the router's output, because ASN does not exist yet.    If used as a matcher in BGP input, it is possible to filter prefixes exceeding a certain number of prepends. For example, if a remote peer prepends its ASN 5 times, but we want to allow max 4 times prepended ASN, then we can use: <code>if (bgp-path-peer-prepend &gt; 4) {reject}</code>    This parameter also overrides any prepends received from the remote peer, for example, if the remote peer prepended its AS 3 times, we can remove this prepend by setting <code>bgp-path-peer-prepend 1</code> in BGP input</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-path-prepend</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Prepend router's ASN, should be used in BGP output.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-ext-metric</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">OSPF External route metric</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-ext-tag</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">OSPF external route tag</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rip-ext-metric</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">RIP External route metric</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rip-ext-tag</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">RIP External route tag</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><em>Flag properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-ext-dn</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">DN bit for external OSPF routes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>blackhole</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Blackhole route</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>suppress-hw-offload</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Whether to <a href="../../bridging-and-switching/l3-hardware-offloading.md#suppressing-hw-offload">suppress L3 HW offloading</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>use-te-nexthop</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><em>Other properties</em></strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gw</code></td>
+<td style="text-align: left;"><code>ipv4/6 address</code></td>
+<td style="text-align: left;">IPv4/IPv6 address or interface name. In the case of BGP output, a gateway can be adjusted in the following setups: is a BGP reflectornexthop-choice is set to propagateis not eBGP and nexthop-choice=force-self is not set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gw-ll</code></td>
+<td style="text-align: left;"><code>ipv6 address</code></td>
+<td style="text-align: left;">ipv6 link local nexthop attribute. In the case of BGP output, a gateway can be adjusted in the following setups: is a BGP reflectornexthop-choice is set to propagateis not eBGP and <code>nexthop-choice=force-self</code> is not set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gw-interface</code></td>
+<td style="text-align: left;"><code>interface_name</code></td>
+<td style="text-align: left;">The interface part of the gateway. Should be used if it is required to attach a specific interface for next-hop, like (<code>1.2.3.4%ether1</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gw-check</code></td>
+<td style="text-align: left;"><code>none \| arp \| icmp \| bfd \| bfd-mh</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pref-src</code></td>
+<td style="text-align: left;"><code>ipv4/6 address</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-origin</code></td>
+<td style="text-align: left;"><code>igp \| egp \| incomplete</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-ext-fwd</code></td>
+<td style="text-align: left;"><code>ipv4/6 address</code></td>
+<td style="text-align: left;">Forwarding address of External OSPF route</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ospf-ext-type</code></td>
+<td style="text-align: left;"><code>type1 \| type2</code></td>
+<td style="text-align: left;">OSPF External route type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>comment</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-communities</code></td>
+<td style="text-align: left;"><code>inline_community_set \| community_list_name</code></td>
+<td style="text-align: left;">BGP Communities attribute is defined in <a href="https://tools.ietf.org/html/rfc1997">RFC 1997</a>. Each community is 32-bit in size.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-ext-communities</code></td>
+<td style="text-align: left;"><code>inline_ext_community_set \| ext_community_list_name</code></td>
+<td style="text-align: left;">BGP Extended Communities attribute is defined in <a href="https://tools.ietf.org/html/rfc4360">RFC 4360</a>. RouterOS parses <code>site-of-origin</code> (prefixed with <code>soo:</code>) and <code>route-target</code> (prefixed with <code>rt:</code>) extended communities. For example, <code>set bgp-ext-communities rt:1111:2.3.4.5;</code> It is possible to set/match RAW extended community value in 64-bit hex, for example, <code>set bgp-ext-communities 0x.........;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bgp-large-communities</code></td>
+<td style="text-align: left;"><code>inline_large_community_set \| large_community_list_name</code></td>
+<td style="text-align: left;">BGP Large Communities attribute is defined in <a href="https://datatracker.ietf.org/doc/html/rfc8092">RFC 8092</a>. Suitable for use with all ASNs including 32-bit ASNs. Each community is 12-bytes in length and consists of 3 parts: <code>global_admin:local_part_1:local_part_2</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="commands">Commands</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Params</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>accept</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">accept matched prefix and stop processing the chain.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reject</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">reject matched prefix and stop processing the chain, the prefix will be stored in the memory as "filtered" and will not be a candidate to be selected as the best path.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>return</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">return to the parent chain</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>jump</code></td>
+<td style="text-align: left;"><code>jump chain_name</code></td>
+<td style="text-align: left;">jump to a specified chain</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>unset</code></td>
+<td style="text-align: left;"><code>unset prop_name</code></td>
+<td style="text-align: left;">used to unset the value of the following properties: <code>pref-src, bgp-med, bgp-out-med, bgp-local-pref</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>append</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">append at the end of the list or string. Following property values can be appended: <code>bgp-communities, bgp-ext-communities, bgp-large-communities, comment</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>filter</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Inverse of the delete action (Delete everything except the specified values). Values of the following properties can be filtered: <code>bgp-communities, bgp-ext-communities, bgp-large-communities</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>delete</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Delete the value of the specified property. Values of the following properties can be deleted: <code>bgp-communities, bgp-ext-communities, bgp-large-communities</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>set</code></td>
+<td style="text-align: left;"><code>prop_writeable value</code></td>
+<td style="text-align: left;">The command is used to set a new value to writeable properties. Value can be set from other readable properties of matching types. For numeric properties, it is possible to prefix the value with +/- which will increment or decrement the current property value by a given amount. For example, <code>set bgp-local-pref +1</code> will increment the current LOCAL_PREF by one, or extract the value from another readable num property, <code>set distance +ospf-ext-metric</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rpki-verify</code></td>
+<td style="text-align: left;"><code>rpki_group_name</code></td>
+<td style="text-align: left;">Enable <a href="./unicast/rpki.md">RPKI</a> prefix origin verification in the current chain from the specified RPKI group.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rpki-aspa-verify</code></td>
+<td style="text-align: left;"><code>rpki_group_name</code></td>
+<td style="text-align: left;">Enable <a href="./unicast/rpki.md#aspa-validation">ASPA</a> verification in the current chain from the specified RPKI group.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="operators">Operators</h4>
+<h5 id="matcher-operators">Matcher Operators</h5>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>&amp;&amp;</code></td>
+<td style="text-align: left;">Logical AND operator</td>
+<td style="text-align: left;"><code>if (dst in 192.168.0.0/16 &amp;&amp; dst-len in 16-32) {reject;}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>\|\|</code></td>
+<td style="text-align: left;">Logical OR operator</td>
+<td style="text-align: left;"><code>if (dst in 192.168.0.0/16 \|\| dst-len in 16-32) {reject;}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>not</code></td>
+<td style="text-align: left;">Logical NOT operator</td>
+<td style="text-align: left;"><code>if (not bgp-network) {reject; }</code></td>
+</tr>
+</tbody>
+</table>
+<h5 id="num-prop-operators">Num Prop Operators</h5>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>in</code></td>
+<td style="text-align: left;">returns true if the value is in the provided numeric range. Numeric range can be written in the following formats: <code>{int..int}</code>, <code>{int-int}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>==</code></td>
+<td style="text-align: left;">returns true if numeric values are equal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>!=</code></td>
+<td style="text-align: left;">returns true if numeric values are not equal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&gt;</code></td>
+<td style="text-align: left;">returns true if the left numeric value is greater than the right numeric value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;</code></td>
+<td style="text-align: left;">returns true if the left numeric value is less than the right numeric value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&gt;=</code></td>
+<td style="text-align: left;">returns true if the left numeric value is greater than or equal to the right numeric value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;=</code></td>
+<td style="text-align: left;">returns true if the left numeric value is less than or equal to the right numeric value</td>
+</tr>
+</tbody>
+</table>
+<h5 id="prefix-operators">Prefix Operators</h5>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>in</code></td>
+<td style="text-align: left;">Returns true if the prefix is the subnet of the provided network. If an operator is used to match prefixes from the address list (e.g <code>dst in list_name</code>), then it will match only the exact prefix.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>!=</code></td>
+<td style="text-align: left;">Returns true if the prefix is not equal to the provided value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>==</code></td>
+<td style="text-align: left;">Returns true if the prefix is equal to the provided value</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Address lists by design are matching host addresses which means that it will match also  /32 prefix that belongs to any range from the address list. The workaround to exclude /32  prefixes from being advertised is to use dst-len <code>if (dst in list_name &amp;&amp; dst-len &lt; 32) {}</code></p>
+</div>
+<h5 id="bgp-community-operators">BGP Community Operators</h5>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>equal</code></td>
+<td style="text-align: left;">returns true if the provided communities are equal to the route's property value</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>equal-list</code></td>
+<td style="text-align: left;">returns true if communities from the provided <code>community-list</code> are equal to the route's property value</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>any</code></td>
+<td style="text-align: left;">returns true if the route's property value contains at least one of the provided communities</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>any-list</code></td>
+<td style="text-align: left;">returns true if the route's property value contains at least one community from the provided list</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>includes</code></td>
+<td style="text-align: left;">returns true if the route's property value includes specified communities</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>includes-list</code></td>
+<td style="text-align: left;">returns true if the route's property value includes all communities from the specified <code>communities-list</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subset</code></td>
+<td style="text-align: left;">returns true if the route's community subset matches communities from the list</td>
+<td style="text-align: left;"><code>1:1,3:3</code> will match <code>1:1,2:2,3:3</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subset-list</code></td>
+<td style="text-align: left;">the same as <code>subset</code>, but matches communities from the community list.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>any-regexp</code></td>
+<td style="text-align: left;">the same as <code>any</code>, but matched by <a href="#community-regexp-matching">regexp</a></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subset-regexp</code></td>
+<td style="text-align: left;">the same as <code>subset</code>, but matched by <a href="#community-regexp-matching">regexp</a></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>If the route does not carry the community attribute (the attribute is empty or absent), the "any" matchers (<code>any</code>, <code>any-list</code>, <code>any-regexp</code>) return false — there is no community to match. The "subset" matchers (<code>subset</code>, <code>subset-list</code>, <code>subset-regexp</code>) return true for an empty attribute, as an empty set is a subset of any set. To explicitly check for an empty attribute, use <code>bgp-communities-empty</code>, <code>bgp-ext-communities-empty</code> or <code>bgp-large-communities-empty</code>.</p>
+</div>
+<h5 id="string-operators">String Operators</h5>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>find</code></td>
+<td style="text-align: left;">Check if the provided substring is part of the property value</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>regexp</code></td>
+<td style="text-align: left;">Match the string regexp of the property value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="deleting-bgp-communities">Deleting BGP Communities</h3>
+<p>Routing filters allow clearing BGP communities by using the <code>delete</code> command. The <code>delete</code> command accepts several parameters based on the type of community:</p>
+<ul>
+<li><strong>communities</strong>:</li>
+<li><code>wk</code> - Will match and remove well-known communities.</li>
+<li><code>other</code> - Will match and remove other communities that are not well known.</li>
+<li><code>regexp</code> - regexp pattern to match communities that should be deleted.</li>
+<li><code>&lt;community-list name&gt;</code> - Deletes communities from specified <code>community-list</code>, including communities matching <code>regexp</code> entries of the list.</li>
+<li><strong>ext-communities</strong>:</li>
+<li><code>rt</code> - Will match and remove <strong>RouteTarget</strong>.</li>
+<li><code>soo</code> - Will match and remove <strong>Site-of-Origin</strong>.</li>
+<li><code>other</code> - Will match and remove other ext communities that are not <strong>RT</strong> or <strong>SOO</strong>.</li>
+<li><code>regexp</code> - regexp pattern to match ext communities that should be deleted.</li>
+<li><code>&lt;community-ext-list name&gt;</code> - Deletes communities from specified <code>community-ext-list</code>, including extended communities matching <code>regexp</code> entries of the list.</li>
+<li><strong>large-communities</strong>:</li>
+<li><code>all</code> - Removes everything.</li>
+<li><code>regexp</code> - regexp pattern to match large communities that should be deleted.</li>
+<li><code>&lt;community-large-list name&gt;</code> - Deletes large communities from specified <code>community-large-list</code>, including large communities matching <code>regexp</code> entries of the list.</li>
+</ul>
+<p>It is possible to specify multiple community types, for example delete all SOOs, other types of ext communities and specific RTs from the community-ext list:</p>
+<pre><code class="language-ros">/routing/filter/community-ext-list
+add list=myRTList communities=&quot;rt:1.1.1.1:222&quot;
+/routing/filter/rule
+add chain=myChain rule=&quot;delete bgp-ext-communities soo,other,myRTList;&quot;
+</code></pre>
+<p>For example, delete all large communities belonging to administrative domain 65551, regardless of the remaining values:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=myChain rule=&quot;delete bgp-large-communities regexp \&quot;^65551:[0-9]+:[0-9]+$\&quot;&quot;
+</code></pre>
+<h3 id="as-path-regexp-matching">AS-PATH Regexp Matching</h3>
+<p>An AS path is the sequence of autonomous system numbers (ASNs). For example, the AS path <code>123 456 789</code> means the route originated from AS 789 and traversed AS 456 before reaching the destination. To apply routing policies, match specific AS numbers or sets of AS numbers in the AS path by using a regular expression (regexp).</p>
+<p>There are two common ways to work with AS path data:</p>
+<ul>
+<li>Convert the whole AS path to a string and let regexp operate on the string (ROS v6 or Cisco style).</li>
+<li>Let regexp operate on each AS path entry as a number (ROS v7, Juniper style).</li>
+</ul>
+<p>The first method matches per character. The second method matches per AS number. The second method is faster and uses fewer resources than the string matching approach.</p>
+<p>This change requires administrators to use new regexp strategies. Old regexp patterns from RouterOS v6 cannot be copied and pasted directly because they can cause syntax errors or unexpected results.</p>
+<p>Take this basic AS path filter rule:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=myChain rule=&quot;if (bgp-as-path .1234.) {accept}&quot;
+</code></pre>
+<p>This regexp pattern matches ASN 1234 anywhere in the middle of the AS path. With old style string matching method, the same pattern matches any AS path that contains an ASN with at least six characters and the substring <code>1234</code>. An equivalent old style pattern is <code>._1234_.</code>.</p>
+<p>For example, the old string style pattern <code>1234[5-9]</code> matches 12345 through 12349 anywhere in the string. That yields matches such as <code>12345 3434</code> and <code>11 9123467 22</code>. With new style matcher, the same pattern matches an AS path containing the exact ASN 1234 followed by an ASN from 5 to 9, such as <code>1234 7 111</code> or <code>111 1234 5 222</code>. It does not match <code>12345 3434</code>.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Copying regexp patterns between implementations can produce unexpected or dangerous results.</p>
+<p>Do not copy Regex patterns directly from ROS v6 or Cisco configurations, they are not directly compatible. It can lead to unexpected or even dangerous configurations in some scenarios.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The AS-Path parameter must exist for the regexp matcher to be applied. This means that it is not possible to match a non-existent (empty) AS-Path with a regular expression, aka <code>^$</code>. <code>bgp-path-len</code> should be used instead.</p>
+</div>
+<h4 id="regex-testing-tool">Regex Testing Tool</h4>
+<p>RouterOS has a built-in regexp checking tool to help administrators validate regexps. This tool also supports num-list values so you can test a regexp against any AS path before applying it to routing filters.</p>
+<pre><code class="language-ros">/routing/filter/num-list/add list=test range=100-1500
+
+/routing/filter/test-as-path-regexp regexp=&quot;[[:test:]]5678\$&quot; as-path=&quot;1234,5678&quot;
+</code></pre>
+<h4 id="supported-operators">Supported Operators</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+<th style="text-align: left;">Example Explained</th>
+<th style="text-align: left;">Example Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>^</code></td>
+<td style="text-align: left;">Represents the beginning of the path</td>
+<td style="text-align: left;"><code>^1234</code></td>
+<td style="text-align: left;">will match an AS-path starting with ASN 1234</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>$</code></td>
+<td style="text-align: left;">Represents the end of the path</td>
+<td style="text-align: left;"><code>1234$</code></td>
+<td style="text-align: left;">will match the AS-path of origin ASN 1234</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*</code></td>
+<td style="text-align: left;">Zero or more occurrences of the listed ASN</td>
+<td style="text-align: left;"><code>^1234*$</code></td>
+<td style="text-align: left;">will match a Null as-path or an as-path where ASN 1234 may or may not appear multiple times</td>
+<td style="text-align: left;"><strong>Match:</strong>  1234  1234 1234 1234  Null path  <strong>No Match:</strong>  1234 5678</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>+</code></td>
+<td style="text-align: left;">One or more occurrences of the listed ASN</td>
+<td style="text-align: left;"><code>1234+</code></td>
+<td style="text-align: left;">will match an AS-path where ASN 1234 appears at least once</td>
+<td style="text-align: left;"><strong>Match:</strong>  1234  3 1234 6  <strong>No match:</strong>  12345 678</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>?</code></td>
+<td style="text-align: left;">Zero or one occurrence of the listed ASN</td>
+<td style="text-align: left;"><code>^1234? 5678</code></td>
+<td style="text-align: left;">will match an AS-path that may or may not start with ASN 1234 appearing once.</td>
+<td style="text-align: left;"><strong>Match</strong>:  5678  1234 5678  <strong>No match:</strong>  1234 1234 5678  12345 5678</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>.</code></td>
+<td style="text-align: left;">One occurrence of any ASN</td>
+<td style="text-align: left;"><code>^.$</code></td>
+<td style="text-align: left;">will match any AS-path with the length of one.</td>
+<td style="text-align: left;"><strong>Match:</strong>  12345  45678  <strong>No match:</strong>  1234 5678</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>\|</code></td>
+<td style="text-align: left;">Match one of two ASNs on each side</td>
+<td style="text-align: left;"><code>^(1234\|5678)</code></td>
+<td style="text-align: left;">will match an AS-path starting with ASN 1234 or 5678</td>
+<td style="text-align: left;"><strong>Match</strong>:  1234  5678  1234 5678  <strong>No Match:</strong>  91011</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>[ ]</code>  <code>[^ ]</code></td>
+<td style="text-align: left;">Represents the set of AS numbers where one AS number from the list must match.  Use ^ after opening the bracket to negate the set.  It is also possible to reference the pre-defined num-lists from <a href="#community-and-num-lists">num-list</a> with [[:numset_name:]]</td>
+<td style="text-align: left;"><code>^[1234 5678 1-100]</code></td>
+<td style="text-align: left;">will match the AS-path that starts with 1234 or 5678 or from the range of 1 to 100</td>
+<td style="text-align: left;"><strong>Match:</strong>  1234  99  5678  <strong>No Match:</strong>  101</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>()</code></td>
+<td style="text-align: left;">Group of regexp terms to match</td>
+<td style="text-align: left;"><code>^(1234$\|5678)</code></td>
+<td style="text-align: left;">will match an AS-path that starts and ends with 1234 or an AS-path that starts with 5678</td>
+<td style="text-align: left;"><strong>Match:</strong>  1234  5678 9999  <strong>No Match:</strong>  1234 5678</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Repetition ranges {} are not supported.</p>
+</div>
+<h3 id="community-and-num-lists">Community and Num Lists</h3>
+<p>A list of commonly used numbers can be configured from the <code>/routing/filter/num-list</code> menu. These lists of numbers can be used in the filter rules to simplify the filter setup process.</p>
+<p>In a similar manner, you are allowed to also define community, extended community, and large community lists. Community sets can be used for matching, appending, and setting.</p>
+<p>For example, match communities from the list and clear the attribute:</p>
+<pre><code class="language-ros">/routing/filter/community-list
+add communities=111:222 list=myCommunityList
+
+/routing/filter/rule
+add chain=myChain rule=&quot;if (bgp-communities equal-list myCommunityList) {delete bgp-communities wk,other; accept;}&quot;
+</code></pre>
+<p>Each entry in a community list is either a set of concrete community values (the <code>communities</code> parameter) or a regular expression pattern (the <code>regexp</code> parameter), the two parameters are mutually exclusive per entry. A single list can mix both types of entries:</p>
+<pre><code class="language-ros">/routing/filter/community-list/add list=myList communities=65551:100
+/routing/filter/community-list/add list=myList regexp=&quot;^65551:.*&quot;
+</code></pre>
+<h3 id="community-regexp-matching">Community Regexp Matching</h3>
+<p>Unlike AS-path regexp matching, which operates on AS numbers, community regexp matching operates on the <strong>string representation</strong> of the attribute. The regexp is applied to the printed form of <strong>each individual community</strong> in the attribute, i.e. the same form that is shown in the route <code>print detail</code> output:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Community type</th>
+<th style="text-align: left;">String representation</th>
+<th style="text-align: left;">Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BGP communities (RFC 1997)</td>
+<td style="text-align: left;"><code>asn:value</code>, both fields in decimal. Well-known communities are represented by their name: <code>internet</code>, <code>graceful-shutdown</code>, <code>accept-own</code>, <code>accept-own-nh</code>, <code>filter-4</code>, <code>filter-6</code>, <code>filter-xlate-4</code>, <code>filter-xlate-6</code>, <code>LLGR-stale</code>, <code>no-LLGR</code>, <code>blackhole</code>, <code>no-export</code>, <code>no-advertise</code>, <code>local-as</code>, <code>nopeer</code></td>
+<td style="text-align: left;"><code>65551:100</code>  <code>no-export</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">BGP extended communities (RFC 4360)</td>
+<td style="text-align: left;">Typed form: <code>rt:</code> (route target) or <code>soo:</code> (site of origin) prefix followed by the value in <code>asn:value</code>, <code>ipv4:value</code> or <code>asn4:value</code> form (a two-octet AS number written in the four-octet field is printed with an <code>L</code> suffix). Other recognized types print as <code>encap:</code>, <code>es-label:</code>, <code>es-import:</code> or <code>mobility:</code> values; all other extended communities print as <code>raw:&lt;hex&gt;</code></td>
+<td style="text-align: left;"><code>rt:65551:100</code>  <code>soo:1.2.3.4:5</code>  <code>rt:65000L:10</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">BGP large communities (RFC 8092)</td>
+<td style="text-align: left;"><code>global-admin:local-part-1:local-part-2</code>, each field printed as a decimal 32-bit integer. All three fields are always present, including zero values</td>
+<td style="text-align: left;"><code>65551:0:100</code></td>
+</tr>
+</tbody>
+</table>
+<p>The regexp uses the same RouterOS regular expression engine as the <code>comment regexp</code> matcher in routing filters. Its syntax is POSIX ERE-like and supports <code>^</code>, <code>$</code>, <code>.</code>, <code>*</code>, <code>+</code>, <code>?</code>, <code>|</code>, <code>()</code> and character classes <code>[ ]</code>, <code>[^ ]</code>. Repetition bounds <code>{n,m}</code> are not supported. A backslash escapes a single literal character, so <code>\d</code> matches the letter <code>d</code>. Use <code>[0-9]</code> for digits. Matching is case-sensitive and unanchored. Use <code>^</code> and <code>$</code> to match the whole string. The scripting <code>~</code> operator uses a different regexp implementation, so patterns are not always interchangeable.</p>
+<p>For example, reject routes that carry any large community from administrative domain 7010:</p>
+<pre><code class="language-ros">/routing/filter/community-large-list/add list=lcom7010 regexp=&quot;^7010:[0-9]+:[0-9]+$&quot;
+
+/routing/filter/rule
+add chain=bgp-in rule=&quot;if (bgp-large-communities any-list lcom7010) {reject;}&quot;
+</code></pre>
+<p>Regexp entries in community lists can be used for matching (<code>any-list</code>, <code>includes-list</code>, <code>subset-list</code>, <code>equal-list</code>) and with the <code>delete</code>/<code>filter</code> commands, in the latter case communities matching a regexp entry from the list are removed. Only the entries with concrete community values are written by <code>append</code> and <code>set</code> commands, a regexp is a matching pattern, not values that could be written into the attribute. Note that <code>set</code> with a list that contains no concrete values (an empty or regexp-only list) replaces the attribute with an empty set (clears it), while <code>append</code> in that case does nothing.</p>
+<h2 id="route-selection">Route Selection</h2>
+<p>Route selection rules control how output routes are selected from available candidate routes. By default, if no selection rules are set, output selects the best route.</p>
+<p>The following routing table shows two candidate routes and one best route. By default, when BGP selects a route to send out, it chooses the active route.</p>
+<pre><code class="language-text">[admin@4] /routing/route&gt; print where dst-address=1.0.0.0/24
+Flags: A - ACTIVE; b, y - COPY
+Columns: DST-ADDRESS, GATEWAY, AFI, DISTANCE, SCOPE, TARGET-SCOPE, IMMEDIATE-GW
+   DST-ADDRESS  GATEWAY         AFI  DISTANCE  SCOPE  TARGET-SCOPE  IMMEDIATE-GW
+ b 1.0.0.0/24   10.155.101.217  ip4        19     40            30  10.155.109.254%ether1
+Ab 1.0.0.0/24   10.155.101.232  ip4        20     40            30  10.155.109.254%ether1
+ b 1.0.0.0/24   10.155.101.231  ip4        20     40            30  10.155.109.254%ether1
+</code></pre>
+<p>If you need a preference for routes that are not active, use selection rules.</p>
+<p>Selection rules in RouterOS are configured from the <code>/routing/filter/select-rule</code> menu.</p>
+<p>Select rules can also call routing filters so routes are selected by filter rules. For example, to mimic the default output selection, use this rule set:</p>
+<pre><code class="language-ros">/routing/filter/rule
+add chain=get_active rule=&quot;if (active) {accept}&quot;
+
+/routing/filter/select-rule
+add chain=my_select_chain do-where=get_active
+</code></pre>
+<p>Select rules can be also used to limit how many additional paths to pick for BGP Add-path, for example max 3 paths:</p>
+<pre><code class="language-ros">/routing/filter/select-rule add chain=select-for-addpath do-take=3
+</code></pre>
+<h2 id="routing-filter-wizard">Routing Filter Wizard</h2>
+<p>Because writing filter rules in script-like syntax is more complex, routing filter wizard that generates filter rules with ROSv6-like syntax was introduced.</p>
+<p>Quick demonstration:</p>
+<pre><code class="language-routeros">[admin@CCR2004_2XS_111] /routing/filter&gt; filter-wizard &lt;tab&gt;
+action        dst                   ospf-type         scope-target      set-gw-check                use-te-nexthop
+afi           dst-len               protocol          set-bgp-...       set-scope
+bgp-...       gateway               routing-table     set-blackhole     set-scope-target
+blackhole     jump-target-chain     rpki              set-comment       set-suppress-hw-offload
+chain         match-chain           rpki-verify       set-distance      set-use-te-nexthop
+distance      ospf-metric           scope             set-gateway       suppress-hw-offload
+
+[admin@CCR2004_2XS_111] /routing/filter&gt; filter-wizard action=accept chain=vpn-in afi=vpnv4 set-bgp-ext-communities=rt:2:2
+  result: Filter rule 'if (afi vpnv4) { set bgp-ext-communities rt:2:2; accept; }' added
+
+[admin@CCR2004_2XS_111] /routing/filter&gt; /routing/filter/rule/print
+Flags: X - disabled, I - inactive
+ 0   ;;; added by filter-wizard
+     chain=vpn-in rule=&quot;if (afi vpnv4) { set bgp-ext-communities rt:2:2; accept; }&quot;
+</code></pre>
+<p>The filter wizard adds rules at the end of the list and gives them the comment <code>added by filter-wizard</code>.</p>
+<p>Errors returned when you try to add a filter with unacceptable values are printed in the CLI and logged in the system log with the <code>route,error</code> topic.</p>
+<pre><code class="language-routeros">[admin@CCR2004_2XS_111] /routing/filter&gt; filter-wizard action=accept chain=vpn-in afi=vpnv4 match-chain=vpn-in
+  result: Error adding 'if (chain vpn-in &amp;&amp; afi vpnv4) { accept; }'match with 'vpn-in' creates chain loop (6)
+
+[admin@CCR2004_2XS_111] /routing/filter&gt; /log/print
+ 2025-05-19 13:05:15 route,error Error adding 'if (chain vpn-in &amp;&amp; afi vpnv4) { accept; }'match with 'vpn-in' creates chain loop (6)
+
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPLS / VPLS · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Routing and Networking Protocols</p>
+      <h1 id="mpls-vpls">MPLS / VPLS</h1>
+<h1 id="vpls">VPLS</h1>
+<blockquote>
+<p>The VPLS page introduces MikroTik RouterOS's Virtual Private LAN Service (VPLS) interface, detailing its use as a transparent ethernet tunnel with LDP or MP-BGP protocols. It covers VPLS features like pseudowire...</p>
+</blockquote>
+<h1 id="vpls_1">VPLS</h1>
+<p>The Virtual Private LAN Service (VPLS) interface can be considered a tunnel interface just like the <a href="../../../../virtual-private-networks/eoip.md">EoIP</a> interface, to achieve transparent ethernet segment forwarding between customer sites.</p>
+<p>Negotiation of VPLS tunnels can be done by LDP protocol or MP-BGP - both endpoints of the tunnel exchange labels they are going to use for the tunnel.</p>
+<p>Data forwarding in the tunnel happens by imposing 2 labels on packets: tunnel label and transport label - a label that ensures traffic delivery to the other endpoint of the tunnel.</p>
+<p>MikroTik RouterOS implements the following VPLS features:</p>
+<ul>
+<li>VPLS LDP signaling (RFC 4762).</li>
+<li>Cisco style static VPLS pseudowires (RFC 4447 FEC type 0x80).</li>
+<li>VPLS pseudowire fragmentation and reassembly (RFC 4623).</li>
+<li>VPLS MP-BGP based autodiscovery and signaling (RFC 4761).</li>
+<li>Cisco VPLS BGP-based auto-discovery (draft-ietf-l2vpn-signaling-08).</li>
+<li>Support for multiple import/export route-target extended communities for BGP based VPLS (both RFC 4761 and draft-ietf-l2vpn-signaling-08).</li>
+</ul>
+<h2 id="vpls-prerequisites">VPLS Prerequisites</h2>
+<p>For VPLS to be able to transport MPLS packets, one of the label distribution protocols should be already running on the backbone; it can be LDP, RSVP-TE, or static bindings.</p>
+<p>Before moving forward, familiarize yourself with the <a href="../ldp.md#prerequisites-for-mpls">prerequisites required for LDP</a> and prerequisites for RSVP-TE.</p>
+<p>If BGP should be used as a VPLS discovery and signaling protocol, the backbone should be running iBGP preferably with route reflector/s.</p>
+<h2 id="example-setup">Example Setup</h2>
+<p>Let's consider that we already have a working LDP setup from the <a href="../ldp.md#example-setup">LDP configuration example</a>.</p>
+<p>Routers R1, R3, and R4 are connected to Customer A sites, and routers R1 and R3 are connected to Customer B sites. Customers require transparent L2 connectivity between the sites.</p>
+<hr />
+<h1 id="control-word">Control Word</h1>
+<blockquote>
+<p>VPLS uses Control Words (CW) for packet fragmentation and reassembly in RouterOS, adding 4-byte overhead to handle L2MTU limitations. CW fields include flags, fragmentation indicators, length, and sequence numbers...</p>
+</blockquote>
+<h1 id="control-word_1">Control Word</h1>
+<p>VPLS allows remote sites to share an Ethernet broadcast domain by connecting sites through <strong>pseudo-wires (PW)</strong> tunnels over a packet switching network (PSN). Since VPLS encapsulation adds additional overhead, each interface in the LSP should be able to transmit a large enough packet.</p>
+<p>Each ethernet chipset has hardware limitations on the maximum packet size that it can transmit. Even now there are Ethernets that support only one Vlan tag, meaning that the maximum packet size without Ethernet header and checksum (L2MTU) is 1504 bytes. Obviously, it is not enough to forward a VPLS encapsulated Ethernet frame without fragmentation (at least 1526 L2MTU support is required). See <a href="../../../../hardware/mtu-in-routeros.md">MTU in RouterOS</a> for maximum supported L2MTUs on RouterBOARDs.</p>
+<p>Since not even all RouterBOARDs support enough L2MTU to transmit a VPLS encapsulated packet without fragmentation, RouterOS has added Pseudowire Fragmentation and Reassembly (PWE3) support according to RFC 4623 using 4-byte <strong>Control Word (CW)</strong>.</p>
+<h2 id="control-word-usage">Control Word Usage</h2>
+<p>In RouterOS, Control Word is used for packet fragmentation and reassembly inside the VPLS tunnel. This is done by utilizing the optional <strong>Control Word (CW)</strong>. CW is added between the PW label (demultiplexor) and the packet payload and adds an additional 4-byte overhead.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Reordering OOO packets is not implemented, out of order fragments will be dropped</p>
+</div>
+<p>CW usage is controlled by the <code>use-control-word</code> parameter in VPLS configuration.</p>
+<p>As you can see <strong>Control Word</strong> is divided into 5 fields:</p>
+<ul>
+<li>0000 - 4-bit identifies that the packet is PW (not IP).</li>
+<li>Flags - 4bits.</li>
+<li>Frag - 2bits value that indicates payload fragmentation.</li>
+<li>Len - 6bits.</li>
+<li>Seq - 16bits sequence number used to detect packet loss / misordering.</li>
+</ul>
+<p>According to RFC, generation and processing of sequence numbers are optional.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

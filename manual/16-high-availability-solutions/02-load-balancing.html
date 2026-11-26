@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Load Balancing · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">High Availability Solutions</p>
+      <h1 id="load-balancing">Load Balancing</h1>
+<h1 id="load-balancing_1">Load Balancing</h1>
+<blockquote>
+<p>Load balancing in RouterOS: use two or more links at the same time, the difference between per-connection and per-packet balancing, which method does which, and a simple failover example.</p>
+</blockquote>
+<h1 id="load-balancing_2">Load Balancing</h1>
+<p>Load balancing spreads traffic over two or more links. A router with two internet links can use both at the same time, and keep working when one of them fails.</p>
+<p>There are two kinds of balancing:</p>
+<ul>
+<li><strong>Per-connection.</strong> All packets of one connection use the same link. This is the only kind that works when you control one end only, for example a home or office router with two internet providers: the other end sees each connection from one public address.</li>
+<li><strong>Per-packet.</strong> The packets of one connection can use different links. This works reliably, especially for TCP and encrypted connections, only when you control both ends of the links.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Per-connection</th>
+<th style="text-align: left;">Per-packet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Firewall Mangle</td>
+<td style="text-align: left;">Nth</td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">PCC (Per Connection Classifier)</td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Other matchers</td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">ECMP (Equal Cost Multi-Path)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;"><strong>No</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Bonding</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">OSPF</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;">BGP</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>Yes</strong></td>
+<td style="text-align: left;">No</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">You want to</th>
+<th style="text-align: left;">See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Use the second internet link only when the first fails</td>
+<td style="text-align: left;"><a href="failover-wan-backup">Failover (WAN Backup)</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Use two internet links at the same time</td>
+<td style="text-align: left;"><a href="per-connection-classifier">Per connection classifier</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Join several links between two of your own devices</td>
+<td style="text-align: left;"><a href="../bonding">Bonding</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Balance over equal routes of a routing protocol</td>
+<td style="text-align: left;"><a href="../../user-guides/routing-and-networking-protocols/unicast/ospf/">OSPF</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mark packets and connections for your own balancing rules</td>
+<td style="text-align: left;"><a href="../../firewall-and-quality-of-service/firewall/mangle">Mangle</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="simple-failover">Simple failover</h2>
+<p>The simplest setup with two gateways uses one gateway and changes to the other when the first one fails. Give the second route a larger <code>distance</code>, and add <code>check-gateway</code> to the routes:</p>
+<pre><code class="language-ros">/ip/route/add gateway=192.168.1.1 distance=1 check-gateway=ping
+/ip/route/add gateway=192.168.2.1 distance=2 check-gateway=ping
+</code></pre>
+<p>The router pings the gateway of each route. When the first gateway does not answer, its route becomes inactive and the second route takes over. When the first gateway answers again, its route is active again and the second is the backup. <a href="failover-wan-backup">Failover (WAN Backup)</a> has the complete setup and a way to check the path behind the gateway.</p>
+<h2 id="in-this-section">In this section</h2>
+<hr />
+<h1 id="failover-wan-backup">Failover (WAN Backup)</h1>
+<blockquote>
+<p>WAN failover in RouterOS: use a second internet link when the first one fails, check the link with check-gateway, detect a failure behind the provider's gateway with recursive routes, and see which link is in use.</p>
+</blockquote>
+<h1 id="failover-wan-backup_1">Failover (WAN Backup)</h1>
+<p>A router with two internet links can use the second link when the first one fails. This page shows two ways to do it with routes only:</p>
+<ul>
+<li>Check the gateway of each provider. This is simple, but it does not see a failure inside the network of the provider.</li>
+<li>Check hosts on the internet through each link, with recursive routes. This also sees a failure behind the gateway.</li>
+</ul>
+<p><em>[gambar: A router with a LAN and two links to two internet providers]</em></p>
+<p>In the examples, the first provider (ISP1) is on <code>ether1</code> with the gateway 10.111.0.1, and the second (ISP2) is on <code>ether2</code> with the gateway 10.112.0.1. ISP1 is the main link.</p>
+<h2 id="prepare-nat">Prepare NAT</h2>
+<p>The devices of the LAN must reach the internet through both links, so each WAN interface needs a masquerade rule:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=masquerade out-interface=ether1
+add chain=srcnat action=masquerade out-interface=ether2
+</code></pre>
+<p>With the default configuration, the masquerade rule uses the interface list <code>WAN</code>, and the two rules are not needed. Take the second WAN port out of the LAN bridge and add it to the list. The default firewall then also protects it. Without this, the traffic through the second link is not translated and gets no answers:</p>
+<pre><code class="language-ros">/interface/bridge/port/remove [find interface=ether2]
+/interface/list/member/add list=WAN interface=ether2
+</code></pre>
+<p>The routes of this page are static and need the address of each gateway. If a link gets its settings from a DHCP or PPPoE client, set <code>add-default-route=no</code> in the client, so that its own default route does not compete with the routes of this page.</p>
+<h2 id="check-the-gateways">Check the gateways</h2>
+<p>Add a default route for each link. The route with the lower <code>distance</code> is used while it is active:</p>
+<pre><code class="language-ros">/ip/route
+add distance=1 gateway=10.111.0.1 check-gateway=ping
+add distance=2 gateway=10.112.0.1 check-gateway=ping
+</code></pre>
+<p>With <code>check-gateway=ping</code>, the router pings the gateway of the route. When the gateway does not answer, the route becomes inactive, and the route with the next distance takes over. When the gateway answers again, the first route becomes active again. <a href="../../user-guides/routing-and-networking-protocols/routing-decision">Routing decision</a> describes the timing of the check.</p>
+<p>In <code>/ip/route/print</code>, the route of ISP1 has the flag <code>A</code> (active). After the gateway of ISP1 stops answering, this route gets the flag <code>I</code> (inactive) and the route of ISP2 becomes active. This takes about 20 seconds with the default timing of the check.</p>
+<p>An answer from the gateway shows only that the link between the router and the gateway works. The gateway can answer while the provider has no connection to the internet, and then the router keeps using a link that does not work.</p>
+<h2 id="check-hosts-on-the-internet">Check hosts on the internet</h2>
+<p>To check the path to the internet, ping a host on the internet through each link. Choose two reliable hosts that answer pings, one for each link. This example uses the public DNS servers 8.8.8.8 and 8.8.4.4.</p>
+<p>First add a route to each host through its link. Then add the default routes with the hosts as gateways:</p>
+<pre><code class="language-ros">/ip/route
+add dst-address=8.8.8.8 scope=10 gateway=10.111.0.1
+add dst-address=8.8.4.4 scope=10 gateway=10.112.0.1
+add distance=1 gateway=8.8.8.8 target-scope=11 check-gateway=ping
+add distance=2 gateway=8.8.4.4 target-scope=11 check-gateway=ping
+</code></pre>
+<p>These are recursive routes: the gateway of a default route is not directly connected, and the router finds the way to it through another route. <code>scope</code> and <code>target-scope</code> control which routes can be used for this: a route can resolve its gateway through routes whose <code>scope</code> is not greater than its <code>target-scope</code>. The host routes have <code>scope=10</code>, and the default routes have <code>target-scope=11</code>.</p>
+<p>The <code>scope=10</code> counts. A static route has the default scope of 30, and a host route that kept the default could not resolve the gateway of the route with <code>target-scope=11</code>: the default route would then have no valid next hop and stays inactive. <a href="../../user-guides/routing-and-networking-protocols/routing-decision">Routing decision</a> lists the default <code>scope</code> and <code>target-scope</code> of connected, IGP, static and BGP routes.</p>
+<p>The detail output shows the real next hop of each default route in <code>immediate-gw</code>:</p>
+<pre><code class="language-ros">[admin@Router] &gt; /ip/route/print detail where dst-address=0.0.0.0/0
+Flags: A - ACTIVE; s - STATIC
+2 As dst-address=0.0.0.0/0 routing-table=main gateway=198.51.100.1
+     immediate-gw=10.111.0.1%ether2 check-gateway=ping distance=1 scope=30
+     target-scope=11
+
+3  s dst-address=0.0.0.0/0 routing-table=main gateway=198.51.100.2
+     immediate-gw=10.112.0.1%ether3 check-gateway=ping distance=2 scope=30
+     target-scope=11
+</code></pre>
+<p>This output is from a test network, where the hosts are 198.51.100.1 and 198.51.100.2 and the WAN interfaces are <code>ether2</code> and <code>ether3</code>.</p>
+<ul>
+<li>When the host of ISP1 stops answering, the first default route becomes inactive within about half a minute and the traffic uses ISP2, also when the gateway of ISP1 still answers. When the host answers again, the route becomes active again.</li>
+<li>The host routes are necessary. Without them, both default routes are inactive.</li>
+<li>Each host is reachable only through its own link. Do not use an address that your network needs through the other link, for example the DNS server that the LAN uses.</li>
+</ul>
+<h2 id="check-two-hosts-for-each-link">Check two hosts for each link</h2>
+<p>With one host for each link, a failure of that host alone switches the traffic to the backup link. To avoid this, add a second host for each link, here 208.67.222.222 and 208.67.220.220:</p>
+<pre><code class="language-ros">/ip/route
+add dst-address=208.67.222.222 scope=10 gateway=10.111.0.1
+add dst-address=208.67.220.220 scope=10 gateway=10.112.0.1
+add distance=1 gateway=208.67.222.222 target-scope=11 \
+    check-gateway=ping
+add distance=2 gateway=208.67.220.220 target-scope=11 \
+    check-gateway=ping
+</code></pre>
+<p>ISP1 now has two default routes with the distance 1. While both hosts answer, the two routes are one ECMP route (flag <code>+</code>). When one host stops answering, the other route of ISP1 stays active. The traffic moves to ISP2 only when both hosts of ISP1 do not answer.</p>
+<h2 id="what-happens-to-open-connections">What happens to open connections</h2>
+<p>A connection that is open when the route changes can break. The devices open it again. New connections use the link of the active route.</p>
+<p>To use both links at the same time, see <a href="per-connection-classifier">Per connection classifier</a>.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../../cli-reference/ip/route"><code>/ip/route</code></a></li>
+<li><a href="../../user-guides/routing-and-networking-protocols/routing-decision">Routing decision</a></li>
+<li><a href="./">Load Balancing</a></li>
+<li><a href="per-connection-classifier">Per connection classifier</a></li>
+</ul>
+<hr />
+<h1 id="per-connection-classifier">Per connection classifier</h1>
+<blockquote>
+<p>Per connection classifier (PCC) in RouterOS: balance connections over two internet links with mangle rules, routing tables and failover, a complete example, and how the classifier divides connections.</p>
+</blockquote>
+<h1 id="per-connection-classifier_1">Per connection classifier</h1>
+<p>The per connection classifier (PCC) is a firewall matcher that divides connections into groups and keeps all packets of a connection in the same group. Its most common use is to share the connections of a network between two or more internet links.</p>
+<p>PCC takes selected fields of the packet header (addresses, ports), makes a 32-bit hash of them, divides the hash by a number (the denominator) and compares the remainder with a given value. The syntax is:</p>
+<pre><code class="language-ros">per-connection-classifier=
+PerConnectionClassifier ::= [!]ValuesToHash:Denominator/Remainder
+  Remainder ::= 0..4294967295    (integer number)
+  Denominator ::= 1..4294967295    (integer number)
+  ValuesToHash ::= both-addresses|both-ports|dst-address-and-port|
+  src-address|src-port|both-addresses-and-ports|dst-address|dst-port|src-address-and-port 
+</code></pre>
+<p>For example, <code>both-addresses:2/0</code> and <code>both-addresses:2/1</code> are the two halves of all pairs of source and destination address.</p>
+<p>PCC only matches packets. It does not send traffic anywhere: the connection marks have an effect only when other rules change them into routing marks, and routing tables with those names have routes. The example on this page has all the parts.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>PCC does not work together with HotSpot: HotSpot uses a web proxy, which uses only the main routing table.</p>
+</div>
+<h2 id="balance-two-internet-links">Balance two internet links</h2>
+<p><em>[gambar: A router with a LAN and two links to two internet providers]</em></p>
+<p>In this example the router has two provider interfaces, <code>ether_ISP1</code> with the address 10.10.4.100/24 and the gateway 10.10.4.1, and <code>ether_ISP2</code> with 10.10.5.100/24 and the gateway 10.10.5.1. The LAN interface <code>ether_LAN</code> has 192.168.100.1/24. On a router with the default configuration, use your interface names: the LAN interface is <code>bridge</code>, and the second provider port must first be removed from the bridge (<code>/interface/bridge/port/remove [find interface=ether2]</code>).</p>
+<pre><code class="language-ros">/ip/address
+add address=10.10.4.100/24 interface=ether_ISP1
+add address=10.10.5.100/24 interface=ether_ISP2
+add address=192.168.100.1/24 interface=ether_LAN
+</code></pre>
+<h3 id="routing-tables">Routing tables</h3>
+<p>Add a routing table for each provider:</p>
+<pre><code class="language-ros">/routing/table
+add name=ISP1_table fib
+add name=ISP2_table fib
+</code></pre>
+<h3 id="keep-connected-networks-in-the-main-table">Keep connected networks in the main table</h3>
+<p>The classification rules that follow look at all connections from the LAN. Traffic to the networks that are connected to the router must not get a routing mark, or the router sends it to a provider gateway and the hosts of those networks cannot be reached. Put the connected networks into an address list and accept them before the other mangle rules. <code>accept</code> ends the mangle processing of a packet:</p>
+<pre><code class="language-ros">/ip/firewall/address-list
+add address=10.10.4.0/24 list=ConnectedNetworks
+add address=10.10.5.0/24 list=ConnectedNetworks
+add address=192.168.100.0/24 list=ConnectedNetworks
+/ip/firewall/mangle
+add chain=prerouting action=accept \
+    dst-address-list=ConnectedNetworks
+add chain=output action=accept dst-address-list=ConnectedNetworks
+</code></pre>
+<p>The rule in the <code>output</code> chain does the same for the connections of the router itself. Without it, the router cannot reach the devices of its own LAN after the rules for its own connections are added.</p>
+<h3 id="classify-the-connections-of-the-lan">Classify the connections of the LAN</h3>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=prerouting action=mark-connection \
+    connection-mark=no-mark connection-state=new \
+    dst-address-type=!local in-interface=ether_LAN \
+    per-connection-classifier=both-addresses:2/0 \
+    new-connection-mark=ISP1
+add chain=prerouting action=mark-connection \
+    connection-mark=no-mark connection-state=new \
+    dst-address-type=!local in-interface=ether_LAN \
+    per-connection-classifier=both-addresses:2/1 \
+    new-connection-mark=ISP2
+</code></pre>
+<ul>
+<li>The rules match the first packet of each new connection without a mark, and put the connection into one of two groups by its source and destination address. The connection mark then stays with all packets of the connection.</li>
+<li><code>dst-address-type=!local</code> leaves out packets for the router itself.</li>
+<li>The rules are in the <code>prerouting</code> chain, because the routing mark must be set before the routing decision. A connection that is marked first in the <code>forward</code> chain leaves with its first packet through the main table: connections of one packet, such as DNS requests, would always use the main table, and the other packets of a TCP connection would leave through another provider than the first one.</li>
+</ul>
+<h3 id="classify-the-connections-of-the-router">Classify the connections of the router</h3>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=input action=mark-connection connection-state=new \
+    in-interface=ether_ISP1 new-connection-mark=ISP1
+add chain=input action=mark-connection connection-state=new \
+    in-interface=ether_ISP2 new-connection-mark=ISP2
+add chain=output action=mark-connection \
+    connection-mark=no-mark connection-state=new \
+    per-connection-classifier=both-addresses:2/0 \
+    new-connection-mark=ISP1
+add chain=output action=mark-connection \
+    connection-mark=no-mark connection-state=new \
+    per-connection-classifier=both-addresses:2/1 \
+    new-connection-mark=ISP2
+</code></pre>
+<ul>
+<li>The <code>input</code> rules are for connections that come to the router from the internet, for example to a VPN server on the router. The mark remembers the interface that the connection came in on, so the answers leave through the same interface from the same public address. A router that accepts connections from the LAN only does not need them.</li>
+<li>The <code>output</code> rules put the connections that the router itself starts into the same two groups. Packets of the router do not pass the <code>prerouting</code> chain, so these rules are in <code>output</code>.</li>
+</ul>
+<h3 id="change-the-connection-marks-into-routing-marks">Change the connection marks into routing marks</h3>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=output action=mark-routing connection-mark=ISP1 \
+    new-routing-mark=ISP1_table
+add chain=prerouting action=mark-routing connection-mark=ISP1 \
+    in-interface=ether_LAN new-routing-mark=ISP1_table
+add chain=output action=mark-routing connection-mark=ISP2 \
+    new-routing-mark=ISP2_table
+add chain=prerouting action=mark-routing connection-mark=ISP2 \
+    in-interface=ether_LAN new-routing-mark=ISP2_table
+</code></pre>
+<p><code>mark-routing</code> works only in the <code>prerouting</code> and <code>output</code> chains. The <code>prerouting</code> rules have <code>in-interface=ether_LAN</code>, so that packets that arrive from the providers follow the normal routing decision: only the traffic to the internet needs the routing marks.</p>
+<h3 id="routes">Routes</h3>
+<p>Add a default route to each provider table, and two default routes with different distances to the main table:</p>
+<pre><code class="language-ros">/ip/route
+add gateway=10.10.4.1 routing-table=ISP1_table check-gateway=ping
+add gateway=10.10.5.1 routing-table=ISP2_table check-gateway=ping
+add gateway=10.10.4.1 distance=1 check-gateway=ping
+add gateway=10.10.5.1 distance=2 check-gateway=ping
+</code></pre>
+<p>The routes of the main table give failover. When a provider gateway does not answer, <code>check-gateway</code> makes the route of its table inactive. The traffic with that routing mark then uses the <a href="../../user-guides/routing-and-networking-protocols/routing-decision">main routing table</a>, where the route through the other provider is active.</p>
+<p>The routes of the main table need <code>check-gateway=ping</code> too. Without it, the route through a failed gateway stays active there, and connections of that group are lost. Connections that are open when a gateway fails or comes back can break and must be opened again.</p>
+<h3 id="nat">NAT</h3>
+<p>With the default configuration, add both provider interfaces to the <code>WAN</code> interface list: its masquerade rule and its firewall then cover both, and the two rules below are not needed. The FastTrack rule of the default configuration can stay: connections keep the provider of their group with it.</p>
+<p>Without the default configuration, add a masquerade rule for each interface. The routing decision is made by now. The NAT rules only set the source address of the packets: 10.10.4.100 for those that leave through <code>ether_ISP1</code> and 10.10.5.100 for <code>ether_ISP2</code>.</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=srcnat action=masquerade out-interface=ether_ISP1
+add chain=srcnat action=masquerade out-interface=ether_ISP2
+</code></pre>
+<h3 id="check">Check</h3>
+<ul>
+<li><code>/ip/firewall/mangle/print stats</code> shows the packet counters of the rules. With traffic from several devices to several destinations, both <code>mark-connection</code> rules of the LAN count packets.</li>
+<li><code>/ip/route/print</code> shows the routes of the three tables. A route of a failed gateway has the flag <code>I</code>.</li>
+<li><code>/ip/firewall/connection/print</code> shows the mark of each connection in <code>connection-mark</code>.</li>
+</ul>
+<p>With <code>both-addresses</code>, all connections between one device and one server use the same provider. Different servers can use different providers, so a test to a single server always shows the same link.</p>
+<h2 id="failover-with-more-than-two-links">Failover with more than two links</h2>
+<p>Extend the example above with a third provider on <code>ether_ISP3</code> (gateway 10.10.6.1), the routing table <code>ISP3_table</code>, and a third masquerade rule (or move all provider interfaces into the <code>WAN</code> list).</p>
+<p>With one default route in each provider table, the share of a failed link falls back to the main table and leaves through one provider by distance. To divide the failed share over all remaining links instead, each table keeps the remaining gateways as one equal-distance set:</p>
+<pre><code class="language-ros">/ip/route
+add gateway=10.10.4.1 routing-table=ISP1_table check-gateway=ping
+add gateway=10.10.5.1 routing-table=ISP1_table distance=2 check-gateway=ping
+add gateway=10.10.6.1 routing-table=ISP1_table distance=2 check-gateway=ping
+
+add gateway=10.10.5.1 routing-table=ISP2_table check-gateway=ping
+add gateway=10.10.4.1 routing-table=ISP2_table distance=2 check-gateway=ping
+add gateway=10.10.6.1 routing-table=ISP2_table distance=2 check-gateway=ping
+
+add gateway=10.10.6.1 routing-table=ISP3_table check-gateway=ping
+add gateway=10.10.4.1 routing-table=ISP3_table distance=2 check-gateway=ping
+add gateway=10.10.5.1 routing-table=ISP3_table distance=2 check-gateway=ping
+</code></pre>
+<p>Each table carries its traffic through its own provider first. When the gateway of a table stops answering, the two <code>distance=2</code> routes join into one ECMP route (flag <code>+</code> in <code>/ip/route/print</code>), and the share of the failed link leaves equally through the two remaining links. In the three-link setup, every link carries a third of the connections, and each remaining link ends up with half of the full flow.</p>
+<p>The split between the remaining links follows the ECMP hash policy. By default, the Layer3 policy hashes each connection by its addresses and keeps it on one link. With <a href="../../bridging-and-switching/l3-hardware-offloading.md">L3 hardware offloading</a>, the switch uses its own hash mask, and the configured hash policy is ignored; <a href="../../user-guides/routing-and-networking-protocols/routing-decision#multipath-ecmp-routes">Multipath (ECMP) routes</a> describes the details. Connections that are open when a link fails or comes back follow the two-link rule: they break and must be opened again.</p>
+<p>If the failed share should move in a known order instead of spreading equally, give each fallback route in a table a different <code>distance</code>. Every table then sends its traffic to the lowest active distance, and each table keeps its own preference order.</p>
+<h2 id="how-pcc-works">How PCC works</h2>
+<p>This article aims to explain in simple terms how PCC works. The definition from the official manual wiki page reads: "PCC takes selected fields from the IP header, and with the help of a hashing algorithm converts selected fields into a 32-bit value. This value then is divided by a specified Denominator and the remainder then is compared to a specified Remainder, if equal then the packet will be captured. You can choose from src-address, dst-address, src-port, dst-port from the header to use in this operation.", with the full number of fields available being: "both-addresses|both-ports|dst-address-and-port|src-address|src-port|both-addresses-and-ports|dst-address|dst-port|src-address-and-port". If you understand that definition, there'll be nothing interesting in this article for you.</p>
+<p>First, here are the terms necessary to understand the definition.</p>
+<p>IP packets have a header that contains several fields. Two of those fields are the IP address of the source of the packet and the IP address of the destination of the packet. TCP and UDP packets also have headers that contain the source port and the destination port.</p>
+<p>Denominators and remainders are parts of modulus operations. A modulus operation produces the integer left over when you divide two numbers and only accepts the whole number portion of the result. It is represented by a % sign. Here are some examples: 3 % 3 = 0, because 3 divides cleanly by 3. 4 % 3 = 1, because the next smallest number before 4 that cleanly divides by 3 is 3, and 4 - 3 = 1. 5 % 3 is 2, because the next smallest number before 5 that divides cleanly by 3 is 3, and 5 - 3 = 2. 6 % 3 = 0, because 6 divides cleanly by 3.</p>
+<p>A hash is a function that is fed input, and produces output. Hashes have many interesting properties, but the only important one for the purpose of this article is that hash functions are deterministic. That means that when you feed a hash function an input that reads 'hello' and it produces the output '1', you can rely on the fact that if you feed it 'hello' a second time it will produce the output '1' again. When you feed a hash function the same input, it will always produce the same output. What exact hashing algorithm is used by PCC is not important, so for this discussion let's assume that when you feed it IP addresses and ports, it just adds up the octets of the IP addresses as decimal numbers as well as the ports, and then takes the last digit and produces it as the output. Here is an example:</p>
+<p>The hash function is fed 1.1.1.1 as the source IP address, 10000 as the source TCP port, 2.2.2.2 as the destination IP address and 80 as the destination TCP port. The output will be 1+1+1+1+10000+2+2+2+2+80 = 10092. The last digit of that is 2, so the hash output is 2. It will produce 2 every time it is fed that combination of IP addresses and ports.</p>
+<p>At this point it's important to note that even though PCC is most often used for spreading load across circuits, PCC itself has absolutely nothing to do with routing, routing marks or spreading load. PCC is simply a way to match packets, and not directly related to the action of then marking those matched packets even if that is its main purpose.</p>
+<p>Mangle rules that classify connections by PCC look like this:</p>
+<pre><code class="language-ros">/ip/firewall/mangle/add chain=prerouting action=mark-connection \
+ new-connection-mark=1st_conn per-connection-classifier=src-address-and-port:3/0
+/ip/firewall/mangle/add chain=prerouting action=mark-connection \
+  new-connection-mark=2nd_conn per-connection-classifier=src-address-and-port:3/1
+/ip/firewall/mangle/add chain=prerouting action=mark-connection \
+  new-connection-mark=3rd_conn per-connection-classifier=src-address-and-port:3/2
+</code></pre>
+<p>The three rules classify connections only. In a working load-balancing setup the surrounding pieces matter just as much: which packets are accepted before classification, where connection marks become routing marks, and which routes the special routing tables hold. The Configuration Example puts all of those pieces together.</p>
+<p>Here is what the different field options mean for the purpose of packet matching, these are the fields that will be fed into the hashing algorithm (and, for the purpose of spreading load across links, decide what link a packet will be put on). Remember that a hash function will always produce the same output when it's fed the same input:</p>
+<ul>
+<li>src-address: The source address of a client will always be the same, so all traffic from a particular client will always match the same PCC matcher, and will always be put on the same link.</li>
+<li>dst-address: The destination address of a specific server will always be the same, so all traffic to that server (say, the Mikrotik Wiki) will always match the same PCC matcher, and will always be put on the same link.</li>
+<li>both-addresses: The source and destination IP pair between the same client and server will always be the same, so all traffic between one specific client and a specific server (say, your laptop and the Mikrotik Wiki) will always match the same PCC matcher, and will always be put on the same link.</li>
+<li>src-port: Source ports of clients are usually randomly chosen when the connection is created, so across many connections different source ports will be fed into the hash function, and different PCC matchers will match and traffic will go across different links. However, some client protocols always choose the same source port, and servers behind your router will most likely always use the same service port to send traffic back to their clients. A web server behind your router would send most traffic from its HTTP (80) and HTTPS (443) ports, and that traffic would always match the same PCC matcher and would be put on the same link.</li>
+<li>dst-port: Destination ports of clients are usually well defined service ports, all HTTP (80) traffic between your clients and servers on the Internet would always match the same PCC matcher, and would be put on the same link. However, the same clients doing HTTPS (443) traffic could match a different PCC matcher, and would go across a different link.</li>
+<li>both-ports: Since the client port is (usually) randomly chosen, the combination of the two ports is (usually) random and will spread load across links.</li>
+<li>src-address-and-port: Same caveat as src-port.</li>
+<li>dst-address-and-port: Same caveat as dst-port.</li>
+<li>both-addresses-and-ports: This is the most random way to spread traffic across links, since it has the most number of variables.</li>
+</ul>
+<p>It's important to note that even though the hash function discussed in this article is greatly simplified and not what is used in real life, it nicely demonstrates another property of hash functions: two completely different inputs can produce the same output. In our example, 3 % 3 = 0, and 6 % 3 = 0; we get back 0 when we feed it a 3 as well as when we feed it a 6. The same is true for the actual function used for PCC, even though I don't know what it is, we do know from the definition that it produces a 32-bit value as output. IP addresses are 32 bits, and ports are 16 bits, so assuming that we're using both-addresses-and-ports, we'd be feeding it 32+32+16+16 = 96 bits of input and would only receive 32 bits back, so it must be producing the same output for different inputs. This means that two completely unrelated connections could match the same PCC matcher, and would be put on the same line. PCC works better the more connections you put across it so that the hash function has more chances to produce different outputs.</p>
+<hr />
+<h1 id="multi-chassis-link-aggregation-group">Multi-chassis Link Aggregation Group</h1>
+<blockquote>
+<p>MLAG in RouterOS enables physical redundancy by configuring LACP bonds across two devices, allowing the client to perceive a single connection while ensuring failover. It uses ICCP for peer communication, supports...</p>
+</blockquote>
+<h1 id="multi-chassis-link-aggregation-group_1">Multi-chassis Link Aggregation Group</h1>
+<h2 id="introduction">Introduction</h2>
+<p>MLAG (Multi-chassis Link Aggregation Group) implementation in RouterOS allows configuring LACP bonds on two separate devices, while the client device believes it is connected to the same machine. This provides a physical redundancy in case of switch failure.</p>
+<p>Both peers establish the MLAG interfaces and update the bridge host table over <code>mlag-peer-port</code> using ICCP (Inter Chassis Control Protocol). RouterOS ICCP does not require an IP configuration; it sends untagged Layer2 packets marked with EtherType 0x88B5 and a destination MAC address of 01:80:C2:00:00:0E. ICCP packets are link-local, meaning they are always received and handled by the MLAG devices themselves and never forwarded to other parts of the network. The peer-ports on each MLAG device must be directly connected to each other. It is also recommended to keep the untagged VLAN used by the peer ports separate from the rest of your network, either by assigning a dedicated untagged VLAN (using <code>pvid</code>), or by setting the peer port to only allow VLAN tagged frames (using <code>frame-types=admit-only-vlan-tagged</code>). Peer ports can be configured as single Ethernet interfaces or bonding interfaces. However, using a bonding interface is recommended, as it helps prevent a single interface failure from affecting connectivity, especially when both MLAG nodes are still up and running.</p>
+<p>When mlag-peer-port is running and ICCP is established, the primary device election happens and the system-id will be selected. The peer with the lowest priority will act as the primary device. If the priorities are the same, the peer with the lowest bridge MAC address will become the primary. This system-id is used for STP BPDU bridge identifier and LACP system ID. MLAG supports STP, RSTP or MSTP protocols. Use the same STP priority and the same STP configuration on dual-connected bridge ports on both nodes. When MLAG bridges are elected as the STP root, then both devices will show as root bridges under the bridge monitor.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>MLAG is configured per bridge interface. Any RouterOS device (including virtual CHR instances) can be used as an MLAG node.</p>
+<p>Bridge hardware offloaded MLAG is only available on <a href="../bridging-and-switching/marvell-prestera-switch-chip-features.md">MikroTik devices with Marvell Prestera switch</a>. All other devices support MLAG only in software.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The MLAG is not compatible with <a href="../bridging-and-switching/l3-hardware-offloading.md">L3 hardware offloading</a>. When using MLAG, L3 hardware offloading must be disabled on the whole switch (<code>/interface/ethernet/switch/set 0 l3-hw-offloading=no</code>). Setting <code>l3-hw-offloading=no</code> on individual switch ports is not sufficient.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>MLAG host synchronization can be CPU and memory intensive in networks with many hosts and VLANs. For switches with a single-core <strong>MIPSBE CPU</strong> (for example, CRS326-24S+2Q+RM, CRS354-48P-4S+2Q+RM, CRS518-16XS-2XQ-RM), it is recommended to use MLAG only in networks with up to 1,000 hosts.</p>
+<p>In networks with a larger number of hosts, MLAG on these switches may lead to unexpected behavior.</p>
+</div>
+<p><em>[gambar: Two MLAG peer switches connected with a peer port, and a client connected to both with one LACP bond]</em></p>
+<h3 id="packet-forwarding-and-load-balancing">Packet forwarding and load balancing</h3>
+<p>The BUM (broadcast, unknown unicast, multicast) packet forwarding happens in two stages.</p>
+<h4 id="stage-1-local-forwarding">Stage 1 - local forwarding</h4>
+<p>When a node receives BUM traffic, it floods the packet locally to all ports that are members of the same VLAN - just like in a traditional (non-MLAG) setup. Additionally, it forwards the traffic over the peer-port to the other MLAG node.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Forwarding over peer-port only happens if the peer-port is also a member of the VLAN. This is why the documentation emphasizes that the peer-port should be included in all VLANs that span both MLAG nodes.</p>
+</div>
+<h4 id="stage-2-remote-forwarding-by-peer">Stage 2 - remote forwarding by peer</h4>
+<p>When the peer node receives the BUM traffic over the peer-port, it floods the traffic to all regular bridge ports that are members of the same VLAN. These are ports that do not have an <code>mlag-id</code> specified (i.e., standalone Ethernet or bond interfaces). For <code>mlag-id</code> bond interfaces, the peer node makes a decision based on link status:</p>
+<ul>
+<li>If both links (local and remote) are active, it does not flood the traffic to its own MLAG bond port - this avoids sending duplicate packets since the first node has already handled that.</li>
+<li>If the remote peer’s link is inactive, and the local is active, the peer node will flood the traffic to the MLAG bond to ensure delivery.</li>
+</ul>
+<p>The unicast traffic behaves similarly, but there is one key difference when comparing regular LAG with MLAG. In a regular LAG setup, outgoing packets are load-balanced across all active links based on the transmit hash policy. In MLAG setups with both links active, traffic is not load-balanced across the peer-port between the two switches. Instead, traffic is forwarded only through the local member links of the MLAG - it always takes the shortest path. The peer-port is used only if the local MLAG link fails. In that case, traffic is forwarded to the other node via the peer-port to reach the destination. When this happens, the host table also updates the MAC address entries learned on MLAG bonds to indicate that the destination is now reachable via the peer-port. In setups where MLAG bonds consist of 2 + 2 active links (2 links per node), the transmit hashing is performed only among the two local links - not across all four links. Load balancing can be achieved when an MLAG pair is used for multiple dual-connected bonds and the incoming traffic is already distributed across both pairs.</p>
+<h2 id="quick-setup">Quick setup</h2>
+<p>In this example, CRS317 and CRS309 devices are used as MLAG peers, and any device with two SFP+ interfaces can be used as an LACP client. The SFP+1 interface is used on both peer nodes to create <code>mlag-peer-port</code>, and it is used for ICCP, see a network scheme below.</p>
+<p><em>[gambar: Peer1 and Peer2 connected through sfp-sfpplus1, and a client connected to sfp-sfpplus2 of each peer]</em></p>
+<p>Configure bonding interfaces for MLAG on <strong>Peer1</strong> and <strong>Peer2</strong> devices, use a matching <code>mlag-id</code> setting on both peer devices, and set the 1-second LACPDU transmission rate:</p>
+<pre><code class="language-ros"># Peer1
+/interface/bonding
+add mlag-id=10 mode=802.3ad name=client-bond slaves=sfp-sfpplus2 lacp-rate=1sec
+
+# Peer2
+/interface/bonding
+add mlag-id=10 mode=802.3ad name=client-bond slaves=sfp-sfpplus2 lacp-rate=1sec
+</code></pre>
+<p>Set up the bridge interface with <code>vlan-filtering</code> enabled. Specify <code>mlag-peer-port</code> to enable MLAG. To control which device becomes the primary MLAG node, set a lower <code>mlag-priority</code> value on the preferred device. In this example, we want Peer1 to be the primary, so we set its <code>priority=50</code>. Peer2 keeps the default priority of 128, making it the secondary.</p>
+<p>In this example, we want both MLAG nodes to act as the root bridge, so we assign a better (lower) bridge priority using <code>priority=0x1000</code>. Make sure both MLAG nodes use the same priority value.</p>
+<p>Optionally, you can set <code>frame-types=admit-only-vlan-tagged</code> on the bridge interface to disable the default untagged VLAN 1 (<code>pvid=1</code>).</p>
+<pre><code class="language-ros"># Peer1
+/interface/bridge
+add name=bridge1 vlan-filtering=yes mlag-peer-port=sfp-sfpplus1 mlag-priority=50 priority=0x1000 frame-types=admit-only-vlan-tagged
+
+# Peer2
+/interface/bridge
+add name=bridge1 vlan-filtering=yes mlag-peer-port=sfp-sfpplus1 priority=0x1000 frame-types=admit-only-vlan-tagged
+</code></pre>
+<p>Next, add the necessary interfaces to the bridge. In this example, only the peer port (sfp-sfpplus1) and the client-bond interface need to be added.</p>
+<p>For the peer port, we disable the default untagged VLAN 1 (<code>pvid=1</code>) by configuring it to accept only VLAN-tagged traffic (<code>frame-types=admit-only-vlan-tagged</code>).</p>
+<p>For the client-bond interface, we want untagged traffic to belong to VLAN 10, so we set <code>pvid=10</code> on that interface.</p>
+<pre><code class="language-ros"># Peer1
+/interface/bridge/port
+add bridge=bridge1 interface=sfp-sfpplus1 frame-types=admit-only-vlan-tagged
+add bridge=bridge1 interface=client-bond pvid=10
+
+# Peer2
+/interface/bridge/port
+add bridge=bridge1 interface=sfp-sfpplus1 frame-types=admit-only-vlan-tagged
+add bridge=bridge1 interface=client-bond pvid=10
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>The MLAG supports STP, RSTP or MSTP protocols. Use the same STP priority and the same STP configuration (e.g. path-cost, priority, edge) on dual-connected bridge ports on both nodes.</p>
+</div>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>If the dual-connected bond interface is not connected to any other RSTP/MSTP bridges or switches, you can set <code>edge=yes</code> on that interface on both MLAG nodes.</p>
+<p>This setting allows the bond port to quickly enter the forwarding state, which helps reduce packet loss when one side of the MLAG becomes available again.</p>
+</div>
+<p>In this example, client-bond interfaces use VLAN 10 for untagged traffic (set with <code>pvid=10</code>), and we also want to allow tagged VLAN 20. To make sure traffic for both VLANs can pass between the MLAG devices, we need to add the peer ports as tagged members of VLANs 10 and 20 on both MLAG nodes. It is important to include the peer ports in all VLANs that are used on other bridge ports. This includes the untagged and tagged VLANs. Below are configuration commands for both peer devices:</p>
+<pre><code class="language-ros"># Peer1
+/interface/bridge/vlan
+add bridge=bridge1 tagged=sfp-sfpplus1 vlan-ids=10
+add bridge=bridge1 tagged=sfp-sfpplus1,client-bond vlan-ids=20
+
+# Peer2
+/interface/bridge/vlan
+add bridge=bridge1 tagged=sfp-sfpplus1 vlan-ids=10
+add bridge=bridge1 tagged=sfp-sfpplus1,client-bond vlan-ids=20
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>All VLANs used for bridge slave ports must also be configured as tagged VLANs for peer-port, so that peer-port is a member of those VLANs and can forward data.</p>
+</div>
+<p>Last, check MLAG status on peer devices and make sure that Client LACP has both interfaces active.</p>
+<pre><code class="language-ros"># Peer1
+[admin@Peer1] &gt; /interface/bridge/monitor [find name=bridge1]
+                  state: enabled                 
+    current-mac-address: B8:69:F4:1B:B0:7C       
+              bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+            root-bridge: yes                     
+         root-bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+         root-path-cost: 0                       
+              root-port: none                    
+             port-count: 2                       
+  designated-port-count: 2                       
+           fast-forward: no                      
+             mlag-state: connected               
+       mlag-active-role: primary  
+
+# Peer2
+[admin@Peer2] &gt; /interface/bridge/monitor [find name=bridge1]
+                  state: enabled                 
+    current-mac-address: B8:69:F4:1B:B0:7C       
+              bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+            root-bridge: yes                     
+         root-bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+         root-path-cost: 0                       
+              root-port: none                    
+             port-count: 2                       
+  designated-port-count: 1                       
+           fast-forward: no                      
+             mlag-state: connected               
+       mlag-active-role: secondary    
+
+# Client
+[admin@Client] &gt; /interface/bonding/monitor bond1 
+                    mode: 802.3ad
+            active-ports: sfp-sfpplus1,sfp-sfpplus2
+          inactive-ports: 
+          lacp-system-id: 74:4D:28:7B:7F:96
+    lacp-system-priority: 65535
+  lacp-partner-system-id: B8:69:F4:1B:B0:7C
+
+</code></pre>
+<p>If the <strong>Client</strong> device is RouterOS, below is the configuration command to create a regular <a href="./bonding.md">LACP bonding</a>. To speed up LACP link establishment, use a 1-second LACPDU transmission rate:</p>
+<pre><code class="language-ros">/interface/bonding
+add mode=802.3ad name=bond1 slaves=sfp-sfpplus1,sfp-sfpplus2 lacp-rate=1sec 
+</code></pre>
+<h2 id="mlag-settings-and-monitoring">MLAG settings and monitoring</h2>
+<p>There are several MLAG related settings and monitoring options: <a href="../cli-reference/interface/bridge/bridge.md#mlag-heartbeat"><code>mlag-heartbeat</code></a>, <a href="../cli-reference/interface/bridge/bridge.md#mlag-init-delay"><code>mlag-init-delay</code></a>, <a href="../cli-reference/interface/bridge/bridge.md#mlag-lacp-fallback"><code>mlag-lacp-fallback</code></a>, <a href="../cli-reference/interface/bridge/bridge.md#mlag-peer-port"><code>mlag-peer-port</code></a>, <a href="../cli-reference/interface/bridge/bridge.md#mlag-priority"><code>mlag-priority</code></a> from <code>interface/bridge</code> menu and <a href="../cli-reference/interface/bonding/bonding.md#mlag-id"><code>mlag-id</code></a> from <code>interface/bonding</code> menu.</p>
+<p>By default, MLAG uses the elected primary node's system ID as the shared system ID for both the RSTP bridge ID and the LACP system ID of dual-connected bonds. If the primary node reboots, the remaining secondary node reverts its bonds to its own LACP system IDs (see <a href="../cli-reference/interface/bridge/bridge.md#mlag-lacp-fallback"><code>mlag-lacp-fallback</code></a>). The LACP partner must then renegotiate the bond, causing brief packet loss.</p>
+<p>Consider setting <code>mlag-lacp-fallback=no</code> to keep the shared MLAG system ID after the peer link is lost, avoiding LACP renegotiation. The primary node must rejoin the cluster to restore the shared system ID.</p>
+<p>When a node joins or rejoins the cluster, its dual-connected bond slaves stay out of the 802.3ad bond until the MLAG system ID syncs with the peer. <a href="../cli-reference/interface/bridge/bridge.md#mlag-init-delay"><code>mlag-init-delay</code></a> controls how long the slaves stay excluded after reboot, preventing the bond from briefly activating with a local system ID.</p>
+<p>Use the <code>/interface/bridge/monitor</code> commands to see the current MLAG state and active role. The <code>mlag-state</code> field shows <code>connected</code> after ICCP is established, <code>connecting</code> while the peers establish or re-establish the connection, or an error such as <code>peer port not running</code> when the configured peer port is unavailable.</p>
+<pre><code class="language-ros"> [admin@Peer1] &gt; /interface/bridge/monitor [find name=bridge1]
+                  state: enabled                 
+    current-mac-address: B8:69:F4:1B:B0:7C       
+              bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+            root-bridge: yes                     
+         root-bridge-id: 0x1000.B8:69:F4:1B:B0:7C
+         root-path-cost: 0                       
+              root-port: none                    
+             port-count: 2                       
+  designated-port-count: 2                       
+           fast-forward: no                      
+             mlag-state: connected               
+       mlag-active-role: primary   
+</code></pre>
+<p>LACP bonding interface and bonding slave ports can be monitored with <code>monitor</code> and <code>monitor-slaves</code> commands. See more details on <a href="./bonding.md">Bonding monitoring</a>.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

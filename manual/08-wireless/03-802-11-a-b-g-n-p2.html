@@ -1,0 +1,2657 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>802.11 a/b/g/n · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="80211-abgn-part-23">802.11 a/b/g/n (part 2/3)</h1>
+<h1 id="wireless-interface">Wireless Interface</h1>
+<blockquote>
+<p>RouterOS wireless interface supports IEEE 802.11 standards with comprehensive features including multiple modes (client, AP, bridge), encryption protocols, channel width adjustments, and advanced transmission...</p>
+</blockquote>
+<h1 id="wireless-interface_1">Wireless Interface</h1>
+<hr />
+<h2 id="overview">Overview</h2>
+<p><strong>Package:</strong> wireless</p>
+<p>RouterOS wireless complies with IEEE 802.11 standards. It provides complete support for 802.11a, 802.11b, 802.11g, 802.11n and 802.11ac as well as additional features like WPA, WEP, AES encryption, Wireless Distribution System (WDS), Dynamic Frequency Selection (DFS), Virtual Access Point, Nstreme and Nv2 proprietary protocols and many more.</p>
+<p>Wireless can operate in several modes: client (station), access point, wireless bridge etc. Client/station also can operate in different modes. A complete list of supported modes can be found <a href="../user-guides/wireless-station-modes.md">Wireless Station Modes</a>.</p>
+<h2 id="general-interface-properties">General interface properties</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>adaptive-noise-immunity</strong> (<em>ap-and-client-mode | client-mode | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">This property is only effective for cards based on Atheros chipset.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>allow-sharedkey</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Allow WEP Shared Key clients to connect. Note that no authentication is done for these clients (WEP Shared keys are not compared to anything) - they are just accepted at once (if access list allows that)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ampdu-priorities</strong> (<em>list of integer [0..7]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Frame priorities for which AMPDU sending (aggregating frames and sending using block acknowledgment) should get negotiated and used. Using AMPDUs will increase throughput, but may increase latency, therefore, may not be desirable for real-time traffic (voice, video). Due to this, by default AMPDUs are enabled only for best-effort traffic.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>amsdu-limit</strong> (<em>integer [0..8192]</em>; Default: <strong>8192</strong>)</td>
+<td style="text-align: left;">Max AMSDU that device is allowed to prepare when negotiated. AMSDU aggregation may significantly increase throughput especially for small frames, but may increase latency in case of packet loss due to retransmission of aggregated frame. Sending and receiving AMSDUs will also increase CPU usage.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>amsdu-threshold</strong> (<em>integer [0..8192]</em>; Default: <strong>8192</strong>)</td>
+<td style="text-align: left;">Max frame size to allow including in AMSDU.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>antenna-gain</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Antenna gain in dBi, used to calculate maximum transmit power according to <strong>country</strong> regulations.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>antenna-mode</strong> (<em>ant-a | ant-b | rxa-txb | txa-rxb</em>; Default: )</td>
+<td style="text-align: left;">Select antenna to use for transmitting and for receiving<em>ant-a</em> - use only 'a' antenna<em>ant-b</em> - use only 'b' antenna<em>txa-rxb</em> - use antenna 'a' for transmitting, antenna 'b' for receiving<em>rxa-txb</em> - use antenna 'b' for transmitting, antenna 'a' for receiving</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>area</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Identifies group of wireless networks. This value is announced by AP, and can be matched in  <a href="./wireless-interface.md#connect-list">connect-list</a>  by <strong>area-prefix</strong>. This is a proprietary extension.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled | enabled | proxy-arp | reply-only</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"><a href="../../getting-started/networking-fundamentals/index.md#arp-and-tying-it-all-together">ARP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arp-timeout</strong> (<em>auto | integer</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">ARP timeout is time how long ARP record is kept in ARP table after no packets are received from IP. Value <strong>auto</strong> equals to the value of <strong>arp-timeout</strong> in <strong>/ip/settings</strong>, default is 30s</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>2ghz-b | 2ghz-b/g | 2ghz-b/g/n | 2ghz-onlyg | 2ghz-onlyn | 5ghz-a | 5ghz-a/n | 5ghz-onlyn | 5ghz-a/n/ac | 5ghz-onlyac | 5ghz-n/ac</em>; Default: )</td>
+<td style="text-align: left;">Defines set of used data rates, channel frequencies and widths.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>basic-rates-a/g</strong> (<em>12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps | 6Mbps | 9Mbps</em>; Default: <strong>6Mbps</strong>)</td>
+<td style="text-align: left;">Similar to the <strong>basic-rates-b</strong> property, but used for 5ghz, 5ghz-10mhz, 5ghz-5mhz, 5ghz-turbo, 2.4ghz-b/g, 2.4ghz-onlyg, 2ghz-10mhz, 2ghz-5mhz and 2.4ghz-g-turbo bands.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>basic-rates-b</strong> (<em>11Mbps | 1Mbps | 2Mbps | 5.5Mbps</em>; Default: <strong>1Mbps</strong>)</td>
+<td style="text-align: left;">List of basic rates, used for 2.4ghz-b, 2.4ghz-b/g and 2.4ghz-onlyg bands. Client will connect to AP only if it supports all basic rates announced by the AP. AP will establish WDS link only if it supports all basic rates of the other AP. This property has effect only in AP modes, and when value of <strong>rate-set</strong> is configured.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bridge-mode</strong> (<em>disabled | enabled</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">Allows to use station-bridge mode.  <a href="../user-guides/wireless-station-modes.md">Wireless Station Modes</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>burst-time</strong> (<em>integer | disabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Time in microseconds which will be used to send data without stopping. Note that no other wireless cards in that network will be able to transmit data during burst-time microseconds. This setting is available only for AR5000, AR5001X, and AR5001X+ chipset based cards.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel-width</strong> (<em>20/40/80/160mhz-Ceeeeeee | 20/40/80/160mhz-XXXXXXXX | 20/40/80/160mhz-eCeeeeee | 20/40/80/160mhz-eeCeeeee | 20/40/80/160mhz-eeeCeeee | 20/40/80/160mhz-eeeeCeee | 20/40/80/160mhz-eeeeeCee | 20/40/80/160mhz-eeeeeeCe | 20/40/80/160mhz-eeeeeeeC | 20/40/80mhz-Ceee | 20/40/80mhz-eCee | 20/40/80mhz-eeCe | 20/40/80mhz-eeeC | 20/40/80mhz-XXXX | 20/40mhz-Ce | 20/40mhz-eC | 20/40mhz-XX | 40mhz-turbo | 20mhz | 10mhz | 5mhz</em>; Default: <strong>20mhz</strong>)</td>
+<td style="text-align: left;">Use of extension channels (e.g. Ce, eC etc) allows additional 20MHz extension channels and if it should be located below or above the control (main) channel. Extension channel allows 802.11n devices to use up to 40MHz (802.11ac up to 160MHz) of spectrum in total thus increasing max throughput. Channel widths with XX and XXXX extensions automatically scan for a less crowded control channel frequency based on the number of concurrent devices running in every frequency and chooses the “C” - Control channel frequency automatically.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>compression</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Setting this property to <em>yes</em> will allow the use of the hardware compression. Wireless interface must have support for hardware compression. Connections with devices that do not use compression will still work.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>country</strong> (<em>name of the country | no_country_set</em>; Default: <strong>etsi</strong>)</td>
+<td style="text-align: left;">Limits available bands, frequencies and maximum transmit power for each frequency. Also specifies default value of <strong>scan-list</strong>. Value <em>no_country_set</em> is an FCC compliant set of channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-ap-tx-limit</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">This is the value of <strong>ap-tx-limit</strong> for clients that do not match any entry in the  <a href="./wireless-interface.md#access-list">access-list</a>. 0 means no limit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-authentication</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">For AP mode, this is the value of <strong>authentication</strong> for clients that do not match any entry in the  <a href="./wireless-interface.md#access-list">access-list</a>. For station mode, this is the value of <strong>connect</strong> for APs that do not match any entry in the  <a href="./wireless-interface.md#connect-list">connect-list</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-client-tx-limit</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">This is the value of <strong>client-tx-limit</strong> for clients that do not match any entry in the  <a href="./wireless-interface.md#access-list">access-list</a>. 0 means no limit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-forwarding</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">This is the value of <strong>forwarding</strong> for clients that do not match any entry in the  <a href="./wireless-interface.md#access-list">access-list</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-running-check</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">When set to <strong>yes</strong> interface will always have running flag. If value is set to <strong>no</strong>, the router determines whether the card is up and running - for AP one or more clients have to be registered to it, for station, it should be connected to an AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether interface is disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disconnect-timeout</strong> (<em>time [0s..15s]</em>; Default: <strong>3s</strong>)</td>
+<td style="text-align: left;">This interval is measured from third sending failure on the lowest data rate. At this point 3 * (<strong>hw-retries</strong> + 1) frame transmits on the lowest data rate had failed. During <strong>disconnect-timeout</strong> packet transmission will be retried with <strong>on-fail-retry-time</strong> interval. If no frame can be transmitted successfully during <strong>disconnect-timeout</strong>, the connection is closed, and this event is logged as "extensive data loss". Successful frame transmission resets this timer.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>distance</strong> (<em>integer | dynamic | indoors</em>; Default: <strong>dynamic</strong>)</td>
+<td style="text-align: left;">How long to wait for confirmation of unicast frames (<strong>ACKs</strong>) before considering transmission unsuccessful, or in short <strong>ACK-Timeout</strong>. Distance value has these behaviors:<em>Dynamic</em> - causes AP to detect and use the smallest timeout that works with all connected clients.<em>Indoor</em> - uses the default ACK timeout value that the hardware chip manufacturer has set.<em>Number</em> - uses the input value in formula: ACK-timeout = ((<strong>distance</strong> * 1000) + 299) / 300 us;Acknowledgments are not used in Nstreme/Nv2 protocols.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frame-lifetime</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Discard frames that have been queued for sending longer than <strong>frame-lifetime</strong>. By default, when value of this property is <em>0</em>, frames are discarded only after connection is closed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel frequency value in MHz on which AP will operate. Allowed values depend on the selected band, and are restricted by <strong>country</strong> setting and wireless card capabilities. This setting has <strong>no effect</strong> if interface is in any of <strong>station</strong> modes, or in <em>wds-slave</em> mode, or if DFS is active. <em>Note</em>: If using mode "superchannel", any frequency supported by the card will be accepted, but on the RouterOS client, any non-standard frequency must be configured in the  <a href="./wireless-interface.md#scan-list">scan-list</a>, otherwise it will not be scanning in non-standard range. In WinBox, scanlist frequencies are in <em>bold</em>, any other frequency means the clients will need scan-list configured.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency-mode</strong> (<em>manual-txpower | regulatory-domain | superchannel</em>; Default: <strong>regulatory_domain</strong>)</td>
+<td style="text-align: left;">Three frequency modes are available:<em>regulatory-domain</em> - Limit available channels and maximum transmit power for each channel according to the value of <strong>country</strong><em>manual-txpower</em> - Same as above, but do not limit maximum transmit power.<em>superchannel</em> - Conformance Testing Mode. Allow all channels supported by the card.List of available channels for each band can be seen in <strong>/interface/wireless/info/allowed-channels</strong>. This mode allows you to test wireless channels outside the default scan-list and/or regulatory domain. This mode should only be used in controlled environments, or if you have special permission to use it in your region.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency-offset</strong> (<em>integer [-2147483648..2147483647]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Allows to specify offset if the used wireless card operates at a different frequency than is shown in RouterOS, in case a frequency converter is used in the card. So if your card works at 4000MHz but RouterOS shows 5000MHz, set offset to 1000MHz and it will be displayed correctly. The value is in MHz and can be positive or negative.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>guard-interval</strong> (<em>any | long</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Whether to allow use of short guard interval (refer to 802.11n MCS specification to see how this may affect throughput). "any" will use either short or long, depending on data rate, "long" will use long.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hide-ssid</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"><em>yes</em> - AP does not include SSID in the beacon frames, and does not reply to probe requests that have broadcast SSID.<em>no</em> - AP includes SSID in the beacon frames, and replies to probe requests that have broadcast SSID.This property has an effect only in AP mode. Setting it to <em>yes</em> can remove this network from the list of wireless networks that are shown by some client software. Changing this setting does not improve the security of the wireless network, because SSID is included in other frames sent by the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-basic-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-supported-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7; mcs-8; mcs-9; mcs-10; mcs-11; mcs-12; mcs-13; mcs-14; mcs-15; mcs-16; mcs-17; mcs-18; mcs-19; mcs-20; mcs-21; mcs-22; mcs-23</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-fragmentation-threshold</strong> (<em>integer[256..3000] | disabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Specifies maximum fragment size in bytes when transmitted over the wireless medium. 802.11 standard packet (MSDU in 802.11 terminologies) fragmentation allows packets to be fragmented before transmitting over a wireless medium to increase the probability of successful transmission (only fragments that did not transmit correctly are retransmitted). Note that transmission of a fragmented packet is less efficient than transmitting unfragmented packet because of protocol overhead and increased resource usage at both - transmitting and receiving party.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-protection-mode</strong> (<em>cts-to-self | none | rts-cts</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Frame protection support property  <a href="./wireless-interface.md#frame-protection-support-rtscts">Frame protection support</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-protection-threshold</strong> (<em>integer [0..65535]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Frame protection support property <a href="./wireless-interface.md#frame-protection-support-rtscts">Frame protection support</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-retries</strong> (<em>integer [0..15]</em>; Default: <strong>7</strong>)</td>
+<td style="text-align: left;">Number of times sending frame is retried without considering it a transmission failure. Data-rate is decreased upon failure and the frame is sent again. Three sequential failures on the lowest supported rate suspend transmission to this destination for the duration of <strong>on-fail-retry-time</strong>. After that, the frame is sent again. The frame is being retransmitted until transmission success, or until the client is disconnected after <strong>disconnect-timeout</strong>. The frame can be discarded during this time if <strong>frame-lifetime</strong> is exceeded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>installation</strong> (<em>any | indoor | outdoor</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Adjusts scan-list to use indoor, outdoor or all frequencies for the country that is set.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interworking-profile</strong> (<em>enabled | disabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keepalive-frames</strong> (<em>enabled | disabled</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">Applies only if wireless interface is in mode=<strong>ap-bridge</strong>. If a client has not communicated for around 20 seconds, AP sends a "keepalive-frame".  <strong>Note:</strong> disabling the feature can lead to "ghost" clients in registration-table.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>l2mtu</strong> (<em>integer [0..65536]</em>; Default: <strong>1600</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-interface</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of wireless interface that has <em>virtual-ap</em> capability. Virtual AP interface will only work if master interface is in <em>ap-bridge</em>, <em>bridge</em>, <em>station</em> or <em>wds-slave</em> mode. This property is only for virtual AP interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-station-count</strong> (<em>integer [1..2007]</em>; Default: <strong>2007</strong>)</td>
+<td style="text-align: left;">Maximum number of associated clients. WDS links also count toward this limit.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>station | station-wds | ap-bridge | bridge | alignment-only | nstreme-dual-slave | wds-slave | station-pseudobridge | station-pseudobridge-clone | station-bridge</em>; Default: <strong>station</strong>)</td>
+<td style="text-align: left;">Selection between different station and access point (AP) modes. <a href="../user-guides/wireless-station-modes.md">Station modes</a>: <em>station</em> - Basic station mode. Find and connect to acceptable AP.<em>station-wds</em> - Same as <em>station</em>, but create WDS link with AP, using proprietary extension. AP configuration has to allow WDS links with this device. Note that this mode does not use entries in wds.<em>station-pseudobridge</em> - Same as <em>station</em>, but additionally perform MAC address translation of all traffic. Allows interface to be bridged.<em>station-pseudobridge-clone</em> - Same as <em>station-pseudobridge</em>, but use <strong>station-bridge-clone-mac</strong> address to connect to AP.station-bridge - Provides support for transparent protocol-independent L2 bridging on the station device. RouterOS AP accepts clients in station-bridge mode when enabled using bridge-mode parameter. In this mode, the AP maintains a forwarding table with information on which MAC addresses are reachable over which station device. Only works with RouterOS APs. With station-bridge mode, it is not possible to connect to CAPsMAN controlled CAP.🛈 <strong>Important:</strong> The <code>wireless</code> station-bridge mode is incompatible with APs running the newer <code>wifi</code> package and vice versa.   AP modes: <em>ap-bridge</em> - Basic access point mode.<em>bridge</em> - Same as <em>ap-bridge</em>, but limited to one associated client.<em>wds-slave</em> - Same as <em>ap-bridge</em>, but scan for AP with the same <strong>ssid</strong> and establishes WDS link. If this link is lost or cannot be established, then continue scanning. If <strong>dfs-mode</strong> is <em>radar-detect</em>, then APs with enabled <strong>hide-ssid</strong> will not be found during scanning. Special modes: <em>alignment-only</em> - Put the interface in a continuous transmit mode that is used for aiming the remote antenna.<em>nstreme-dual-slave</em> - allow this interface to be used in nstreme-dual setup. MAC address translation in pseudobridge modes works by inspecting packets and building a table of corresponding IP and MAC addresses. All packets are sent to AP with the MAC address used by pseudobridge, and MAC addresses of received packets are restored from the address translation table. There is a single entry in the address translation table for all non-IP packets, hence more than one host in the bridged network cannot reliably use non-IP protocols. <strong>Note:</strong> IPv6 does not work over pseudobridge</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer [0..65536]</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-buffering</strong> (<em>disabled | enabled</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">For a client that has power saving, buffer multicast packets until next beacon time. A client should wake up to receive a beacon, by receiving beacon it sees that there are multicast packets pending, and it should wait for multicast packets to be sent.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-helper</strong> (<em>default | disabled | full</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">When set to <strong>full</strong>, multicast packets will be sent with a unicast destination MAC address, resolving  multicast problems on the wireless link. This option should be enabled only on the access point, clients should be configured in <strong>station-bridge</strong> mode.disabled - disables the helper and sends multicast packets with multicast destination MAC addressesdhcp - dhcp packet mac addresses are changed to unicast mac addresses prior to sending them outfull - all multicast packet mac address are changed to unicast mac addresses prior to sending them outdefault - default choice that currently is set to <em>dhcp</em>. Value can be changed in future releases.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">name of the interface</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>noise-floor-threshold</strong> (<em>default | integer [-128..127]</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">For advanced use only, as it can badly affect the performance of the interface. It is possible to manually set noise floor threshold value. By default, it is dynamically calculated. This property also affects received signal strength. This property is only effective on non-AC chips.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-cell-radius</strong> (<em>integer [10..200]</em>; Default: <strong>30</strong>)</td>
+<td style="text-align: left;">Setting affects the size of contention time slot that AP allocates for clients to initiate connection and also size of time slots used for estimating distance to client. When setting is too small, clients that are farther away may have trouble connecting and/or disconnect with "ranging timeout" error. Although during normal operation the effect of this setting should be negligible, in order to maintain maximum performance, it is advised to not increase this setting if not necessary, so AP is not reserving time that is actually never used, but instead allocates it for actual data transfer.on AP: distance to farthest client in kmon station: no effect</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-noise-floor-offset</strong> (<em>default | integer [0..20]</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-preshared-key</strong> (<em>string</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-qos</strong> (<em>default | frame-priority</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Sets the packet priority mechanism, firstly data from high priority queue is sent, then lower queue priority data until 0 queue priority is reached. When link is full with high priority queue data, lower priority data is not sent. Use it very carefully, setting works on AP<strong>frame-priority</strong> - manual setting that can be tuned with Mangle rules.<strong>default</strong> - default setting where small packets receive priority for best latency</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-queue-count</strong> (<em>integer [2..8]</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nv2-security</strong> (<em>disabled | enabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>on-fail-retry-time</strong> (<em>time [100ms..1s]</em>; Default: <strong>100ms</strong>)</td>
+<td style="text-align: left;">After third sending failure on the lowest data rate, wait for specified time interval before retrying.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>periodic-calibration</strong> (<em>default | disabled | enabled</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Setting <em>default</em> enables periodic calibration if  <a href="./wireless-interface.md#info">info</a>  <strong>default-periodic-calibration</strong> property is <em>enabled</em>. Value of that property depends on the type of wireless card. This property is only effective for cards based on Atheros chipset.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>periodic-calibration-interval</strong> (<em>integer [1..10000]</em>; Default: <strong>60</strong>)</td>
+<td style="text-align: left;">This property is only effective for cards based on Atheros chipset.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>preamble-mode</strong> (<em>both | long | short</em>; Default: <strong>both</strong>)</td>
+<td style="text-align: left;">Short preamble mode is an option of 802.11b standard that reduces per-frame overhead.On AP:<em>long</em> - Do not use short preamble.<em>short</em> - Announce short preamble capability. Do not accept connections from clients that do not have this capability.<em>both</em> - Announce short preamble capability.On station:<em>long</em> - do not use short preamble.<em>short</em> - do not connect to AP if it does not support short preamble.<em>both</em> - Use short preamble if AP supports it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>prism-cardtype</strong> (<em>100mW | 200mW | 30mW</em>; Default: )</td>
+<td style="text-align: left;">Specify type of the installed Prism wireless card.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>proprietary-extensions</strong> (<em>post-2.9.25 | pre-2.9.25</em>; Default: <strong>post-2.9.25</strong>)</td>
+<td style="text-align: left;">RouterOS includes proprietary information in an information element of management frames. This parameter controls how this information is included.<em>pre-2.9.25</em> - This is older method. It can interoperate with newer versions of RouterOS. This method is incompatible with some clients, for example, Centrino based ones.<em>post-2.9.25</em> - This uses standardized way of including vendor specific information, that is compatible with newer wireless clients.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-name</strong> (<em>string</em>; Default: <strong>MAC address of an interface</strong>)</td>
+<td style="text-align: left;">Descriptive name of the device, that is shown in registration table entries on the remote devices. This is a proprietary extension.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rate-selection</strong> (<em>advanced | legacy</em>; Default: <strong>advanced</strong>)</td>
+<td style="text-align: left;">The default value is <strong>advanced</strong>; the <strong>legacy</strong> mode is inefficient and is kept only for backward compatibility.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rate-set</strong> (<em>configured | default</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Two options are available:<em>default</em> - default basic and supported rate sets are used. Values from <strong>basic-rates</strong> and <strong>supported-rates</strong> parameters have no effect.<em>configured</em> - use values from <strong>basic-rates</strong>, <strong>supported-rates</strong>, <strong>basic-mcs</strong>, <strong>mcs</strong>. <a href="./wireless-interface.md#basic-and-mcs-rate-table">Basic and MCS rate table</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for receive. In current MikroTik routers, both RX and TX chain must be enabled, for the chain to be enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;">scan-list (<em>Comma separated list of frequencies and frequency ranges | default. The type also supports the range:step option</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">The <em>default</em> value is all channels from selected band that are supported by card and allowed by the <strong>country</strong> and <strong>frequency-mode</strong> settings (this list can be seen in  <a href="./wireless-interface.md#info">info</a>. For default scan list in <em>5ghz</em> band channels are taken with 20MHz step, in <em>5ghz-turbo</em> band - with 40MHz step, for all other bands - with 5MHz step. If <strong>scan-list</strong> is specified manually, then all matching channels are taken. (Example: <strong>scan-list</strong>=<em>default,5200-5245,2412-2427</em> - This will use the default value of scan list for current band, and add to it supported frequencies from 5200-5245 or 2412-2427 range.)   In WinBox or Webfig, enter each frequency or range of frequencies as a separate scan-list entry; a comma-separated list is not supported there. The scan-list also supports a step, where you can manually specify the scan step. Example: <strong>scan-list</strong>=<em>5500-5600:20</em> will generate such scan-list values <em>5500,5520,5540,5560,5580,5600</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security-profile</strong> (<em>string</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">Name of profile from  <a href="./wireless-interface.md#security-profiles">security profiles</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>secondary-channel</strong> (<em>integer</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Specifies secondary channel, required to enable 80+80MHz transmission. To disable 80+80MHz functionality, set secondary-channel to "" or unset the value via CLI/GUI.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string (0..32 chars)</em>; Default: <strong>value of <a href="../../system-information-and-utilities/identity.md">/system/identity</a></strong>)</td>
+<td style="text-align: left;">SSID (service set identifier) is a name that identifies wireless network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>skip-dfs-channels</strong> (<em>string | 10min-cac | all | disabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">These values are used to skip all DFS channels or specifically skip DFS CAC channels in range 5600-5650MHz which detection could go up to 10min.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>station-bridge-clone-mac</strong> (<em>MAC</em>; Default: )</td>
+<td style="text-align: left;">This property has effect only in the <em>station-pseudobridge-clone</em> mode. Use this MAC address when connection to AP. If this value is <em>00:00:00:00:00:00</em>, station will initially use MAC address of the wireless interface. As soon as packet with MAC address of another device needs to be transmitted, station will reconnect to AP using that address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>station-roaming</strong> (<em>disabled | enabled</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Station Roaming feature is available only for 802.11 wireless protocol and only for station modes.  <a href="./wireless-interface.md#station-roaming">Station Roaming</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supported-rates-a/g</strong> (<em>list of rates [12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps | 6Mbps | 9Mbps]</em>; Default: <strong>6Mbps; 9Mbps; 12Mbps; 18Mbps; 24Mbps; 36Mbps; 48Mbps; 54Mbps</strong>)</td>
+<td style="text-align: left;">List of supported rates, used for all bands except <em>2ghz-b</em>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supported-rates-b</strong> (<em>list of rates [11Mbps | 1Mbps | 2Mbps | 5.5Mbps]</em>; Default: <strong>1Mbps; 2Mbps; 5.5Mbps; 11Mbps</strong>)</td>
+<td style="text-align: left;">List of supported rates, used for <em>2ghz-b</em>, <em>2ghz-b/g</em> and <em>2ghz-b/g/n</em> bands. Two devices will communicate only using rates that are supported by both devices. This property has effect only when value of <strong>rate-set</strong> is <em>configured</em>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-period-size</strong> (<em>integer [1..10]</em>; Default: <strong>2</strong>)</td>
+<td style="text-align: left;">Specifies TDMA period in milliseconds. It could help on the longer distance links, it could slightly increase bandwidth, while latency is increased too.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for transmitting. In current MikroTik routers, both RX and TX chain must be enabled, for the chain to be enabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-power</strong> (<em>integer [-30..40]</em>; Default: )</td>
+<td style="text-align: left;">For 802.11ac wireless interface it's total power but for 802.11a/b/g/n it's power per chain.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-power-mode</strong> (<em>default, card-rates, all-rates-fixed, manual-table</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">sets up tx-power mode for wireless carddefault - use values stored in the cardall-rates-fixed - use same transmit power for all data rates. Can damage the card if transmit power is set above rated value of the card for used rate.manual-table - define transmit power for each rate separately. Can damage the card if transmit power is set above rated value of the card for used rate.card-rates - use transmit power calculated for each rate based on value of <strong>tx-power</strong> parameter. Legacy mode only compatible with currently discontinued products.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>update-stats-interval</strong> (; Default: )</td>
+<td style="text-align: left;">How often to request update of signals strength and ccq values from clients. Access to  <a href="./wireless-interface.md#registration-table">registration-table</a>  also triggers update of these values. This is proprietary extension.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vht-basic-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>MCS 0-7</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream <em>none</em> - will not use selected Spatial Stream<em>MCS 0-7</em> - client must support MCS-0 to MCS-7<em>MCS 0-8</em> - client must support MCS-0 to MCS-8<em>MCS 0-9</em> - client must support MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vht-supported-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>MCS 0-9</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream <em>none</em> - will not use selected Spatial Stream<em>MCS 0-7</em> - devices will advertise as supported MCS-0 to MCS-7<em>MCS 0-8</em> - devices will advertise as supported MCS-0 to MCS-8<em>MCS 0-9</em> - devices will advertise as supported MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-cost-range</strong> (<em>start [-end] integer[1..200000000]</em>; Default: <strong>50-150</strong>)</td>
+<td style="text-align: left;">Bridge port cost of WDS links are automatically adjusted, depending on measured link throughput. Port cost is recalculated and adjusted every 5 seconds if it has changed by more than 10%, or if more than 20 seconds have passed since the last adjustment. Setting this property to <em>0</em> disables automatic cost adjustment. Automatic adjustment does not work for WDS links that are manually configured as a bridge port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-default-bridge</strong> (<em>string | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">When WDS link is established and status of the wds interface becomes <em>running</em>, it will be added as a bridge port to the bridge interface specified by this property. When WDS link is lost, wds interface is removed from the bridge. If wds interface is already included in a bridge setup when WDS link becomes active, it will not be added to bridge specified by , and will (needs editing)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-default-cost</strong> (<em>integer [1..200000000]</em>; Default: <strong>100</strong>)</td>
+<td style="text-align: left;">Initial bridge port cost of the WDS links.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-ignore-ssid</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">By default, WDS link between two APs can be created only when they work on the same frequency and have the same SSID value. If this property is set to <em>yes</em>, then SSID of the remote AP will not be checked. This property has no effect on connections from clients in <em>station-wds</em> mode. It also does not work if <strong>wds-mode</strong> is <em>static-mesh</em> or <em>dynamic-mesh</em>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-mode</strong> (<em>disabled | dynamic | dynamic-mesh | static | static-mesh</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Controls how WDS links with other devices (APs and clients in <em>station-wds</em> mode) are established.<em>disabled</em> does not allow WDS links.<em>static</em> only allows WDS links that are manually configured in WDS<em>dynamic</em> also allows WDS links with devices that are not configured in WDS, by creating required entries dynamically. Such dynamic WDS entries are removed automatically after the connection with the other AP is lost. -mesh modes use different (better) method for establishing link between AP, that is not compatible with APs in non-mesh mode. This method avoids one-sided WDS links that are created only by one of the two APs. Such links cannot pass any data.When AP or station is establishing WDS connection with another AP, it uses connect-list to check whether this connection is allowed. If station in station-wds mode is establishing connection with AP, AP uses access-list to check whether this connection is allowed.If mode is station-wds, then this property has no effect.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wireless-protocol</strong> (<em>802.11 | any | nstreme | nv2 | nv2-nstreme | nv2-nstreme-802.11 | unspecified</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Specifies protocol used on wireless interface;<em>unspecified</em> - protocol mode used on previous RouterOS versions (v3.x, v4.x). Nstreme is enabled by old enable-nstreme setting, Nv2 configuration is not possible.<em>any</em> : on AP - regular 802.11 Access Point or Nstreme Access Point; on station - selects Access Point without specific sequence, it could be changed by connect-list rules.<em>nstreme</em> - enables Nstreme protocol (the same as old enable-nstreme setting).<em>nv2</em> - enables Nv2 protocol.<em>nv2 nstreme</em> : on AP - uses first wireless-protocol setting, always Nv2; on station - searches for Nv2 Access Point, then for Nstreme Access Point.<em>nv2 nstreme 802.11</em> - on AP - uses first wireless-protocol setting, always Nv2; on station - searches for Nv2 Access Point, then for Nstreme Access Point, then for regular 802.11 Access Point.⚠️ <strong>Warning:</strong> Nv2 doesn't have support for Virtual AP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wmm-support</strong> (<em>disabled | enabled | required</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">Specifies whether to enable  <a href="../../bridging-and-switching/user-guides/wmm-and-vlan-priority.md">WMM</a>.  Only applies to bands B and G. Other bands will have it enabled regardless of this setting</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wps-mode</strong> (<em>disabled | push-button | push-button-virtual-only</em>; Default: <strong>depending on the device model</strong>)</td>
+<td style="text-align: left;"><a href="./wireless-interface.md#wps-server">WPS Server</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="reset-physical-interface-mac-address">Reset physical interface MAC address</h3>
+<p>The physical interface MAC address can be reset to default by the command <code>reset-mac-address</code>.</p>
+<pre><code class="language-ros">/interface/wireless/reset-mac-address wlan1
+</code></pre>
+<h3 id="transmit-power-representation">Transmit power representation</h3>
+<p>802.11n wireless chipsets represent power per chain. 802.11ac wireless chipsets represent the total power.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Wireless chipset</th>
+<th style="text-align: right;">Enabled Chains</th>
+<th style="text-align: left;">Power per Chain</th>
+<th style="text-align: left;">Total Power</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">802.11n</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11n</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+<td style="text-align: left;">+3dBm</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11n</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+<td style="text-align: left;">+5dBm</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11ac</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11ac</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">-3dBm</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11ac</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">-5dBm</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+</tr>
+<tr>
+<td style="text-align: left;">802.11ac</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">-6dBm</td>
+<td style="text-align: left;">Equal to the selected Tx Power</td>
+</tr>
+</tbody>
+</table>
+<h3 id="basic-and-mcs-rate-table">Basic and MCS rate table</h3>
+<p>Default basic and supported rates, depending on the selected band</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">band</th>
+<th style="text-align: left;">basic rates</th>
+<th style="text-align: left;">basic-HT-mcs</th>
+<th style="text-align: left;">basic-VHT-mcs</th>
+<th style="text-align: left;">VHT-mcs</th>
+<th style="text-align: left;">HT-mcs</th>
+<th style="text-align: left;">supported rates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">2.4ghz-b</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">1-11</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-onlyg</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">1-11,6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-onlyn</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">0-7</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">1-11,6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-b/g</td>
+<td style="text-align: left;">1-11</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">1-11,6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-b/g/n</td>
+<td style="text-align: left;">1-11</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">1-11,6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-g/n</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-g-turbo</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a/n</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-onlyn</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">0-7</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a/n/ac</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">0-9</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-onlyac</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">0-7</td>
+<td style="text-align: left;">0-9</td>
+<td style="text-align: left;">0-23</td>
+<td style="text-align: left;">6-54</td>
+</tr>
+</tbody>
+</table>
+<p>Used settings when <strong>rate-set=configured</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">band</th>
+<th style="text-align: left;">used settings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">2.4ghz-b</td>
+<td style="text-align: left;">basic-b, supported-b</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-b/g, 2.4ghz-onlyg</td>
+<td style="text-align: left;">basic-b, supported-b, basic-a/g, supported-a/g</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-onlyn, 2.4ghz-b/g/n</td>
+<td style="text-align: left;">basic-b, supported-b, basic-a/g, supported-a/g, ht-basic-mcs, ht-supported-mcs</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.4ghz-g/n</td>
+<td style="text-align: left;">basic-a/g,supported-a/g,ht-basic-mcs,ht-supported-mcs</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a</td>
+<td style="text-align: left;">basic-a/g,supported-a/g</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a/n, 5ghz-onlyn</td>
+<td style="text-align: left;">basic-a/g,supported-a/g,ht-basic-mcs,ht-supported-mcs</td>
+</tr>
+<tr>
+<td style="text-align: left;">5ghz-a/n/ac, 5ghz-onlyac</td>
+<td style="text-align: left;">basic-a/g,supported-a/g,ht-basic-mcs,ht-supported-mcs,vht-basic-mcs,vht-supported-mcs</td>
+</tr>
+</tbody>
+</table>
+<p>Settings independent from <strong>rate-set</strong>:</p>
+<ol>
+<li>allowed MCS depending on the number of chains:
+   - 1 chain: 0-7
+   - 2 chains: 0-15
+   - 3 chains: 0-23</li>
+<li>if the standard channel width (20MHz) is not used, then 2GHz modes (except 2.4GHz-b) are not using b rates (1-11)</li>
+</ol>
+<h3 id="frame-protection-support-rtscts">Frame protection support (RTS/CTS)</h3>
+<p>The 802.11 standard provides means to protect the transmission against other device transmission by using the RTS/CTS protocol. Frame protection helps to fight the "hidden node" problem. There are several types of protection:</p>
+<ul>
+<li>RTS/CTS based protection - device willing to send frame at first sends a RequestToSend frame and waits for a ClearToSend frame from intended destination. By "seeing" RTS or CTS frame 802.11 compliant devices know that somebody is about to transmit and therefore do not initiate transmission themselves.</li>
+<li>"CTS to self" based protection - device willing to send frame sends a CTS frame "to itself". As in the RTS/CTS protocol every 802.11 compliant device receiving this frame knows not to transmit. "CTS to self" based protection has less overhead, but it must be taken into account that this only protects against devices receiving the CTS frame (e.g. if there are 2 "hidden" stations, there is no use for them to use "CTS to self" protection, because they will not be able to receive the CTS sent by the other station - in this case stations must use RTS/CTS so that the other station knows not to transmit by seeing CTS transmitted by AP).</li>
+</ul>
+<p>Protection mode is controlled by the <strong>hw-protection-mode</strong> setting of the wireless interface. Possible values: <strong>none</strong> - for no protection (default), <strong>rts-cts</strong> for RTS/CTS based protection, or <strong>cts-to-self</strong> for "CTS to self" based protection.</p>
+<p>The Frame size threshold at which protection should be used is controlled by <strong>hw-protection-threshold</strong> setting of the wireless interface.</p>
+<p>For example, to enable "CTS-to-self" based frame protection on AP for all frames, not depending on size, use the command:</p>
+<pre><code>[admin@MikroTik] /interface/wireless&gt; set 0 hw-protection-mode=cts-to-self hw-protection-threshold=0
+</code></pre>
+<p>To enable RTS/CTS based protection on a client use the command:</p>
+<pre><code>[admin@MikroTik] /interface/wireless&gt; set 0 hw-protection-mode=rts-cts hw-protection-threshold=0
+</code></pre>
+<h3 id="nv2">Nv2</h3>
+<p>MikroTik has developed a new wireless protocol based on TDMA technology (Time Division Multiple Access) - (Nstreme version 2). See the Nv2 documentation: <a href="./nv2.md">Nv2</a></p>
+<p>TDMA is a channel access method for shared medium networks. It allows several users to share the same frequency channel by dividing the signal into different time slots. The users transmit in rapid succession, one after the other, each using his own time slot. This allows multiple stations to share the same transmission medium (e.g., radio frequency channel) while using only a part of its channel capacity.</p>
+<p>The most important benefits of Nv2 are:</p>
+<ul>
+<li>Increased speed.</li>
+<li>More client connections in PTM environments.</li>
+<li>Lower latency.</li>
+<li>No distance limitations.</li>
+<li>No penalty for long distances.</li>
+</ul>
+<p>Nv2 protocol limit is 511 clients.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Nv2 doesn't have support for Virtual AP</p>
+</div>
+<h4 id="nv2-troubleshooting">Nv2 Troubleshooting</h4>
+<p>Increase throughput on long distance with <strong>tdma-period-size</strong>. In every "period", the Access Point leaves part of the time unused for data transmission (which is equal to <em>round trip time</em> - the time in which the frame can be sent and received from the client), and it is used to ensure that the client could receive the last frame from the Access Point, before sending its own packets to it. The longer the distance, the longer the period is unused.</p>
+<p>For example, the distance between Access Point and client is 30km. Frame is sent in 100us in one direction; therefore, the round-trip-time is ~200us. The <strong>tdma-period-size</strong> default value is 2ms, which means 10% of the time is unused. When tdma-period-size is increased to 4ms, only 5% of the time is unused. For a 60km wireless link, round-trip-time is 400us, unused time is 20% for the default tdma-period-size 2ms, and 10% for 4ms. A bigger tdma-period-size value increases latency on the link.</p>
+<h2 id="access-list">Access List</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/access-list</code></p>
+<p>An access list is used by an access point to restrict allowed connections from other devices, and to control connection parameters.</p>
+<p>Access list rules are processed one by one until a matching rule is found. Then the action in the matching rule is executed. If the action specifies that the client should be accepted, the client is accepted, potentially overriding its default connection parameters with ones specified in the access list rule.</p>
+<p>There are the following parameters for access list rules:</p>
+<ul>
+<li>Client matching parameters:</li>
+<li>address - MAC address of the client.</li>
+<li>interface - Optional interface to compare with the interface to which client actually connects.</li>
+<li>time - Time of day and days when rule matches.</li>
+<li>signal-range - Range in which client signal must fit for the rule to match.</li>
+<li>allow-signal-out-of-range - Option which permits client's signal to be out of the range always or for some time interval.</li>
+<li>Connection parameters:</li>
+<li>ap-tx-limit - TX speed limit in direction to client.</li>
+<li>client-tx-limit - TX speed limit in direction to AP (applies to RouterOS clients only).</li>
+<li>private-passphrase - PSK passphrase to use for this client if some PSK authentication algorithm is used.</li>
+<li>vlan-mode - VLAN tagging mode specifies if traffic coming from client should get tagged (and untagged when going to client).</li>
+<li>vlan-id - VLAN ID to use if doing VLAN tagging.</li>
+</ul>
+<p>Operation:</p>
+<ul>
+<li>Access list rules are checked sequentially.</li>
+<li>Disabled rules are always ignored.</li>
+<li>Only the first matching rule is applied.</li>
+<li>If there are no matching rules for the remote connection, then the default values from the wireless interface configuration are used.</li>
+<li>If a remote device is matched by rule that has <strong>authentication</strong>=<em>no</em> value, the connection from that remote device is rejected.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If there is no entry in the ACL about a client which connects to the AP (wireless,debug wlan2: A0:0B:BA:D7:4D:B2 not in local ACL, by default accept), then the ACL for this client is ignored during the entire connection.</p>
+</div>
+<p>For example, if the client's signal during connection is -41 and we have an ACL rule</p>
+<pre><code>/interface/wireless/access-list
+add authentication=yes forwarding=yes interface=wlan2 signal-range=-55..0
+</code></pre>
+<p>Then the connection is matched to the ACL rule, but if the signal drops below -55, the client will not be disconnected.</p>
+<p>If <code>default-authentication=yes</code> is set on the wireless interface, clients can join even if there are no matching access-list entries.<br />
+For correct operation, the client must match one of the ACL rules.</p>
+<p>If we modify ACL rules in the previous example to:</p>
+<pre><code>/interface/wireless/access-list
+add interface=wlan2 signal-range=-55..0
+add authentication=no forwarding=no interface=wlan2 signal-range=-120..-56
+</code></pre>
+<p>Then if the signal drops to -56, the client will be disconnected.</p>
+<h3 id="properties">Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ap-tx-limit</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Limit rate of data transmission to this client. Value <em>0</em> means no limit. Value is in bits per second.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>authentication</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;"><em>no</em> - Client association will always fail.<em>yes</em> - Use authentication procedure that is specified in the <a href="./wireless-interface.md#security-profiles"><strong>security-profile</strong></a> of the interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>client-tx-limit</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Ask client to limit rate of data transmission. Value <em>0</em> means no limit. This is a proprietary extension that is supported by RouterOS clients. Value is in bits per second.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>forwarding</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;"><em>no</em> - Client cannot send frames to other stations that are connected to the same access point.<em>yes</em> - Client can send frames to other stations on the same access point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>string | any | all</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Rules with <strong>interface</strong>=<em>any</em> are used for any wireless interface and the <strong>interface</strong>=<em>all</em> defines <a href="../../cli-reference/interface/list">interface list</a> “all” name. To make rule that applies only to one wireless interface, specify that interface as a value of this property.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">Rule matches client with the specified MAC address. Value <em>00:00:00:00:00:00</em> matches always.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>management-protection-key</strong> (<em>string</em>; Default: <strong>""</strong>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>private-algo</strong> (<em>104bit-wep | 40bit-wep | aes-ccm | none | tkip</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Only for WEP modes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>private-key</strong> (<em>string</em>; Default: <strong>""</strong>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Only for WEP modes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>private-pre-shared-key</strong> (<em>string</em>; Default: <strong>""</strong>) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Used in WPA PSK mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-range</strong> (<em>NUM..NUM - both NUM are numbers in the range -120..120</em>; Default: <strong>-120..120</strong>)</td>
+<td style="text-align: left;">Rule matches if signal strength of the station is within the range. If signal strength of the station will go out of the range that is specified in the rule, access point will disconnect that station.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>time</strong> (<em>TIME-TIME,sun,mon,tue,wed,thu,fri,sat - TIME is time interval 0..86400 seconds; all day names are optional; value can be unset</em>; Default: )</td>
+<td style="text-align: left;">Rule will match only during the specified time. Station will be disconnected after the specified time ends. Both start and end time are expressed as time since midnight, 00:00. Rule will match only during the specified days of the week.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="align">Align</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/align</code></p>
+<p>The Align tool is used to help in aligning devices running this tool.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>active-mode</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">If in active mode, will send out frames for align.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>audio-max</strong> (<em>integer [-2147483648..2147483647]</em>; Default: <strong>-20</strong>)</td>
+<td style="text-align: left;">Maximum signal strength for beeper</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>audio-min</strong> (<em>integer [-2147483648..2147483647]</em>; Default: <strong>-100</strong>)</td>
+<td style="text-align: left;">Minimum signal strength for beeper</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>audio-monitor</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">Which MAC address to use for audio monitoring</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>filter-mac</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">Filtered out MAC address that will be shown in monitor screen.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frame-size</strong> (<em>integer [200..1500]</em>; Default: <strong>300</strong>)</td>
+<td style="text-align: left;">Size of the frames used by the monitor.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frames-per-second</strong> (<em>integer [1..100]</em>; Default: <strong>25</strong>)</td>
+<td style="text-align: left;">Frame transmit interval</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>receive-all</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If set to "yes", the monitor will find all available devices.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid-all</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to show all SSIDs in the monitor or only one configured in wireless settings.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="menu-specific-commands">Menu-specific commands</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>monitor</strong> (<em>interface name</em>)</td>
+<td style="text-align: left;">Start alignment monitoring</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>test-audio</strong> (<em>integer [-2147483648..2147483647]</em>)</td>
+<td style="text-align: left;">Test the beeper</td>
+</tr>
+</tbody>
+</table>
+<h2 id="connect-list">Connect List</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/connect-list</code></p>
+<p>connect-list is used to assign priority and security settings to connections with remote access points, and to restrict allowed connections. connect-list is an ordered list of rules. Each rule in connect-list is attached to a specific wireless interface, specified in the <code>interface</code> property of that rule (this is unlike <a href="./wireless-interface.md#access-list">access-list</a>, where rules can apply to all interfaces). The rule can match the MAC address of a remote access point, its signal strength and many other parameters.</p>
+<p>Operation:</p>
+<ul>
+<li>connect-list rules are always checked sequentially, starting from the first.</li>
+<li>Disabled rules are always ignored.</li>
+<li>Only the first matching rule is applied.</li>
+<li>If SSID or exact wireless protocol is provided in the wireless interface configuration, Connect List SSIDs or wireless protocols not covered by the wireless interface configuration are ignored.</li>
+<li>If connect-list does not have any rule that matches a remote access point, then the default values from the wireless interface configuration are used.</li>
+<li>If an access point is matched by a rule that has <strong>connect</strong>=<em>no</em> value, connection with this access point will not be attempted.</li>
+<li>If an access point is matched by a rule that has <strong>connect</strong>=<em>yes</em> value, connection with this access point will be attempted.</li>
+<li>In station mode, if several remote access points are matched by connect list rules with <strong>connect</strong>=<em>yes</em> value, connection will be attempted with the access point that is matched by a rule higher in the connect-list.</li>
+<li>If no remote access points are matched by connect-list rules with <strong>connect</strong>=<em>yes</em> value, then the value of <strong>default-authentication</strong> interface property determines whether the station will attempt to connect to any access point. If <strong>default-authentication</strong>=<em>yes</em>, the station will choose an access point with the best signal and compatible security.</li>
+<li>In access point mode, connect-list is checked before establishing a WDS link with a remote device. If an access point is not matched by any rule in the connect list, then the value of <strong>default-authentication</strong> determines whether a WDS link will be established.</li>
+</ul>
+<h3 id="properties_1">Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>3gpp</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>area-prefix</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Rule matches if area value of AP (a proprietary extension) begins with the specified value. The <strong>area</strong> value is a proprietary extension.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>connect</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Available options:<em>yes</em> - Connect to an access point that matches this rule.<em>no</em> - Do not connect to any access point that matches this rule.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">Rule matches only the AP with the specified MAC address. Value <em>00:00:00:00:00:00</em> matches always.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security-profile</strong> (<em>string | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Name of the <a href="./wireless-interface.md#security-profiles">security profile</a> that is used when connecting to matching access points. If the value of this property is <em>none</em>, then the security profile specified in the interface configuration will be used. In station mode, the rule will match only access points that can support the specified security profile. Value <em>none</em> will match an access point that supports the security profile that is specified in the interface configuration. In access point mode, the value of this property will not be used to match remote devices.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-range</strong> (<em>NUM..NUM - both NUM are numbers in the range -120..120</em>; Default: <strong>-120..120</strong>)</td>
+<td style="text-align: left;">Rule matches if signal strength of the access point is within the range. If a station establishes a connection to the access point that is matched by this rule, it will disconnect from that access point when signal strength goes out of the specified range.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Rule matches access points that have this SSID. Empty value matches any SSID. This property has an effect only when the station mode interface <strong>ssid</strong> is empty, or when the access point mode interface has <strong>wds-ignore-ssid</strong>=<em>yes</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wireless-protocol</strong> (<em>802.11 | any | nstreme | tdma</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Each rule in the connect list applies only to one wireless interface that is specified by this setting.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage">Usage</h3>
+<h4 id="restrict-station-connections-only-to-specific-access-points">Restrict station connections only to specific access points</h4>
+<ul>
+<li>Set the value of the <strong>default-authentication</strong> interface property to <em>no</em>.</li>
+</ul>
+<pre><code class="language-ros">/interface/wireless/set station-wlan default-authentication=no
+</code></pre>
+<ul>
+<li>Create rules that match allowed access points. These rules must have <strong>connect</strong>=<em>yes</em> and <strong>interface</strong> equal to the name of the station wireless interface.</li>
+</ul>
+<pre><code class="language-ros">/interface/wireless/connect-list/add interface=station-wlan connect=yes mac-address=00:11:22:33:00:01
+/interface/wireless/connect-list/add interface=station-wlan connect=yes mac-address=00:11:22:33:00:02
+</code></pre>
+<h4 id="disallow-connections-to-specific-access-points">Disallow connections to specific access points</h4>
+<ul>
+<li>Set the value of the <strong>default-authentication</strong> interface property to <em>yes</em>.</li>
+</ul>
+<pre><code class="language-ros">/interface/wireless/set station-wlan default-authentication=yes
+</code></pre>
+<ul>
+<li>Create <strong>connect</strong>=<em>no</em> rules that match those access points that the station should not connect to. These rules must have <strong>connect</strong>=<em>no</em> and <strong>interface</strong> equal to the name of the station wireless interface.</li>
+</ul>
+<pre><code class="language-ros">/interface/wireless/connect-list/add interface=station-wlan connect=no mac-address=00:11:22:33:44:55
+</code></pre>
+<h4 id="select-preferred-access-points">Select preferred access points</h4>
+<ul>
+<li>Create rules that match preferred access points. These rules must have <strong>connect</strong>=<em>yes</em> and <strong>interface</strong> equal to the name of the station wireless interface.</li>
+<li>Put rules that match preferred access points higher in the connect-list, in the order of preference.</li>
+</ul>
+<h4 id="restrict-wds-link-establishment">Restrict WDS link establishment</h4>
+<ul>
+<li>Place rules that match allowed access points at the top.</li>
+<li>Add deny-all rule at the end of the connect list.</li>
+</ul>
+<h2 id="info">Info</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/info</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>2ghz-10mhz-power-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2ghz-11n-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2ghz-5mhz-power-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2ghz-b-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2ghz-g-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2ghz-g-turbo-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5ghz-10mhz-power-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5ghz-11n-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5ghz-5mhz-power-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5ghz-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5ghz-turbo-channels</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>allowed-channels</strong></td>
+<td style="text-align: left;">List of available channels for each band</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>capabilities</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>country-info</strong>()</td>
+<td style="text-align: left;">Takes a country name as an argument, shows available bands, frequencies and maximum transmit power for each frequency.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>chip-info</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-periodic-calibration</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>firmware</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-chains</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface-type</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>pci-info</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supported-bands</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h2 id="manual-tx-power-table">Manual TX Power Table</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/manual-tx-power-table</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>manual-tx-powers</strong> (<em>list of [Rate:TxPower];</em> Rate ::= 11Mbps | 12Mbps | 18Mbps | 1Mbps | 24Mbps | ... <em>TxPower ::= integer [-30..30]</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of the wireless interface to which tx powers will be applied.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="wireless-hardware-table">Wireless hardware table</h2>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>You must follow regulatory domain requirements in your country. If you are allowed to use other frequencies, note that Antenna Gain and Transmit Power may decrease depending on board and frequency. Devices are calibrated only for regulatory frequencies. Use non-standard frequencies at your own risk. The list only specifies frequencies accepted by the wireless chip, these frequencies might not always work due to the antenna that is built into the product, device design, filters and other factors. USE STRICTLY AT YOUR OWN RISK</p>
+</div>
+<p>It is possible to deduce supported channel width from the product page. To do so, you need to check the following parameters: <strong>number of chains</strong> and the <strong>max data rate</strong>. Once you know these parameters, you need to check the modulation and coding scheme (MCS) table, for example, here: https://mcsindex.com/.</p>
+<p>If we take hAP ac, as an example, we can see that the number of chains is 3, and the max data rate is 1300 in the MCS table. In the MCS table we need to find the entry for 3 spatial streams - chains, and the respective data rate, which in this case shows us that 80MHz is the maximum supported channel width.</p>
+<p><strong>Integrated wireless interface frequency table:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Board name</th>
+<th style="text-align: right;">Wireless interfaces</th>
+<th style="text-align: left;">Frequency range [MHz]</th>
+<th style="text-align: left;">Supported channel widths [MHz]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">2011UAS-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">751G-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2200-2700</td>
+<td style="text-align: left;">20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">751U-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2200-2700</td>
+<td style="text-align: left;">20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">911-2Hn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">911-5HacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">911-5Hn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">911-5HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">911G-2HPnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">911G-5HPacDr2 /-NB /-QRT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5,10,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">911G-5HPnD /-QRT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">912UAG-2HPnD /-OUT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">912UAG-5HPnD /-OUT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">912UAG-6HPnD /-OUT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">5500-6500</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">921GS-5HPacD-15S /-19S</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5<sup>1</sup>,10<sup>1</sup>,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">22UGS-5HPacD2HnD</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">4920-5925,2412-2482</td>
+<td style="text-align: left;">20,40,80 and 20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">921UAGS-5SHPacD-NM</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">921UAGS-5SHPacT-NM</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">922UAGS-5HPacD /-NM</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">922UAGS-5HPacT /-NM</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">941-2nD /-TC</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">951G-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">951Ui-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">951Ui-2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">952Ui-5ac2nD /-TC</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">2312-2732,4920-6100</td>
+<td style="text-align: left;">20,40 and 20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">953GS-5HnT /-RP</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">962UiGS-5HacT2HnT</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">2312-2732,4920-6100</td>
+<td style="text-align: left;">20,40 and 20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">cAP2n</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">cAP2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">cAPL-2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS109-8G-1S-2HnD-IN</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">CRS125-24G-1S-2HnD-IN</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">Disc-5nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">DynaDishG-5HacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5<sup>1</sup>,10<sup>1</sup>,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">DynaDishG-6HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">5500-6500</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">Groove52HPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2312-2732</td>
+<td style="text-align: left;">5,10,20,40 and 5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">GrooveA-52HPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2312-2732</td>
+<td style="text-align: left;">5,10,20,40 and 5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">GrooveG-52HPacn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2312-2732</td>
+<td style="text-align: left;">20,40,80 and 20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">GrooveGA-52HPacn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2312-2732</td>
+<td style="text-align: left;">20,40,80 and 20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">LDF-5nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">LHG-5nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">mAP2n</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">mAP2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">mAPL-2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">Metal2SHPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2200-2700</td>
+<td style="text-align: left;">20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">Metal5SHPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100</td>
+<td style="text-align: left;">5,10,20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">Metal9HPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">902-928</td>
+<td style="text-align: left;">5,10,20</td>
+</tr>
+<tr>
+<td style="text-align: left;">MetalG-52SHPacn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2312-2732</td>
+<td style="text-align: left;">20,40,80 and 20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">OmniTikG-5HacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">OmniTikPG-5HacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">OmniTIKU-5HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">OmniTIKUPA-5HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100</td>
+<td style="text-align: left;">5,10,20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">QRTG-2SHPnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SEXTANTG-5HPnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT2nDr2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT5HacD2n</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">2312-2732,4920-6100</td>
+<td style="text-align: left;">5<sup>1</sup>,10<sup>1</sup>,20,40 and 5<sup>1</sup>,10<sup>1</sup>,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT5HPnDr2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT5nDr2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2200-2700</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-2HnDr2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2300-2700</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-5HPacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5<sup>1</sup>,10<sup>1</sup>,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-5HPacD-HG /-SA</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">5<sup>1</sup>,10<sup>1</sup>,20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-5HPnD-HGr2 /-SAr2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTG-6HPnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">5500-6500</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXTsq2nD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2484</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">wAP2nD /-BE</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">wAPG-5HacT2HnD /-BE</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">2312-2732,4920-6100</td>
+<td style="text-align: left;">20,40 and 20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-2HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-2HPnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2312-2732</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-5HacD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-5HacT</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40,80</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-5HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100</td>
+<td style="text-align: left;">20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">R2SHPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">2200-2700</td>
+<td style="text-align: left;">20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">R52H</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4920-6100,2192-2507</td>
+<td style="text-align: left;">20 and 20</td>
+</tr>
+<tr>
+<td style="text-align: left;">R52HnD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100,2200-2700</td>
+<td style="text-align: left;">20,40 and 20,40</td>
+</tr>
+<tr>
+<td style="text-align: left;">R52nM</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100,2200-2700</td>
+<td style="text-align: left;">20,40 and 20,40 and advanced channel support</td>
+</tr>
+<tr>
+<td style="text-align: left;">R5SHPn</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">4800-6100</td>
+<td style="text-align: left;">20,40 and advanced channel support</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes:</strong></p>
+<ol>
+<li>Only in 802.11a/n standard.</li>
+</ol>
+<h2 id="advanced-channels">Advanced Channels</h2>
+<p>The Advanced Channels feature provides extended opportunities in wireless interface configuration:</p>
+<ul>
+<li>scan-list that covers multiple bands and channel widths.</li>
+<li>Non-standard channel center frequencies (specified with kHz granularity) for hardware that allows that.</li>
+<li>Non-standard channel widths (specified with kHz granularity) for hardware that allows that.</li>
+</ul>
+<h3 id="hardware-support">Hardware support</h3>
+<p>Non-standard center frequency and width channels can only be used with interfaces that support them.</p>
+<p>Only <strong>Atheros AR92xx</strong> based chips support non-standard center frequencies and widths with the following ranges:</p>
+<ul>
+<li>Center frequency range: 2200 MHz-2500 MHz with step 0.5 MHz (500 kHz), width range: 2.5 MHz-30 MHz with step 0.5 MHz (500 kHz).</li>
+<li>Center frequency range: 4800 MHz-6100 MHz with step 0.5 MHz (500 kHz), width range: 2.5 MHz-30 MHz with step 0.5 MHz (500 kHz).</li>
+</ul>
+<p>AR93xx does not support this feature.</p>
+<h2 id="configuring-advanced-channels">Configuring Advanced Channels</h2>
+<p>Advanced Channels are configured in the <strong>interface wireless channels</strong> menu. This menu contains an ordered list of user-defined channels that can be grouped by means of the <strong>list</strong> property. Channels have the following properties:</p>
+<ul>
+<li><strong>name</strong> - Name by which this channel can be referred to. If <strong>name</strong> is not specified when adding channel, it will be automatically generated from channel frequency and width.</li>
+<li><strong>list</strong> - Name of list this channel is part of. Lists can be used to group channels.</li>
+<li><strong>frequency</strong> - Channel center frequency in MHz, allowing the specification of a fractional MHz part, e.g. <strong>5181.5</strong>.</li>
+<li><strong>width</strong> - Channel width in MHz, allowing the specification of a fractional MHz part, e.g. <strong>14.5</strong>.</li>
+<li><strong>band</strong> - Defines default set of data rates when using this channel.</li>
+<li><strong>extension-channel</strong> - Specifies placement of 11n extension channel.</li>
+</ul>
+<h2 id="using-advanced-channels">Using Advanced Channels</h2>
+<p>To use Advanced Channels in wireless interface configuration, several interface settings accept channel names or list names as arguments. It is possible to configure an interface with a channel that the interface does not support. In this case the interface will not become operational. It is the sole responsibility of the administrator to configure channels in the proper way.</p>
+<h3 id="frequency">frequency</h3>
+<p>To use a particular Advanced Channel for a wireless interface (applies to modes that make use of the interface <strong>frequency</strong> setting) specify the channel name in the interface <strong>frequency</strong> setting. For example, to configure the interface to operate with center frequency 5500MHz and channel width 14MHz, use the following commands:</p>
+<pre><code>[admin@MikroTik] /interface/wireless&gt; channels add name=MYCHAN frequency=5500 width=14 band=5ghz-onlyn
+ list=MYLIST
+[admin@MikroTik] /interface/wireless&gt; set wlan1 frequency=MYCHAN 
+</code></pre>
+<h3 id="scan-list">scan-list</h3>
+<p>Interface <strong>scan-list</strong> is used in multiple modes that either gather information for a list of channels (like interactive <strong>scan</strong> command) or select a channel to work on (like any of <strong>station</strong> modes or AP modes performing DFS). Interface <strong>scan-list</strong> can be configured with a comma-separated list of the following items:</p>
+<ul>
+<li><strong>default</strong> - default .11 channel list for a given country and interface band and channel width.</li>
+<li>Numeric frequency ranges in MHz.</li>
+<li>Advanced Channel, referred to by name.</li>
+<li>Advanced Channel list, referred to by list name.</li>
+</ul>
+<p>For example, to configure the interface to scan 5180MHz, 5200MHz and 5220MHz at first using channel width 20MHz and then using channel width 10MHz, the following commands can be issued:</p>
+<pre><code>[admin@MikroTik] /interface/wireless&gt; channels add frequency=5180 width=20 band=5ghz-a list=20MHz-list
+[admin@MikroTik] /interface/wireless&gt; channels add frequency=5200 width=20 band=5ghz-a list=20MHz-list
+[admin@MikroTik] /interface/wireless&gt; channels add frequency=5220 width=20 band=5ghz-a list=20MHz-list
+[admin@MikroTik] /interface/wireless&gt; channels add frequency=5180 width=10 band=5ghz-a list=10MHz-list
+[admin@MikroTik] /interface/wireless&gt; channels add frequency=5200 width=10 band=5ghz-a list=10MHz-list
+[admin@MikroTik] /interface/wireless&gt; channels add frequency=5220 width=10 band=5ghz-a list=10MHz-list
+[admin@MikroTik] /interface/wireless&gt; set wlan1 scan-list=20MHz-list,10MHz-list
+</code></pre>
+<h2 id="nstreme">Nstreme</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/nstreme</code></p>
+<p>This menu allows switching a wireless card to the nstreme mode. In this case the card will work only with nstreme clients.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-csma</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable CSMA/CA when polling is used (better performance)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enable-nstreme</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to switch the card into the nstreme mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enable-polling</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether to use polling for clients</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framer-limit</strong> (<em>integer [100..4000]</em>; Default: <strong>3200</strong>)</td>
+<td style="text-align: left;">Maximal frame size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framer-policy</strong> (<em>best-fit | dynamic-size | exact-size | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">The method for combining frames. A number of frames may be combined into a bigger one to reduce the amount of protocol overhead (and thus increase speed). The card is not waiting for frames, but in case a number of packets are queued for transmitting, they can be combined. There are several methods of framing:<strong>none</strong> - do nothing special, do not combine packets (framing is disabled)<strong>best-fit</strong> - put as many packets as possible in one frame, until the framer-limit limit is met, but do not fragment packets<strong>exact-size</strong> - put as many packets as possible in one frame, until the framer-limit limit is met, even if fragmentation will be needed (best performance)<strong>dynamic-size</strong> - choose the best frame size dynamically</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of an interface to which the setting will be applied. Read only.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The settings here, except for enabling Nstreme, are relevant only on the access point and are ignored for client devices. The client automatically adapts to the AP settings.<br />
+WDS for Nstreme protocol requires using station-wds mode on one of the peers. Configurations with WDS between AP modes (bridge and ap-bridge) will not work.</p>
+</div>
+<h2 id="nstreme-dual">Nstreme Dual</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/nstreme-dual</code></p>
+<p>Two radios in nstreme-dual-slave mode can be grouped together to make a nstreme2 Point-to-Point connection. To put wireless interfaces into a nstreme2 group, you should set their mode to nstreme-dual-slave. Many parameters from /interface/wireless menu are ignored, using nstreme2, except:</p>
+<ul>
+<li>frequency-mode</li>
+<li>country</li>
+<li>antenna-gain</li>
+<li>tx-power</li>
+<li>tx-power-mode</li>
+<li>antenna-mode</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled | enabled | proxy-arp | reply-only</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"><a href="../../getting-started/networking-fundamentals/index.md#arp-and-tying-it-all-together">ARP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-csma</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable CSMA/CA (better performance)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-running-check</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the interface should always be treated as running even if there is no connection to a remote peer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framer-limit</strong> (<em>integer [64..4000]</em>; Default: <strong>2560</strong>)</td>
+<td style="text-align: left;">Maximal frame size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framer-policy</strong> (<em>best-fit | exact-size | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">The method of combining frames. A number of frames may be combined into one bigger one to reduce the amount of protocol overhead (and thus increase speed). The card is not waiting for frames, but in case a number of packets are queued for transmitting, they can be combined. There are several methods of framing:<strong>none</strong> - do nothing special, do not combine packets<strong>best-fit</strong> - put as many packets as possible in one frame, until the framer-limit limit is met, but do not fragment packets<strong>exact-size</strong> - put as many packets as possible in one frame, until the framer-limit limit is met, even if fragmentation will be needed (best performance)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-channel-width</strong> (<em>2040mhz | 20mhz | 40mhz</em>; Default: <strong>20mhz</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-guard-interval</strong> (<em>both | long | short</em>; Default: <strong>long</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-rates</strong> (<em>list of rates [1,2,3,4,5,6,7,8]</em>; Default: <strong>1,2,3,4,5,6,7,8</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ht-streams</strong> (<em>both | double | single</em>; Default: <strong>single</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>l2mtu</strong> (<em>integer [0..65536]</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer [0..65536]</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of an entry</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates-a/g</strong> (<em>list of rates [6Mbps,9Mbps, 12Mbps, 18Mbps, 24Mbps, 36Mbps, 48Mbps, 54Mbps]</em>; Default: <strong>6Mbps,9Mbps,12Mbps, 18Mbps, 24Mbps, 36Mbps, 48Mbps, 54Mbps</strong>)</td>
+<td style="text-align: left;">Rates to be supported in 802.11a or 802.11g standard</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates-b</strong> (<em>list of rates [1Mbps, 2Mbps, 5.5Mbps, 11Mbps]</em>; Default: <strong>1Mbps, 2Mbps, 5.5Mbps, 11Mbps</strong>)</td>
+<td style="text-align: left;">Rates to be supported in 802.11b standard</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>remote-mac</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">Which MAC address to connect to (this would be the remote receiver card's MAC address)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-band</strong> (<em>2ghz-b | 2ghz-g | 2ghz-n | 5ghz-a | 5ghz-n</em>; Default: )</td>
+<td style="text-align: left;">Operating band of the receiving radio</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-channel-width</strong> (<em>20mhz | 40mhz | 10mhz | 5mhz</em>; Default: <strong>20mhz</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">RX card operation frequency in Mhz.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-radio</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the interface used for receiving.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-band</strong> (<em>2ghz-b | 2ghz-g | 2ghz-n | 5ghz-a | 5ghz-n</em>; Default: )</td>
+<td style="text-align: left;">Operating band of the transmitting radio</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-channel-width</strong> (<em>20mhz | 40mhz | 10mhz | 5mhz</em>; Default: <strong>20mhz</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">TX card operation frequency in Mhz.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-radio</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the interface used for transmitting.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>WDS cannot be used on Nstreme-dual links.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The difference between <strong>tx-freq</strong> and <strong>rx-freq</strong> should be about 200 MHz or more because of possible interference.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>You can use different bands for RX and TX links. For example, transmit in 2ghz-g and receive data using the 2ghz-b band.</p>
+</div>
+<h2 id="registration-table">Registration Table</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/registration-table</code></p>
+<p>In the registration table, you can see various information about currently connected clients. It is used only for Access Points.</p>
+<p>All properties are read-only.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>802.1x-port-enabled</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">whether the data exchange is allowed with the peer (i.e., whether 802.1x authentication is completed, if needed)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ack-timeout</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">current value of ack-timeout</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ap</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows whether the registered device is configured as an access point.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ap-tx-limit</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">transmit rate limit on the AP, in bits per second</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>authentication-type</strong> ()</td>
+<td style="text-align: left;">authentication method used for the peer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bridge</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>bytes</strong> (<em>integer , integer</em>)</td>
+<td style="text-align: left;">number of sent and received packet bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>client-tx-limit</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">transmit rate limit on the client, in bits per second</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Description of an entry. The comment is taken from the appropriate <a href="./wireless-interface.md#access-list">Access List</a> entry if specified.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>compression</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">whether data compression is used for this peer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>distance</strong> (<em>integer</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>eap-identity</strong>(<em>string</em>)</td>
+<td style="text-align: left;">EAP identity the client used when authenticating to the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>encryption</strong> (<em>aes-ccm | tkip</em>)</td>
+<td style="text-align: left;">unicast encryption algorithm used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>evm-ch0</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>evm-ch1</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>evm-ch2</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frame-bytes</strong> (<em>integer,integer</em>)</td>
+<td style="text-align: left;">number of sent and received data bytes excluding header information</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frames</strong> (<em>integer,integer</em>)</td>
+<td style="text-align: left;">Number of frames that need to be sent over the wireless link. This value can be compared to <strong>hw-frames</strong> to check wireless retransmits.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framing-current-size</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">current size of combined frames</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framing-limit</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">maximal size of combined frames</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>framing-mode</strong> ()</td>
+<td style="text-align: left;">the method how to combine frames</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group-encryption</strong> ()</td>
+<td style="text-align: left;">group encryption algorithm used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-frame-bytes</strong> (<em>integer,integer</em>)</td>
+<td style="text-align: left;">number of sent and received data bytes including header information</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-frames</strong> (<em>integer,integer</em>)</td>
+<td style="text-align: left;">Number of frames sent over the wireless link by the driver. This value can be compared to <strong>frames</strong> to check wireless retransmits.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of the wireless interface to which the wireless client is associated</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>last-activity</strong> (<em>time</em>)</td>
+<td style="text-align: left;">last interface data tx/rx activity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>last-ip</strong> (<em>IP Address</em>)</td>
+<td style="text-align: left;">IP address found in the last IP packet received from the registered client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;">MAC address of the registered client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>management-protection</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>nstreme</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows whether <a href="./wireless-interface.md#nstreme">Nstreme</a> is enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>p-throughput</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">estimated approximate throughput that is expected to the given peer, taking into account the effective transmit rate and hardware retries. Calculated once in 5 seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>packed-bytes</strong> (<em>integer, integer</em>)</td>
+<td style="text-align: left;">number of bytes packed into larger frames for transmitting/receiving (framing)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>packed-frames</strong> (<em>integer, integer</em>)</td>
+<td style="text-align: left;">number of frames packed into larger ones for transmitting/receiving (framing)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>packets</strong> (<em>integer,integer</em>)</td>
+<td style="text-align: left;">number of sent and received network layer packets</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-name</strong> (<em>string</em>)</td>
+<td style="text-align: left;">radio name of the peer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>routeros-version</strong> (<em>string</em>)</td>
+<td style="text-align: left;">RouterOS version of the registered client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-ccq</strong> ()</td>
+<td style="text-align: left;">Client Connection Quality (CCQ) for receiving.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-rate</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">receive data rate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-strength</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">average strength of the client signal received by the AP</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-strength-ch0</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-strength-ch1</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-strength-ch2</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>signal-to-noise</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>strength-at-rates</strong> ()</td>
+<td style="text-align: left;">signal strength level at different rates together with the time these rates were used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-retx</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-rx-size</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-timing-offset</strong> ()</td>
+<td style="text-align: left;">tdma-timing-offset is proportional to the <strong>distance</strong> and is approximately two times the propagation delay. AP measures this so that it can tell clients what offset to use for their transmissions - clients then subtract this offset from their target transmission time such that propagation delay is accounted for and transmission arrives at the AP when expected. You may occasionally see a small negative value (like a few usecs) there for close-range clients because of additional unaccounted delay that may be produced in transmitter or receiver hardware that varies from chipset to chipset.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-tx-size</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Value in bytes that specifies the size of a data unit whose loss can be detected (data unit over which CRC is calculated) sent by the device. In general - the bigger the better, because overhead is less. On the other hand, a small value in this setting cannot always be considered a signal that connection is poor - if the device does not have enough pending data that would enable it to use bigger data units (e.g. if you are just pinging over the link), this value will not go up.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tdma-windfull</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-ccq</strong> ()</td>
+<td style="text-align: left;">Client Connection Quality (CCQ) for transmitting.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-evm-ch0</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-evm-ch1</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-evm-ch2</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-frames-timed-out</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-rate</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-signal-strength</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-signal-strength-ch0</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-signal-strength-ch1</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-signal-strength-ch2</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uptime</strong> (<em>time</em>)</td>
+<td style="text-align: left;">time the client is associated with the access point</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">whether the connected client is using wds or not</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wmm-enabled</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows whether <a href="../../bridging-and-switching/user-guides/wmm-and-vlan-priority.md">WMM</a> is enabled.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="security-profiles">Security Profiles</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/security-profiles</code></p>
+<p>Security profiles are configured under the <strong>/interface/wireless/security-profiles</strong> path in the console, or in the "Security Profiles" tab of the "Wireless" window in WinBox. Security profiles are referenced by the Wireless interface <a href="./wireless-interface.md#general-interface-properties">security-profile</a> property and the <a href="./wireless-interface.md#general-interface-properties">security-profile</a> property of Connect Lists.</p>
+<h3 id="basic-properties">Basic properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (<em>none | static-keys-optional | static-keys-required | dynamic-keys</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Encryption mode for the security profile.none - Encryption is not used. Encrypted frames are not accepted.static-keys-required - WEP mode. Does not accept and does not send unencrypted frames. The station in <em>static-keys-required</em> mode will not connect to an Access Point in <em>static-keys-optional</em> mode.static-keys-optional - WEP mode. Supports encryption and decryption, but also allows to receive and send unencrypted frames. The device will send unencrypted frames if the encryption algorithm is specified as <em>none</em>. The station in <em>static-keys-optional</em> mode will not connect to an Access Point in <em>static-keys-required</em> mode. See also: <a href="./wireless-interface.md#properties">static-sta-private-algo</a>, <a href="./wireless-interface.md#properties">static-transmit-key</a>.dynamic-keys - WPA mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>text</em>; Default: )</td>
+<td style="text-align: left;">Name of the security profile</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wpa-properties">WPA properties</h3>
+<p>These properties have effect only when <strong>mode</strong> is set to <em>dynamic-keys</em>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>authentication-types</strong> (<em>wpa-psk | wpa2-psk | wpa-eap | wpa2-eap</em>; Default: )</td>
+<td style="text-align: left;">Set of supported authentication types, multiple values can be selected. Access Point will advertise supported authentication types, and client will connect to Access Point only if it supports any of the advertised authentication types.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-pmkid</strong> (<em>no | yes</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to include PMKID into the EAPOL frame sent out by the Access Point. Disabling PMKID can cause compatibility issues with devices that use the PMKID to connect to an Access Point.yes - removes PMKID from EAPOL frames (improves security, reduces compatibility).no - includes PMKID into EAPOL frames (reduces security, improves compatibility).This property only has effect on Access Points.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>unicast-ciphers</strong> (<em>tkip | aes-ccm</em>; Default: <strong>aes-ccm</strong>)</td>
+<td style="text-align: left;">Access Point advertises that it supports specified ciphers, multiple values can be selected. Client attempts connection only to Access Points that support at least one of the specified ciphers. One of the ciphers will be used to encrypt unicast frames that are sent between Access Point and Station.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group-ciphers</strong> (<em>tkip | aes-ccm</em>; Default: <strong>aes-ccm</strong>)</td>
+<td style="text-align: left;">Access Point advertises one of these ciphers, multiple values can be selected. Access Point uses it to encrypt all broadcast and multicast frames. Client attempts connection only to Access Points that use one of the specified group ciphers.tkip - Temporal Key Integrity Protocol - encryption protocol, compatible with legacy WEP equipment, but enhanced to correct some of the WEP flaws.aes-ccm - more secure WPA encryption protocol, based on the reliable AES (Advanced Encryption Standard). Networks free of WEP legacy should use only this cipher.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>group-key-update</strong> (<em>time: 30s..1d</em>; Default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Controls how often Access Point updates the group key. This key is used to encrypt all broadcast and multicast frames. This property only has effect for Access Points.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wpa-pre-shared-key</strong> (<em>text</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">WPA pre-shared key mode requires all devices in a BSS to have a common secret key. Value of this key can be an arbitrary text. Commonly referred to as the network password for WPA mode. This property only has effect when <em>wpa-psk</em> is added to <strong>authentication-types</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wpa2-pre-shared-key</strong> (<em>text</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">WPA2 pre-shared key mode requires all devices in a BSS to have a common secret key. Value of this key can be an arbitrary text. Commonly referred to as the network password for WPA2 mode. This property only has effect when <em>wpa2-psk</em> is added to <strong>authentication-types</strong>.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>RouterOS also allows overriding the pre-shared key value for specific clients, using either the <a href="./wireless-interface.md#access-list">private-pre-shared-key</a> property, or the <a href="./wireless-interface.md#radius-mac-authentication">Mikrotik-Wireless-Psk</a> attribute in the RADIUS MAC authentication response. This is an extension.</p>
+</div>
+<h4 id="wpa-eap-properties">WPA EAP properties</h4>
+<p>These properties have an effect only when <strong>authentication-types</strong> contains <em>wpa-eap</em> or <em>wpa2-eap</em>, and <strong>mode</strong> is set to <em>dynamic-keys</em>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>eap-methods</strong> (<em>eap-tls | eap-ttls-mschapv2 | passthrough | peap</em>; Default: <strong>passthrough</strong>)</td>
+<td style="text-align: left;">Allowed types of authentication methods, multiple values can be selected. This property only has effect on Access Points.eap-tls - Use built-in EAP TLS authentication. Both client and server certificates are supported. See description of <strong>tls-mode</strong> and <strong>tls-certificate</strong> properties.eap-ttls-mschapv2 - Use EAP-TTLS with MS-CHAPv2 authentication.passthrough - Access Point will relay the authentication process to the RADIUS server.peap - Use Protected EAP authentication.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>supplicant-identity</strong> (<em>text</em>; Default: <strong><a href="../../system-information-and-utilities/identity.md">Identity</a></strong>)</td>
+<td style="text-align: left;">EAP identity that is sent by the client at the beginning of EAP authentication. This value is used as a value for the User-Name attribute in RADIUS messages sent by RADIUS EAP accounting and RADIUS EAP pass-through authentication.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mschapv2-username</strong> (<em>text</em>; Default: )</td>
+<td style="text-align: left;">Username to use for authentication when <em>eap-ttls-mschapv2</em> or <em>peap</em> authentication method is being used. This property only has effect on Stations.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mschapv2-password</strong> (<em>text</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Password to use for authentication when <em>eap-ttls-mschapv2</em> or <em>peap</em> authentication method is being used. This property only has effect on Stations.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tls-mode</strong> (<em>verify-certificate | dont-verify-certificate | no-certificates | verify-certificate-with-crl</em>; Default: <strong>no-certificates</strong>)</td>
+<td style="text-align: left;">This property has effect only when <strong>eap-methods</strong> contains <em>eap-tls</em>.verify-certificate - Require the remote device to have a valid certificate. Check that it is signed by a known certificate authority. No additional identity verification is done. The certificate may include information about the time period during which it is valid. If the router has incorrect time and date, it may reject a valid certificate because the router's clock is outside that period. See also the <a href="../../authentication-authorization-accounting/certificates.md">Certificates</a> configuration.dont-verify-certificate - Do not check the certificate of the remote device. Access Point will not require client to provide certificate.no-certificates - Do not use certificates. TLS session is established using 2048 bit anonymous Diffie-Hellman key exchange.verify-certificate-with-crl - Same as <em>verify-certificate</em> but also checks if the certificate is valid by checking the Certificate Revocation List.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tls-certificate</strong> (<em>none | name</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Access Point always needs a certificate when configured and <strong>tls-mode</strong> is set to <em>verify-certificate</em>, or is set to <em>dont-verify-certificate</em>. Client needs a certificate only if Access Point is configured with <strong>tls-mode</strong> set to <em>verify-certificate</em>. In this case client needs a valid certificate that is signed by a CA known to the Access Point. This property only has effect when <strong>tls-mode</strong> is not set to <em>no-certificates</em> and <strong>eap-methods</strong> contains <em>eap-tls</em>.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The order of allowed authentication methods in <code>eap-methods</code> is important, the same order is going to be used to send authentication method offers to the Station. Example: Access Point uses security-profile where <strong>eap-methods</strong> is set to <em>eap-tls</em>,<em>passthrough</em>; 1) Access Point offers EAP-TLS method to the client; 2) Client refuses; 3) Access Point starts relaying EAP communication to the radius server.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When the AP is used for passthrough certificates are not required on the AP itself, the AP device works as a transparent bridge and forwards the EAP-TLS association data from the RADIUS server to the end client.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When <code>tls-mode</code> uses either <code>verify-certificate</code> or <code>dont-verify-certificate</code>, then the remote device has to support one of the <em>RC4-MD5</em>, <em>RC4-SHA</em> or <em>DES-CBC3-SHA</em> TLS cipher suites. When using <code>no-certificates</code> mode, then the remote device must support the "ADH-DES-CBC3-SHA" cipher suite.</p>
+</div>
+<h4 id="radius-properties">RADIUS properties</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>radius-mac-authentication</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">This property affects the way the Access Point processes clients that are not found in the <a href="./wireless-interface.md#access-list">Access List</a>.no - allow or reject client authentication based on the value of <a href="./wireless-interface.md#general-interface-properties">default-authentication</a> property of the Wireless interface.yes - Query the RADIUS server using the MAC address of the client as user name. With this setting the value of <a href="./wireless-interface.md#general-interface-properties">default-authentication</a> has no effect.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-mac-accounting</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-eap-accounting</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-called-format</strong> (<em>mac | mac:ssid | ssid</em>; Default: <strong>mac:ssid</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interim-update</strong> (<em>time</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">When RADIUS accounting is used, the Access Point periodically sends accounting information updates to the RADIUS server. This property specifies the default update interval that can be overridden by the RADIUS server using <a href="./wireless-interface.md#radius-mac-authentication">Acct-Interim-Interval</a> attribute.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-mac-format</strong> (<em>XX:XX:XX:XX:XX:XX | XXXX:XXXX:XXXX | XXXXXX:XXXXXX | XX-XX-XX-XX-XX-XX | XXXXXX-XXXXXX | XXXXXXXXXXXX | XX XX XX XX XX XX | lower case;</em> Default: <strong>XX:XX:XX:XX:XX:XX</strong>)</td>
+<td style="text-align: left;">Controls how the MAC address of the client is encoded by the Access Point in the User-Name attribute of the MAC authentication and MAC accounting RADIUS requests.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-mac-mode</strong> (<em>as-username | as-username-and-password</em>; Default: <strong>as-username</strong>)</td>
+<td style="text-align: left;">By default the Access Point uses an empty password when sending Access-Request during MAC authentication. When this property is set to <em>as-username-and-password</em>, the Access Point will use the same value for the User-Password attribute as for the User-Name attribute.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radius-mac-caching</strong> (<em>disabled | time</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">If this value is set to a time interval, the Access Point will cache RADIUS MAC authentication responses for a specified time, and will not contact the RADIUS server if a matching cache entry already exists. Value <em>disabled</em> will disable cache, Access Point will always contact RADIUS server.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="wep-properties">WEP properties</h4>
+<p>These properties have effect only when <strong>mode</strong> is set to <em>static-keys-required</em> or <em>static-keys-optional</em>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>static-key-0 | static-key-1 | static-key-2 | static-key-3</strong> (<em>hex</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Hexadecimal representation of the key. Length of the key must be appropriate for the selected algorithm. See the <a href="./wireless-interface.md#statically-configured-wep-keys">Statically configured WEP keys</a> section.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>static-algo-0 | static-algo-1 | static-algo-2 | static-algo-3</strong> (<em>none | 40bit-wep | 104bit-wep | tkip | aes-ccm</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Encryption algorithm to use with the corresponding key.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>static-transmit-key</strong> (<em>key-0 | key-1 | key-2 | key-3</em>; Default: <strong>key-0</strong>)</td>
+<td style="text-align: left;">Access Point will use the specified key to encrypt frames for clients that do not use a private key. Access Point will also use this key to encrypt broadcast and multicast frames. The client will use the specified key to encrypt frames if <strong>static-sta-private-algo</strong> is set to <em>none</em>. If the corresponding <strong>static-algo-N</strong> property has a value set to <em>none</em>, then the frame will be sent unencrypted (when <strong>mode</strong> is set to <em>static-keys-optional</em>) or will not be sent at all (when <strong>mode</strong> is set to <em>static-keys-required</em>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>static-sta-private-key</strong> (<em>hex</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Length of the key must be appropriate for the selected algorithm, see the <a href="./wireless-interface.md#statically-configured-wep-keys">Statically configured WEP keys</a> section. This property is used only on Stations. Access Point uses the corresponding key either from <a href="./wireless-interface.md#access-list">private-key</a> property, or from <a href="./wireless-interface.md#radius-mac-authentication">Mikrotik-Wireless-Enc-Key</a> attribute.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>static-sta-private-algo</strong> (<em>none | 40bit-wep | 104bit-wep | tkip | aes-ccm</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Encryption algorithm to use with the station private key. The value <em>none</em> disables use of the private key. This property is only used on Stations. Access Point has to get the corresponding value either from <a href="./wireless-interface.md#access-list">private-algo</a> property, or from <a href="./wireless-interface.md#radius-mac-authentication">Mikrotik-Wireless-Enc-Algo</a> attribute. The station private key replaces key 0 for unicast frames. The station will not use the private key to decrypt broadcast frames.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="management-frame-protection">Management frame protection</h3>
+<p><em><strong>Used for</strong>: Deauthentication attack prevention, MAC address cloning issue.</em></p>
+<p>RouterOS implements a proprietary management frame protection algorithm based on a shared secret. Management frame protection means that a RouterOS wireless device is able to verify the source of a management frame and confirm that a particular frame is not malicious. This feature allows withstanding deauthentication and disassociation attacks on RouterOS based wireless devices.</p>
+<p>Management protection mode is configured in security-profile with the <strong>management-protection</strong> setting. Possible values are: <strong>disabled</strong> - management protection is disabled (default), <strong>allowed</strong> - use management protection if supported by the remote party (for AP - allow both non-management protection and management protection clients, for client - connect to APs both with and without management protection), <strong>required</strong> - establish association only with remote devices that support management protection (for AP - accept only clients that support management protection, for client - connect only to APs that support management protection).</p>
+<p>The Management protection shared secret is configured with the security-profile <strong>management-protection-key</strong> setting.</p>
+<p>When an interface is in AP mode, default management protection key (configured in security-profile) can be overridden by a key specified in access-list or RADIUS attribute.</p>
+<pre><code>[admin@mikrotik] /interface/wireless/security-profiles&gt; print 
+ 0 name=&quot;default&quot; mode=none authentication-types=&quot;&quot; unicast-ciphers=&quot;&quot; 
+  group-ciphers=&quot;&quot; wpa-pre-shared-key=&quot;&quot; wpa2-pre-shared-key=&quot;&quot; 
+  supplicant-identity=&quot;n-str-p46&quot; eap-methods=passthrough 
+  tls-mode=no-certificates tls-certificate=none static-algo-0=none 
+  static-key-0=&quot;&quot; static-algo-1=none static-key-1=&quot;&quot; static-algo-2=none 
+  static-key-2=&quot;&quot; static-algo-3=none static-key-3=&quot;&quot; 
+  static-transmit-key=key-0 static-sta-private-algo=none 
+  static-sta-private-key=&quot;&quot; radius-mac-authentication=no 
+  radius-mac-accounting=no radius-eap-accounting=no interim-update=0s 
+  radius-mac-format=XX:XX:XX:XX:XX:XX radius-mac-mode=as-username 
+  radius-mac-caching=disabled group-key-update=5m 
+  management-protection=disabled management-protection-key=&quot;&quot;  
+</code></pre>
+<pre><code>[admin@mikrotik] /interface/wireless/security-profiles&gt; set default management-protection=    
+                                                        allowed  disabled  required  
+</code></pre>
+<h3 id="operation-details">Operation details</h3>
+<h4 id="radius-mac-authentication">RADIUS MAC authentication</h4>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>RADIUS MAC authentication is used by the access point for clients that are not found in the <a href="./wireless-interface.md#access-list">access-list</a>, similarly to the <strong>default-authentication</strong> property of the wireless interface. It controls whether a client is allowed to proceed with authentication, or is rejected immediately.</p>
+</div>
+<p>When <strong>radius-mac-authentication</strong>=<em>yes</em>, the access point queries the RADIUS server by sending Access-Request with the following attributes:</p>
+<ul>
+<li>User-Name - Client MAC address. This is encoded as specified by the <strong>radius-mac-format</strong> setting. Default encoding is "XX:XX:XX:XX:XX:XX".</li>
+<li>Nas-Port-Id - <strong>name</strong> of wireless interface.</li>
+<li>User-Password - When <strong>radius-mac-mode</strong>=<em>as-username-and-password</em> this is set to the same value as User-Name. Otherwise this attribute is empty.</li>
+<li>Calling-Station-Id - Client MAC address, encoded as "XX-XX-XX-XX-XX-XX".</li>
+<li>Called-Station-Id - MAC address and SSID of the access point, encoded as "XX-XX-XX-XX-XX-XX:SSID" (minus-separated pairs of MAC address digits, followed by colon, followed by SSID value).</li>
+<li>Acct-Session-Id - Added when <strong>radius-mac-accounting</strong>=<em>yes</em>.</li>
+</ul>
+<p>When the access point receives Access-Accept or Access-Reject response from the RADIUS server, it stores the response and either allows or rejects the client. Access point uses the following RADIUS attributes from the Access-Accept response:</p>
+<ul>
+<li>Ascend-Data-Rate.</li>
+<li>Ascend-Xmit-Rate.</li>
+<li>Mikrotik-Wireless-Forward - Same as <a href="./wireless-interface.md#access-list">access-list</a> <strong>forwarding</strong>.</li>
+<li>Mikrotik-Wireless-Enc-Algo - Same as <a href="./wireless-interface.md#access-list">access-list</a> <strong>private-algo</strong>.</li>
+<li>Mikrotik-Wireless-Enc-Key - Same as <a href="./wireless-interface.md#access-list">access-list</a> <strong>private-key</strong>.</li>
+<li>Mikrotik-Wireless-Psk - Same as <a href="./wireless-interface.md#access-list">access-list</a> <strong>private-pre-shared-key</strong>.</li>
+<li>Mikrotik-Wireless-Mpkey - Same as Management-protection-key in Access list.</li>
+<li>Session-Timeout - Time after which the client will be disconnected.</li>
+<li>Acct-Interim-Interval - Overrides the value of <strong>interim-update</strong>.</li>
+<li>Class - If present, the value of this attribute is saved and included in Accounting-Request messages.</li>
+</ul>
+<p><strong>Caching</strong>:</p>
+<p>Caching of RADIUS MAC authentication was added to support RADIUS authentication for clients that require a very quick response from the access point to the association request. Such clients time out before a response from the RADIUS server is received. The access point caches authentication response for some time and can immediately reply to the repeated association request from the same client.</p>
+<h4 id="radius-eap-pass-through-authentication">RADIUS EAP pass-through authentication</h4>
+<p>When using WPA EAP authentication type, clients that have passed MAC authentication are required to perform EAP authentication before being authorized to pass data on the wireless network. With the pass-through EAP method the access point will relay authentication to the RADIUS server, and use the following attributes in the Access-Request RADIUS message:</p>
+<ul>
+<li>User-Name - EAP supplicant identity. This value is configured in the <strong>supplicant-identity</strong> property of the client security profile.</li>
+<li>Nas-Port-Id - <strong>name</strong> of the wireless interface.</li>
+<li>Calling-Station-Id - Client MAC address, encoded as "XX-XX-XX-XX-XX-XX".</li>
+<li>Called-Station-Id - MAC address and SSID of the access point, encoded as "XX-XX-XX-XX-XX-XX:SSID" (pairs of MAC address digits separated by a minus sign, followed by colon, followed by SSID value).</li>
+<li>Acct-Session-Id - Added when <strong>radius-eap-accounting</strong>=<em>yes</em>.</li>
+<li>Acct-Multi-Session-Id - MAC address of the access point and client, and a unique 8 byte value, that is shared for all accounting sessions that share a single EAP authentication. Encoded as <em>AA-AA-AA-AA-AA-AA-CC-CC-CC-CC-CC-CC-XX-XX-XX-XX-XX-XX-XX-XX.</em> Added when radius-eap-accounting=yes.</li>
+</ul>
+<p>Access point uses the following RADIUS attributes from the Access-Accept server response:</p>
+<ul>
+<li>Class - If present, the value of this attribute is saved and included in Accounting-Request messages.</li>
+<li>Session-Timeout - Time, after which the client will be disconnected. Additionally, the access point will remember the authentication result, and if during this time the client reconnects, it will be authorized immediately, without repeating EAP authentication.</li>
+<li>Acct-Interim-Interval - Overrides the value of <strong>interim-update</strong>.</li>
+</ul>
+<h4 id="statically-configured-wep-keys">Statically configured WEP keys</h4>
+<p>Different algorithms require different lengths of keys:</p>
+<ul>
+<li><em>40bit-wep</em> - 10 hexadecimal digits (40 bits). If the key is longer, only the first 40 bits are used.</li>
+<li><em>104bit-wep</em> - 26 hexadecimal digits (104 bits). If the key is longer, only the first 104 bits are used.</li>
+<li><em>tkip</em> - At least 64 hexadecimal digits (256 bits).</li>
+<li><em>aes-ccm</em> - At least 32 hexadecimal digits (128 bits).</li>
+</ul>
+<p>The key must contain an even number of hexadecimal digits.</p>
+<h4 id="wds-security-configuration">WDS security configuration</h4>
+<p>WDS links can use all available security features. However, they require careful configuration of security parameters.</p>
+<p>It is possible to use one security profile for all clients, and different security profiles for WDS links. The security profile for a WDS link is specified in <a href="./wireless-interface.md#connect-list">connect-list</a>. The access point always checks the connect list before establishing a WDS link with another access point, and uses security settings from the matching connect list entry. The WDS link will work when each access point has a connect list entry that matches the other device, has <strong>connect</strong>=<em>yes</em> and specifies a compatible <strong>security-profile</strong>.</p>
+<p><strong>WDS and WPA/WPA2:</strong></p>
+<p>If an access point uses security profile with <strong>mode</strong>=<em>dynamic-keys</em>, then encryption will be used for all WDS links. Since WPA authentication and key exchange is not symmetrical, one of the access points will act as a client for the purpose of establishing a secure connection. This is similar to how <em>static-mesh</em> and <em>dynamic-mesh</em> WDS modes work. Some problems, like a single sided WDS link between two incorrectly configured access points that use non-<em>mesh</em> mode, are not possible if WPA encryption is enabled. However, non-<em>mesh</em> modes with WPA still have other issues (like constant reconnection attempts in case of configuration mismatch) that are solved by use of the <em>-mesh</em> WDS modes.</p>
+<p>In general, WPA properties on both access points that establish a WPA protected WDS link have to match. These properties are <strong>authentication-types</strong>, <strong>unicast-ciphers</strong>, <strong>group-ciphers</strong>. For non-<em>mesh</em> WDS mode these properties need to have the same values on both devices. In <em>mesh</em> WDS mode each access point has to support the other one as a client.</p>
+<p>Theoretically it is possible to use RADIUS MAC authentication and other RADIUS services with WDS links. However, only one access point will interact with the RADIUS server, the other access point will behave as a client.</p>
+<p>Implementation of the <em>eap-tls</em> EAP method in RouterOS is particularly well suited for WDS link encryption. <strong>tls-mode</strong>=<em>no-certificates</em> requires no additional configuration, and provides very strong encryption.</p>
+<p><strong>WDS and WEP:</strong></p>
+<p><strong>mode</strong>, <strong>static-sta-private-key</strong> and <strong>static-sta-private-algo</strong> parameters in the security profile assigned to the WDS link need to have the same values on both access points that establish a WDS link with WEP encryption.</p>
+<h4 id="security-profile-and-access-point-matching-in-the-connect-list">Security profile and access point matching in the connect list</h4>
+<p>Client uses value of <a href="./wireless-interface.md#connect-list">connect-list</a> <strong>security-profile</strong> property to match only those access points that support necessary security.</p>
+<ul>
+<li><strong>mode</strong>=<em>static-keys-required</em> and <strong>mode</strong>=<em>static-keys-optional</em> match only access points with the same <strong>mode</strong> in the interface <strong>security-profile</strong>.</li>
+<li>If <strong>mode</strong>=<em>dynamic-keys</em>, then the connect list entry matches if all of the <strong>authentication-types</strong>, <strong>unicast-ciphers</strong> and <strong>group-ciphers</strong> contain at least one value that is advertised by the access point.</li>
+</ul>
+<h2 id="virtual-interfaces">Virtual interfaces</h2>
+<h3 id="virtual-ap">Virtual AP</h3>
+<p>It is possible to create virtual access points using the <em>add</em> command in the wireless menu. You must specify the <em>master-interface</em> which the virtual interface will belong to. If "master-interface" mode is "station", Virtual AP will work only when "master-interface" is active. The Virtual AP can have its own SSID and Security Profile.</p>
+<p>The Virtual AP interface will only work if the master interface is in <em>ap-bridge</em>, <em>bridge</em>, <em>station</em> or wds-slave mode. It works only with 802.11 protocol, but Nv2 is not supported.</p>
+<p>This feature is useful for separating access for different types of users. You can assign different bandwidth levels and passwords and instruct users to connect to the specific virtual network. It will appear to wireless clients as a different SSID or a different device. For example, when using QuickSet to configure a guest network, the VirtualAP feature is used in the background.</p>
+<p><strong>To create a new virtual-ap:</strong> <code>/interface&gt; wireless add mode=ap-bridge master-interface=wlan1 ssid=guests security-profile=guests</code> (<em>such a security profile first needs to be created</em>)</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>You can create up to 127 virtual interfaces per physical interface. It is not recommended to create more than 30, since the performance will start to degrade.</p>
+</div>
+<h3 id="virtual-clients">Virtual clients</h3>
+<p>It is also possible to create virtual clients and have both an AP and a Client on the same physical interface. This allows you to make a repeater setup with only using one hardware card. The process of configuration is exactly the same as above, but use mode <strong>station</strong>:</p>
+<p><strong>To create a new virtual-client:</strong> <code>/interface&gt; wireless add mode=station master-interface=wlan1 ssid=where-to-connect security-profile=your-profile</code> (<em>such a security profile first needs to be created</em>)</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Virtual interfaces will always use the Master interface wireless frequency. If the master interface has <code>auto</code> frequency enabled they will use the wireless frequency that the Master interface selected.</p>
+</div>
+<h2 id="sniffer">Sniffer</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/sniffer</code></p>
+<p>Wireless sniffer allows capturing frames including Radio header, 802.11 header and other wireless-related information.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channel-time</strong> (; Default: <strong>200ms</strong>)</td>
+<td style="text-align: left;">How long to sniff each channel. Used only if <strong>multiple-channels=yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>file-limit</strong> (<em>integer [10..4294967295]</em>; Default: <strong>10</strong>)</td>
+<td style="text-align: left;">Allocated file size in bytes which will be used to store captured data. Applicable if <strong>file-name</strong> is specified.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>file-name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the file where to store captured data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>memory-limit</strong> (<em>integer [10..4294967295]</em>; Default: <strong>10</strong>)</td>
+<td style="text-align: left;">Allocated memory buffer in kilobytes used to store captured data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multiple-channels</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to sniff multiple channels or a single channel. <strong>No</strong> means that all channel settings will be taken from <strong>/interface/wireless</strong>. <strong>Yes</strong> means that all channel settings will be taken from <strong>scan-list</strong> under <strong>/interface/wireless</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>only-headers</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If set to yes, then the sniffer will capture only information stored in frame headers.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>receive-errors</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to process packets which have been received with errors as judged by their FCS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>streaming-enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to stream captured data to the specified streaming server</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>streaming-max-rate</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Maximum packets per second allowed. <strong>0</strong> equals unlimited</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>streaming-server</strong> (<em>IPv4</em>; Default: <strong>0.0.0.0</strong>)</td>
+<td style="text-align: left;">IP address of the streaming server.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Use the <code>/interface/wireless/info/scan-list</code> command to verify the <code>scan-list</code> defined under <code>/interface/wireless/channels</code> when <code>multiple-channels=yes</code>.</p>
+</div>
+<h3 id="packets">Packets</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/sniffer/packet</code></p>
+<p>Sub-menu shows captured packets.</p>
+<h2 id="scan">Scan</h2>
+<p>Scan command allows you to see available APs in the frequency range defined in the scan-list. Using the scan command, the interface operation is disabled (wireless link is disconnected during the scan operation). Background scan is also supported and can be used during wireless interface operation without disconnecting the wireless link. Background scan is supported only using the 802.11 wireless protocol.</p>
+<p>The scan tool will continue scanning for APs until the user stops the scan process. It is possible to use the <code>rounds</code> setting for the scan tool to do a scan through the scan-list entries specific times. It is useful when running the scan tool using scripts. Example of a scan command for one round:</p>
+<pre><code>/interface/wireless/scan wlan1 rounds=1
+</code></pre>
+<p>The <code>save-file</code> option allows doing scripted/scheduled scans and save the results in a file for future analysis. Also this feature together with the rounds setting allows getting scan results from the remote wireless clients - executing that command will start the scan tool which disconnects the wireless link, does the scan through the scan-list frequencies and saves the results to file, exits the scan and connects the wireless link back. Example:</p>
+<pre><code>/interface/wireless/scan wlan1 rounds=1 save-file=scan1
+</code></pre>
+<p>To use the background wireless scan, the <code>background=yes</code> setting should be provided. Example:</p>
+<pre><code>/interface/wireless/scan wlan1 background=yes
+</code></pre>
+<p>The background scan feature is working in such conditions:</p>
+<ul>
+<li>Wireless interface should be enabled.</li>
+<li>For a wireless interface in AP mode - when it is operating in 802.11 protocol mode and is on a fixed channel (that is - channel selection and initial radar checking is over).</li>
+<li>For a wireless interface in Station mode - when it is connected to an 802.11 protocol AP.</li>
+</ul>
+<p>Scan command is also supported on the Virtual wireless interfaces with such limitations:</p>
+<ul>
+<li>It is possible when a virtual interface and its master are fixed on a channel (master AP is running or master station is connected to an AP).</li>
+<li>Scan is only performed on the channel the master interface is on.</li>
+<li>It does not matter if background=yes|no - on a virtual interface scan does not disconnect clients/AP, so it is always "background".</li>
+</ul>
+<h2 id="snooper">Snooper</h2>
+<p>This tool monitors surrounding frequency usage, and displays which devices occupy each frequency. It's available both in console and in WinBox.  Snooper will use frequencies from scan-list.</p>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/snooper</code></p>
+<h3 id="settings">Settings</h3>
+<h2 id="spectral-scan">Spectral scan</h2>
+<ul>
+<li>See the separate document <a href="./spectral-scan.md">Spectral scan</a>.</li>
+</ul>
+<h2 id="wds">WDS</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless/wds</code></p>
+<p><strong>Properties:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arp</strong> (<em>disabled | enabled | proxy-arp | reply-only</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disable-running-check</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>l2mtu</strong> (<em>integer [0..65536]</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-interface</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mtu</strong> (<em>integer [0..65536]</em>; Default: <strong>1500</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wds-address</strong> (<em>MAC</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Read-only properties:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>dynamic</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-address</strong> (<em>MAC</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>running</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h2 id="wps">WPS</h2>
+<p>The Wireless interface supports both WPS Server and WPS Client.</p>
+<h3 id="wps-server">WPS Server</h3>
+<p>WPS Server allows connecting wireless clients that support WPS to an AP protected with the Pre-Shared Key without specifying that key in the clients' configuration.</p>
+<p>WPS Server can be enabled by changing the WPS Mode setting for the wireless interface. Example:</p>
+<pre><code> /interface/wireless/set wlan1 wps-mode=push-button
+</code></pre>
+<p>Wps-mode has 3 options</p>
+<ul>
+<li>disabled</li>
+<li>push-button - WPS is activated by pushing a physical button on the board (few boards have such a button marked on the board case/label)</li>
+<li>push-button-virtual-only - WPS is activated by pushing the "WPS Accept" button from the RouterOS wireless interface menu</li>
+</ul>
+<p>By pushing the WPS physical/virtual button the AP enables the WPS functionality. If within 2 minutes the WPS process isn't initiated, the WPS Accept Function is stopped.</p>
+<p>WPS Server is enabled by default on a few boards that have a physical WPS button marked. For example, hap lite, hap, hap ac lite, hap ac, map lite.</p>
+<p>WPS Server is active only when the wireless AP interface has Pre-Shared Key Authentication (PSK) enabled. It is possible to configure this mode for the Virtual AP interfaces as well.</p>
+<h3 id="wps-client">WPS Client</h3>
+<p>The WPS Client function allows the wireless client to get the Pre-Shared Key configuration of the AP that has WPS Server enabled. WPS Client can be enabled by such a command:</p>
+<pre><code> /interface/wireless/wps-client/wlan1
+</code></pre>
+<p>WPS Client command outputs all the information about the WPS Enabled AP on the screen. Example:</p>
+<pre><code>[admin@MikroTik] /interface/wireless&gt; wps-client wlan1
+          status: disconnected, success
+            ssid: MikroTik
+     mac-address: E4:8D:8C:D6:E0:AC
+      passphrase: presharedkey
+  authentication: wpa2-psk
+      encryption: aes-ccm
+</code></pre>
+<p>It is possible to specify additional settings for the WPS-Client command:</p>
+<ul>
+<li>create-profile - creates a wireless security profile with the specified name, configures it with security details received from the WPS AP, specifies the wireless interface to use the newly created security profile.</li>
+<li>ssid - gets WPS information only from an AP with the specified SSID.</li>
+<li>mac-address - gets WPS information only from an AP with the specified mac-address.</li>
+</ul>
+<h2 id="repeater">Repeater</h2>
+<p>A wireless repeater will allow receiving the signal from the AP and repeat the signal using the same physical interface locally for connecting other clients. This will allow extending the wireless service for the wireless clients. The wireless repeater function will configure the wireless interface to connect to the AP with the station-bridge or station-pseudobridge option, create a virtual AP interface, create a bridge interface and add both (the main and the virtual) interfaces to the bridge ports.</p>
+<p>If your AP <strong>supports button-enabled WPS</strong> mode, you can use the automatic setup command:</p>
+<pre><code>/interface/wireless/setup-repeater wlan1
+</code></pre>
+<p>The setup-repeater does the following steps:</p>
+<ul>
+<li>Searches for WPS AP with button pushed.</li>
+<li>Acquires SSID, key, channel from AP.</li>
+<li>Resets main master interface config (same as reset-configuration).</li>
+<li>Removes all bridge ports that were added for virtual interfaces added to this master (so there are no dangling invalid bridge ports later).</li>
+<li>Removes all virtual interfaces added to this master.</li>
+<li>Creates security profile with name "<code>&lt;interfacename&gt;-&lt;ssid&gt;-repeater</code>", if such a security profile already exists, does not create a new one, just updates settings.</li>
+<li>Configures master interface, interface mode is selected like this: if AP supports bridge mode, use station-bridge, else if AP supports WDS, use station-wds, else use station-pseudobridge.</li>
+<li>Creates virtual AP interface with the same SSID and security profile as master.</li>
+<li>If master interface is not in some bridge, creates new bridge interface and adds master interface to it.</li>
+<li>Adds virtual AP interface to the same bridge master interface is in.</li>
+</ul>
+<p>If your AP <strong>does not support WPS</strong>, it is possible to specify the settings manually, using these parameters:</p>
+<ul>
+<li><strong>address</strong> - MAC address of the AP to set up a repeater for (optional)</li>
+<li><strong>ssid</strong> - SSID of the AP to set up a repeater for (optional)</li>
+<li><strong>passphrase</strong> - key to use for the AP - if this IS specified, command will just scan for the AP and create a security profile based on info in the beacon and with this passphrase. If this IS NOT specified, command will do WPS to find out the passphrase.</li>
+</ul>
+<h2 id="roaming">Roaming</h2>
+<h3 id="station-roaming">Station Roaming</h3>
+<p>Station Roaming feature is available only for the 802.11 wireless protocol and only for station modes. When a RouterOS wireless client is connected to the AP using the 802.11 wireless protocol it will periodically perform the background scan with specific time intervals. When the background scan finds an AP with better signal it will try to roam to that AP. The time intervals between the background scans will become shorter when the wireless signal becomes worse and the background scan interval will become longer when the wireless client signal gets better.</p>
+<h2 id="vlan-tagging">VLAN tagging</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/wireless</code></p>
+<p>With VLAN tagging it is possible to separate Virtual AP traffic on the Ethernet side of "locally forwarding" AP (the one on which wireless interfaces are bridged with Ethernet). This is necessary to separate e.g. "management" and "guest" network traffic on the Ethernet side of APs.</p>
+<p>VLAN is assigned to a wireless interface and as a result all data coming from wireless gets tagged with this tag and only data with this tag will be sent out over wireless. This works for all wireless protocols except that on Nv2 there's no Virtual AP support.</p>
+<p>You can configure your RADIUS authentication server to assign users or groups of users to a specific VLAN when they authenticate to the network. To use this option you will need to use <a href="../../authentication-authorization-accounting/radius.md">RADIUS attributes</a>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>vlan-mode</strong> (<em>no-tag | use-service-tag | use-tag</em>; Default: <strong>no-tag</strong>)</td>
+<td style="text-align: left;">Three VLAN modes are available:<em>no-tag</em> - AP doesn't use VLAN tagging<em>use-service-tag</em> - VLAN ID uses 802.1ad tag type<em>use-tag</em> - VLAN ID uses 802.1q tag type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>vlan-id</strong> (<em>integer [1..4095]</em>; Default: <strong>1</strong>)</td>
+<td style="text-align: left;">VLAN identification number</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vlan-tag-override">VLAN tag override</h3>
+<p>Per-interface VLAN tag can be overridden on a per-client basis by means of access-list and RADIUS attributes (for both - regular wireless and wireless controller).</p>
+<p>This way traffic can be separated between wireless clients even on the same interface, but must be used with care - only "interface VLAN" broadcast/multicast traffic will be sent out. If working broadcast/multicast is necessary for other (overridden) VLANs as well, multicast-helper can be used for now (this changes every multicast packet to unicast and then it is only sent to clients with matching VLAN ids).</p>
+<h2 id="winbox">WinBox</h2>
+<p><a href="../../management-tools/winbox.md">WinBox</a> is a small utility that allows the administration of MikroTik RouterOS using a fast and simple GUI.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Current Tx Power shows the transmit power used at a specific data rate. It is not supported for Atheros 802.11ac chips (e.g. QCA98xx).</p>
+</div>
+<h2 id="interworking-realms-setting">Interworking Realms setting</h2>
+<p>For more information about interworking profiles, see <a href="./interworking-profiles.md">Interworking Profiles</a>.</p>
+<p><strong>realms-raw</strong> - a list of strings with hex values. Each string specifies the contents of "NAI Realm Tuple", excluding the "NAI Realm Data Field Length" field.</p>
+<p>Each hex encoded string must consist of the following fields:</p>
+<pre><code>- NAI Realm Encoding (1 byte)
+- NAI Realm Length (1 byte)
+- NAI Realm (variable)
+- EAP Method Count (1 byte)
+- EAP Method Tuples (variable)
+</code></pre>
+<p>For example, the value "00045465737401020d00" decodes as:</p>
+<pre><code>- NAI Realm Encoding: 0 (rfc4282)
+- NAI Realm Length: 4
+- NAI Realm: Test
+- EAP Method Count: 1
+- EAP Method Length: 2
+- EAP Method Tuple: TLS, no EAP method parameters
+</code></pre>
+<p>Setting "realms-raw=00045465737401020d00" produces the same advertisement contents as setting "realms=Test:eap-tls".</p>
+<p>Refer to 802.11-2016, section 9.4.5.10 for full NAI Realm encoding.</p>
+<h2 id="migration-notes">Migration notes</h2>
+<p>The following terminology and packaging changed in older RouterOS releases. This is kept only as a reference for anyone migrating a very old configuration — on current RouterOS none of it requires any action.</p>
+<ul>
+<li><strong>Superchannel / <code>frequency-mode</code>.</strong> The <code>superchannel</code> frequency mode was previously called <em>Custom Frequency Upgrade</em> and required a special license key. It has been available on all installations without a key since RouterOS v4.3.</li>
+<li><strong>Wireless driver packages.</strong> RouterOS v6 split wireless features across separate <code>wireless-rep</code>, <code>wireless-cm2</code>, and <code>wireless-fp</code> packages. RouterOS v7 consolidates these into a single <code>wireless</code> package, so features that once required one of those packages — virtual clients, background scan, WPS client, RADIUS VLAN assignment, and the <code>scan-list</code> step option — are part of the standard <code>wireless</code> package.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queue &amp; Manajemen Bandwidth · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="queue-manajemen-bandwidth">Queue &amp; Manajemen Bandwidth</h1>
+<p>Membatasi dan membagi bandwidth — sering dipakai ISP untuk paket pelanggan.</p>
+<h2 id="1-simple-queue-percepat-per-target">1. Simple Queue (percepat, per target)</h2>
+<p>Membatasi trafik per IP/client:</p>
+<pre><code>/queue/simple/add name=pelanggan1 target=10.10.0.2/32 \
+    max-limit=10M/10M comment=&quot;Paket 10 Mbps&quot;
+</code></pre>
+<ul>
+<li><code>max-limit=upload/download</code></li>
+<li><code>target</code> bisa IP, subnet, atau interface.</li>
+</ul>
+<h2 id="2-queue-per-pppoe-via-profile-rate-limit">2. Queue per PPPoE (via profile rate-limit)</h2>
+<pre><code>/ppp/profile/set [find name=pelanggan] rate-limit=&quot;10M/10M&quot;
+</code></pre>
+<p>Lebih rapi untuk banyak pelanggan karena ikut sesi PPPoE.</p>
+<h2 id="3-queue-tree-kontrol-per-kelas-trafik">3. Queue Tree (kontrol per kelas trafik)</h2>
+<p>Butuh mangle untuk menandai trafik dulu:</p>
+<pre><code>/ip/firewall/mangle/add chain=forward action=mark-packet \
+    new-packet-mark=web passthrough=no protocol=tcp dst-port=80,443
+/queue/tree/add name=web parent=global packet-mark=web max-limit=50M
+</code></pre>
+<h2 id="4-pcq-bagi-rata-otomatis-antar-client">4. PCQ (bagi rata otomatis antar client)</h2>
+<p>Cocok untuk hotspot/RT-RW net:</p>
+<pre><code>/queue/type/add name=pcq-down kind=pcq pcq-rate=0 pcq-classifier=dst-address
+/queue/simple/add name=download target=192.168.0.0/16 \
+    max-limit=100M queue=pcq-down/pcq-down
+</code></pre>
+<p><code>pcq-rate=0</code> artinya pembagian otomatis dari total.</p>
+<h2 id="konsep">Konsep</h2>
+<ul>
+<li><strong>Simple Queue</strong>: paling gampang, urutannya: dari paling spesifik ke umum.</li>
+<li><strong>Queue Tree</strong>: kontrol detail per kelas, butuh mangle.</li>
+<li><strong>PCQ</strong>: pembagian dinamis per client.</li>
+</ul>
+<h2 id="tips">Tips</h2>
+<ul>
+<li>Ukuran burst bisa membantu trafik sesaat: <code>burst-limit</code>, <code>burst-time</code></li>
+<li>Untuk hulu (upload), queue bekerja di interface keluar — perhatikan arah.</li>
+<li>Monitor: <code>/queue/simple/print stats</code></li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>13 Firewall and QoS → Queues, Queue types</em></li>
+<li>Manual: <em>21 CLI Reference → /queue</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

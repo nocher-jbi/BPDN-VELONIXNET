@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snmp · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="snmp">snmp</h1>
+<h1 id="snmp_1">snmp</h1>
+<blockquote>
+<p>The /snmp menu turns the SNMP agent on and sets its general behavior: the engine ID that identifies the router to SNMPv3 clients, the address and VRF it answers on, and how traps are sent. The agent is off by...</p>
+</blockquote>
+<hr />
+<h2 id="snmp_2">snmp</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>The <code>/snmp</code> menu turns the SNMP agent on and sets its general behavior: the engine ID that identifies the router to SNMPv3 clients, the address and VRF it answers on, and how traps are sent. The agent is off by default. The communities that may actually read or write are defined in the <code>/snmp/community</code> menu. See the <a href="../../diagnostics-monitoring-and-troubleshooting/snmp">SNMP guide</a> for configuration examples.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Whether the SNMP agent answers queries and sends traps. Default: no.</li>
+<li><strong>contact</strong> <code>string</code> — Administrative contact information, readable by any collector. Default: empty.</li>
+<li><strong>location</strong> <code>string</code> — Administrative location information, readable by any collector. Default: empty.</li>
+<li><strong>engine-id-suffix</strong> <code>string</code> — Tail of the agent's SNMP engine ID. The router builds the full engine ID from the prefix <code>80003a8c04</code> and the given value written as ASCII hex; for example the suffix <code>1234</code> produces the engine ID <code>80003a8c0431323334</code>. Leave the suffix empty to use the automatically generated engine ID, which is different on each router and stays the same across reboots. Default: empty.</li>
+<li><strong>src-address</strong> <code>alt { ip: ipAddr
+, ip6: ip6Addr
+ }</code> — Source address for SNMP messages. With a value set, the agent answers only requests addressed to that address, and an IPv4 value stops it answering IPv6 requests. Default: <code>::</code> - replies come from the address of the interface that received the request.</li>
+<li><strong>trap-target</strong> <code>object { ip-addresses: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+ }</code> — List of collector addresses that receive SNMP traps; traps go to UDP port 162 on each address. Default: empty.</li>
+<li><strong>trap-community</strong> <code>enum</code> — Community used to send traps. It must exist in the <code>/snmp/community</code> menu; its security level decides how the trap is protected. Default: <code>public</code>.</li>
+<li><strong>trap-version</strong> <code>enum (1 | 2 | 3) { 1:0, 2:1, 3:3 }</code> — Version of the trap protocol. - <code>1</code> (default) - SNMPv1 trap. - <code>2</code> - SNMPv2c trap. - <code>3</code> - SNMPv3 trap, using the authentication and encryption of the <code>trap-community</code>.</li>
+<li><strong>trap-generators</strong> <code>multi { array-id, generator: enum
+ }</code> — Events that generate a trap; several values can be combined. - <code>interfaces</code> - A <code>linkDown</code>/<code>linkUp</code> trap when an interface changes state; narrow this with <code>trap-interfaces</code>. - <code>start-trap</code> - A trap when the SNMP service starts. - <code>temp-exception</code> (default) - A trap when the CPU temperature reaches the <code>/system/health</code> threshold.</li>
+<li><strong>trap-interfaces</strong> <code>object { interface: iface_enum
+ }</code> — List of interfaces whose state changes generate <code>interfaces</code> traps; other interfaces stay quiet. Empty means any interface. Default: empty.</li>
+<li><strong>vrf</strong> <code>enum</code> — VRF the SNMP agent runs in. Requests that arrive in other VRFs get no reply. Default: <code>main</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>engine-id</strong> <code>string</code> — Full SNMP engine ID of the agent: the prefix <code>80003a8c04</code> followed by the <code>engine-id-suffix</code> value written as ASCII hex, or the automatically generated ID when the suffix is empty. SNMPv3 clients address the agent by this value and include it in every request.</li>
+</ul>
+<hr />
+<h1 id="community">community</h1>
+<blockquote>
+<p>The /snmp/community menu defines the SNMP communities: what each of them may read or write, from which addresses, and under which security level. The community name works as the password for SNMPv1 and v2c and as the...</p>
+</blockquote>
+<hr />
+<h2 id="snmpcommunity">snmp/community</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/snmp/community</code> menu defines the SNMP communities: what each of them may read or write, from which addresses, and under which security level. The community name works as the password for SNMPv1 and v2c and as the security name for SNMPv3. A request that does not match a community (wrong name or wrong source address) gets no reply at all. See the <a href="../snmp/"><code>/snmp</code></a> reference for the agent settings and the <a href="../../diagnostics-monitoring-and-troubleshooting/snmp">SNMP guide</a> for examples.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Default community. The router is created with one community, <code>public</code>, with read access from any address, until you change or remove it.</li>
+<li><strong>X</strong> <code>disabled</code> — Disabled community. A disabled community does not answer requests; new communities are created enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the community. For SNMPv1 and v2c it travels in clear text with every packet and works as the password; for SNMPv3 it is the security name. Default: <code>public</code>.</li>
+<li><strong>addresses</strong> <code>object { address: alt { ipv6: ip6Prefix
+, ip: ipPrefix
+ }
+ }</code> — Source addresses or prefixes allowed to use this community. A request from any other address gets no reply. Default: <code>::/0</code> (any address).</li>
+<li><strong>security</strong> <code>enum (none | authorized | private) { none:0, authorized:1, private:2 }</code> — Security level the community requires. - <code>none</code> (default) - No authentication and no encryption (noAuthNoPriv); the community name alone grants access. - <code>authorized</code> - SNMPv3 authentication required (authNoPriv); v1 and v2c requests are not answered. - <code>private</code> - SNMPv3 authentication and encryption required (authPriv); v1 and v2c requests are not answered.</li>
+<li><strong>read-access</strong> <code>bool</code> — Whether requests may read MIB values. Default: yes.</li>
+<li><strong>write-access</strong> <code>bool</code> — Whether requests may change the router: set the system identity, run scripts and reboot. A write community is a powerful credential, so keep its name hard to guess and its <code>addresses</code> narrow. Default: no.</li>
+<li><strong>denied-oids</strong> <code>multi { array-id, oid: string
+ }</code> — OIDs or subtrees that this community cannot read. A direct GET of a blacklisted OID returns no-such-object and a walk skips the blocked subtree, so a monitoring tool's poll does not fail. Several OIDs can be given as a comma-separated list. The setting is per community. Default: empty (everything the agent implements is readable).</li>
+<li><strong>authentication-protocol</strong> <code>enum (MD5 | SHA1 | SHA256 | SHA384 | SHA512) { MD5:0, SHA1:1, SHA256:2, SHA384:3, SHA512:4 }</code> — Authentication protocol for SNMPv3 with <code>security=authorized</code> or <code>private</code>; all clients of the community must use it. - <code>MD5</code> (default) - <code>SHA1</code> - <code>SHA256</code> - <code>SHA384</code> - <code>SHA512</code></li>
+<li><strong>encryption-protocol</strong> <code>enum (DES | AES | AES256)</code> — Encryption protocol for SNMPv3 with <code>security=private</code>. - <code>DES</code> (default) - <code>AES</code> - AES-128, defined in RFC 3826. - <code>AES256</code> - AES-256.</li>
+<li><strong>authentication-password</strong> <code>string</code> — Password for SNMPv3 authentication, at least 8 characters. Sensitive; see the <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">list of menus with sensitive parameters</a>.</li>
+<li><strong>encryption-password</strong> <code>string</code> — Password for SNMPv3 encryption, at least 8 characters. Sensitive; see the <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">list of menus with sensitive parameters</a>.</li>
+</ul>
+<hr />
+<h1 id="send-trap">send-trap</h1>
+<blockquote>
+<p>The send-trap command sends one SNMP trap to the configured trap target immediately, which is useful for testing that traps reach the collector. The trap uses the trap-target, trap-community, and trap-version...</p>
+</blockquote>
+<hr />
+<h2 id="snmpsend-trap">snmp/send-trap</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>send-trap</code> command sends one SNMP trap to the configured trap target immediately, which is useful for testing that traps reach the collector. The trap uses the <code>trap-target</code>, <code>trap-community</code>, and <code>trap-version</code> settings of the SNMP service (with <code>trap-version=1</code> it is a classic v1 enterprise trap; otherwise it carries the OID and value under the MikroTik trap OID <code>1.3.6.1.4.1.14988.1.1.9.0.1</code>). See the <a href="../../diagnostics-monitoring-and-troubleshooting/snmp">SNMP guide</a> for the trap configuration.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>oid</strong> <code>string</code> — OID of the object the trap reports.</li>
+<li><strong>type</strong> <code>enum (integer | string | nullobj | obj-id | ip-address | counter32 | timeticks | unsigned) { integer:0x02, string:0x04, nullobj:0x05, obj-id:0x06, ip-address:0x40, counter32:0x41, timeticks:0x43, unsigned:0x47 }</code> — SNMP type of the value. Accepted values: - <code>integer</code> - A signed integer. - <code>string</code> - An octet string. - <code>nullobj</code> - A NULL value. - <code>obj-id</code> - An object identifier. - <code>ip-address</code> - An IP address. - <code>counter32</code> - A 32-bit counter. - <code>timeticks</code> - A time in hundredths of a second. - <code>unsigned</code> - An unsigned integer.</li>
+<li><strong>value</strong> <code>string</code> — Value to send, in the format the selected <code>type</code> expects.</li>
+</ul>
+<hr />
+<h1 id="special-login">special-login</h1>
+<blockquote>
+<p>RouterOS directory reference for /special-login.</p>
+</blockquote>
+<hr />
+<h2 id="special-login_1">special-login</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>user</strong> <code>enum</code></li>
+<li><strong>port</strong> <code>enum</code></li>
+<li><strong>channel</strong> <code>num</code></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

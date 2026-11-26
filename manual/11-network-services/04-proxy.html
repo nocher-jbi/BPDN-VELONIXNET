@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proxy · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Network Services</p>
+      <h1 id="proxy">Proxy</h1>
+<h1 id="proxy_1">Proxy</h1>
+<blockquote>
+<p>RouterOS has two web proxies: the web proxy forwards, filters and caches the web requests of clients on your network, and the reverse proxy makes web servers behind the router reachable over HTTPS by host name.</p>
+</blockquote>
+<h1 id="proxy_2">Proxy</h1>
+<p>A proxy accepts a request from a client and connects to the server on the client's behalf. RouterOS has two proxies for web traffic, and they work in opposite directions:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Proxy</th>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">Clients</th>
+<th style="text-align: left;">Servers</th>
+<th style="text-align: left;">Use it to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="./web-proxy">Web proxy</a></td>
+<td style="text-align: left;"><code>/ip/proxy</code></td>
+<td style="text-align: left;">On your network</td>
+<td style="text-align: left;">On the internet</td>
+<td style="text-align: left;">Filter and cache the web requests of your users, or send them through another proxy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./reverse-proxy">Reverse proxy</a></td>
+<td style="text-align: left;"><code>/ip/reverse-proxy</code></td>
+<td style="text-align: left;">On the internet</td>
+<td style="text-align: left;">Behind the router</td>
+<td style="text-align: left;">Make web servers behind the router reachable over HTTPS by host name.</td>
+</tr>
+</tbody>
+</table>
+<p>For applications other than web browsers, RouterOS also has a <a href="../socks">SOCKS proxy</a> in <code>/ip/socks</code>.</p>
+<hr />
+<h1 id="web-proxy">Web Proxy</h1>
+<blockquote>
+<p>The RouterOS web proxy fetches web content for the clients on your network. It filters requests by host name, path and method, caches plain HTTP content, sends requests through a parent proxy, and works as a regular...</p>
+</blockquote>
+<h1 id="web-proxy_1">Web Proxy</h1>
+<p><strong>Sub-menu:</strong> <code>/ip/proxy</code></p>
+<p>The web proxy accepts web requests from the clients on your network and fetches the content from the servers for them. Use it to:</p>
+<ul>
+<li>Allow, deny or redirect requests by client, host name, path or HTTP method.</li>
+<li>Cache plain HTTP content on the router, in RAM or on a disk.</li>
+<li>Send the requests through another proxy, the parent proxy.</li>
+</ul>
+<p>Clients use the proxy in one of two ways. A regular proxy client, for example a browser with proxy settings, sends all its web requests to the proxy, HTTP and HTTPS. In transparent mode, a firewall rule redirects the plain HTTP connections of the clients to the proxy, and the clients need no settings.</p>
+<p>HTTPS content is encrypted between the client and the server, so the proxy only relays it. The router can allow or deny an HTTPS connection by host name, address and port, but it cannot see the path of the request or cache the content, and it cannot take HTTPS connections in transparent mode. Filtering by path and caching work for plain HTTP only.</p>
+<p>The web proxy is disabled by default. It is not available in the <code>home</code> and <code>basic</code> <a href="../../system-information-and-utilities/device-mode">device modes</a>.</p>
+<h2 id="set-up-a-regular-proxy">Set up a regular proxy</h2>
+<p>Enable the proxy:</p>
+<pre><code class="language-ros">/ip/proxy/set enabled=yes
+</code></pre>
+<p>The proxy listens on TCP port 8080 on all IPv4 and IPv6 addresses of the router. To use other ports, set <code>port</code>, for example <code>port=8080,3128</code>.</p>
+<p>In the proxy settings of the browser or the operating system, enter the address of the router, for example <code>192.168.88.1</code>, and port 8080, for HTTP and for HTTPS. To test the proxy from a computer with curl:</p>
+<pre><code class="language-bash">curl -x http://192.168.88.1:8080 -I http://example.com/
+</code></pre>
+<h3 id="allow-only-your-clients">Allow only your clients</h3>
+<p>A proxy that anyone can reach is an open proxy: others can send their traffic through it and hide where it comes from. The default firewall configuration drops connections to the router that do not come from the LAN, and this also protects the proxy. If your firewall accepts connections from other networks, drop the proxy connections that do not come from the LAN, for IPv4 and IPv6:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input protocol=tcp dst-port=8080 in-interface-list=!LAN action=drop comment=&quot;web proxy: LAN only&quot;
+/ipv6/firewall/filter/add chain=input protocol=tcp dst-port=8080 in-interface-list=!LAN action=drop comment=&quot;web proxy: LAN only&quot;
+</code></pre>
+<p>Move the rules above any rule that accepts these connections.</p>
+<p>The proxy opens HTTPS tunnels (the <code>CONNECT</code> method) to any port. To allow tunnels only to the HTTPS port 443:</p>
+<pre><code class="language-ros">/ip/proxy/access/add method=CONNECT dst-port=!443 action=deny
+</code></pre>
+<h2 id="set-up-a-transparent-proxy">Set up a transparent proxy</h2>
+<p>In transparent mode, a destination NAT rule redirects the HTTP connections of the clients to the proxy port, and the clients need no proxy settings:</p>
+<pre><code class="language-ros">/ip/proxy/set enabled=yes
+/ip/firewall/nat/add chain=dstnat protocol=tcp dst-port=80 in-interface-list=LAN action=redirect to-ports=8080 comment=&quot;transparent web proxy&quot;
+</code></pre>
+<p>The proxy connects to the host named in the request (the <code>Host</code> header), not to the address the client connected to.</p>
+<p>Transparent mode works for plain HTTP only. Do not redirect HTTPS (port 443) to the proxy: the proxy does not accept TLS connections, and the redirected HTTPS connections fail.</p>
+<p>The same proxy serves regular and transparent clients at the same time.</p>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p><code>/ip/proxy/monitor</code> shows whether the proxy runs, its open connections, and how many requests it answered from the cache (<code>hits</code>):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/proxy/monitor once
+                 status: running
+                 uptime: 35s
+     client-connections: 0
+     server-connections: 5
+               requests: 313
+                   hits: 69
+             cache-used: 0KiB
+         total-ram-used: 0KiB
+  received-from-servers: 10090KiB
+        sent-to-clients: 12126KiB
+   hits-sent-to-clients: 1920KiB
+</code></pre>
+<p><code>/ip/proxy/connections/print</code> lists the open connections: <code>C</code> for connections from clients and <code>S</code> for connections to servers.</p>
+<p>To log every request, add a logging rule for the <code>web-proxy</code> topic:</p>
+<pre><code class="language-ros">/system/logging/add topics=web-proxy,!debug
+</code></pre>
+<p>Each request is logged with the address of the client, the method, the URL, the action of the access list, and whether the proxy answered from the cache:</p>
+<pre><code class="language-text">web-proxy,account 192.168.88.10 GET http://example.com/  action=allow cache=MISS
+web-proxy,account 192.168.88.10 CONNECT example.com:443  action=allow cache=MISS
+</code></pre>
+<p>Without <code>!debug</code>, the log also shows the headers of every request and response.</p>
+<p>Common problems:</p>
+<ul>
+<li>The browser shows <code>ERROR: Forbidden</code> and <code>Access Denied</code>: an access rule with <code>action=deny</code> matched. The <code>hits</code> column of <code>/ip/proxy/access/print</code> shows which rule.</li>
+<li>HTTPS sites do not open in transparent mode: transparent mode works for HTTP only. Redirect only port 80.</li>
+<li><code>ERROR: Gateway Timeout</code>: the proxy could not reach the server or the parent proxy. The page shows the reason, for example <code>Operation timed out</code>.</li>
+<li>Nothing is answered from the cache: most sites use HTTPS, which the proxy cannot cache, and many HTTP responses are not cacheable. The conditions are listed in the cache section.</li>
+</ul>
+<h2 id="filter-requests">Filter requests</h2>
+<p>The access list <code>/ip/proxy/access</code> decides which requests the proxy serves. The router checks the rules from the top down, and the first rule that matches decides. A request that matches no rule is allowed. A rule matches when all its matchers match, and a rule without matchers matches every request.</p>
+<p>Host names and paths match as follows:</p>
+<ul>
+<li>A value must match the whole host name or path. <code>dst-host=example.com</code> does not match <code>www.example.com</code>.</li>
+<li><code>*</code> matches any number of characters and <code>?</code> matches one character. <code>dst-host=*.example.com</code> matches all hosts in <code>example.com</code>, but not <code>example.com</code> itself.</li>
+<li>Host names match regardless of case.</li>
+<li><code>path</code> starts with <code>/</code> and includes the query string. <code>path=*.mp3</code> matches <code>/music/song.mp3</code>, but not <code>/music/song.mp3?id=1</code>.</li>
+<li>A value that starts with <code>:</code> is a regular expression, and it matches any part of the value: <code>dst-host=:ads</code> matches every host name that contains <code>ads</code>. Use <code>^</code> and <code>$</code> to match the start and the end.</li>
+<li>HTTPS requests have a host name and a port, but no path, so <code>path</code> rules never match them.</li>
+</ul>
+<p>Deny a site and all its subdomains:</p>
+<pre><code class="language-ros">/ip/proxy/access
+add dst-host=example.com action=deny
+add dst-host=*.example.com action=deny
+</code></pre>
+<p>Deny downloads of some file types:</p>
+<pre><code class="language-ros">/ip/proxy/access
+add path=*.exe action=deny
+add path=*.zip action=deny
+</code></pre>
+<p>Deny a site for one network only:</p>
+<pre><code class="language-ros">/ip/proxy/access/add src-address=192.168.88.0/24 dst-host=*.example.net action=deny
+</code></pre>
+<p>Allow only some sites, and deny all others:</p>
+<pre><code class="language-ros">/ip/proxy/access
+add dst-host=*.example.com action=allow
+add action=deny
+</code></pre>
+<p>Instead of denying a request, the proxy can redirect the browser to another page. The client gets an HTTP 307 redirect to the URL in <code>action-data</code>:</p>
+<pre><code class="language-ros">/ip/proxy/access/add dst-host=*.example.net action=redirect action-data=http://intranet.example.com/blocked.html
+</code></pre>
+<h3 id="error-page">Error page</h3>
+<p>The proxy answers a denied request with an error page (HTTP 403) that names <code>cache-administrator</code> as the contact, and it uses the same page for its other errors. To change the page, write the default template to the router's files:</p>
+<pre><code class="language-ros">/ip/proxy/reset-html
+</code></pre>
+<p>This creates <code>webproxy/error.html</code>. Edit the file or replace it with your own HTML, and the proxy uses the new page right away. The template can use these variables:</p>
+<ul>
+<li><code>$(status)</code> - The HTTP status, for example <code>Forbidden</code>.</li>
+<li><code>$(url)</code> - The requested URL.</li>
+<li><code>$(error)</code> - The reason, for example <code>Access Denied</code>.</li>
+<li><code>$(admin)</code> - The value of <code>cache-administrator</code>.</li>
+<li><code>$(signature)</code> - A line with the time and the proxy address.</li>
+</ul>
+<p><code>/ip/proxy/reset-html</code> restores the default page.</p>
+<h2 id="cache">Cache</h2>
+<p>The proxy stores the plain HTTP content it fetches and sends it to the next client that requests the same URL, without fetching it from the server again. The cache is on by default when the proxy runs, and it is in RAM.</p>
+<p><em>[gambar: Without a cached copy, the proxy fetches the file from the web server and sends it to the user; with a cached copy, it answers the user from the cache]</em></p>
+<p>The proxy stores a response when all of these are true:</p>
+<ul>
+<li>The request uses the <code>GET</code> method, and the response has status 200 (OK) or 301 (Moved Permanently). Other responses, such as 302 redirects and 404 errors, are not stored.</li>
+<li>The response has a <code>Last-Modified</code> or an <code>ETag</code> header, and no <code>Expires</code> header.</li>
+<li>The response is not marked <code>Cache-Control: no-store</code> or <code>Cache-Control: private</code>.</li>
+<li>The response is not larger than <code>max-cache-object-size</code> (2048 KiB by default).</li>
+<li>No <code>deny</code> rule in <code>/ip/proxy/cache</code> matches the request.</li>
+</ul>
+<p>The proxy answers from the cache without asking the server when the stored object has a <code>Last-Modified</code> header and its URL has no query string (<code>?</code>). For the other stored objects, it asks the server on every request whether the object has changed.</p>
+<p>Most web content is sent over HTTPS, and much of the rest is created for each request, so the share of the traffic the cache can answer is usually small.</p>
+<p>A response from the cache has the header <code>X-Cache: HIT</code>. The router also marks its packets with DSCP 4 (<code>cache-hit-dscp</code>), so you can match them in firewall and queue rules. The proxy does not store <code>Set-Cookie</code> headers, so a client never gets the cookies of another client.</p>
+<h3 id="cache-size-and-storage">Cache size and storage</h3>
+<p>With the default <code>max-cache-size=unlimited</code>, the RAM cache can use most of the free memory of the router. On a router that runs other services, set a limit in KiB, for example 64 MiB:</p>
+<pre><code class="language-ros">/ip/proxy/set max-cache-size=65536
+</code></pre>
+<p>To keep the cache on a disk, set <code>cache-on-disk=yes</code> and a path on the disk, for example on the USB disk <code>usb1</code>:</p>
+<pre><code class="language-ros">/ip/proxy/set cache-on-disk=yes cache-path=usb1/web-proxy
+</code></pre>
+<p>The cache is stored as a <code>web-proxy store</code> in <code>/file</code>. The directories in a non-existent path are created automatically when the cache path is set, including any intermediate directories:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /ip/proxy/set cache-path=usb1/cache-n-db/proxy/
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /file/print
+ # NAME                                              TYPE                             SIZE CREATION-TIME
+ 0 skins                                             directory                             2015-03-02 18:56:23
+ 1 sys-note.txt                                      .txt file                        23   2015-07-03 11:40:48
+ 2 usb1                                             disk                                  2015-07-03 11:35:05
+ 3 usb1/lost+found                                  directory                             2015-07-03 11:34:56
+ 4 usb1/cache-n-db                                  directory                             2015-07-03 11:41:54
+ 5 usb1/cache-n-db/proxy                            web-proxy store                       2015-07-03 11:42:09
+</code></pre>
+<p>To use the proxy only for filtering, turn the cache off with <code>max-cache-size=none</code>.</p>
+<p>Changing any proxy setting clears the cache. To clear it yourself, run <code>/ip/proxy/clear-cache</code>.</p>
+<h3 id="exclude-sites-from-the-cache">Exclude sites from the cache</h3>
+<p>The cache list <code>/ip/proxy/cache</code> works like the access list: the first matching rule decides, and <code>action=deny</code> stops the proxy from storing the responses. A request that matches no rule is cached. For example, to never cache the pages of one site:</p>
+<pre><code class="language-ros">/ip/proxy/cache/add dst-host=*.example.com action=deny
+</code></pre>
+<h3 id="see-what-is-in-the-cache">See what is in the cache</h3>
+<p><code>/ip/proxy/cache-contents/print</code> lists the stored objects with their URL and size. Remove an entry to make the proxy fetch it again. The counters in <code>/ip/proxy/lookups</code> and <code>/ip/proxy/inserts</code> show how many requests the cache answered and how many objects it stored.</p>
+<h2 id="parent-proxy">Parent proxy</h2>
+<p>To send the requests through another proxy, set its address and port:</p>
+<pre><code class="language-ros">/ip/proxy/set parent-proxy=192.0.2.10 parent-proxy-port=3128
+</code></pre>
+<p>All requests then go through the parent proxy, HTTP and HTTPS. When the parent proxy cannot be reached, the client gets an error page: the proxy does not connect to the server itself.</p>
+<p>The direct list <code>/ip/proxy/direct</code> names the requests that go to the server without the parent proxy. The first matching rule decides: <code>action=allow</code> sends the request directly to the server, and <code>action=deny</code> sends it through the parent proxy. A request that matches no rule goes through the parent proxy. For example, to reach the servers of one domain directly:</p>
+<pre><code class="language-ros">/ip/proxy/direct/add dst-host=*.example.com action=allow
+</code></pre>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="headers">Headers</h3>
+<p>The proxy adds these headers to the requests it sends to servers:</p>
+<ul>
+<li><code>Via</code> - The proxy, for example <code>1.1 ::ffff:192.168.88.1 (Mikrotik HttpProxy)</code>.</li>
+<li><code>X-Forwarded-For</code> - The address of the client. Each proxy on the way adds its client to the list.</li>
+<li><code>X-Proxy-ID</code> - An identifier of the proxy.</li>
+</ul>
+<p>With <code>anonymous=yes</code>, the proxy adds none of them, so servers do not learn the addresses of the clients.</p>
+<p>Responses from the cache get the header <code>X-Cache: HIT</code>. A stored object the proxy checked with the server gets <code>X-Cache-Lookup: HIT</code>.</p>
+<h3 id="http-methods">HTTP methods</h3>
+<p>The <code>method</code> matcher of the access, cache and direct lists takes the HTTP methods of <a href="https://www.rfc-editor.org/rfc/rfc9110#name-methods">RFC 9110</a>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Use</th>
+<th style="text-align: left;">In the proxy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>GET</code></td>
+<td style="text-align: left;">Get a page or file.</td>
+<td style="text-align: left;">The only method whose responses the proxy caches.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>HEAD</code></td>
+<td style="text-align: left;">Get only the headers of a page or file.</td>
+<td style="text-align: left;">Always sent to the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;">Send data, for example a form, to the server.</td>
+<td style="text-align: left;">Always sent to the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>PUT</code>, <code>DELETE</code></td>
+<td style="text-align: left;">Store or delete a file on the server.</td>
+<td style="text-align: left;">Sent to the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>OPTIONS</code>, <code>TRACE</code></td>
+<td style="text-align: left;">Ask the server which methods it supports, or echo the request back.</td>
+<td style="text-align: left;">Sent to the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>CONNECT</code></td>
+<td style="text-align: left;">Open a tunnel through the proxy, used for HTTPS.</td>
+<td style="text-align: left;">The proxy relays the tunnel. Rules can match its host name, address and port, but not a path.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ftp">FTP</h3>
+<p>Regular proxy clients can also request <code>ftp://</code> URLs. The proxy fetches them from the FTP server and returns directory listings as HTML pages.</p>
+<h3 id="connection-limits">Connection limits</h3>
+<p><code>max-client-connections</code> limits the number of client connections, 600 by default. When the limit is reached, new requests wait until a connection is free.</p>
+<p>All properties are described in the <a href="../../cli-reference/ip/proxy/"><code>/ip/proxy</code></a> CLI reference.</p>
+<hr />
+<h1 id="reverse-proxy">Reverse Proxy</h1>
+<blockquote>
+<p>The RouterOS reverse proxy accepts HTTPS connections, selects a rule by the TLS server name and forwards the requests as HTTP to a server or container app behind the router.</p>
+</blockquote>
+<h1 id="reverse-proxy_1">Reverse Proxy</h1>
+<p><strong>Sub-menu:</strong> <code>/ip/reverse-proxy</code></p>
+<p>The reverse proxy makes web servers behind the router reachable over HTTPS by host name, without a destination NAT rule for each server. The router accepts HTTPS connections on port 443 and selects a rule by the host name the client requests. It terminates TLS with the certificate of that rule and forwards the requests as HTTP to the server of the rule. Several servers can share one public address and port, each with its own host name and certificate.</p>
+<p>RouterOS also adds rules for container apps automatically.</p>
+<p>All rule properties are described in the <a href="../../cli-reference/ip/reverse-proxy"><code>/ip/reverse-proxy</code></a> CLI reference.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The reverse proxy is not supported on SMIPS devices (hAP lite, hAP lite TC and hAP mini).</p>
+</div>
+<h2 id="configuration-example">Configuration example</h2>
+<p>This example makes a web server at <code>192.168.88.10</code>, port 8080, reachable as <code>https://nas.example.com</code>.</p>
+<p>Prerequisites:</p>
+<ul>
+<li>The DNS name <code>nas.example.com</code> resolves to the public address of the router.</li>
+<li>You have a certificate and private key for <code>nas.example.com</code>, for example from a public certificate authority, in the files <code>nas.crt</code> and <code>nas.key</code>.</li>
+<li>The web server accepts plain HTTP on port 8080.</li>
+</ul>
+<p>Upload the two files to the router and import them as a certificate named <code>nas</code>:</p>
+<pre><code class="language-ros">/certificate/import file-name=nas.crt name=nas passphrase=&quot;&quot;
+/certificate/import file-name=nas.key passphrase=&quot;&quot;
+</code></pre>
+<p>Add the rule:</p>
+<pre><code class="language-ros">/ip/reverse-proxy/add sni=nas.example.com ip-address=192.168.88.10 port=8080 certificate=nas
+</code></pre>
+<p>The default firewall configuration drops connections to the router that do not come from the LAN. Accept HTTPS in the input chain, before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input protocol=tcp dst-port=443 in-interface-list=WAN action=accept comment=&quot;reverse proxy&quot; place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>For more about input rules, see <a href="../../firewall-and-quality-of-service/firewall/filter">Filter</a>.</p>
+<h2 id="rule-selection">Rule selection</h2>
+<p>The router compares the server name the client sends in the TLS handshake (Server Name Indication, SNI) with the <code>sni</code> of each enabled rule. The name must match exactly: a wildcard such as <code>*.example.com</code> matches nothing. When no rule matches, the router closes the connection.</p>
+<h2 id="certificates">Certificates</h2>
+<p>The router presents the certificate of the matching rule to the client. When a rule has <code>certificate=none</code>, the router presents the certificate of the <code>reverse-proxy</code> service in <a href="../../system-information-and-utilities/services"><code>/ip/service</code></a> instead. Set the service certificate when one certificate, for example a wildcard certificate, covers the host names of several rules. When neither the rule nor the service has a certificate, the TLS handshake fails.</p>
+<h2 id="requests-to-the-server">Requests to the server</h2>
+<p>The router connects to the server from its own address and forwards each request as HTTP/1.1. It uses plain HTTP also when the server port is 443, so the server must accept HTTP on that port.</p>
+<p>The router keeps the <code>Host</code> header of the request and adds headers that tell the server about the original client:</p>
+<ul>
+<li><code>X-Forwarded-For</code> and <code>X-Real-Ip</code> - The address of the client.</li>
+<li><code>X-Forwarded-Proto</code> - <code>https</code>.</li>
+<li><code>X-Forwarded-Host</code> - The host name the client requested.</li>
+<li><code>Forwarded</code> - The address of the router, the address of the client, the protocol and the host name, in the format of RFC 7239.</li>
+</ul>
+<h3 id="servers-in-a-vrf">Servers in a VRF</h3>
+<p>The router connects to the server in the VRF of the rule, <code>main</code> by default. When the server is reachable only through a <a href="../../user-guides/routing-and-networking-protocols/vrf">VRF</a>, set the <code>vrf</code> of the rule to that VRF. When the server is not reachable in the VRF of the rule, the client receives a <code>502 Bad Gateway</code> response.</p>
+<p>The <code>vrf</code> of a rule does not change where the reverse proxy accepts clients. The reverse proxy listens in the VRF of the <code>reverse-proxy</code> service in <a href="../../system-information-and-utilities/services"><code>/ip/service</code></a>. The two settings are independent: a client that connects in one VRF can be forwarded to a server in another.</p>
+<h2 id="service-port">Service port</h2>
+<p>The reverse proxy listens on the port of the <code>reverse-proxy</code> service in <a href="../../system-information-and-utilities/services"><code>/ip/service</code></a>, 443 by default. The port is open only while at least one enabled rule exists.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The HTTPS web service <code>www-ssl</code> also uses port 443 by default. When both services are enabled on the same port, the one that starts first gets the port, and the other one shows <code>cannot bind to port 443: Address in use</code>. After a reboot, <code>www-ssl</code> gets the port, so the reverse proxy stops working even if it worked before the reboot.</p>
+<p>Keep <code>www-ssl</code> disabled, which is the default, or move it to another port:</p>
+<pre><code class="language-ros">/ip/service/set www-ssl port=8443
+</code></pre>
+</div>
+<h2 id="container-apps">Container apps</h2>
+<p><a href="../../containers/apps">Container apps</a> with <code>use-https=yes</code>, the default, and a web interface get a dynamic reverse proxy rule, shown with the <code>D</code> flag. The <code>sni</code> of the rule is the host name of the app URL (<code>ui-url</code>), and the rule forwards to the web port of the app. The rule uses the certificate set in <code>/app/settings</code>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>The reverse proxy writes its messages to the log with the <code>rproxy</code> topic:</p>
+<pre><code class="language-ros">/log/print where topics~&quot;rproxy&quot;
+</code></pre>
+<ul>
+<li><code>no matching rule for &lt;name&gt;, client: &lt;address&gt;:&lt;port&gt;</code> - The client requested a host name that no enabled rule has as its <code>sni</code>.</li>
+<li><code>certificate missing for rule &lt;sni&gt;</code> - Neither the rule nor the <code>reverse-proxy</code> service has a certificate.</li>
+</ul>
+<p>When the reverse proxy does not accept connections at all, check that at least one rule is enabled. Then check the <code>reverse-proxy</code> service in <code>/ip/service/print</code> for a <code>cannot bind to port</code> comment, which means that another service, typically <code>www-ssl</code>, uses the same port.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

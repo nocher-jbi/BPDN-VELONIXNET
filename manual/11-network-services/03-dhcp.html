@@ -1,0 +1,1511 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHCP · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Network Services</p>
+      <h1 id="dhcp">DHCP</h1>
+<h1 id="dhcp_1">DHCP</h1>
+<blockquote>
+<p>How DHCP and DHCPv6 work in RouterOS: address assignment, leases and renewal, conflict checks, client identification, options and relays, and which RouterOS component to use: the DHCP client, server and relay for...</p>
+</blockquote>
+<h1 id="dhcp_2">DHCP</h1>
+<p>Dynamic Host Configuration Protocol (DHCP) assigns IP addresses and other network settings to hosts automatically, so they do not need to be configured by hand. A DHCP server manages a range of addresses and leases them to clients for a limited time, together with settings such as the subnet mask, default gateway and DNS servers.</p>
+<p>RouterOS implements DHCP for IPv4 according to RFC 2131 and DHCPv6 according to RFC 8415, with a client, a server and a relay for each.</p>
+<h2 id="routeros-components">RouterOS components</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Component</th>
+<th style="text-align: left;">Menu</th>
+<th style="text-align: left;">Use it to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="./client">DHCP client</a></td>
+<td style="text-align: left;"><code>/ip/dhcp-client</code></td>
+<td style="text-align: left;">Get an IPv4 address and network settings for an interface, for example from an ISP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./server">DHCP server</a></td>
+<td style="text-align: left;"><code>/ip/dhcp-server</code></td>
+<td style="text-align: left;">Assign IPv4 addresses and network settings to hosts on a local network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./relay">DHCP relay</a></td>
+<td style="text-align: left;"><code>/ip/dhcp-relay</code>, <code>/ipv6/dhcp-relay</code></td>
+<td style="text-align: left;">Forward client requests to a DHCP or DHCPv6 server in another network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./dhcpv6-client">DHCPv6 client</a></td>
+<td style="text-align: left;"><code>/ipv6/dhcp-client</code></td>
+<td style="text-align: left;">Get IPv6 addresses or a delegated IPv6 prefix, for example from an ISP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="./dhcpv6-server">DHCPv6 server</a></td>
+<td style="text-align: left;"><code>/ipv6/dhcp-server</code></td>
+<td style="text-align: left;">Delegate IPv6 prefixes or assign IPv6 addresses to clients.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-a-client-gets-an-address">How a client gets an address</h2>
+<p>A host without an IP address cannot send or receive ordinary unicast IP traffic, so the first DHCP messages are broadcasts. Clients send from UDP port 68 to port 67, where the servers listen. Getting an address takes four messages (RFC 2131, section 3.1):</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant C as DHCP client
+    participant S as DHCP server
+    C-&gt;&gt;S: DHCPDISCOVER (broadcast)
+    S-&gt;&gt;C: DHCPOFFER (offered address and settings)
+    C-&gt;&gt;S: DHCPREQUEST (broadcast, names the chosen server)
+    S-&gt;&gt;C: DHCPACK (address, lease time and settings)
+</code></pre>
+<ol>
+<li>The client broadcasts a DHCPDISCOVER message to find the servers on the network.</li>
+<li>Each server that can serve the client replies with a DHCPOFFER message that contains a proposed IP address and settings.</li>
+<li>The client chooses one offer and broadcasts a DHCPREQUEST message that identifies the chosen server. The other servers see that their offers were not accepted and return the offered addresses to their pools.</li>
+<li>The chosen server confirms with a DHCPACK message, and the client configures the address. If the address is no longer available, the server replies with DHCPNAK instead, and the client starts over.</li>
+</ol>
+<p>Until the client has configured its address, the server either broadcasts its replies or sends them as unicast to the client's MAC address and the offered IP address. A client that cannot receive such unicast replies sets the broadcast flag in its messages, and the server then broadcasts its replies (RFC 2131, section 4.1). In RouterOS, the <code>use-broadcast</code> property of the DHCP client controls this flag, and the <code>always-broadcast</code> property of the DHCP server makes the server broadcast its replies regardless of the flag.</p>
+<h3 id="address-conflict-checks">Address conflict checks</h3>
+<p>Both sides check that an address is free before it is used (RFC 2131, section 2.2):</p>
+<ul>
+<li>The server should probe an address, for example with an ICMP echo request, before it offers the address. When <code>conflict-detection</code> is enabled (the default), the RouterOS DHCP server sends an ARP request and an ICMP echo request for the address before its offer. If another host answers, the server logs a warning, keeps the address as a lease with the <code>conflict</code> status for the lease time, and offers another free address from the pool. The <code>check-status</code> lease command frees the address when the other host no longer answers. Addresses of static leases are not probed and are handed out even when another host uses them.</li>
+<li>The client should check the offered address, for example with ARP, before it configures the address. If another host already uses the address, the client sends a DHCPDECLINE message and starts over. The RouterOS DHCP server shows leases that a client declined with the <code>declined</code> status; this does not happen in normal operation.</li>
+</ul>
+<h2 id="leases-and-renewal">Leases and renewal</h2>
+<p>Addresses are leased, not assigned permanently. The server tells the client how long the lease lasts, and the client must extend the lease before it expires to keep the address. RFC 2131 (section 4.4.5) defines two timers for this, which the server can also set explicitly:</p>
+<ul>
+<li><strong>T1</strong>, by default 50% of the lease time: the client sends a DHCPREQUEST message as unicast to the server that issued the lease (renewing). When the server acknowledges it, the lease is extended.</li>
+<li><strong>T2</strong>, by default 87.5% of the lease time: if the server has not answered, the client broadcasts a DHCPREQUEST message, so any server can extend the lease (rebinding).</li>
+<li>When the lease expires without being extended, the client stops using the address and starts over with a DHCPDISCOVER message.</li>
+</ul>
+<p>For example, with the default lease time of the RouterOS DHCP server, 30 minutes, a client that uses the default timers renews its lease after 15 minutes and starts rebinding after 26 minutes and 15 seconds. The <code>status</code> property of the RouterOS DHCP client shows which of these stages the client is in.</p>
+<p>A client that no longer needs its address can return it early with a DHCPRELEASE message. The <code>release</code> command of the RouterOS DHCP client does this.</p>
+<h2 id="client-identification">Client identification</h2>
+<p>The server needs to recognize a client again when the client renews its lease, or when it asks for an address after a restart. A client is identified by the client identifier option (option 61) when it sends one, and otherwise by its hardware (MAC) address (RFC 2131, section 4.2).</p>
+<p>The RouterOS DHCP server uses both to identify clients by default (<code>dynamic-lease-identifiers</code>), and a static lease can be bound to a MAC address or to a client identifier. The RouterOS DHCP client sends a client identifier based on its MAC address by default. It can instead send one based on the router's DHCP Unique Identifier (DUID), as described in RFC 4361, which is the same identifier the DHCPv6 client uses.</p>
+<h2 id="options">Options</h2>
+<p>Apart from the IP address itself, all settings are carried in options, each identified by a number (RFC 2132). Common options:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Code</th>
+<th style="text-align: left;">Option</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Subnet mask</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Router (default gateway)</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">DNS servers</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">Host name</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">Domain name</td>
+</tr>
+<tr>
+<td style="text-align: right;">42</td>
+<td style="text-align: left;">NTP servers</td>
+</tr>
+<tr>
+<td style="text-align: right;">43</td>
+<td style="text-align: left;">Vendor-specific information</td>
+</tr>
+<tr>
+<td style="text-align: right;">51</td>
+<td style="text-align: left;">Lease time</td>
+</tr>
+<tr>
+<td style="text-align: right;">54</td>
+<td style="text-align: left;">Server identifier</td>
+</tr>
+<tr>
+<td style="text-align: right;">55</td>
+<td style="text-align: left;">Parameter request list</td>
+</tr>
+<tr>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">Vendor class identifier</td>
+</tr>
+<tr>
+<td style="text-align: right;">61</td>
+<td style="text-align: left;">Client identifier</td>
+</tr>
+<tr>
+<td style="text-align: right;">82</td>
+<td style="text-align: left;">Relay agent information</td>
+</tr>
+<tr>
+<td style="text-align: right;">121</td>
+<td style="text-align: left;">Classless static routes</td>
+</tr>
+</tbody>
+</table>
+<p>A client lists the options it wants in the parameter request list (option 55), and the server replies with values for those options. When the server sends classless static routes (option 121), the client ignores the router option (option 3), so the default route must also be included in option 121 (RFC 3442). The RouterOS DHCP client follows this rule by default; with <code>add-default-route=special-classless</code> it installs both the classless routes and the default route from option 3.</p>
+<p>The RouterOS DHCP server sends the settings of the matching network (<code>/ip/dhcp-server/network</code>), and you can define additional custom options, see <a href="./server#dhcp-options">DHCP options</a>.</p>
+<h2 id="dhcp-relay">DHCP relay</h2>
+<p>DHCP broadcasts do not cross routers, so a DHCP server only hears clients on the networks it is directly connected to. To serve other networks, a DHCP relay runs on a router in the client's network. The relay receives the client broadcasts and forwards them as unicast messages to one or more DHCP servers (RFC 2131, section 4.1).</p>
+<p>The relay writes its own address on the client's network into the gateway address field (<code>giaddr</code>) of each forwarded message, and the server sends its reply back to that address. A relay can also add the relay agent information option (option 82, RFC 3046) to tell the server which port or circuit the request came from.</p>
+<p>In RouterOS, the relay writes its <code>local-address</code>, or an address of its interface when <code>local-address</code> is not set, into <code>giaddr</code>. A DHCP server answers relayed requests when its <code>relay</code> property matches that address, or is set to <code>255.255.255.255</code> to accept any relay, and assigns addresses from its own address pool. For a complete example, see <a href="./relay">DHCP relay</a>.</p>
+<h2 id="dhcpv6">DHCPv6</h2>
+<p>DHCPv6 (RFC 8415) serves the same purpose for IPv6, but works differently in several ways:</p>
+<ul>
+<li>Clients send their messages from their link-local address to the All_DHCP_Relay_Agents_and_Servers multicast address, <code>ff02::1:2</code>. Clients use UDP port 546 and servers use port 547.</li>
+<li>A client gets its configuration with Solicit, Advertise, Request and Reply messages. With Rapid Commit, Solicit and Reply are enough.</li>
+<li>Each device has a DHCP Unique Identifier (DUID), and each identity association of a client has an identity association identifier (IAID). The server identifies a client binding by DUID and IAID, not by MAC address.</li>
+<li>A client can request addresses (IA_NA) and delegated prefixes (IA_PD). With prefix delegation, a router receives a whole prefix, for example a /56 or /60 from an ISP, and uses it to number its own networks.</li>
+<li>DHCPv6 does not provide a default gateway. Hosts learn their default router from router advertisements (RFC 4861). The managed (M) and other configuration (O) flags in the router advertisements tell hosts whether to use DHCPv6 for addresses or only for other settings. In RouterOS, these flags are the <code>managed-address-configuration</code> and <code>other-configuration</code> properties of <a href="../../cli-reference/ipv6/nd/"><code>/ipv6/nd</code></a>. The RouterOS DHCPv6 client can optionally add a default route towards the server with <code>add-default-route</code>.</li>
+</ul>
+<p>For address autoconfiguration without DHCPv6, see <a href="../../getting-started/networking-fundamentals/ipv6-neighbor-discovery">IPv6 Neighbor Discovery</a>. For prefix delegation over PPPoE, see <a href="../../virtual-private-networks/pppoe/ipv6-pd-over-ppp">IPv6 PD over PPP</a>.</p>
+<hr />
+<h1 id="dhcp-client">DHCP Client</h1>
+<blockquote>
+<p>The RouterOS DHCP client gets an IPv4 address and network settings for an interface from a DHCP server. This page explains what the client applies from a lease, the options it requests and sends, the routes it adds,...</p>
+</blockquote>
+<h1 id="dhcp-client_1">DHCP Client</h1>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-client</code></p>
+<p>The DHCP client gets an IPv4 address and network settings for an interface from a DHCP server. It is typically used on the interface that connects the router to an ISP or another upstream network, and it can be enabled on any Ethernet-like interface. For how the DHCP exchange, leases and renewal work, see <a href="./">DHCP concepts</a>.</p>
+<p>When the client gets a lease, it applies the received settings to the router:</p>
+<ul>
+<li>The IP address and netmask are added to the interface as a dynamic address.</li>
+<li>A dynamic default route through the received gateway, or the received classless static routes (option 121), are added to the routing table. The <code>add-default-route</code> property controls this.</li>
+<li>The received DNS servers are added to the dynamic servers of the DNS resolver (<code>use-peer-dns</code>), and the received NTP servers are added to the servers of the NTP client (<code>use-peer-ntp</code>).</li>
+</ul>
+<p>The client renews the lease before it expires. When the lease is lost or the client is disabled, the dynamic address and routes are removed.</p>
+<h2 id="configuration-examples">Configuration Examples</h2>
+<h3 id="simple-dhcp-client">Simple DHCP client</h3>
+<p>Add a DHCP client on the ether1 interface:</p>
+<pre><code class="language-ros">/ip/dhcp-client/add interface=ether1
+</code></pre>
+<p>Use <code>print detail</code> to see the lease the client got and the settings it received:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dhcp-client/print detail
+ 0   name=&quot;client1&quot; interface=ether1 add-default-route=yes default-route-distance=1
+     default-route-tables=default check-gateway=none use-peer-dns=yes use-peer-ntp=yes
+     allow-reconfigure=no use-broadcast=both dhcp-options=hostname,clientid
+     status=bound address=192.168.0.65/24 gateway=192.168.0.1 dhcp-server=192.168.0.1
+     primary-dns=192.168.0.1 primary-ntp=192.168.0.1 expires-after=9m44s
+</code></pre>
+<h2 id="dhcp-options">DHCP Options</h2>
+<p>The client asks the DHCP server for the following options:</p>
+<ul>
+<li>Option 1 - Subnet Mask.</li>
+<li>Option 3 - Gateway Addresses.</li>
+<li>Option 6 - DNS Server Addresses.</li>
+<li>Option 15 - Domain Name.</li>
+<li>Option 33 - Static Routes.</li>
+<li>Option 42 - NTP Server Addresses.</li>
+<li>Option 43 - Vendor Specific Information.</li>
+<li>Option 121 - Classless Static Routes.</li>
+<li>Option 138 - CAPWAP Access Controller Addresses.</li>
+</ul>
+<p>The client sends the options listed in its <code>dhcp-options</code> property, chosen from the options defined in <code>/ip/dhcp-client/option</code>. Three options are predefined:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: right;">Code</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">clientid_duid</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: left;">0xff$(CLIENT_DUID)</td>
+</tr>
+<tr>
+<td style="text-align: left;">clientid</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: left;">0x01$(CLIENT_MAC)</td>
+</tr>
+<tr>
+<td style="text-align: left;">hostname</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">$(HOSTNAME)</td>
+</tr>
+</tbody>
+</table>
+<p>By default, the client sends <code>hostname</code> and <code>clientid</code>: the router's identity as its hostname, and a client identifier based on the MAC address of the client interface. To identify the client by the router's DUID instead (RFC 4361), replace <code>clientid</code> with <code>clientid_duid</code> in <code>dhcp-options</code>. Option values use the same syntax as DHCP server options. The variables they can contain are listed in the <a href="../../cli-reference/ip/dhcp-client/option"><code>/ip/dhcp-client/option</code></a> reference.</p>
+<h2 id="properties">Properties</h2>
+<p>All properties, status values and commands of the DHCP client are described in the <a href="../../cli-reference/ip/dhcp-client/"><code>/ip/dhcp-client</code></a> CLI reference. The routes the client adds need more explanation.</p>
+<h3 id="routes-from-the-lease">Routes from the lease</h3>
+<p>The <code>add-default-route</code> property controls which of the received routes the client adds:</p>
+<ul>
+<li><code>yes</code> (default): the client adds the classless static routes (option 121) when the server sends them, and otherwise a default route through the received gateway (option 3). When option 121 is present, the gateway from option 3 is ignored, as RFC 3442 requires, so the server must include the default route in option 121.</li>
+<li><code>special-classless</code>: the client adds both the classless static routes and a default route through the received gateway. Use it when the server sends classless static routes without a default route, and the default route should still come from option 3.</li>
+<li><code>no</code>: the client adds no routes.</li>
+</ul>
+<p>The routes get the distance set in <code>default-route-distance</code> (1 by default) and go to the routing tables listed in <code>default-route-tables</code>. The <code>default</code> entry is the main routing table, or the VRF routing table when the client interface belongs to a VRF. An entry can also set its own distance, for example <code>default-route-tables=backup:5</code>.</p>
+<p>If another default route already exists, the route with the lower distance is used. When the distances are equal, both routes are active and traffic is shared between them (ECMP). Use <code>default-route-distance</code> to control which route is preferred, and <code>check-gateway</code> to stop using a route when its gateway does not respond.</p>
+<h2 id="script-examples">Script Examples</h2>
+<p>The variables a lease script receives are listed with the <code>script</code> property in the <a href="../../cli-reference/ip/dhcp-client/"><code>/ip/dhcp-client</code></a> CLI reference.</p>
+<h3 id="lease-script-example">Lease script example</h3>
+<p>This example adds a default route to the <code>WAN1</code> routing table through the received gateway, updates the route when the gateway changes, and removes it when the lease ends. Create the routing table first, then add the client with the script:</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Be aware that some variables might be reserved in specific menus and cannot be used there. For details, see <a href="../../developer-guides/scripting/#reserved-variable-names">reserved variable names</a>.</p>
+</div>
+<pre><code class="language-ros">/routing/table/add name=WAN1 fib
+/ip/dhcp-client/add interface=ether2 add-default-route=no script={
+    :local count [/ip/route/print count-only where comment=&quot;WAN1&quot;]
+    :if ($bound=1) do={
+        :if ($count = 0) do={
+            /ip/route/add gateway=$&quot;gateway-address&quot; comment=&quot;WAN1&quot; routing-table=WAN1
+        } else={
+            :if ($count = 1) do={
+                :local test [/ip/route/find where comment=&quot;WAN1&quot;]
+                :if ([/ip/route/get $test gateway] != $&quot;gateway-address&quot;) do={
+                    /ip/route/set $test gateway=$&quot;gateway-address&quot;
+                }
+            } else={
+                :error &quot;Multiple routes found&quot;
+            }
+        }
+    } else={
+        /ip/route/remove [find comment=&quot;WAN1&quot;]
+    }
+}
+</code></pre>
+<h3 id="using-received-option-43-to-set-the-acs-url">Using received option 43 to set the ACS URL</h3>
+<p>A DHCP server can send the URL of a TR-069 Auto Configuration Server (ACS) in the vendor-specific information option (option 43). The client script receives this option in the <code>vendor-specific</code> variable, so it can set the ACS URL of the TR-069 client when the lease is bound. The TR-069 client is a separate package.</p>
+<pre><code class="language-ros">/ip/dhcp-client/set [find interface=ether1] script={
+    :if ($bound=1) do={
+        /tr069-client/set acs-url=$&quot;vendor-specific&quot;
+    }
+}
+</code></pre>
+<h3 id="default-gateway-outside-the-leased-subnet">Default gateway outside the leased subnet</h3>
+<p>Some DHCP servers send a gateway (option 3) that is not in the leased subnet. For example, the server offers 192.168.88.100/24 and the gateway 172.16.1.1. The default route the client adds then stays inactive, because the gateway cannot be reached:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/route/print
+Flags: D - DYNAMIC; I - INACTIVE, A - ACTIVE; c - CONNECT, d - DHCP
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS      GATEWAY     DISTANCE
+DId 0.0.0.0/0        172.16.1.1         1
+DAc 192.168.88.0/24  ether1             0
+</code></pre>
+<p>To make the gateway reachable, add the leased address again as a /32 address with the gateway as its network. This creates a connected route to the gateway. Do it in the client script, which receives the leased address, the gateway and the interface:</p>
+<pre><code class="language-ros">/ip/dhcp-client/set [find interface=ether1] script={
+    /ip/address/add address=($&quot;lease-address&quot; . &quot;/32&quot;) network=$&quot;gateway-address&quot; interface=$interface
+}
+</code></pre>
+<p>This short script adds another address with every new lease. The following script keeps a single address and replaces it when the leased address or the gateway changes:</p>
+<pre><code class="language-ros">/ip/dhcp-client/set [find interface=ether1] script={
+    /ip/address {
+        :local ipId [find where comment=&quot;dhcpL address&quot;]
+        :if ($ipId != &quot;&quot;) do={
+            :if (!([get $ipId address] = ($&quot;lease-address&quot; . &quot;/32&quot;) &amp;&amp; [get $ipId network]=$&quot;gateway-address&quot;)) do={
+                remove $ipId
+                add address=($&quot;lease-address&quot; . &quot;/32&quot;) network=$&quot;gateway-address&quot; interface=$interface comment=&quot;dhcpL address&quot;
+            }
+        } else={
+            add address=($&quot;lease-address&quot; . &quot;/32&quot;) network=$&quot;gateway-address&quot; interface=$interface comment=&quot;dhcpL address&quot;
+        }
+    }
+}
+</code></pre>
+<hr />
+<h1 id="dhcp-server">DHCP Server</h1>
+<blockquote>
+<p>The RouterOS DHCP server assigns IPv4 addresses and network settings to clients from IP pools, with static leases, networks, DHCP options and option sets, option matchers, RADIUS support, rate limiting and rogue DHCP...</p>
+</blockquote>
+<h1 id="dhcp-server_1">DHCP Server</h1>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server</code></p>
+<p>The DHCP server assigns IPv4 addresses and network settings to clients on the networks the router serves. It leases addresses from an IP pool and sends the settings of the matching DHCP network: gateway, DNS servers, domain name, NTP and WINS servers, and other options. It can also hand out static leases bound to specific clients, and get leases from a RADIUS server. For how the DHCP exchange, leases and renewal work, see <a href="./">DHCP concepts</a>.</p>
+<p>A DHCP server needs:</p>
+<ul>
+<li>An IP address on the server interface. Without one, the server is shown as invalid.</li>
+<li>An IP pool with the addresses to hand out (<code>/ip/pool</code>). Do not include the router's own address in the pool.</li>
+<li>A DHCP network (<code>/ip/dhcp-server/network</code>) with the settings sent to clients in that subnet.</li>
+<li>The DHCP server itself (<code>/ip/dhcp-server</code>), which ties the interface to the pool.</li>
+</ul>
+<p>The <code>setup</code> command creates the pool, network and server in one step. The following configuration examples show both ways.</p>
+<p>Each interface can have one DHCP server for directly connected clients. More servers on the same interface are possible for requests that come through DHCP relays, one for each relay address (see the <code>relay</code> property).</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The DHCP server needs a real interface to receive raw Ethernet packets. When it runs on a bridge, the bridge needs at least one port that receives these packets; the server does not work correctly on an empty bridge.</p>
+</div>
+<h2 id="configuration-examples_1">Configuration Examples</h2>
+<h3 id="setup">Setup</h3>
+<p>The <code>setup</code> command creates the IP pool, the network and the DHCP server in one step. It asks for each value in turn and suggests values based on the address of the interface.</p>
+<p>First, add an IP address to the interface:</p>
+<pre><code class="language-ros">/ip/address/add address=192.168.88.1/24 interface=ether3
+</code></pre>
+<p>Then run <code>setup</code> and confirm or change each suggested value:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dhcp-server/setup
+Select interface to run DHCP server on
+dhcp server interface: ether3
+Select network for DHCP addresses
+dhcp address space: 192.168.88.0/24
+Select gateway for given network
+gateway for dhcp network: 192.168.88.1
+Select pool of ip addresses given out by DHCP server
+addresses to give out: 192.168.88.2-192.168.88.254
+Select whether the DHCP server sends DNS servers to clients
+send dns: yes
+Select DNS servers (leave empty to use servers from DNS settings)
+dns servers: 192.168.88.1
+Select lease time
+lease time: 1800s
+</code></pre>
+<p>The DHCP server is now active on ether3.</p>
+<h3 id="manual-configuration">Manual configuration</h3>
+<p>To configure the same DHCP server manually, create each part yourself:</p>
+<ol>
+<li>Add the IP address of the router on the interface the server runs on. In this example, the router is also the gateway of the network:</li>
+</ol>
+<p><code>ros
+   /ip/address/add address=192.168.88.1/24 interface=bridge1</code></p>
+<ol start="2">
+<li>Create an IP pool with the addresses to give out. Do not include the router's own address in the pool:</li>
+</ol>
+<p><code>ros
+   /ip/pool/add name=dhcp_pool0 ranges=192.168.88.2-192.168.88.254</code></p>
+<ol start="3">
+<li>Add a network entry with the settings sent to clients, such as the gateway and DNS servers:</li>
+</ol>
+<p><code>ros
+   /ip/dhcp-server/network/add address=192.168.88.0/24 dns-server=192.168.88.1 gateway=192.168.88.1</code></p>
+<ol start="4">
+<li>Add the DHCP server on the interface, with the pool:</li>
+</ol>
+<p><code>ros
+   /ip/dhcp-server/add address-pool=dhcp_pool0 interface=bridge1 name=dhcp1</code></p>
+<h3 id="give-a-device-a-fixed-address">Give a device a fixed address</h3>
+<p>A static lease gives a device the same address every time it asks for one. The device keeps using DHCP, so you do not change anything on the device.</p>
+<p>To keep the address a device already has, make its lease static. Find the lease by the device's MAC address, and set another address if you want one:</p>
+<pre><code class="language-ros">/ip/dhcp-server/lease/make-static [find mac-address=6C:3B:6B:7C:41:3E]
+/ip/dhcp-server/lease/set [find mac-address=6C:3B:6B:7C:41:3E] address=192.168.88.50
+</code></pre>
+<p>The device gets the new address when it renews its lease. To apply it sooner, reconnect the device or renew its lease on the device.</p>
+<p>To set the address before the device connects, add a static lease with its MAC address:</p>
+<pre><code class="language-ros">/ip/dhcp-server/lease/add mac-address=6C:3B:6B:7C:41:3E address=192.168.88.50 server=dhcp1
+</code></pre>
+<p>The address does not have to be in the pool.</p>
+<h3 id="ipv6-mostly-network">IPv6-mostly network</h3>
+<p>In an IPv6-mostly network, devices that can work without IPv4 use only IPv6, and the other devices still get an IPv4 address. A device that can work without IPv4 asks the DHCP server for the IPv6-Only Preferred option (option 108, RFC 8925). With <code>ipv6-only-preferred=yes</code>, the server answers such a client with the option and without an address, and does not create a lease for it. Clients that do not ask for the option get an address from the pool.</p>
+<p>Prerequisites:</p>
+<ul>
+<li>The clients get IPv6 addresses and an IPv6 default route on this network.</li>
+<li>The network has a NAT64 translator, through which the IPv6-only clients reach IPv4 destinations. RouterOS does not support NAT64 (see <a href="../../firewall-and-quality-of-service/firewall/nat">NAT</a>), so the translator is another device.</li>
+</ul>
+<p>Enable the option on the DHCP server, here the <code>defconf</code> server of the default configuration:</p>
+<pre><code class="language-ros">/ip/dhcp-server/set defconf ipv6-only-preferred=yes
+</code></pre>
+<p>The clients also need the prefix of the NAT64 translator. The router sends it in its router advertisements when <code>pref64</code> is set in <a href="../../cli-reference/ipv6/nd"><code>/ipv6/nd</code></a>. This example uses the well-known NAT64 prefix; set the prefix of your translator:</p>
+<pre><code class="language-ros">/ipv6/nd/set [find default=yes] pref64=64:ff9b::/96
+</code></pre>
+<p>To check the result, connect a client that asks for the option and one that does not, and print the leases. Only the client that did not ask for the option has a lease:</p>
+<pre><code class="language-ros">/ip/dhcp-server/lease/print
+</code></pre>
+<pre><code class="language-text">Flags: D - DYNAMIC
+Columns: ADDRESS, MAC-ADDRESS, SERVER, STATUS, LAST-SEEN
+#   ADDRESS         MAC-ADDRESS        SERVER   STATUS  LAST-SEEN
+0 D 192.168.88.252  D4:CA:6D:11:22:33  defconf  bound   0s
+</code></pre>
+<h2 id="properties_1">Properties</h2>
+<p>All properties of the DHCP server are described in the <a href="../../cli-reference/ip/dhcp-server/"><code>/ip/dhcp-server</code></a> CLI reference. The following behavior needs more explanation.</p>
+<h3 id="requests-for-unknown-addresses">Requests for unknown addresses</h3>
+<p>A client that moved from another network, or whose lease the server no longer has, can ask for an address the server cannot give. With <code>authoritative=yes</code> (the default), the server answers such requests with DHCPNAK, so the client starts over immediately instead of waiting for its request to time out. With <code>authoritative=no</code>, the server ignores such requests when they are broadcast, for example from a rebinding client, and leaves them to another server. A unicast renewal request is answered with every setting: with DHCPNAK, or with a new lease when the requested address is free in the pool.</p>
+<p>To let another server answer first, for example a primary server with this router as a backup, set <code>delay-threshold</code>. The server then ignores requests until the client has been trying for the set time, which the client reports in the <code>secs</code> field of its requests.</p>
+<h3 id="clients-behind-a-dhcp-relay">Clients behind a DHCP relay</h3>
+<p>A server answers relayed requests only when its <code>relay</code> property is set: to the address of the relay, which is the relay's <code>local-address</code>, or to <code>255.255.255.255</code> for any relay. Several servers can then run on the same interface, one for each relay. For a complete example, see <a href="./relay">DHCP Relay</a>.</p>
+<h3 id="dns-entries-for-clients">DNS entries for clients</h3>
+<p>With <code>add-dns-entries=yes</code>, the server adds a dynamic DNS entry (type A) for each bound lease, so clients can be reached by name through the router's DNS resolver. The name is the host name the client sends, followed by <code>add-dns-entries-suffix</code> (<code>lan</code> by default), for example <code>laptop.lan</code>, and the TTL of the entry is the lease time. When the network has no <code>domain</code>, the server also sends the suffix to clients as their domain name.</p>
+<h2 id="network">Network</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server/network</code></p>
+<p>A network entry holds the settings sent to clients whose address is in that network: gateway, DNS and NTP servers, domain name, options and network boot settings. When <code>dns-server</code> or <code>ntp-server</code> is not set, the server sends the DNS or NTP servers the router itself uses; set <code>dns-none</code> or <code>ntp-none</code> to send none. All properties are described in the <a href="../../cli-reference/ip/dhcp-server/network"><code>/ip/dhcp-server/network</code></a> CLI reference.</p>
+<h2 id="leases">Leases</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server/lease</code></p>
+<p>The lease menu shows the leases the server has given out, as dynamic entries, and the static leases you add to give a client a fixed address, an address from a specific pool, or its own settings. All lease properties, status values and commands are described in the <a href="../../cli-reference/ip/dhcp-server/lease/"><code>/ip/dhcp-server/lease</code></a> CLI reference.</p>
+<p>When a client asks for an address, the server picks one:</p>
+<ul>
+<li>A client with a static lease gets the address of its lease. Static addresses are not checked for conflicts.</li>
+<li>Other clients get a free address from the pool. With <code>conflict-detection</code> (the default), the server first checks the address with an ARP request and an ICMP echo request, which delays the offer by about half a second. If another host answers, the address is kept as a lease with the <code>conflict</code> status for the lease time, and the client is offered another free address.</li>
+</ul>
+<p>The server then offers the address, and the lease is bound when the client requests it. When a client releases its address or its lease expires, a dynamic lease is removed and the address returns to the pool; a static lease stays and is used again when the client returns.</p>
+<h3 id="lease-address-lists">Lease address lists</h3>
+<p>The server can add the address of each bound lease to firewall address lists with its <code>address-lists</code> property. A static lease can have its own <code>address-lists</code>. When it does, those lists override the <code>address-lists</code> of the server for that lease: only the lists of the lease are used, and the lists of the server are not.</p>
+<h3 id="lease-storage">Lease storage</h3>
+<p>The server saves its leases to disk periodically, every 5 minutes by default, to reduce writes to the flash storage. This interval and the RADIUS accounting settings are set in <code>/ip/dhcp-server/config</code>, see the <a href="../../cli-reference/ip/dhcp-server/config"><code>/ip/dhcp-server/config</code></a> CLI reference.</p>
+<h3 id="rate-limiting">Rate limiting</h3>
+<p>You can limit the bandwidth of a client with the <code>rate-limit</code> property of its lease. The server then adds a dynamic simple queue for the address of the lease.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Queues do not apply to FastTracked traffic. Make sure the firewall does not FastTrack the traffic you want to limit.</p>
+</div>
+<p>Only static leases can have a rate limit, so first make the lease static:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dhcp-server/lease/print 
+Flags: X - disabled, R - radius, D - dynamic, B - blocked 
+ #   ADDRESS               MAC-ADDRESS       HOST-NAME               SERVER               RATE-LIMIT               STATUS 
+ 0 D 192.168.88.254        6C:3B:6B:7C:41:3E MikroTik                DHCPv4_Server                                 bound 
+
+[admin@MikroTik] &gt; /ip/dhcp-server/lease/make-static 0
+
+[admin@MikroTik] &gt; /ip/dhcp-server/lease/print 
+Flags: X - disabled, R - radius, D - dynamic, B - blocked 
+ #   ADDRESS               MAC-ADDRESS       HOST-NAME               SERVER               RATE-LIMIT               STATUS 
+ 0   192.168.88.254        6C:3B:6B:7C:41:3E MikroTik                DHCPv4_Server                                 bound
+</code></pre>
+<p>Then set the rate limit. The server creates a dynamic simple queue for the lease:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dhcp-server/lease/set 0 rate-limit=10M/10M
+
+[admin@MikroTik] &gt; /queue/simple/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D name=&quot;dhcp-ds&lt;MikroTik/6C:3B:6B:7C:41:3E&gt;&quot; target=192.168.88.254/32 parent=none packet-marks=&quot;&quot; priority=8/8 queue=default-small/default-small limit-at=10M/10M max-limit=10M/10M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s 
+      bucket-size=0.1/0.1
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p><code>allow-dual-stack-queue</code> is enabled by default, so a DHCP lease and a DHCPv6 binding of the same client share one dynamic simple queue. Without it, the server creates separate queues for IPv4 and IPv6.</p>
+</div>
+<p>The shared queue contains both the IPv4 and the IPv6 address:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print 
+Flags: X - disabled, I - invalid, D - dynamic 
+ 0  D name=&quot;dhcp-ds&lt;MikroTik/6C:3B:6B:7C:41:3E&gt;&quot; target=192.168.88.254/32,fdb4:4de7:a3f8:418c::/66 parent=none packet-marks=&quot;&quot; priority=8/8 queue=default-small/default-small limit-at=10M/10M max-limit=10M/10M burst-limit=0/0 burst-threshold=0/0 
+      burst-time=0s/0s bucket-size=0.1/0.1 
+</code></pre>
+<h2 id="radius-support">RADIUS Support</h2>
+<p>The DHCP server can also get leases from a RADIUS server (<code>use-radius=yes</code>). It sends and accepts the following RADIUS attributes.</p>
+<h3 id="access-request">Access-Request</h3>
+<ul>
+<li>NAS-Identifier - router identity.</li>
+<li>NAS-IP-Address - IP address of the router itself.</li>
+<li>NAS-Port - the ID of the interface where the DHCP server is configured. This value is the same as the IF-MIB::ifIndex.</li>
+<li>NAS-Port-Id - the name of the interface where the DHCP server is configured.</li>
+<li>NAS-Port-Type - Ethernet.</li>
+<li>Calling-Station-Id - client identifier (active-client-id).</li>
+<li>Framed-IP-Address - IP address of the client (active-address).</li>
+<li>Called-Station-Id - the name of the DHCP server.</li>
+<li>User-Name - MAC address of the client (active-mac-address).</li>
+<li>Password - " ".</li>
+</ul>
+<h3 id="access-accept">Access-Accept</h3>
+<ul>
+<li>Framed-IP-Address - IP address that will be assigned to a client.</li>
+<li>Framed-Pool - IP pool from which to assign an IP address to a client.</li>
+<li>Rate-Limit - Data rate limitation for DHCP clients. Format is: <code>rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate] [rx-burst-threshold[/tx-burst-threshold] [rx-burst-time[/tx-burst-time][priority] [rx-rate-min[/tx-rate-min]]]]</code>. All rates should be numbers with optional 'k' (1,000s) or 'M' (1,000,000s). If tx-rate is not specified, rx-rate is used as tx-rate too. Same goes for tx-burst-rate and tx-burst-threshold and tx-burst-time. If both rx-burst-threshold and tx-burst-threshold are not specified (but burst-rate is specified), rx-rate and tx-rate are used as burst thresholds. If both rx-burst-time and tx-burst-time are not specified, 1s is used as the default. Priority takes values 1..8, where 1 implies the highest priority, but 8 - the lowest. If rx-rate-min and tx-rate-min are not specified, rx-rate and tx-rate values are used. The rx-rate-min and tx-rate-min values cannot exceed rx-rate and tx-rate values.</li>
+<li>Ascend-Data-Rate - TX/RX data rate limitation if multiple attributes are provided, the first limits the tx data rate, the second - the RX data rate. If used together with Ascend-Xmit-Rate, specifies the RX rate. 0 if unlimited.</li>
+<li>Ascend-Xmit-Rate - tx data rate limitation. It may be used to specify the TX limit only instead of sending two sequential Ascend-Data-Rate attributes (in that case Ascend-Data-Rate will specify the receive rate). 0 if unlimited.</li>
+<li>Session-Timeout - max lease time (lease-time).</li>
+</ul>
+<h3 id="rate-limit-per-lease">Rate limit per lease</h3>
+<p>A RADIUS server can assign a rate limit to each lease with the Mikrotik-Rate-Limit attribute. First, set the DHCP server to use RADIUS:</p>
+<pre><code class="language-ros">/radius
+add address=10.0.0.1 secret=VERYsecret123 service=dhcp
+/ip/dhcp-server
+set dhcp1 use-radius=yes
+</code></pre>
+<p>Then configure the RADIUS server to send the Mikrotik-Rate-Limit attribute. For FreeRADIUS with MySQL, add entries to the <code>radcheck</code> and <code>radreply</code> tables for the MAC address of the client, for example:</p>
+<pre><code class="language-sql">INSERT INTO `radcheck` (`username`, `attribute`, `op`, `value`) VALUES
+('00:0C:42:00:D4:64', 'Auth-Type', ':=', 'Accept');
+
+INSERT INTO `radreply` (`username`, `attribute`, `op`, `value`) VALUES
+('00:0C:42:00:D4:64', 'Framed-IP-Address', '=', '192.168.88.254'),
+('00:0C:42:00:D4:64', 'Mikrotik-Rate-Limit', '=', '10M');
+</code></pre>
+<h2 id="alerts">Alerts</h2>
+<p>The DHCP alert finds rogue DHCP servers on an interface. It watches the DHCP replies on the interface and checks whether each one comes from a valid DHCP server. A reply from an unknown server is logged, and the alert can also run a script:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /log/print where topics~&quot;dhcp&quot;
+ 00:34:23 dhcp,critical,error dhcp alert on Public: discovered unknown dhcp server, mac 00:02:29:60:36:E7, ip 10.5.8.236
+</code></pre>
+<p>Because DHCP replies can be unicast, the alert might not see the offers other servers send to clients. So the alert also acts as a DHCP client: it sends its own DHCPDISCOVER about once a minute.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Do not use the DHCP alert on a router that is a DHCP client on the same interface: the DHCPDISCOVER messages the alert sends can disturb the DHCP client. Use the alert on DHCP servers or on routers with a static IP address.</p>
+</div>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server/alert</code></p>
+<p>New alerts are created disabled; enable them after adding. All alert properties are described in the <a href="../../cli-reference/ip/dhcp-server/alert/"><code>/ip/dhcp-server/alert</code></a> CLI reference.</p>
+<h2 id="dhcp-options_1">DHCP Options</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server/option</code></p>
+<p>You can define additional options for the DHCP server to send. When the same option is set on several levels, the first of these levels wins:</p>
+<ol>
+<li>RADIUS.</li>
+<li>Lease.</li>
+<li>Server.</li>
+<li>Network.</li>
+</ol>
+<p>The server sends an option only when the client asks for it in its parameter request list (option 55). To send an option even when the client does not ask for it, set <code>force</code> on the option, for example on the <code>auto-proxy-config</code> option from the following examples:</p>
+<pre><code class="language-ros">/ip/dhcp-server/option/set [find name=auto-proxy-config] force=yes
+</code></pre>
+<p>All option properties, including how option values are written and which variables they can contain, are described in the <a href="../../cli-reference/ip/dhcp-server/option/"><code>/ip/dhcp-server/option</code></a> CLI reference.</p>
+<h3 id="dhcp-option-sets">DHCP Option Sets</h3>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-server/option/sets</code></p>
+<p>This menu allows combining multiple options in option sets, which later can be used to override the default DHCP server option set.</p>
+<h3 id="example">Example</h3>
+<p><strong>Classless Route</strong></p>
+<p>The classless static routes option (option 121, RFC 3442) sends routes to the client. This example sends a route to 160.0.0.0/24 and a default route, both through 10.1.101.1. The value consists of:</p>
+<ul>
+<li><code>18</code> - Prefix length 24.</li>
+<li><code>A00000</code> - The significant octets of the destination, 160.0.0.</li>
+<li><code>0A016501</code> - The gateway, 10.1.101.1.</li>
+<li><code>00</code> - Prefix length 0, which is the default route.</li>
+<li><code>0A016501</code> - The gateway of the default route, 10.1.101.1.</li>
+</ul>
+<p>A client that receives option 121 ignores the router option (option 3), so the default route is included here as well.</p>
+<pre><code class="language-ros">/ip/dhcp-server/option
+add code=121 name=classless value=0x18A000000A016501000A016501
+/ip/dhcp-server/network
+set 0 dhcp-option=classless
+</code></pre>
+<p>Result on the client:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/route/print
+Flags: D - DYNAMIC; A - ACTIVE; c - CONNECT, d - DHCP
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS   GATEWAY     DISTANCE
+DAd 0.0.0.0/0     10.1.101.1         1
+DAd 160.0.0.0/24  10.1.101.1         1
+</code></pre>
+<p>With the <code>$(NETWORK_GATEWAY)</code> variable, the gateway is taken from the network settings instead of being written into the value:</p>
+<pre><code class="language-ros">/ip/dhcp-server/option
+add name=classless code=121 value=&quot;0x18A00000\$(NETWORK_GATEWAY)0x00\$(NETWORK_GATEWAY)&quot;
+</code></pre>
+<p><strong>Auto proxy config</strong></p>
+<pre><code class="language-ros">/ip/dhcp-server/option 
+  add code=252 name=auto-proxy-config value=&quot;'https://autoconfig.something.lv/wpad.dat'&quot;
+</code></pre>
+<h2 id="option-matcher">Option matcher</h2>
+<p>The option matcher identifies DHCP clients by any DHCP option in their requests, and gives them an address from a specific IP pool. It compares the option either exactly (<code>exact</code>) or looks for the value anywhere in the option (<code>substring</code>). Use substring matching when the option contains more than the part you want to match, for example a vendor class identifier that also contains the device model or MAC address.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When two substring matchers match the same option, for example one for "ABC" and one for "ABCDE" with an option value of "ABCDEF", it is random which of them applies.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Clients with a static lease keep their static address, even when a matcher matches them.</p>
+</div>
+<p>All matcher properties are described in the <a href="../../cli-reference/ip/dhcp-server/matcher"><code>/ip/dhcp-server/matcher</code></a> CLI reference.</p>
+<h3 id="option-matcher-examples">Option matcher examples</h3>
+<p>Match <em>dhcp1</em> server clients by <em>exact</em> Vendor class identifier (DHCP option 60) and assign an address from the <em>pool1</em>:</p>
+<pre><code class="language-ros">/ip/dhcp-server/matcher
+add address-pool=pool1 code=60 matching-type=exact name=test1 server=dhcp1 value=android-dhcp-11
+</code></pre>
+<p>Match clients on all DHCP servers by <em>exact</em> Client Id (DHCP option 61) configured as hex value and assign address from the <em>pool2</em>:</p>
+<pre><code class="language-ros">/ip/dhcp-server/matcher
+add address-pool=pool2 code=61 matching-type=exact name=test2 server=all value=0x016c3b6bed8364
+</code></pre>
+<p>Match <em>dhcp2</em> server clients <em>partially</em> by Hostname (DHCP option 12) and assign an address from the <em>pool3</em>:</p>
+<pre><code class="language-ros">/ip/dhcp-server/matcher
+add address-pool=pool3 code=12 matching-type=substring name=test3 server=dhcp2 value=MikroTik
+</code></pre>
+<hr />
+<h1 id="dhcp-relay_1">DHCP Relay</h1>
+<blockquote>
+<p>DHCP relay forwards DHCP and DHCPv6 requests from clients to a DHCP server in another network, with optional relay agent information (option 82) and VRF support.</p>
+</blockquote>
+<h1 id="dhcp-relay_2">DHCP Relay</h1>
+<p>A DHCP relay forwards requests from DHCP clients on one network to a DHCP server on another network, and delivers the replies back to the clients. Use it when one central DHCP server serves several networks it is not directly connected to. For how a relay and the DHCP server work together, see <a href="./">DHCP concepts</a>.</p>
+<h2 id="dhcpv4-relay">DHCPv4 Relay</h2>
+<p><strong>Sub-menu:</strong> <code>/ip/dhcp-relay</code></p>
+<p>The DHCP relay listens for DHCP requests on its interface and forwards each request to every DHCP server listed in <code>dhcp-server</code>; it does not choose one of them. It writes <code>local-address</code>, or an address of its interface when <code>local-address</code> is not set, into the gateway address field (<code>giaddr</code>) of the forwarded request. The DHCP server sends its replies to that address and uses it to tell relays apart: set the server's <code>relay</code> property to the relay's address, as shown in the following example. New relays are created disabled, so enable them after adding.</p>
+<p>All relay properties are described in the <a href="../../cli-reference/ip/dhcp-relay/"><code>/ip/dhcp-relay</code></a> CLI reference.</p>
+<h3 id="relay-agent-information-option-82">Relay agent information (option 82)</h3>
+<p>With <code>add-relay-info=yes</code>, the relay adds the relay agent information option (option 82) to the requests it forwards. The circuit ID is the MAC address of the relay interface the request came in on, and the remote ID is the MAC address of the client, or the text set in <code>relay-info-remote-id</code>.</p>
+<p>A RouterOS DHCP server shows these values in the lease (<code>active-agent-circuit-id</code> and <code>active-agent-remote-id</code> as hex, and <code>active-agent-circuit-id-ascii</code> / <code>active-agent-remote-id-ascii</code> as readable text) and passes them to the lease script. A static lease can match a client by them (<code>agent-circuit-id</code>, <code>agent-remote-id</code>) even when its MAC address differs, and with <code>dynamic-lease-identifiers=opt-82</code> the server identifies clients by option 82 alone.</p>
+<h3 id="configuration-example">Configuration example</h3>
+<p>In this example, one router, DHCP-Server, gives out addresses for two networks, 192.168.1.0/24 and 192.168.2.0/24, which are behind another router, DHCP-Relay.</p>
+<p><em>[gambar: DHCP-Server (public 10.1.0.2, local 192.168.0.1) connected to DHCP-Relay (192.168.0.2), which serves 192.168.1.0/24 on Local1 (192.168.1.1) and 192.168.2.0/24 on Local2 (192.168.2.1)]</em></p>
+<p>The routers have these addresses. On DHCP-Server:</p>
+<pre><code class="language-ros">/ip/address/add address=192.168.0.1/24 interface=To-DHCP-Relay
+/ip/address/add address=10.1.0.2/24 interface=Public
+</code></pre>
+<p>On DHCP-Relay:</p>
+<pre><code class="language-ros">/ip/address/add address=192.168.0.2/24 interface=To-DHCP-Server
+/ip/address/add address=192.168.1.1/24 interface=Local1
+/ip/address/add address=192.168.2.1/24 interface=Local2
+</code></pre>
+<h4 id="dhcp-server-setup">DHCP server setup</h4>
+<p>On DHCP-Server, add a pool, a DHCP server and a network for each relayed network. Both servers run on the interface towards the relay; the <code>relay</code> property makes each server answer only the requests relayed from its network, identified by the relay's address in that network:</p>
+<pre><code class="language-ros">/ip/pool/add name=Local1-Pool ranges=192.168.1.11-192.168.1.100
+/ip/pool/add name=Local2-Pool ranges=192.168.2.11-192.168.2.100
+/ip/dhcp-server/add interface=To-DHCP-Relay relay=192.168.1.1 address-pool=Local1-Pool name=DHCP-1
+/ip/dhcp-server/add interface=To-DHCP-Relay relay=192.168.2.1 address-pool=Local2-Pool name=DHCP-2
+/ip/dhcp-server/network/add address=192.168.1.0/24 gateway=192.168.1.1 dns-server=159.148.60.20
+/ip/dhcp-server/network/add address=192.168.2.0/24 gateway=192.168.2.1 dns-server=159.148.60.20
+</code></pre>
+<p>The DHCP server does not need routes to the client networks: it sends its replies, also those to renewing clients, back to the router the request came from.</p>
+<h4 id="dhcp-relay-setup">DHCP relay setup</h4>
+<p>On DHCP-Relay, add a relay on each local interface. New relays are created disabled, so add them with <code>disabled=no</code>:</p>
+<pre><code class="language-ros">/ip/dhcp-relay/add name=Local1-Relay interface=Local1 dhcp-server=192.168.0.1 local-address=192.168.1.1 disabled=no
+/ip/dhcp-relay/add name=Local2-Relay interface=Local2 dhcp-server=192.168.0.1 local-address=192.168.2.1 disabled=no
+</code></pre>
+<p>Use <code>/ip/dhcp-relay/monitor</code> to see how many requests a relay forwarded and how many replies it delivered.</p>
+<h3 id="dhcp-relay-with-vrf">DHCP relay with VRF</h3>
+<p>When the interface towards the DHCP server and the client interfaces of the relay are in different VRFs, set <code>dhcp-server-vrf</code> to the VRF of the server side. This example uses the previous setup, with each interface of DHCP-Relay in its own VRF:</p>
+<pre><code class="language-ros">/ip/vrf
+add interfaces=To-DHCP-Server name=vrf_server
+add interfaces=Local1 name=vrf1
+add interfaces=Local2 name=vrf2
+/ip/dhcp-relay/set [find] dhcp-server-vrf=vrf_server
+</code></pre>
+<p>The server sends its replies to the relay's <code>local-address</code>, which is in a client VRF, but the replies arrive on the server-side interface in <code>vrf_server</code>. Redirect them to the relay's server-side address with dst-nat rules:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add action=dst-nat chain=dstnat dst-address=192.168.1.1 dst-port=67 in-interface=To-DHCP-Server protocol=udp src-address=192.168.0.1 to-addresses=192.168.0.2
+add action=dst-nat chain=dstnat dst-address=192.168.2.1 dst-port=67 in-interface=To-DHCP-Server protocol=udp src-address=192.168.0.1 to-addresses=192.168.0.2
+</code></pre>
+<p>Clients renew their leases with unicast messages to the server, so the VRFs also need routes to each other's networks:</p>
+<pre><code class="language-ros">/ip/route
+add dst-address=192.168.0.0/24 gateway=To-DHCP-Server@vrf_server routing-table=vrf1
+add dst-address=192.168.0.0/24 gateway=To-DHCP-Server@vrf_server routing-table=vrf2
+add dst-address=192.168.1.0/24 gateway=Local1@vrf1 routing-table=vrf_server
+add dst-address=192.168.2.0/24 gateway=Local2@vrf2 routing-table=vrf_server
+</code></pre>
+<p>Without the dst-nat rules, clients get no address; without the routes, they get an address but cannot renew it.</p>
+<h2 id="dhcpv6-relay">DHCPv6 Relay</h2>
+<p><strong>Sub-menu:</strong> <code>/ipv6/dhcp-relay</code></p>
+<p>The DHCPv6 relay forwards the DHCPv6 messages that clients on its interface send to the servers listed in <code>dhcp-server</code>. It wraps each client message in a Relay-Forward message, which also carries the client's link-local address, an Interface-ID option and, by default, the client link-layer address (option 79, set with <code>dhcp-options</code>). The link address field of the Relay-Forward message is <code>::</code> unless you set <code>link-address</code>, for example to an address of the client network if the DHCPv6 server should identify the client's network by it. The server answers the relay, and the relay passes the reply back to the client. This way one DHCPv6 server can serve several networks without a direct connection to each of them.</p>
+<p>The relay receives client messages on UDP port 547. If the router filters incoming traffic, allow UDP port 547 on the client-side interface: the default firewall configuration of RouterOS drops it on interfaces that are not in the <code>LAN</code> interface list. The replies of the servers are accepted as part of the same connection. To route the clients' traffic, the router also needs IPv6 forwarding, which is enabled by default.</p>
+<p>All relay properties are described in the <a href="../../cli-reference/ipv6/dhcp-relay/"><code>/ipv6/dhcp-relay</code></a> CLI reference.</p>
+<h3 id="routes-to-delegated-prefixes">Routes to delegated prefixes</h3>
+<p>When the relay router is also the gateway of the clients, it needs routes to the prefixes delegated to them. With <code>store-relayed-bindings=yes</code>, the relay reads the bindings from the servers' replies, lists them in <code>/ipv6/dhcp-relay/routes</code>, and adds a route to each delegated prefix through the client.</p>
+<hr />
+<h1 id="dhcpv6-client">DHCPv6 Client</h1>
+<blockquote>
+<p>The RouterOS DHCPv6 client requests IPv6 addresses and delegated prefixes (DHCPv6-PD) from a DHCPv6 server, adds received prefixes to IPv6 pools, and can run scripts on status changes.</p>
+</blockquote>
+<h1 id="dhcpv6-client_1">DHCPv6 Client</h1>
+<p><strong>Sub-menu:</strong> <code>/ipv6/dhcp-client</code></p>
+<p>The DHCPv6 client requests IPv6 configuration from a DHCPv6 server. It is typically used on the interface towards an ISP, to receive a delegated prefix for the local networks. The <code>request</code> property selects what the client asks for, and one client can request more than one of these:</p>
+<ul>
+<li><code>prefix</code>: a delegated prefix (DHCPv6-PD). The client adds the received prefix to a dynamic IPv6 pool (<code>pool-name</code>), from which you can assign addresses to local interfaces and advertise them to hosts. The pool lifetime follows the delegated prefix and is extended each time the client renews it.</li>
+<li><code>address</code>: an IPv6 address, which the client adds to its interface as a dynamic /128 address.</li>
+<li><code>info</code>: only other settings, such as DNS servers, without an address or a prefix.</li>
+</ul>
+<p>The received DNS servers are used by the router's DNS resolver (<code>use-peer-dns</code>). DHCPv6 does not provide a default gateway, but the client can add a default route towards the DHCPv6 server with <code>add-default-route</code>.</p>
+<p>The client identifies itself with the router's DUID, which the router's DHCPv6 server also uses, and with an identity association identifier (IAID) based on the interface the client runs on. For how DHCPv6 differs from DHCP for IPv4, see <a href="./">DHCP concepts</a>.</p>
+<h2 id="configuration-examples_2">Configuration Examples</h2>
+<h3 id="simple-dhcpv6-client">Simple DHCPv6 client</h3>
+<p>This example requests a prefix and adds it to an IPv6 pool that hands out /64 prefixes:</p>
+<pre><code class="language-ros">/ipv6/dhcp-client/add request=prefix pool-name=test-ipv6 pool-prefix-length=64 interface=ether13
+</code></pre>
+<p>When the client is bound, it shows the received prefix and the time until it expires:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-client/print
+Columns: INTERFACE, STATUS, REQUEST, PREFIX
+# INTERFACE  STATUS  REQUEST  PREFIX
+0 ether13    bound   prefix   2001:db8:7501:ff04::/62, 2d23h11m53s
+</code></pre>
+<p>The prefix is also added to the dynamic pool, with the lifetimes of the prefix:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/pool/print
+Flags: D - DYNAMIC
+Columns: NAME, PREFIX, PREFIX-LENGTH, ACTUAL-PREFIX, VALID-LIFETIME, PREFERRED-LIFETIME
+#   NAME       PREFIX                   PREFIX-LENGTH  ACTUAL-PREFIX            VALID-LIFETIME  PREFERRED-LIFETIME
+0 D test-ipv6  2001:db8:7501:ff04::/62             64  2001:db8:7501:ff04::/62  2d23h11m53s     2d15h59m53s
+</code></pre>
+<p>You can now assign addresses from this pool to other interfaces, as the following example shows.</p>
+<h3 id="use-received-prefix-for-local-ra">Use received prefix for local RA</h3>
+<p>Consider the following setup:</p>
+<p><em>[gambar: R1 gets the prefix 2001:db8::/62 from the ISP gateway fe80::1:1 and delegates /64 prefixes to CE1 and CE2, which each use ::1/64 on their LAN]</em></p>
+<ul>
+<li>ISP is routing prefix 2001:DB8::/62 to the router R1.</li>
+<li>Router R1 runs a DHCPv6 server to delegate /64 prefixes to the customer routers CE1 and CE2.</li>
+<li>DHCP client on routers CE1 and CE2 receives a delegated /64 prefix from the DHCP server (R1).</li>
+<li>Client routers use the received prefix to set up RA on the local interface.</li>
+</ul>
+<p><strong>Configuration</strong></p>
+<p><strong>R1</strong></p>
+<pre><code class="language-ros">/ipv6/route
+add gateway=fe80::1:1%to-ISP
+
+/ipv6/pool
+add name=myPool prefix=2001:db8::/62 prefix-length=64
+
+/ipv6/dhcp-server
+add prefix-pool=myPool disabled=no interface=to-CE-routers lease-time=3m name=server1
+</code></pre>
+<p><strong>CE1</strong></p>
+<pre><code class="language-ros">/ipv6/dhcp-client
+add interface=to-R1 request=prefix pool-name=my-ipv6
+
+/ipv6/address
+add address=::1/64 from-pool=my-ipv6 interface=to-clients advertise=yes
+</code></pre>
+<p><strong>CE2</strong></p>
+<pre><code class="language-ros">/ipv6/dhcp-client
+add interface=to-R1 request=prefix pool-name=my-ipv6
+/ipv6/address/add address=::1/64 from-pool=my-ipv6 interface=to-clients advertise=yes
+</code></pre>
+<p><strong>Check the status</strong></p>
+<p>Check that each CE router received its own prefix.</p>
+<p>On the server:</p>
+<pre><code class="language-ros">[admin@R1] /ipv6/dhcp-server/binding&gt; print
+Flags: X - disabled, D - dynamic
+ #   ADDRESS            DUID          IAID  SERVER   STATUS
+ 1 D 2001:db8:0:1::/64  0019d1393536   566  server1  bound
+ 2 D 2001:db8:0:2::/64  0019d1393535   565  server1  bound
+</code></pre>
+<p>On client:</p>
+<pre><code class="language-ros">[admin@CE1] /ipv6/dhcp-client&gt; print
+Flags: D - dynamic, X - disabled, I - invalid
+ #   INTERFACE  STATUS  REQUEST  PREFIX
+ 0   to-R1      bound   prefix   2001:db8:0:1::/64
+
+[admin@CE1] /ipv6/dhcp-client&gt; /ipv6/pool/print
+Flags: D - dynamic
+ #   NAME     PREFIX             PREFIX-LENGTH
+ 0 D my-ipv6  2001:db8:0:1::/64             64
+</code></pre>
+<p>The address from the pool is added to the LAN interface:</p>
+<pre><code class="language-ros">[admin@CE1] /ipv6/address&gt; print
+Flags: X - disabled, I - invalid, D - dynamic, G - global, L - link-local
+ #    ADDRESS              FROM-POOL  INTERFACE   ADVERTISE
+ 0  G 2001:db8:0:1::1/64   my-ipv6    to-clients  yes
+...
+</code></pre>
+<p>The pool usage shows that an address uses part of the pool:</p>
+<pre><code class="language-ros">[admin@CE1] /ipv6/pool/used&gt; print
+POOL     PREFIX             OWNER    INFO
+my-ipv6  2001:db8:0:1::/64  Address  to-clients
+</code></pre>
+<h2 id="properties_2">Properties</h2>
+<p>All properties, status values and commands of the DHCPv6 client, including the variables a script receives, are described in the <a href="../../cli-reference/ipv6/dhcp-client/"><code>/ipv6/dhcp-client</code></a> CLI reference. The following behavior needs more explanation.</p>
+<h3 id="server-initiated-renewal">Server-initiated renewal</h3>
+<p>With <code>allow-reconfigure=yes</code>, the client accepts Reconfigure messages from the DHCPv6 server and renews immediately when it receives one. A RouterOS DHCPv6 server with <code>use-reconfigure=yes</code> sends such messages by itself when its settings change, for example its lease time, so clients pick up the change without waiting for their renewal time.</p>
+<h2 id="iaid">IAID</h2>
+<p>To determine what IAID will be used, convert the internal ID of an interface on which the DHCP client is running from hex to decimal.</p>
+<p>For example, the DHCP client is running on interface PPPoE-out1. To get the internal ID use the following command:</p>
+<pre><code class="language-ros">[admin@t36] /interface&gt; :put [find name=&quot;pppoe-out1&quot;] 
+*15
+</code></pre>
+<p>Now convert hex value 15 to decimal and you get IAID=21. To use a different IAID, set <code>custom-iana-id</code> for the address and <code>custom-iapd-id</code> for the prefix.</p>
+<hr />
+<h1 id="dhcpv6-server">DHCPv6 Server</h1>
+<blockquote>
+<p>The RouterOS DHCPv6 server delegates IPv6 prefixes (DHCPv6-PD) and assigns IPv6 addresses to clients, with static bindings, RADIUS support and per-binding rate limiting.</p>
+</blockquote>
+<h1 id="dhcpv6-server_1">DHCPv6 Server</h1>
+<p><strong>Sub-menu:</strong> <code>/ipv6/dhcp-server</code></p>
+<p><strong>Standards:</strong> RFC 8415</p>
+<p>The DHCPv6 server delegates IPv6 prefixes (DHCPv6-PD) and assigns IPv6 addresses to clients. It is typically used by a router that hands out prefixes to downstream routers, for example to the customer routers of an ISP. The server takes prefixes from the IPv6 pool set in <code>prefix-pool</code>, and addresses from the IPv6 pool set in <code>address-pool</code>, which must have a prefix length of 128. Bindings can also be static, or assigned by a RADIUS server.</p>
+<p>Each binding is identified by the client's DUID and IAID. When a client is bound to a prefix, the server adds a dynamic route to that prefix through the client (<code>route-distance</code>), so traffic for the delegated prefix reaches the client router.</p>
+<p>Most hosts only request addresses with DHCPv6 when the router advertisements on their network have the managed flag set, as shown in the address delegation example that follows. RouterOS uses the same DUID for its DHCPv6 server and client. For how DHCPv6 works, see <a href="./">DHCP concepts</a>.</p>
+<h2 id="configuration-example_1">Configuration Example</h2>
+<h3 id="enabling-ipv6-prefix-delegation">Enabling IPv6 Prefix delegation</h3>
+<p>To enable IPv6 prefix delegation, first create an IPv6 pool:</p>
+<pre><code class="language-ros">/ipv6/pool/add name=myPool prefix=2001:db8:7501::/60 prefix-length=62
+</code></pre>
+<p>With <code>prefix-length=62</code>, clients receive /62 prefixes from the /60 pool.</p>
+<p>Then add the DHCPv6 server with this pool:</p>
+<pre><code class="language-ros">/ipv6/dhcp-server/add name=myServer prefix-pool=myPool interface=local
+</code></pre>
+<p>To test the server, you can use a RouterOS DHCPv6 client (see <a href="./dhcpv6-client">DHCPv6 Client</a>) or, as in this example, the wide-dhcpv6 client on a Linux host:</p>
+<ol>
+<li>Install wide-dhcpv6-client.</li>
+<li>Configure <code>/etc/wide-dhcpv6/dhcp6c.conf</code> to request a prefix on eth2 and number eth3 from it:</li>
+</ol>
+<p>```text
+   interface eth2{
+   send ia-pd 0;
+   };</p>
+<p>id-assoc pd {
+   prefix-interface eth3{
+   sla-id 1;
+   sla-len 2;
+   };
+   };
+   ```</p>
+<ol start="3">
+<li>Run the client:</li>
+</ol>
+<p><code>bash
+   sudo dhcp6c -d -D -f eth2</code></p>
+<ol start="4">
+<li>Check that eth3 got an address from the delegated prefix:</li>
+</ol>
+<p><code>text
+   mrz@bumba:/media/aaa$ ip -6 addr
+   ...
+   2: eth3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qlen 1000
+       inet6 2001:db8:7501:1:200:ff:fe00:0/64 scope global
+          valid_lft forever preferred_lft forever
+       inet6 fe80::224:1dff:fe17:81f7/64 scope link
+          valid_lft forever preferred_lft forever</code></p>
+<p>The server shows the binding. To give this client the same prefix every time, make the binding static:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/print
+Flags: D - DYNAMIC
+Columns: ADDRESS, DUID, SERVER, STATUS
+#   ADDRESS             DUID                    SERVER    STATUS
+0 D 2001:db8:7501::/62  0x0003000100241d1781f7  myServer  bound
+[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/make-static 0
+</code></pre>
+<p>The server also adds a route to the delegated prefix through the client's link-local address:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/route/print where dst-address=2001:db8:7501::/62
+Flags: D - DYNAMIC; A - ACTIVE; d - DHCP
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+    DST-ADDRESS         GATEWAY                          ROUTING-TABLE  DISTANCE
+DAd 2001:db8:7501::/62  fe80::224:1dff:fe17:81f7%local   main                  1
+</code></pre>
+<h3 id="enabling-ipv6-address-delegation">Enabling IPv6 Address delegation</h3>
+<p>An address server is configured like a prefix server, except that it uses <code>address-pool</code> instead of <code>prefix-pool</code>, and its pool must hand out /128 prefixes. A server that only gives out static bindings needs no pool.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/pool/print detail 
+Flags: D - dynamic 
+ 0   name=&quot;myAddressPool&quot; prefix=2001:db8:7501::/120 prefix-length=128 
+[admin@MikroTik] &gt; /ipv6/dhcp-server/print detail                                 
+Flags: D - dynamic; X - disabled, I - invalid 
+ 0    name=&quot;myDHCP&quot; interface=ether2 prefix-pool=static-only 
+      address-pool=myAddressPool lease-time=3d rapid-commit=yes use-radius=no 
+      preference=255 dhcp-option=&quot;&quot; route-distance=1 use-reconfigure=no 
+      address-lists=&quot;&quot; duid=&quot;0x00030001b813f4840556&quot; 
+</code></pre>
+<p>This is enough for DHCPv6 clients such as a RouterOS DHCPv6 client:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-client/print detail 
+Flags: D - dynamic; X - disabled, I - invalid 
+ 0    interface=ether2 status=bound duid=&quot;0x00030001b123f48407f0&quot; 
+      dhcp-server-v6=fe80::ba69:f4af:fe14:558 request=address 
+      add-default-route=no use-peer-dns=yes allow-reconfigure=no 
+      dhcp-options=&quot;&quot; pool-name=&quot;&quot; pool-prefix-length=64 prefix-hint=::/0 
+      prefix-address-lists=&quot;&quot; dhcp-options=&quot;&quot; 
+      address=2001:db8:7501::, 2d23h59m51s
+</code></pre>
+<p>Hosts such as computers do not look for a DHCPv6 server on their own: the router advertisements on their network tell them whether to use DHCPv6. To make hosts request addresses with DHCPv6, set the managed address configuration flag (<code>managed-address-configuration</code>) in the router advertisements of the interface. This does not require advertising a prefix for SLAAC:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/nd/print detail 
+Flags: X - disabled, I - invalid; * - default 
+ 0    interface=ether2 ra-interval=3m20s-10m ra-delay=3s mtu=unspecified 
+      reachable-time=unspecified retransmit-interval=unspecified 
+      ra-lifetime=30m ra-preference=medium hop-limit=unspecified 
+      advertise-mac-address=yes advertise-dns=yes 
+      managed-address-configuration=yes other-configuration=no
+[admin@MikroTik] &gt; /ipv6/nd/prefix/print detail 
+Flags: X - disabled, I - invalid; D - dynamic 
+ 0    prefix=::/64 6to4-interface=none interface=ether2 on-link=yes 
+      autonomous=yes valid-lifetime=4w2d preferred-lifetime=1w 
+</code></pre>
+<p>A computer connected to ether2 then receives router advertisements with the managed flag set, which on most hosts starts a DHCPv6 client that requests an address.</p>
+<p>The complete server configuration, with comments:</p>
+<pre><code class="language-ros"># Address pool for the bridge network; the prefix length must be 128
+/ipv6/pool
+add name=myLocalLan prefix=2001:db8::/100 prefix-length=128
+# DHCPv6 server that gives out addresses from the pool
+/ipv6/dhcp-server
+add address-pool=myLocalLan interface=bridge name=myLocalServer
+# Set the managed flag (M) in router advertisements, so hosts on the bridge use DHCPv6
+/ipv6/nd
+add interface=bridge managed-address-configuration=yes
+# Enable router advertisements on the bridge; no prefix is needed, only the managed flag
+/ipv6/nd/prefix
+add interface=bridge
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Clients behave differently with this configuration. For example, macOS gets an address at startup, but might not renew the lease after sleep when no prefix is advertised, because macOS does not use its DHCPv6 client without a SLAAC address. Other clients might need <code>autonomous=no</code> on the advertised prefix before they use DHCPv6. Adjust the configuration to the clients on your network.</p>
+</div>
+<h2 id="properties_3">Properties</h2>
+<p>All properties of the DHCPv6 server are described in the <a href="../../cli-reference/ipv6/dhcp-server/"><code>/ipv6/dhcp-server</code></a> CLI reference. The following behavior needs more explanation.</p>
+<h3 id="server-initiated-renewal_1">Server-initiated renewal</h3>
+<p>With <code>use-reconfigure=yes</code>, clients that accept Reconfigure messages, for example RouterOS DHCPv6 clients with <code>allow-reconfigure=yes</code>, get a reconfigure key. The server then sends them a Reconfigure message by itself when its <code>address-pool</code>, <code>lease-time</code> or <code>dhcp-option</code> change, or when the settings of their binding change, so the clients renew and pick up the change at once. The <code>send-reconfigure</code> command of a binding sends one manually.</p>
+<h3 id="dns-entries-for-clients_1">DNS entries for clients</h3>
+<p>With <code>add-dns-entries=yes</code>, the server adds a dynamic DNS entry (type AAAA) for each address binding. The name is the FQDN the client sends, followed by <code>add-dns-entries-suffix</code> (<code>lan</code> by default), and the TTL of the entry is the lease time. Prefix bindings get no DNS entry.</p>
+<h2 id="bindings">Bindings</h2>
+<p><strong>Sub-menu:</strong> <code>/ipv6/dhcp-server/binding</code></p>
+<p>A dynamic binding is tied to the DUID of the client, so a client whose DUID changes gets a different prefix than before. A static binding gives a client, identified by its DUID and IAID, a fixed prefix or address. All binding properties, status values and commands are described in the <a href="../../cli-reference/ipv6/dhcp-server/binding/"><code>/ipv6/dhcp-server/binding</code></a> CLI reference.</p>
+<p>For example, dynamically assigned /62 prefix</p>
+<pre><code class="language-ros">[admin@RB493G] /ipv6/dhcp-server/binding&gt; print detail
+Flags: X - disabled, D - dynamic
+ 0 D address=2001:db8:7501:ff00::/62 duid=&quot;1605fcb400241d1781f7&quot; iaid=0
+     server=local-dhcp life-time=3d status=bound expires-after=2d23h40m10s
+     last-seen=19m50s
+
+ 1 D address=2001:db8:7501:ff04::/62 duid=&quot;0019d1393535&quot; iaid=2
+     server=local-dhcp life-time=3d status=bound expires-after=2d23h43m47s
+     last-seen=16m13s
+</code></pre>
+<h3 id="rate-limiting_1">Rate limiting</h3>
+<p>You can limit the bandwidth of a client with the <code>rate-limit</code> property of its binding. The server then adds a dynamic simple queue for the prefix or address of the binding.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Queues do not apply to FastTracked traffic. Make sure the firewall does not FastTrack the traffic you want to limit.</p>
+</div>
+<p>First, make the binding static:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/print
+Flags: X - disabled, D - dynamic
+ #   ADDRESS                   DUID            SERVER         STATUS
+ 0 D fdb4:4de7:a3f8:418c::/66  0x6c3b6b7c413e  DHCPv6_Server  bound
+
+[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/make-static 0
+
+[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/print
+Flags: X - disabled, D - dynamic
+ #   ADDRESS                   DUID            SERVER         STATUS
+ 0   fdb4:4de7:a3f8:418c::/66  0x6c3b6b7c413e  DHCPv6_Server  bound
+</code></pre>
+<p>Then set the rate limit. The server creates a dynamic simple queue for the binding:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ipv6/dhcp-server/binding/set 0 rate-limit=10M/10M
+[admin@MikroTik] &gt; /queue/simple/print
+Flags: X - disabled, I - invalid, D - dynamic
+ 0  D name=&quot;dhcp&lt;6c3b6b7c413e fdb4:4de7:a3f8:418c::/66&gt;&quot; target=fdb4:4de7:a3f8:418c::/66 parent=none packet-marks=&quot;&quot; priority=8/8
+      queue=default-small/default-small limit-at=10M/10M max-limit=10M/10M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+      bucket-size=0.1/0.1
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p><code>allow-dual-stack-queue</code> is enabled by default, so a DHCPv6 binding and a DHCP lease of the same client share one dynamic simple queue. Without it, the server creates separate queues for IPv6 and IPv4.</p>
+</div>
+<p>The shared queue contains both the IPv4 and the IPv6 address:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /queue/simple/print
+Flags: X - disabled, I - invalid, D - dynamic
+ 0  D name=&quot;dhcp-ds&lt;6C:3B:6B:7C:41:3E&gt;&quot; target=192.168.1.200/32,fdb4:4de7:a3f8:418c::/66 parent=none packet-marks=&quot;&quot; priority=8/8
+      queue=default-small/default-small limit-at=10M/10M max-limit=10M/10M burst-limit=0/0 burst-threshold=0/0 burst-time=0s/0s
+      bucket-size=0.1/0.1
+</code></pre>
+<h2 id="radius-support_1">RADIUS Support</h2>
+<p>A RADIUS server can assign a rate limit to each DHCPv6 binding with the Mikrotik-Rate-Limit attribute. First, set the DHCPv6 server to use RADIUS:</p>
+<pre><code class="language-ros">/radius 
+add address=10.0.0.1 secret=VERYsecret123 service=dhcp 
+/ipv6/dhcp-server 
+set dhcp1 use-radius=yes
+</code></pre>
+<p>Then configure the RADIUS server to send the Mikrotik-Rate-Limit attribute. For FreeRADIUS with MySQL, add entries to the <code>radcheck</code> and <code>radreply</code> tables for the client, for example:</p>
+<pre><code class="language-sql">INSERT INTO `radcheck` (`username`, `attribute`, `op`, `value`) VALUES
+('000c4200d464', 'Auth-Type', ':=', 'Accept');
+
+INSERT INTO `radreply` (`username`, `attribute`, `op`, `value`) VALUES
+('000c4200d464', 'Delegated-IPv6-Prefix', '=', 'fdb4:4de7:a3f8:418c::/66'),
+('000c4200d464', 'Mikrotik-Rate-Limit', '=', '10M');
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A shared queue is created only when the server recognizes the DHCP lease and the DHCPv6 binding as the same client: by the MAC address of the lease, or by its DUID when the DHCP client sends a DUID-based client identifier (RFC 4361), and by the DUID of the binding. A DHCPv6 client generates its DUID per device, not necessarily from the MAC address of the interface it runs on, so the server can create separate queues instead.</p>
+</div>
+<hr />
+<h1 id="dns">DNS</h1>
+<blockquote>
+<p>The RouterOS DNS resolver: use the router as the DNS server for your network, check and troubleshoot it, add local names, send domains to other servers, use domain names in the firewall, block ads with adlists, use...</p>
+</blockquote>
+<h1 id="dns_1">DNS</h1>
+<p>RouterOS has a caching DNS resolver. The router uses it for its own lookups, and it can be the DNS server for the devices in your network: it asks upstream DNS servers, for example those of your ISP, and keeps their answers in its cache.</p>
+<p>With the default configuration, this already works, and you do not need to change anything. The following sections cover the setup, how to check it, and extra tasks such as local names and ad blocking. The extras apply only to devices that use the router as their DNS server: devices that get other DNS servers from DHCP, for example 1.1.1.1, bypass the router's static entries and adlists.</p>
+<h2 id="use-the-router-as-the-dns-server-for-your-network">Use the router as the DNS server for your network</h2>
+<p>The default configuration already does this. To set it up yourself:</p>
+<ol>
+<li>Allow the router to answer the devices in your network:</li>
+</ol>
+<p><code>ros
+   /ip/dns/set allow-remote-requests=yes</code></p>
+<ol start="2">
+<li>Give the router's address to your DHCP clients as their DNS server: set <code>dns-server</code> in <code>/ip/dhcp-server/network</code>, for example to 192.168.88.1 (see <a href="./dhcp/server">DHCP server</a>).</li>
+</ol>
+<p>The router gets its upstream servers from other services, for example from the ISP through the DHCP client on the WAN port. They show up as <code>dynamic-servers</code> in <code>/ip/dns/print</code>. To use other upstream servers, set them in <code>servers</code>. The router tries them before the dynamic ones:</p>
+<pre><code class="language-ros">/ip/dns/set servers=1.1.1.1,9.9.9.9
+</code></pre>
+<p>With <code>allow-remote-requests=yes</code>, the router answers DNS queries on UDP and TCP port 53 on all its addresses. The default firewall drops these queries when they come from the internet. If you use your own firewall rules, drop them as well, so your router is not an open resolver that anyone on the internet can use:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input in-interface-list=WAN protocol=udp dst-port=53 action=drop comment=&quot;drop DNS from WAN&quot;
+/ip/firewall/filter/add chain=input in-interface-list=WAN protocol=tcp dst-port=53 action=drop comment=&quot;drop DNS from WAN&quot;
+</code></pre>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p>To test a name on the router itself:</p>
+<pre><code class="language-ros">:put [:resolve mikrotik.com]
+</code></pre>
+<p>To test the router as the DNS server from a computer in your network, ask it directly, for example with <code>nslookup mikrotik.com 192.168.88.1</code>.</p>
+<p>The answer of a DNS server has a status:</p>
+<ul>
+<li><code>NOERROR</code>: the name exists. The answer can still contain no records, when the name has none of the requested type.</li>
+<li><code>NXDOMAIN</code>: the name does not exist.</li>
+<li><code>SERVFAIL</code>: the router could not get an answer, for example because no upstream server answered in time.</li>
+</ul>
+<p>The router keeps answers in its cache for their time to live (TTL). To see the cached answers, or to empty the cache after a change:</p>
+<pre><code class="language-ros">/ip/dns/cache/print
+/ip/dns/cache/flush
+</code></pre>
+<p>The router logs DNS errors, for example about the DoH server or an adlist import, in the <code>dns</code> topic:</p>
+<pre><code class="language-ros">/log/print where topics~&quot;dns&quot;
+</code></pre>
+<p>If devices get no answer at all, check <code>allow-remote-requests</code> and your firewall rules. If a name resolves to <code>0.0.0.0</code>, an adlist blocks it, on the router or on the upstream server.</p>
+<h2 id="local-names">Local names</h2>
+<p>Static entries answer names from the router itself, for example for the devices in your network:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dns/static/add name=nas.lan address=192.168.88.20
+[admin@MikroTik] &gt; /ip/dns/static/add name=printer.lan address=192.168.88.21
+[admin@MikroTik] &gt; /ip/dns/static/add name=example.lan address=192.168.88.30 match-subdomain=yes
+[admin@MikroTik] &gt; /ip/dns/static/print
+Columns: NAME, TYPE, ADDRESS, TTL
+# NAME         TYPE  ADDRESS        TTL
+0 nas.lan      A     192.168.88.20  1d
+1 printer.lan  A     192.168.88.21  1d
+2 example.lan  A     192.168.88.30  1d
+</code></pre>
+<ul>
+<li>An IPv6 address makes an AAAA entry.</li>
+<li>The router also answers reverse lookups (PTR) for these addresses.</li>
+<li>With <code>match-subdomain=yes</code>, an entry answers for the name and for every name below it, for example <code>www.example.lan</code>.</li>
+</ul>
+<p>The DHCP server and IP neighbor discovery add static entries by themselves, flagged <code>D</code> (dynamic), when their <code>add-dns-entries</code> setting is on. See <a href="./dhcp/server">DHCP server</a> and <a href="../cli-reference/ip/neighbor/discovery-settings"><code>/ip/neighbor/discovery-settings</code></a>.</p>
+<h2 id="send-a-domain-to-another-dns-server">Send a domain to another DNS server</h2>
+<p>A <code>FWD</code> entry sends the queries for a name to another DNS server instead of the normal upstream servers, for example the names of a company network to the company's DNS server:</p>
+<pre><code class="language-ros">/ip/dns/static/add name=corp.example.com type=FWD forward-to=10.0.0.53 match-subdomain=yes
+</code></pre>
+<p><code>forward-to</code> takes an IP address, a DNS name or the name of a forwarder. Without <code>forward-to</code>, a <code>FWD</code> entry sends the queries to the normal upstream servers.</p>
+<p>A forwarder is a named group of DNS and DoH servers for <code>FWD</code> entries. The router sends each query to the next server of the group in turn:</p>
+<pre><code class="language-ros">/ip/dns/forwarders/add name=branch dns-servers=10.1.0.53,10.1.1.53
+/ip/dns/static/add name=branch.example.com type=FWD forward-to=branch match-subdomain=yes
+</code></pre>
+<p>The router does not skip a server of a forwarder that stops answering: the queries that reach it fail. Add only servers that work.</p>
+<h2 id="use-domain-names-in-firewall-rules">Use domain names in firewall rules</h2>
+<p>With <code>address-list</code>, the router adds the addresses it answers for an entry to a firewall address list. With a <code>FWD</code> entry, these are the addresses in the upstream answer:</p>
+<pre><code class="language-ros">/ip/dns/static/add name=example.com type=FWD address-list=example-com match-subdomain=yes
+</code></pre>
+<p>After a device in your network looks up <code>example.com</code> through the router, the list holds the addresses of the answer:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/address-list/print where list=example-com
+Flags: D - DYNAMIC
+Columns: LIST, ADDRESS, CREATION-TIME
+#   LIST         ADDRESS        CREATION-TIME
+;;; created for example.com.
+0 D example-com  198.51.100.10  2026-09-24 12:32:52
+;;; created for example.com.
+1 D example-com  198.51.100.11  2026-09-24 12:32:52
+</code></pre>
+<p>Use the list in firewall rules, or in mangle rules to route the traffic of a domain differently (see <a href="../user-guides/routing-and-networking-protocols/policy-routing">Policy routing</a>). The router removes an entry when the TTL of the answer has passed, plus <code>address-list-extra-time</code> from <code>/ip/dns</code>. Only the queries of devices add entries. The router's own lookups, for example with <code>:resolve</code>, do not.</p>
+<h2 id="block-ads-with-adlists">Block ads with adlists</h2>
+<p>An adlist is a list of domain names, for example of ad and tracking servers, that the router blocks. It answers A queries for these names with <code>0.0.0.0</code> and AAAA queries with <code>::</code>, so the devices cannot reach them.</p>
+<p>The router keeps adlists in the DNS cache, so raise <code>cache-size</code> before you add a list. A list of about 75 000 names needs about 6 MiB; the example leaves room for the normal cache as well:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/dns/set cache-size=16384
+[admin@MikroTik] &gt; /ip/dns/adlist/add url=https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+[admin@MikroTik] &gt; /ip/dns/adlist/print
+0  url=&quot;https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts&quot;
+   match-count=0 name-count=76524
+</code></pre>
+<p><code>name-count</code> shows how many names the router imported, and <code>match-count</code> how many queries the list blocked.</p>
+<p>When the cache is too small, the router stops the import and logs <code>adlist read: max cache size reached</code>. Raising <code>cache-size</code> afterwards does not complete the list. Remove the adlist and add it again.</p>
+<p>An adlist can also be a file on the router, with one name per line, in hosts file format or as plain names:</p>
+<pre><code class="language-ros">/file/add name=adlist.txt contents=&quot;0.0.0.0 ads.example.net\ntracker.example.net\n&quot;
+/ip/dns/adlist/add file=adlist.txt
+</code></pre>
+<p>To stop blocking a name, add a <code>FWD</code> entry for it. The router then sends its queries to the upstream servers:</p>
+<pre><code class="language-ros">/ip/dns/static/add name=ads.example.net type=FWD
+</code></pre>
+<p>To stop all adlists for a while, for example for 10 minutes:</p>
+<pre><code class="language-ros">/ip/dns/adlist/pause duration=10m
+</code></pre>
+<p><a href="https://youtube.com/watch?v=RMJnjyAOfLI">Video: Adlist setup</a></p>
+<h2 id="dns-over-https">DNS over HTTPS</h2>
+<p>With DNS over HTTPS (DoH), the router sends its upstream queries encrypted, over HTTPS, to one DoH server:</p>
+<pre><code class="language-ros">/ip/dns/set use-doh-server=https://cloudflare-dns.com/dns-query verify-doh-cert=yes
+</code></pre>
+<p>Keep <code>servers</code> or <code>dynamic-servers</code>, or add a static entry for the DoH server's host name: the router looks up that name through its normal DNS servers. With <code>verify-doh-cert=yes</code>, the router checks the server's certificate against the built-in trust store and the certificates in <code>/certificate</code> (see <a href="../authentication-authorization-accounting/certificates#built-in-trust-store-authorities">Certificates</a>).</p>
+<p>Some DoH services need HTTP/2, which only ARM64 and x86 devices, including CHR, support:</p>
+<ul>
+<li>Cloudflare, Control D, Google, NextDNS and OpenDNS work on all devices.</li>
+<li>Mullvad, Quad9 and UncensoredDNS work only on ARM64 and x86 devices.</li>
+</ul>
+<p>While a DoH server is set, the router sends all upstream queries to it and does not fall back to the normal DNS servers. When the DoH server cannot be reached, devices get <code>SERVFAIL</code>. <code>FWD</code> entries keep using their own servers.</p>
+<p><a href="https://youtube.com/watch?v=w4erB0VzyIE">Video: DoH setup</a></p>
+<h2 id="more-record-types-and-regular-expressions">More record types and regular expressions</h2>
+<p>Static entries can also hold other record types:</p>
+<ul>
+<li><code>CNAME</code> gives a name an alias. The router answers it together with the address of the target, which can come from a static entry or from upstream: <code>/ip/dns/static/add name=files.lan type=CNAME cname=nas.lan</code>.</li>
+<li><code>NXDOMAIN</code> makes a name not exist, for all record types: <code>/ip/dns/static/add name=tracker.example.com type=NXDOMAIN</code>.</li>
+<li><code>MX</code> names the mail server of a domain: <code>/ip/dns/static/add name=lan type=MX mx-exchange=mail.lan mx-preference=10</code>.</li>
+<li><code>TXT</code> holds text: <code>/ip/dns/static/add name=lan type=TXT text="managed by RouterOS"</code>.</li>
+</ul>
+<p>To match many names with one entry, use a regular expression instead of <code>name</code>:</p>
+<pre><code class="language-ros">/ip/dns/static/add regexp=&quot;^host[0-9]+\\.lan\$&quot; address=192.168.88.40
+</code></pre>
+<p>The router matches the expression against the name in lower case, so write it in lower case. On the command line, a backslash is written as <code>\\</code> and <code>$</code> as <code>\$</code>: the entry above is stored as <code>^host[0-9]+\.lan$</code>.</p>
+<p>Create only one entry for each name and record type. When several entries match the same name, for example an entry with <code>match-subdomain=yes</code> and an entry for a name below it, the order of the list does not decide which of them answers.</p>
+<h2 id="mdns-repeater">mDNS repeater</h2>
+<p>Multicast DNS (mDNS) lets devices find each other in a local network, for example printers (AirPrint), media players (AirPlay, Chromecast) and smart home devices. mDNS stays in one network. The mDNS repeater passes it on between the interfaces you list, so devices in different networks or VLANs can find each other:</p>
+<pre><code class="language-ros">/ip/dns/set mdns-repeat-ifaces=bridge,vlan20
+</code></pre>
+<p>Use interfaces that carry multicast, such as Ethernet, VLAN, bridge or EoIP interfaces. Repeating adds multicast traffic to every listed network.</p>
+<p>The router receives the mDNS packets itself, so they pass the input chain of the firewall. The default firewall accepts them on the interfaces in the <code>LAN</code> interface list. If your input rules drop UDP port 5353 on a listed interface, for example a VLAN that is not in <code>LAN</code>, add this rule before the rules that drop traffic:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input protocol=udp dst-port=5353 action=accept comment=&quot;accept mDNS&quot;
+</code></pre>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="how-the-router-answers-a-query">How the router answers a query</h3>
+<p>What the router answers depends on the entries that exist for the name:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Entries for the name</th>
+<th style="text-align: left;">Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">None</td>
+<td style="text-align: left;">From the cache or the upstream servers.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Static entry, for example A</td>
+<td style="text-align: left;">From the entry, for its record type. Other record types come from upstream; when upstream has none, the router answers <code>NOERROR</code> without records.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Name on an adlist</td>
+<td style="text-align: left;"><code>0.0.0.0</code> for A and <code>::</code> for AAAA, also when a static A or AAAA entry exists. Other record types come from upstream.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>FWD</code> entry</td>
+<td style="text-align: left;">From the <code>forward-to</code> server, or from the upstream servers. The adlists do not apply.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>FWD</code> and A entries</td>
+<td style="text-align: left;">From the A entry.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>NXDOMAIN</code> entry</td>
+<td style="text-align: left;"><code>NXDOMAIN</code> for all record types.</td>
+</tr>
+</tbody>
+</table>
+<p>Names are matched in lower case. The cache answers with the remaining TTL.</p>
+<h3 id="upstream-servers">Upstream servers</h3>
+<ul>
+<li>The router tries the static <code>servers</code> first, in order, then the <code>dynamic-servers</code>, for example those of the DHCP client with <code>use-peer-dns=yes</code>.</li>
+<li>The router waits <code>query-server-timeout</code> for an answer before it tries the next server. When a server answers, the router keeps using it for later queries.</li>
+<li>When no server answers within <code>query-total-timeout</code>, the device gets <code>SERVFAIL</code>.</li>
+<li>When <code>max-concurrent-queries</code> queries are waiting for upstream answers, the router drops new queries, also those it could answer from the cache, until one of the waiting queries finishes.</li>
+<li>A change in <code>/ip/dns</code> takes effect at once. A query that arrives at that moment can stay unanswered, and the device sends it again. The cache is kept.</li>
+</ul>
+<h3 id="cache">Cache</h3>
+<ul>
+<li><code>cache-max-ttl</code> limits the TTL of upstream answers. Static entries use their own <code>ttl</code>, 1 day by default.</li>
+<li>Adlists count against <code>cache-size</code>: each name needs about 75 bytes.</li>
+<li><code>/ip/dns/cache</code> lists the answers the router gives. <code>/ip/dns/cache/all</code> also lists the other records it holds, such as the PTR records for static entries. Regular expression entries have no PTR records.</li>
+</ul>
+<h3 id="adlists">Adlists</h3>
+<ul>
+<li>Each line holds one name, alone or after an address (<code>0.0.0.0</code>, <code>127.0.0.1</code> or <code>::1</code>) as in a hosts file. Lines and line ends starting with <code>#</code> are comments. Names must be in lower case, and wildcards such as <code>*.example.com</code> are not supported.</li>
+<li>Only the listed name is blocked, not the names below it. Blocked answers have a TTL of 2 seconds.</li>
+<li>Disabling an adlist does not free the cache memory its names use; they still count against <code>cache-size</code>. Only removing the list releases it.</li>
+<li>The router verifies the certificate of an HTTPS adlist URL (<code>ssl-verify=yes</code>). For a server with a self-signed certificate, import its CA certificate into <code>/certificate</code>, or set <code>ssl-verify=no</code>.</li>
+<li>The router checks all lists for changes every 4 hours; <code>/ip/dns/adlist/reload</code> checks them at once. The router stores the lists on its disk.</li>
+<li>A router can have up to 64 adlists.</li>
+</ul>
+<h3 id="dns-over-https_1">DNS over HTTPS</h3>
+<ul>
+<li>The router keeps one HTTPS connection (TCP port 443) to the DoH server and sends all queries through it.</li>
+<li>On ARM64 and x86 devices, the router uses HTTP/2 when the server supports it. Other devices use HTTP/1.1.</li>
+<li>DoH errors are logged in the <code>dns</code> topic, for example <code>DoH server connection error: timeout connecting</code>.</li>
+</ul>
+<h3 id="forwarders">Forwarders</h3>
+<ul>
+<li>The servers of a forwarder take turns, one query each, across <code>dns-servers</code> and <code>doh-servers</code>. A query that goes to a server that does not answer fails after <code>query-total-timeout</code>.</li>
+<li>For a forwarder, <code>verify-doh-cert</code> is on by default, unlike in <code>/ip/dns</code>.</li>
+</ul>
+<h3 id="vrf">VRF</h3>
+<ul>
+<li>The resolver answers devices in the VRF set in <code>vrf</code>, <code>main</code> by default. Devices in other VRFs get no answer.</li>
+<li>Upstream servers are reached through the main routing table. To reach a server in another VRF, write it as <code>address@vrf</code>, for example <code>servers=10.0.0.1@vrf1</code>.</li>
+</ul>
+<h3 id="mdns-repeater_1">mDNS repeater</h3>
+<ul>
+<li>The router repeats IPv4 mDNS (UDP port 5353 to 224.0.0.251), and sends the packets from its own address on the other interfaces. IPv6 mDNS (ff02::fb) is not repeated.</li>
+<li>Layer 3 tunnels such as WireGuard carry no multicast, so mDNS cannot be repeated over them.</li>
+</ul>
+<p>For all properties, see <a href="../cli-reference/ip/dns/"><code>/ip/dns</code></a>, <a href="../cli-reference/ip/dns/static"><code>/ip/dns/static</code></a>, <a href="../cli-reference/ip/dns/adlist/"><code>/ip/dns/adlist</code></a> and <a href="../cli-reference/ip/dns/forwarders"><code>/ip/dns/forwarders</code></a> in the CLI reference.</p>
+<hr />
+<h1 id="openflow">OpenFlow</h1>
+<blockquote>
+<p>RouterOS supports OpenFlow protocols 1.0 and 1.3 for SDN integration, enabling centralized traffic management through controller applications that access switch data paths. It includes basic statistics support and...</p>
+</blockquote>
+<h1 id="openflow_1">OpenFlow</h1>
+<p>RouterOS supports OpenFlow <a href="https://opennetworking.org/wp-content/uploads/2013/04/openflow-spec-v1.0.0.pdf">1.0</a> and <a href="https://opennetworking.org/wp-content/uploads/2014/10/openflow-spec-v1.3.0.pdf">1.3</a>, which allow communication between the OpenFlow controller and the OpenFlow agent.</p>
+<p>OpenFlow is used to centralize management of network equipment in Software Defined Networks (SDNs).</p>
+<p>Applications on the OpenFlow controller have access to the switch's data-path and can perform custom tasks, such as flow steering and traffic monitoring.</p>
+<p>The controller sends flows to be added to the agent's flow table. Packet lookup, modification, and forwarding are based on the agent's flow table.</p>
+<p>RouterOS supports OpenFlow fast path in simple setups where "goto table" flows are not used.</p>
+<p>OpenFlow overrides regular packet processing. Packets received on interfaces that are OpenFlow switch ports do not pass through the regular networking stack unless the OpenFlow controller sets up flows that enable this; for example, an IP address on such a port does not answer. Be careful not to disable access to the device when configuring OpenFlow: manage the router and reach the controller through a port that is not an OpenFlow port.</p>
+<p>OpenFlow support is in the <code>openflow</code> extra package (see <a href="../getting-started/installation-and-upgrade/packages">Packages</a>).</p>
+<p>When the connection to the controller is lost, the router keeps the installed flows and forwards by
+them; it does not fall back to regular forwarding. The router connects to the controllers in
+<code>controllers</code>, or listens on <code>passive-port</code> for a controller to connect; TLS connections use
+<code>certificate</code> and <code>verify-peer</code> (see the <a href="../cli-reference/openflow/">CLI reference</a>).</p>
+<h2 id="supported-basic-capabilities">Supported basic capabilities</h2>
+<ul>
+<li>OFPC_FLOW_STATS</li>
+<li>OFPC_TABLE_STATS</li>
+<li>OFPC_PORT_STATS</li>
+<li>OFPC_GROUP_STATS</li>
+</ul>
+<h2 id="unsupported-basic-capabilities">Unsupported basic capabilities</h2>
+<ul>
+<li>OFPC_IP_REASM</li>
+<li>OFPC_QUEUE_STATS</li>
+<li>OFPC_PORT_BLOCKED</li>
+</ul>
+<h2 id="unsupported-configuration-parameters-and-actions-version-1">Unsupported configuration parameters and actions (version 1)</h2>
+<ul>
+<li>OFPAT_SET_NW_SRC</li>
+<li>OFPAT_SET_NW_DST</li>
+<li>OFPAT_SET_NW_TOS</li>
+<li>OFPAT_SET_TP_SRC</li>
+<li>OFPAT_SET_TP_DST</li>
+<li>OFPAT_ENQUEUE</li>
+<li>OFPAT_VENDOR</li>
+</ul>
+<h2 id="unsupported-configuration-parameters-and-actions-version-13">Unsupported configuration parameters and actions (version 1.3)</h2>
+<ul>
+<li>OFPT_SET_ASYNC</li>
+<li>OFPAT_SET_NW_TTL</li>
+<li>OFPAT_DEC_NW_TTL</li>
+<li>OFPAT_COPY_TTL_OUT</li>
+<li>OFPAT_COPY_TTL_IN</li>
+</ul>
+<h2 id="configuration-example_2">Configuration example</h2>
+<p>This example forwards untagged packets between ether2 and ether3 under the control of a
+<a href="https://faucet.nz/">Faucet</a> controller at 192.0.2.10.</p>
+<pre><code class="language-routeros">/openflow
+add controllers=tcp/192.0.2.10/6653 datapath-id=1/52:54:00:AA:00:01 \
+    disabled=no name=faucet
+
+/openflow/port
+add disabled=no interface=ether2 port-id=1 switch=faucet
+add disabled=no interface=ether3 port-id=2 switch=faucet
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>If you also intend to use Gauge, add Gauge's IP address and port to the controllers list. In this example, 6654 is the Gauge port: <code>controllers=tcp/192.0.2.10/6653,tcp/192.0.2.10/6654</code></p>
+</div>
+<p>In the Faucet configuration (<code>faucet.yaml</code>), <code>dp_id</code> must match the <code>datapath-id</code> from the RouterOS
+configuration in hex format (<code>1/52:54:00:AA:00:01</code> → <code>0x0001525400aa0001</code>), and the interface numbers
+are the <code>port-id</code> values:</p>
+<pre><code class="language-yaml">vlans:
+    100:
+        description: &quot;untagged&quot;
+
+acls:
+    1:
+        - rule:
+            actions:
+                allow: 1
+
+dps:
+    test_switch:
+        dp_id: 0x0001525400aa0001
+        hardware: &quot;Generic&quot;
+        drop_broadcast_source_address: false
+        drop_spoofed_faucet_mac: false
+        interfaces:
+            1:
+                name: &quot;h1&quot;
+                description: &quot;host1&quot;
+                native_vlan: 100
+                acl_in: 1
+            2:
+                name: &quot;h2&quot;
+                description: &quot;host2&quot;
+                native_vlan: 100
+                acl_in: 1
+</code></pre>
+<p>When the controller is connected, the hosts on ether2 and ether3 reach each other, and the flows that
+Faucet installs are in the <code>/openflow/flow</code> menu. With <code>version=default</code>, the router and Faucet agree
+on OpenFlow 1.3, shown as <code>version=4</code> in the flows. Faucet uses several tables; this shows table 0:</p>
+<pre><code class="language-routeros">/openflow/flow/print detail where table-id=0
+</code></pre>
+<pre><code class="language-text">0  switch=faucet version=4 match=&quot; []&quot; actions=&quot; []&quot;
+   info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+      removenotify 0&quot; table-id=0
+
+1  switch=faucet version=4 match=&quot; [ { inport=00000002 } ]&quot;
+   actions=&quot; [ { goto=1 } ]&quot;
+   info=&quot;priority 20480, idletimeout 0, hardtimeout 0, cookie 1524372928,
+      removenotify 0&quot; table-id=0
+
+2  switch=faucet version=4 match=&quot; [ { inport=00000001 } ]&quot;
+   actions=&quot; [ { goto=1 } ]&quot;
+   info=&quot;priority 20480, idletimeout 0, hardtimeout 0, cookie 1524372928,
+      removenotify 0&quot; table-id=0
+</code></pre>
+<p>The full flow table shows Faucet's pipeline: table 0 checks the input port, table 1 adds VLAN 100 to
+untagged packets, table 2 sends unknown source addresses to the controller (port <code>4294967293</code>) for
+learning, table 3 forwards to learned destinations, and table 4 floods. Learned flows have timeouts:</p>
+<details>
+<summary>All flows</summary>
+
+
+<pre><code class="language-text"> 0  switch=faucet version=4 match=&quot; [ { ethdst_m=01000cccccccffffffffffff } ]&quot;
+    actions=&quot; []&quot;
+    info=&quot;priority 8240, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 1  switch=faucet version=4 match=&quot; [ { ethdst_m=01000ccccccdffffffffffff } ]&quot;
+    actions=&quot; []&quot;
+    info=&quot;priority 8240, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 2  switch=faucet version=4 match=&quot; [ { ethdst_m=0180c2000000fffffffffff0 } ]&quot;
+    actions=&quot; []&quot;
+    info=&quot;priority 8236, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 3  switch=faucet version=4
+    match=&quot; [ { ethdst_m=0180c2000000ffffff000000 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } }; { output={ port=2; max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8216, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 4  switch=faucet version=4
+    match=&quot; [ { ethdst_m=01005e000000ffffff000000 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } }; { output={ port=2; max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8216, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 5  switch=faucet version=4
+    match=&quot; [ { ethdst_m=333300000000ffff00000000 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } }; { output={ port=2; max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8208, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 6  switch=faucet version=4 match=&quot; [ { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } }; { output={ port=2; max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8192, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 7  switch=faucet version=4 match=&quot; []&quot; actions=&quot; []&quot;
+    info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+ 8  switch=faucet version=4 match=&quot; []&quot; actions=&quot; [ { goto=4 } ]&quot;
+    info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=3
+
+ 9  switch=faucet version=4 match=&quot; [ { ethtype=9000 } ]&quot; actions=&quot; []&quot;
+    info=&quot;priority 20490, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=2
+
+10  switch=faucet version=4 match=&quot; [ { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { output={ port=4294967293; max_len=96 } }
+       ] }; { goto=3 } ]&quot;
+    info=&quot;priority 4096, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=2
+
+11  switch=faucet version=4 match=&quot; []&quot; actions=&quot; [ { goto=3 } ]&quot;
+    info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=2
+
+12  switch=faucet version=4 match=&quot; []&quot; actions=&quot; []&quot;
+    info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=1
+
+13  switch=faucet version=4 match=&quot; []&quot; actions=&quot; []&quot;
+    info=&quot;priority 0, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=0
+
+14  switch=faucet version=4
+    match=&quot; [ { ethdst_m=ffffffffffffffffffffffff }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } }; { output={ port=2; max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8240, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=4
+
+15  switch=faucet version=4 match=&quot; [ { inport=00000002 }; { vlanvid=0000 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { pushvlan={ ethertype=33024 } }; {
+       setfield={ vlanvid=1064 } } ] }; { goto=2 } ]&quot;
+    info=&quot;priority 4096, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=1
+
+16  switch=faucet version=4 match=&quot; [ { inport=00000002 } ]&quot;
+    actions=&quot; [ { goto=1 } ]&quot;
+    info=&quot;priority 20480, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=0
+
+17  switch=faucet version=4 match=&quot; [ { inport=00000001 }; { vlanvid=0000 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { pushvlan={ ethertype=33024 } }; {
+       setfield={ vlanvid=1064 } } ] }; { goto=2 } ]&quot;
+    info=&quot;priority 4096, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=1
+
+18  switch=faucet version=4 match=&quot; [ { inport=00000001 } ]&quot;
+    actions=&quot; [ { goto=1 } ]&quot;
+    info=&quot;priority 20480, idletimeout 0, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=0
+
+19  switch=faucet version=4
+    match=&quot; [ { ethdst=525400bb0001 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=1;
+       max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8192, idletimeout 403, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=3
+
+20  switch=faucet version=4
+    match=&quot; [ { ethdst=525400bb0002 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { apply-actions= [ { popvlan={} }; { output={ port=2;
+       max_len=0 } } ] } ]&quot;
+    info=&quot;priority 8192, idletimeout 445, hardtimeout 0, cookie 1524372928,
+       removenotify 0&quot; table-id=3
+
+21  switch=faucet version=4
+    match=&quot; [ { inport=00000002 }; { ethsrc=525400bb0002 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { goto=3 } ]&quot;
+    info=&quot;priority 8191, idletimeout 0, hardtimeout 295, cookie 1524372928,
+       removenotify 0&quot; table-id=2
+
+22  switch=faucet version=4
+    match=&quot; [ { inport=00000001 }; { ethsrc=525400bb0001 }; { vlanvid=1064 } ]&quot;
+    actions=&quot; [ { goto=3 } ]&quot;
+    info=&quot;priority 8191, idletimeout 0, hardtimeout 253, cookie 1524372928,
+       removenotify 0&quot; table-id=2
+</code></pre>
+
+
+</details>
+
+<p>To view flow statistics, use the <code>stats</code> parameter:</p>
+<pre><code class="language-routeros">/openflow/flow/print stats where table-id=0
+</code></pre>
+<pre><code class="language-text">Columns: SWITCH, MATCH, BYTES, PACKETS, DURATION
+# SWITCH  MATCH                     BYTES  PACKETS  DURATION
+0 faucet   []                           0        0  29s820ms
+1 faucet   [ { inport=00000002 } ]   1107       11  29s790ms
+2 faucet   [ { inport=00000001 } ]   1107       11  29s690ms
+</code></pre>
+<h2 id="statistics">Statistics</h2>
+<p>Fast path statistics can be viewed with <code>/openflow/print fast-path</code>. With the multi-table flows that
+Faucet installs, the fast path is not used:</p>
+<pre><code class="language-routeros">/openflow/print fast-path
+</code></pre>
+<pre><code class="language-text">  openflow-fast-path-packets: 0
+    openflow-fast-path-bytes: 0
+</code></pre>
+<p>Port statistics are in the <code>/openflow/port</code> menu:</p>
+<pre><code class="language-routeros">/openflow/port/print stats
+</code></pre>
+<pre><code class="language-text">Columns: INTERFACE, PORT-ID, RX-BYTES, TX-BYTES, RX-PACKETS, TX-PACKETS
+# INTERFACE  PORT-ID  RX-BYTES  TX-BYTES  RX-PACKETS  TX-PACKETS
+0 ether2           1      1107       830          11           9
+1 ether3           2      1107       830          11           9
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

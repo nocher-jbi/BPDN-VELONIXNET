@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traffic Flow · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Diagnostics and Monitoring</p>
+      <h1 id="traffic-flow">Traffic Flow</h1>
+<h1 id="traffic-flow_1">Traffic Flow</h1>
+<blockquote>
+<p>Traffic-Flow exports statistics about the flows of packets passing through the router in Cisco NetFlow (v1/v5/v9) or IPFIX formats to a collector: enable the service, pick interfaces and timeouts, add targets, verify...</p>
+</blockquote>
+<h1 id="traffic-flow_2">Traffic Flow</h1>
+<p>MikroTik Traffic-Flow provides statistical information about packets that pass through the router. Besides network monitoring and accounting, system administrators can identify various problems that occur in the network, and analyze and optimize overall network performance. Traffic-Flow is compatible with Cisco NetFlow, so utilities designed for NetFlow work with it.</p>
+<p>Traffic Flow only processes traffic that passes through the router's CPU. HW-offloaded traffic (for example, HW-offloaded bridged traffic between switch-chip ports) never shows up in Traffic Flow.</p>
+<p>Supported export formats:</p>
+<ul>
+<li><strong>version 1</strong> - The original NetFlow format. Basic information about IP packets flowing through a router, lacking support for different types of protocols and Type of Service (ToS).</li>
+<li><strong>version 5</strong> - An enhancement over version 1, supporting Type of Service (ToS), TCP flags and autonomous-system information. RouterOS does not fill BGP AS numbers.</li>
+<li><strong>version 9</strong> - Template-based export format with support for new record types; exports IPv4 and IPv6 flow information.</li>
+<li><strong>IPFIX</strong> - The IETF-standardized protocol based on NetFlow version 9, with more customizable flow records; supports newer fields like multicast.</li>
+</ul>
+<h2 id="enable-traffic-flow-and-choose-interfaces">Enable Traffic Flow and choose interfaces</h2>
+<p>Enable the service in <a href="../../cli-reference/ip/traffic-flow"><code>/ip/traffic-flow</code></a>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/traffic-flow/set enabled=yes
+[admin@MikroTik] &gt; /ip/traffic-flow/print
+                enabled: yes
+             interfaces: all
+          cache-entries: 256k
+    active-flow-timeout: 30m
+  inactive-flow-timeout: 15s
+        packet-sampling: no
+      sampling-interval: 0
+         sampling-space: 0
+</code></pre>
+<p>The <code>cache-entries</code> default depends on the device's memory (256k on larger boards, 4k on the smallest). <code>active-flow-timeout</code> and <code>inactive-flow-timeout</code> decide when a flow is expired and exported (see the <a href="../../cli-reference/ip/traffic-flow">parameter descriptions</a>).</p>
+<h3 id="packet-sampling">Packet sampling</h3>
+<p>Packet sampling only accounts for a selection of packets:</p>
+<pre><code class="language-ros">/ip/traffic-flow/set packet-sampling=yes sampling-interval=2222 \
+    sampling-space=1111
+</code></pre>
+<p>2222 consecutive packets are sampled, then 1111 are omitted, and the cycle repeats.</p>
+<h2 id="add-export-targets">Add export targets</h2>
+<p>Add the hosts that receive flow data in <a href="../../cli-reference/ip/traffic-flow/target"><code>/ip/traffic-flow/target</code></a>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/traffic-flow/target/add dst-address=192.168.0.2 \
+    port=2055 version=9
+[admin@MikroTik] &gt; /ip/traffic-flow/target/print
+Columns: SRC-ADDRESS, DST-ADDRESS, PORT, VERSION
+# SRC-ADDRESS  DST-ADDRESS  PORT  VERSION
+0 0.0.0.0      192.168.0.2  2055  9
+</code></pre>
+<p><code>src-address=0.0.0.0</code> means the router picks the source address of the outgoing interface automatically. The export goes out over UDP (default port 2055) in the chosen format, for example NetFlow version 9 here.</p>
+<h2 id="watch-the-flow-counters">Watch the flow counters</h2>
+<p>The <code>/ip/traffic-flow/monitor</code> command shows the state of the flow cache (live-updating; stops after <code>duration</code>):</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/traffic-flow/monitor duration=3
+    finished-flows: 0
+      active-flows: 8
+  unmanaged-packets: 0
+    unmanaged-bytes: 0
+</code></pre>
+<p>If the collector receives nothing, check that the flows appear here: <code>active-flows</code> climbs as the router routes traffic, and <code>finished-flows</code> starts climbing once the flows expire and get exported (default <code>inactive-flow-timeout</code> is 15s after the last packet of the flow). Check the target entry and that the traffic you watch is actually CPU-routed (not hardware-offloaded).</p>
+<h2 id="choose-exported-fields-for-ipfix">Choose exported fields for IPFIX</h2>
+<p>The <a href="../../cli-reference/ip/traffic-flow/ipfix"><code>/ip/traffic-flow/ipfix</code></a> menu selects which fields appear in IPFIX flow records: addresses, ports, protocols, flags, interfaces, timing (for example <code>sys-init-time</code>, <code>first-forwarded</code>, <code>last-forwarded</code>), NAT addresses and ports and more — all rows listed in the <a href="../../cli-reference/ip/traffic-flow/ipfix">CLI reference</a>.</p>
+<p>All fields are on by default; drop the ones you do not want with <code>set</code>:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/traffic-flow/ipfix/set gateway=no tcp-flags=no
+</code></pre>
+<h2 id="notes">Notes</h2>
+<p>Traffic flow records flows at the end of the input, forward and output chain stacks of the <a href="../../firewall-and-quality-of-service/packet-flow-in-routeros">packet flow</a> diagram, so only traffic that reaches one of those chains is counted.</p>
+<p>Because of that, a mirror port on a switch connected to the router cannot be used to count mirrored packets: mirrored frames are dropped before they reach the input chain.</p>
+<p>Other interfaces appear in the report if traffic passes through them and the monitoring interface.</p>
+<h2 id="minimal-end-to-end-example">Minimal end-to-end example</h2>
+<p>A setup from scratch on one router, exporting NetFlow v9 to a collector on 192.168.0.2:</p>
+<pre><code class="language-ros">/ip/traffic-flow/set enabled=yes
+/ip/traffic-flow/target/add dst-address=192.168.0.2 port=2055 version=9
+</code></pre>
+<p>The router starts sending export packets with the flow information; watch with <code>/ip/traffic-flow/monitor</code>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>To use ntop-ng with MikroTik you need to use Nprobe, which is paid software.</p>
+</div>
+<h3 id="see-more">See more</h3>
+<ul>
+<li><a href="https://etutorials.org/Networking/network+management/Part+II+Implementations+on+the+Cisco+Devices/Chapter+7.+NetFlow/Fundamentals+of+NetFlow/">NetFlow Fundamentals</a></li>
+<li><a href="https://github.com/ntop/ntopng/issues/1575">Traffic flow with Ntop on MikroTik</a></li>
+</ul>
+<h2 id="related-topics">Related topics</h2>
+<hr />
+<h1 id="netflow-analysis-with-elasticsearch">NetFlow analysis with Elasticsearch</h1>
+<blockquote>
+<p>This guide explains how to set up NetFlow analysis with Elasticsearch on MikroTik RouterOS by configuring data collection from RouterOS devices to an Elasticsearch server, including Kibana integration and Fleet...</p>
+</blockquote>
+<h1 id="netflow-analysis-with-elasticsearch_1">NetFlow analysis with Elasticsearch</h1>
+<p>Elasticsearch is a popular NoSQL database that can be used to store a wide range of data, including NetFlow logs. Alongside Kibana you can create a powerful tool to analyze NetFlow data from your RouterOS devices. This guide will rely on Elasticsearch integrations and for it to work you need to have a working Elasticsearch setup. This guide will not cover setup instructions for Elasticsearch and Kibana, but will cover the relevant steps to set up NetFlow log collection and analysis.</p>
+<p>There are many possible configurations that can be made with Elasticsearch, but for the sake of this guide we will use the following principle:</p>
+<ul>
+<li>A RouterOS (10.0.0.1) device sends out NetFlow data to a server (10.0.0.2) running <a href="https://www.elastic.co/docs/current/integrations/netflow">NetFlow integration</a>.</li>
+<li>The server (10.0.0.2) running NetFlow integration ingests NetFlow data, processes the data and sends it to a <a href="https://www.elastic.co/guide/en/fleet/current/fleet-server.html">Fleet Server</a> (10.0.0.3).</li>
+<li>A Fleet Server (10.0.0.3) stores the data in <a href="https://www.elastic.co/elasticsearch">Elasticsearch</a> (10.0.0.4).</li>
+<li><a href="https://www.elastic.co/kibana">Kibana</a> (10.0.0.5) retrieves data from Elasticsearch (10.0.0.4), analyzes it and allows you to search the data.</li>
+</ul>
+<p><em>[gambar: NetFlow topology diagram]</em></p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This guide will not use <a href="https://www.elastic.co/logstash">Logstash</a> as a part of analyzing NetFlow data; it has been replaced by a Fleet Server.</p>
+<p><strong>Important:</strong> It is possible to install Elasticsearch, Kibana, Fleet Server and NetFlow Records integration on the same device.</p>
+</div>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/setup.html">Set up Elasticsearch</a><br />
+  <div class="adm adm-info" markdown="block">
+
+**INFO**
+
+  Elasticsearch is widely supported on many platforms. It is recommended to set up a cluster of Elasticsearch nodes.
+  :::
+- [Set up Kibana](https://www.elastic.co/guide/en/kibana/current/setup.html)  
+  :::info
+  Kibana can be installed on the same device on which you installed Elasticsearch, but it can also be installed on a separate device for performance reasons. While it is possible to analyze NetFlow data without Kibana, it requires writing your own API requests. Kibana is very easy to use and has a wide range of features.
+  :::
+- [Set up Fleet Server](https://www.elastic.co/guide/en/fleet/current/add-fleet-server-on-prem.html)  
+  :::info
+  It is possible to set up Fleet Server on the same device on which you installed Elasticsearch and/or Kibana. It is recommended to install Fleet Server on a different device. Refer to the Elasticsearch manual for recommendations on hardware and topology requirements.
+  :::
+
+## Set up
+
+The setup instructions are divided into two parts: Elastic (configuration regarding Elasticsearch, Kibana and Fleet Server) and RouterOS (configuration that is relevant to your RouterOS device).
+
+### Elastic
+
+
+</div></li>
+</ul>
+<p>warning
+Some steps might change over time, refer to Elastic's manual to find the most up-to-date steps.
+:::</p>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/access.html">Log into your Kibana</a></li>
+<li>Open the <a href="https://www.elastic.co/guide/en/kibana/current/fleet.html">Fleet</a> section under the main menu</li>
+<li>Open the "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html">Agent policies</a>" section</li>
+<li>Press the "Create agent policy" button to <a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#create-a-policy">create a new Agent Policy</a></li>
+<li>Give the policy a name, for example, "NetFlow policy", adjust advanced settings if required, create the policy</li>
+<li>Open your newly created policy by clicking on its name</li>
+<li>Press "<a href="https://www.elastic.co/guide/en/fleet/current/agent-policy.html#add-integration">Add integration</a>"</li>
+<li>Search for "<a href="https://www.elastic.co/docs/current/integrations/netflow">NetFlow Records</a>" and press "Add NetFlow Records"</li>
+<li>Adjust configuration, make sure:<br />
+   - Set "UDP host to listen on" to the IP address of your server that is going to run the NetFlow Records integration, in this example the address should be "10.0.0.2"</li>
+<li>Save the integration</li>
+<li>Press the "<a href="https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html">Add Elastic Agent to your host</a>" button</li>
+<li>Follow the instructions on how to add Elastic Agent to your host<br />
+    <div class="adm adm-info" markdown="1"></li>
+</ol>
+<p><strong>INFO</strong></p>
+<pre><code>Elastic's official manual recommends installing the Elastic Agent as Fleet-managed. Consider following the recommendation since managing the agents is easier when they are Fleet-managed.
+:::
+</code></pre>
+<ol start="13">
+<li>Make sure you have opened the NetFlow port on your host and elsewhere in the path from your RouterOS device (10.0.0.1). The default destination port is 2055/UDP.</li>
+<li>Your Elastic Agent is now ready to receive NetFlow data!</li>
+</ol>
+<h3 id="routeros">RouterOS</h3>
+<ol>
+<li>(Optional) Create an <a href="../../cli-reference/interface/list">interface list</a> (for example, "NetFlow_interfaces") and add interfaces that need NetFlow data analysis.  </li>
+</ol>
+<p><code>routeros
+   /interface/list
+   add name=NetFlow_interfaces
+   /interface/list/member
+   add interface=VLAN3000 list=NetFlow_interfaces</code></p>
+<ol start="2">
+<li>Configure <a href="./index.md">Traffic-flow</a> to send NetFlow data to your Elastic Agent (10.0.0.2).  </li>
+</ol>
+<p><code>routeros
+   /ip/traffic-flow
+   set enabled=yes interfaces=NetFlow_interfaces
+   /ip/traffic-flow/target
+   add dst-address=10.0.0.2</code></p>
+<ol start="3">
+<li>You should now start to see NetFlow data being ingested!</li>
+<li>Continue the guide to start using Kibana.</li>
+</ol>
+<h2 id="using-kibana">Using Kibana</h2>
+<p></div>
+warning
+Some steps might change over time, refer to Elastic's manual to find the most up-to-date steps.
+:::</p>
+<p>The NetFlow Records integration provides some useful assets that can be used to analyze NetFlow data. Make sure you <a href="https://www.elastic.co/guide/en/fleet/7.17/install-uninstall-integration-assets.html">install the assets</a> first before continuing. The following section will give you some basic ways how to see NetFlow data.</p>
+<ol>
+<li><a href="https://www.elastic.co/guide/en/kibana/current/access.html">Log into your Kibana</a></li>
+<li>Open the "<a href="https://www.elastic.co/kibana/kibana-dashboard">Dashboards</a>" menu in the main menu</li>
+<li>Search the Dashboards and find "NetFlow"</li>
+</ol>
+<p>You should now see multiple NetFlow Dashboards. For example, try opening the "[Logs Netflow] Overview". If your NetFlow data is properly ingested, then you should now see graphs that summarize your traffic.</p>
+<p>Another useful Dashboard is the "[Logs Netflow] Flow records", which shows you exact NetFlow records. A very useful feature is the filtering option (the + button on top), that allows you to add filters to NetFlow data, for example, you can filter the records to show only a single IP address:</p>
+<p><em>[gambar: Kibana NetFlow records view with a filter applied]</em></p>
+<p>There are other options such as searching for a specific time range. You should read more about <a href="https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#find-the-data-you-want-to-use">Discover</a> to understand the possibilities better.</p>
+<p>For quick reference, these are the fields that you are most likely going to want to use for searching NetFlow data:</p>
+<ul>
+<li>source.ip</li>
+<li>source.port</li>
+<li>destination.ip</li>
+<li>destination.port</li>
+<li>network.transport</li>
+</ul>
+<p>If you want to examine a single record, it is recommended to use the <a href="https://www.elastic.co/guide/en/kibana/current/discover-get-started.html#find-the-data-you-want-to-use">Discover</a> view. NetFlow data can be found as "data_stream.dataset: netflow.log".</p>
+<h2 id="log-retention">Log retention</h2>
+<p>Depending on your local laws you might be required to store NetFlow data for a specified period of time. Be aware that busy networks can generate a lot of NetFlow data, even terabytes per day. You are most likely going to want to adjust <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/set-up-lifecycle-policy.html">Lifecycle Policy</a>. By default the NetFlow data should go under the "logs" policy. If you have multiple Elasticsearch nodes, you can utilize "<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-index-lifecycle.html">phases</a>", which allows you to store data on different types of storage media, but if you only have a single Elasticsearch node, your options are limited and you will most likely want to <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-delete.html">delete</a> old data. For example, if you want to delete data after 6 months, then you can simply change the ILM policy to delete data after 6 months or use this API request:</p>
+<pre><code class="language-json">PUT _ilm/policy/logs
+{
+  &quot;policy&quot;: {
+    &quot;phases&quot;: {
+      &quot;hot&quot;: {
+        &quot;min_age&quot;: &quot;0ms&quot;,
+        &quot;actions&quot;: {
+          &quot;rollover&quot;: {
+            &quot;max_age&quot;: &quot;30d&quot;,
+            &quot;max_primary_shard_size&quot;: &quot;50gb&quot;
+          },
+          &quot;set_priority&quot;: {
+            &quot;priority&quot;: 101
+          }
+        }
+      },
+      &quot;delete&quot;: {
+        &quot;min_age&quot;: &quot;180d&quot;,
+        &quot;actions&quot;: {
+          &quot;delete&quot;: {
+            &quot;delete_searchable_snapshot&quot;: true
+          }
+        }
+      }
+    }
+  }
+}
+</code></pre>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>If you change the "logs" policy, this will apply to ALL your logs, not just NetFlow data. If you need a different retention period for other logs, then it is better to create a new ILM policy and specify the NetFlow integration to use the newly created ILM policy.</p>
+</div>
+<h3 id="use-a-different-ilm-policy">Use a different ILM policy</h3>
+<p>If you want your NetFlow data to have a different retention period, then you need to do the following steps:</p>
+<ol>
+<li>Create a new ILM policy, give it a new name and set the desired period for the delete phase, or use this API request:  </li>
+</ol>
+<p><code>json
+   PUT _ilm/policy/netflow-logs
+   {
+     "policy": {
+       "phases": {
+         "hot": {
+           "min_age": "0ms",
+           "actions": {
+             "rollover": {
+               "max_age": "30d",
+               "max_primary_shard_size": "50gb"
+             },
+             "set_priority": {
+               "priority": 101
+             }
+           }
+         },
+         "delete": {
+           "min_age": "1000d",
+           "actions": {
+             "delete": {
+               "delete_searchable_snapshot": true
+             }
+           }
+         }
+       }
+     }
+   }</code></p>
+<ol start="2">
+<li>Go to Kibana, open "Stack Management", then go to "Index Management" and then "Component Templates".</li>
+<li>Search for "logs-netflow.log@custom", open it and edit it.</li>
+<li>Go to the "Index settings" section.</li>
+<li>Paste in the following:  </li>
+</ol>
+<p><code>json
+   {
+     "index": {
+       "lifecycle": {
+         "name": "netflow-logs"
+       }
+     }
+   }</code></p>
+<ol start="6">
+<li>Press "Next" and then "Save component template".</li>
+</ol>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

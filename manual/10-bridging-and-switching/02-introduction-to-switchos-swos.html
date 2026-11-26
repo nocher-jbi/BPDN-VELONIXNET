@@ -1,0 +1,2283 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introduction to SwitchOS (SwOS) · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Bridging and Switching</p>
+      <h1 id="introduction-to-switchos-swos">Introduction to SwitchOS (SwOS)</h1>
+<h1 id="introduction-to-switchos-swos_1">Introduction to SwitchOS (SwOS)</h1>
+<blockquote>
+<p>SwitchOS (SwOS) is a lightweight operating system built exclusively for the administration of MikroTik switching hardware. It delivers maximum wire-speed Layer 2 forwarding capability across all standard Ethernet...</p>
+</blockquote>
+<h1 id="introduction-to-switchos-swos_2">Introduction to SwitchOS (SwOS)</h1>
+<p>SwitchOS (SwOS) is a lightweight operating system built exclusively for the administration of MikroTik switching hardware. It delivers maximum wire-speed Layer 2 forwarding capability across all standard Ethernet frames, handling IPv4, IPv6, and non-IP traffic seamlessly.</p>
+<h2 id="core-advanced-features">Core &amp; Advanced Features</h2>
+<p>Beyond standard managed switch capabilities, SwOS offers a robust suite of networking features:</p>
+<ul>
+<li><strong>VLAN Management:</strong> Full configuration support for complex VLAN setups, including access and trunking ports.</li>
+<li><strong>Traffic Control:</strong> Advanced broadcast storm control, bandwidth limiting, and port-to-port forwarding settings.</li>
+<li><strong>Monitoring &amp; Mirroring:</strong> Ingress/egress traffic mirroring along with real-time port-level statistics.</li>
+<li><strong>Security &amp; Filtering:</strong> A granular Access Control List (ACL) engine capable of matching traffic by MAC, IP, and port-level rules.</li>
+<li><strong>Hardware Offloading:</strong> Direct hardware-driven manipulation of specific MAC and IP header fields on supported device models.</li>
+</ul>
+<p>:::note Management Limitation</p>
+<p>SwOS is configured exclusively through a standard web browser (HTTP) over IPv4. It does not support command-line interface (CLI) access via serial console/SSH, API access, WinBox, or other alternative management protocols.</p>
+<p>:::</p>
+<hr />
+<h1 id="crs3xx-and-css3xx-series-manual">CRS3xx and CSS3xx Series Manual</h1>
+<blockquote>
+<p>SwOS is an operating system designed specifically for the administration of MikroTik switch products. It provides fundamental managed switch functionalities alongside advanced features such as port-to-port...</p>
+</blockquote>
+<h1 id="crs3xx-and-css3xx-series-manual_1">CRS3xx and CSS3xx Series Manual</h1>
+<h2 id="summary">Summary</h2>
+<p>SwOS is an operating system designed specifically for the administration of MikroTik switch products. It provides fundamental managed switch functionalities alongside advanced features such as port-to-port forwarding, broadcast storm control, MAC/IP/port filtering via ACL rules, VLAN configuration, traffic mirroring, and bandwidth limitation.</p>
+<p>SwOS is managed exclusively through a web browser (HTTP) over IPv4. Console access, SSH, API, or other management interfaces are not supported.</p>
+<hr />
+<h2 id="connecting-to-the-switch">Connecting to the Switch</h2>
+<p>Open a web browser and enter the default management IP address.</p>
+<p><em>[gambar: Swos login css326]</em></p>
+<ul>
+<li><strong>Default IP Address</strong>: <code>192.168.88.1</code></li>
+<li><strong>Default Username</strong>: <code>admin</code></li>
+<li><strong>Default Password</strong>: <em>(blank)</em></li>
+</ul>
+<hr />
+<h2 id="system-tab">System Tab</h2>
+<p>The System tab manages general configuration parameters, device discovery options, and administrative security.</p>
+<p><em>[gambar: Swos system css326]</em></p>
+<h3 id="system-management-settings">System Management Settings</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Address Acquisition</strong></td>
+<td style="text-align: left;">Specify which address acquisition method to use:<code>DHCP with fallback</code> - the switch sends DHCP requests every second and, while no DHCP server is answering, immediately uses the configured <strong>Static IP Address</strong> value. When a server answers, the switch obtains a lease in 1-2 seconds and renews it at half the lease time. If a renewal goes unanswered, the switch returns to the <strong>Static IP Address</strong> value in 5 seconds and resumes sending requests every second.<code>static</code> - address is set as a <strong>Static IP Address</strong> value (IPv4 only)<code>DHCP only</code> - switch uses DHCPv4 client to acquire address</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Static IP Address</strong></td>
+<td style="text-align: left;">Specifies the static IPv4 address for management access.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Identity</strong></td>
+<td style="text-align: left;">Sets a customizable name for the switch identifier.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Allow From</strong></td>
+<td style="text-align: left;">Restricts management web access to specified IP ranges or subnets.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Allow From Ports</strong></td>
+<td style="text-align: left;">Limits web access to designated physical switch interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Allow From VLAN</strong></td>
+<td style="text-align: left;">Restricts access to a specific incoming VLAN ID profile.</td>
+</tr>
+</tbody>
+</table>
+<p><em>[gambar: SwOS Management]</em></p>
+<h3 id="dhcp-pppoe-snooping">DHCP &amp; PPPoE Snooping</h3>
+<p>SwOS features built-in security mechanics to block unauthorized or rogue DHCP servers and PPPoE discovery sequences on specified untrusted interfaces.</p>
+<p><em>[gambar: CSS326 DHCP Snooping]</em></p>
+<h3 id="configuration-security-and-maintenance">Configuration Security and Maintenance</h3>
+<p>The lower section handles backups and administrative passwords.</p>
+<p><em>[gambar: Swos system3 css326]</em></p>
+<ul>
+<li><strong>Change Password</strong>: Updates the device access keys.</li>
+<li><strong>Backup Configuration</strong>: Saves current settings to a local file.</li>
+<li><strong>Restore Configuration</strong>: Uploads and applies existing configuration states.</li>
+</ul>
+<hr />
+<h2 id="link-tab">Link Tab</h2>
+<p>The Link tab configures physical link parameters and monitors active connection properties for each interface.</p>
+<p><em>[gambar: Swos link css326]</em></p>
+<ul>
+<li><strong>Link Profiles</strong>: Manage interface states, toggle speed/duplex auto-negotiation, and control flow control pause frames.</li>
+</ul>
+<hr />
+<h2 id="poe-tab">PoE Tab</h2>
+<p><em>(Available on devices supporting Power over Ethernet distribution features)</em></p>
+<p><em>[gambar: SwOS PoE]</em></p>
+<ul>
+<li>Supports configuring power delivery settings (<code>auto</code>, <code>on</code>, <code>off</code>) and establishing port prioritization during power constraint events.</li>
+</ul>
+<hr />
+<h2 id="sfp-tab">SFP Tab</h2>
+<p>Provides visual diagnostics for connected SFP/SFP+ optical transceivers.</p>
+<p><em>[gambar: Swos sfp1 css326]</em></p>
+<ul>
+<li>Monitors internal diagnostics such as operating temperatures, laser supply voltages, TX/RX power levels, and hardware serialization strings.</li>
+</ul>
+<hr />
+<h2 id="forwarding-and-port-isolation">Forwarding and Port Isolation</h2>
+<p>Manages Layer 2 packet-forwarding tables across the switching architecture.</p>
+<p><em>[gambar: Swos forw css326]</em>
+<em>[gambar: Swos ivl system]</em></p>
+<h3 id="port-isolation-and-isolated-groups">Port Isolation and Isolated Groups</h3>
+<p>Port isolation splits broadcast domains internally, controlling client communications without adding subnet layers.</p>
+<p><em>[gambar: SwOS Isolated Groups]</em>
+<em>[gambar: SwO isolation example3]</em></p>
+<hr />
+<h2 id="lag-link-aggregation">LAG (Link Aggregation)</h2>
+<p>Bundles physical interfaces into single high-throughput channels using either dynamic LACP links or static arrays.</p>
+<p><em>[gambar: Swos lag css326]</em></p>
+<hr />
+<h2 id="rstp-rapid-spanning-tree-protocol">RSTP (Rapid Spanning Tree Protocol)</h2>
+<p>Provides loop avoidance architectures and structural redundancy parameters.</p>
+<p><em>[gambar: Swos rstp css326]</em></p>
+<ul>
+<li>Supports configuring custom bridge path costs utilizing classic short or modern long path evaluation structures.</li>
+</ul>
+<hr />
+<h2 id="vlan-vlans-matrix-configuration">VLAN &amp; VLANs Matrix Configuration</h2>
+<p>VLAN routing rules split ingress packet sorting behavior from egress formatting tables.</p>
+<h3 id="vlan-tab-ingress-control">VLAN Tab (Ingress Control)</h3>
+<p>Handles port behaviors for incoming traffic streams.</p>
+<p><em>[gambar: Swos vlan css326]</em></p>
+<ul>
+<li><strong>VLAN Modes</strong>: Configures entry constraints across <code>disabled</code>, <code>optional</code>, <code>enabled</code>, and <code>strict</code> modes.</li>
+</ul>
+<p><em>[gambar: Swos strict vlans]</em></p>
+<ul>
+<li><strong>Default VLAN ID</strong>: Sets the Port VLAN ID (PVID) assigned to incoming untagged traffic.</li>
+</ul>
+<p><em>[gambar: Default vlan id]</em></p>
+<h3 id="vlans-tab-egress-mapping">VLANs Tab (Egress Mapping)</h3>
+<p>Defines broadcast memberships and handling across target trunk ports.</p>
+<p><em>[gambar: Swos vlans css326]</em>
+<em>[gambar: Swos vlans menu]</em></p>
+<h4 id="traditional-mode-templates">Traditional Mode Templates</h4>
+<ul>
+<li><strong>Access Interfaces</strong>: Pairs standard untagged endpoints to specific target VLAN tags.</li>
+</ul>
+<p><em>[gambar: Access ports]</em></p>
+<ul>
+<li><strong>Trunk and Hybrid Options</strong>: Blends multiple tagged streams with optional untagged native routing paths across primary core uplinks.</li>
+</ul>
+<p><em>[gambar: Hybrid ports]</em>
+  <em>[gambar: Swos hybrid]</em>
+  <em>[gambar: Swos hybrid vlan]</em></p>
+<hr />
+<h2 id="private-vlans">Private VLANs</h2>
+<p>Enforces secure structural port communication profiles across shared infrastructure spaces.</p>
+<p><em>[gambar: SwOS Private VLAN]</em></p>
+<hr />
+<h2 id="hosts-tab">Hosts Tab</h2>
+<p>Exposes the active hardware Forwarding Database (FDB) dynamic entries discovered via incoming source addresses.</p>
+<p><em>[gambar: Swos shost css326]</em></p>
+<hr />
+<h2 id="igmp-snooping">IGMP Snooping</h2>
+<p>Filters multicast distributions, tracking active group subscriptions to block multicast flooding.</p>
+<p><em>[gambar: IGMP snooping]</em>
+<em>[gambar: CSSxx IGMP]</em>
+<em>[gambar: IGMP vlantab]</em></p>
+<hr />
+<h2 id="snmp-tab">SNMP Tab</h2>
+<p>Enables monitoring via standard SNMP structures.</p>
+<p><em>[gambar: Swos snmp2 1]</em></p>
+<hr />
+<h2 id="acl-tab-access-control-lists">ACL Tab (Access Control Lists)</h2>
+<p>Executes hardware-offloaded filtering rules matching patterns across L2/L3/L4 frame headers to drop or redirect packets.</p>
+<p><em>[gambar: CRS326 ACL table]</em></p>
+<hr />
+<h2 id="diagnostics-stats-errors-and-histograms">Diagnostics: Stats, Errors, and Histograms</h2>
+<p>Tracks interface counters, dropped frames, error patterns, and detailed structural link history diagnostics.</p>
+<p><em>[gambar: Swos stat1 css326]</em>
+<em>[gambar: Swos stat2 css326]</em>
+<em>[gambar: Swos stat3 css326]</em></p>
+<hr />
+<h2 id="health-tab">Health Tab</h2>
+<p>Monitors hardware operating environments, tracking system core temperatures and operating input voltages.</p>
+<p><em>[gambar: SwOS CRS328 health]</em></p>
+<hr />
+<h2 id="dual-boot-operation">Dual Boot Operation</h2>
+<p>Many CRS hardware units support a dual-boot design, allowing toggle operations between running RouterOS or SwOS.</p>
+<p><em>[gambar: Router board settings]</em>
+<em>[gambar: Router board settings webfig]</em>
+<em>[gambar: Dual boot option]</em></p>
+<p>Swapping operating systems toward SwOS using the RouterOS CLI interface utilizes the following system command structure:</p>
+<pre><code class="language-bash">/system routerboard settings set boot-os=swos
+</code></pre>
+<h2 id="reset-and-reinstall">Reset and Reinstall</h2>
+<p>It is possible to reset SwOS configuration using the "Reset Configuration" button in the System menu. In case SwOS web management is not available, the configuration can still be reset using other options.</p>
+<p>The CSS326-24G-2S+ and CSS318-16G-2S+IN devices have built-in backup SwOS firmware which can be loaded in case standard firmware breaks or upgrade fails:</p>
+<ul>
+<li>Holding Reset button for few seconds while CSS326-24G-2S+ and CSS318-16G-2S+IN is booting resets configuration and loads backup firmware.</li>
+<li>After loading backup firmware, it is possible to connect to 192.168.88.1 (or leased address from a DHCP server) using web browser and install new SwOS firmware.</li>
+</ul>
+<p>The Dual Boot devices can boot RouterOS using a reset button. Power the device while holding the reset button and wait till user LED starts flashing (around 5 seconds). This will reset the RouterOS configuration and the device will now boot into RouterOS. After device is accessible by RouterOS, it is possible to upgrade and reset SwOS configuration. See the article - Configuring SwOS using RouterOS.</p>
+<p>CRS3xx devices with a serial console have additional options.</p>
+<p>To change between RouterOS and SwOS follow these steps:</p>
+<ol>
+<li>Connect to the device using a serial console</li>
+<li>Enter RouterBOOT setup</li>
+<li>Choose "j - boot os"</li>
+<li>Choose either RouterOS or SwOS</li>
+</ol>
+<p>It is possible to load a SwOS backup firmware in case standard firmware breaks or upgrade fails:</p>
+<ol>
+<li>Connect to the device using a serial console</li>
+<li>Boot SwOS</li>
+<li>Choose "p - boot primary SwOS"</li>
+<li>After loading backup firmware, it is possible to connect to 192.168.88.1 (or leased address from a DHCP server) using a web browser and install new SwOS firmware.</li>
+</ol>
+<p>To reset SwOS configuration:</p>
+<ol>
+<li>Connect to the device using a serial console</li>
+<li>Boot SwOS</li>
+<li>Choose "r - reset configuration"</li>
+</ol>
+<p><em>[gambar: Swos reset]</em></p>
+<hr />
+<h1 id="css106-rb260-series-manual">CSS106 (RB260) series Manual</h1>
+<blockquote>
+<p>SwOS configuration manual for the MikroTik CSS106 (RB260) series switch: port and link settings, VLANs, SFP, statistics, and system management.</p>
+</blockquote>
+<h1 id="css106-rb260-series-manual_1">CSS106 (RB260) series Manual</h1>
+<h2 id="features">Features</h2>
+<table>
+<thead>
+<tr>
+<th>Features</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Forwarding</strong></td>
+<td>Full non-blocking wirespeed switchingUp to 2k MAC entries in the Host tableForwarding Database works based on SVL or IVLPort IsolationPort LockJumbo frame support - 9198 bytes</td>
+</tr>
+<tr>
+<td><strong>Spanning Tree Protocol</strong></td>
+<td>RSTP support</td>
+</tr>
+<tr>
+<td><strong>Multicast Forwarding</strong></td>
+<td>IGMP Snooping support</td>
+</tr>
+<tr>
+<td><strong>Mirroring</strong></td>
+<td>Port-based mirroring</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>Fully compatible with IEEE802.Port-based VLANVLAN filtering</td>
+</tr>
+<tr>
+<td><strong>Quality of Service (QoS)</strong></td>
+<td>Ingress traffic limiting (by ACL)Egress traffic limiting</td>
+</tr>
+<tr>
+<td><strong>Access Control List</strong></td>
+<td>Ingress ACL tablesUp to 32 ACL rules (limited by SwOS)Classification based on ports, L2, L3, L4 protocol header fieldsACL actions include filtering, forwarding, and modifying the protocol header fields</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="connecting-to-the-switch_1">Connecting to the switch</h2>
+<p>Open your web browser and enter the IP address of your switch (192.168.88.1 by default) and a login screen will appear. The switch can also run a DHCP client, see if a different IP address has been assigned by the DHCP server.</p>
+<p><em>[gambar: Swos login css106]</em></p>
+<p>SwOS default IP address: <strong>192.168.88.1</strong>, user name: <strong>admin</strong> and there is no password.</p>
+<p><a href="../../system-information-and-utilities/neighbor-discovery">MikroTik Neighbor Discovery</a> can be used to discover the IP address of the Mikrotik switch. LLDP is not supported.</p>
+<hr />
+<h2 id="interface-overview">Interface Overview</h2>
+<p>SwOS interface menu consists of several tabs: Link, SFP, Forwarding, RST, Statistics, Errors, VLAN, VLANs, Hosts, IGMP Groups, SNMP, ACL, System and Upgrade.</p>
+<p>Description of buttons in SwOS configuration tool:</p>
+<ul>
+<li><strong>Append</strong> - add a new item to the end of the list</li>
+<li><strong>Apply All</strong> - applies current configuration changes</li>
+<li><strong>Cut</strong> - removes an item from the list</li>
+<li><strong>Clear</strong> - reset properties of the item</li>
+<li><strong>Discard Changes</strong> - removes unsaved configuration</li>
+<li><strong>Insert</strong> - add a new item to the list (places it before current item)</li>
+<li><strong>Sort</strong> - sort VLAN table by VLAN-IDs; sort host table by MAC addresses</li>
+<li><strong>Change Password</strong> - changes the password of the switch</li>
+<li><strong>Logout</strong> - logout from the current switch</li>
+<li><strong>Reboot</strong> - reboot the switch</li>
+<li><strong>Reset Configuration</strong> - reset configuration back to factory defaults</li>
+<li><strong>Choose File</strong> - browse for upgrade or backup file</li>
+<li><strong>Upgrade</strong> - upgrade the firmware of the switch using the selected file</li>
+<li><strong>Download &amp; Upgrade</strong> - automatically try to download and upgrade the firmware, the PC which is running a web browser should be able to access the Internet</li>
+<li><strong>Restore Backup</strong> - restore switch using a selected backup file</li>
+<li><strong>Save Backup</strong> - generate and download backup file from the switch</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> Each RouterBOARD switch series have their own firmware which cannot be installed on other series models! CSS106-5G-1S (RB260GS) and CSS106-1G-4P-1S (RB260GSP) supports SwOS v2.0 and newer. When upgrading the device, it will first load primary firmware and then make an upgrade. In case a wrong firmware file is chosen, the device will continue to operate with primary firmware and you will be able to choose the correct file.</p>
+</blockquote>
+<hr />
+<h2 id="system">System</h2>
+<p>System Tab performs the following functions:</p>
+<ul>
+<li>General information about switch</li>
+<li>Switch management</li>
+<li>Configuration reset</li>
+<li>Backup and restore configuration</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> SwOS uses a simple algorithm to ensure TCP/IP communication - it just replies to the same IP and MAC address packet came from. This way there is no need for Default Gateway on the device itself.</p>
+</blockquote>
+<p><em>[gambar: Swos system1]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Address Acquisition</strong></td>
+<td>Specify which address acquisition method to use:<code>DHCP with fallback</code> - the switch sends DHCP requests every second and, while no DHCP server is answering, immediately uses the configured <strong>Static IP Address</strong> value. When a server answers, the switch obtains a lease in 1-2 seconds and renews it at half the lease time. If a renewal goes unanswered, the switch returns to the <strong>Static IP Address</strong> value in 5 seconds and resumes sending requests every second.<code>static</code> - address is set as a <strong>Static IP Address</strong> value (IPv4 only)<code>DHCP only</code> - switch uses DHCPv4 client to acquire address</td>
+</tr>
+<tr>
+<td><strong>Static IP Address</strong></td>
+<td>IP address of the switch in case of <strong>Address Acquisition</strong> is set as <code>DHCP with fallback</code> or <code>static</code></td>
+</tr>
+<tr>
+<td><strong>Identity</strong></td>
+<td>Name of the switch (for Mikrotik neighbor discovery protocol)</td>
+</tr>
+<tr>
+<td><strong>Allow From</strong></td>
+<td>IP address or network from which the switch is accessible. Default value is <code>0.0.0.0/0</code> - any address.</td>
+</tr>
+<tr>
+<td><strong>Allow From Ports</strong></td>
+<td>List of switch ports from which the service is accessible</td>
+</tr>
+<tr>
+<td><strong>Allow From VLAN</strong></td>
+<td>VLAN ID from which the service is accessible. Make sure to first configure VLANs and VLAN pages</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong></td>
+<td>Enable or disable system watchdog. It will reset CPU of the switch in case of fault condition</td>
+</tr>
+<tr>
+<td><strong>Independent VLAN Lookup</strong></td>
+<td>Enable or disable independent VLAN lookup in the Host table for packet forwarding</td>
+</tr>
+<tr>
+<td><strong>IGMP Snooping</strong></td>
+<td>Enable or disable IGMP Snooping</td>
+</tr>
+<tr>
+<td><strong>IGMP Fast Leave</strong></td>
+<td>Enables or disables IGMP fast leave feature on the switch port. This property only has an effect when IGMP Snooping is enabled</td>
+</tr>
+<tr>
+<td><strong>Mikrotik Discovery Protocol</strong></td>
+<td>Enable or disable Mikrotik neighbor discovery protocol</td>
+</tr>
+<tr>
+<td><strong>Port1 PoE In Long Cable</strong></td>
+<td>If enabled, it will turn off short detection on all PoE out ports to allow the use of longer ethernet cables. This is potentially dangerous setting and should be used with caution. (CSS106-1G-4P-1S model)</td>
+</tr>
+<tr>
+<td><strong>MAC Address</strong></td>
+<td>MAC address of the switch (read-only)</td>
+</tr>
+<tr>
+<td><strong>Serial Number</strong></td>
+<td>Serial number of the switch (read-only)</td>
+</tr>
+<tr>
+<td><strong>Board Name</strong></td>
+<td>MikroTik model name (read-only)</td>
+</tr>
+<tr>
+<td><strong>Voltage</strong></td>
+<td>Shows the input voltage measured in volts (read-only, CSS106-1G-4P-1S model)</td>
+</tr>
+<tr>
+<td><strong>Temperature</strong></td>
+<td>Shows PCB temperature in celsius temperature scale (read-only, CSS106-1G-4P-1S model)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="password-and-backup">Password and Backup</h3>
+<p><em>[gambar: Swos password css106]</em></p>
+<hr />
+<h2 id="link">Link</h2>
+<p>Link Tab allows you to:</p>
+<ul>
+<li>Configure Ethernet and SFP ports</li>
+<li>Monitor status of Ethernet and SFP ports</li>
+</ul>
+<p><em>[gambar: Swos link css106]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable port</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Editable port name</td>
+</tr>
+<tr>
+<td><strong>Link Status</strong></td>
+<td>Current link status (read-only)</td>
+</tr>
+<tr>
+<td><strong>Auto Negotiation</strong></td>
+<td>Enable or disable auto-negotiation (some SFP modules may require it disabled in order to work)</td>
+</tr>
+<tr>
+<td><strong>Speed</strong></td>
+<td>Specify speed setting of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Full Duplex</strong></td>
+<td>Specify the duplex mode of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Flow control</strong></td>
+<td>Enable or disable 802.3x Flow control</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Using SFP+ 1m/3m DAC cable or S-RJ01 module, the device always shows that the link is established even if nothing is connected on another end.</p>
+</blockquote>
+<p>The switch supports Jumbo frames up to 9198 bytes. Manually decreasing the MTU settings is not supported for SwOS devices.</p>
+<h3 id="poe">PoE</h3>
+<p>PoE settings change Power over Ethernet output on CSS106-1G-4P-1S port2-port5 and show PoE status and measurements.</p>
+<p><em>[gambar: 740px Swospoe2]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PoE Out</strong></td>
+<td>Sets PoE out mode of the port:<code>off</code> - all detection and PoE out is turned off<code>auto</code> - detection is done regarding resistance on the spare pairs to check if the port has PoE capability. For a port to be turned on measured value should be within a range from 3kΩ to 26.5kΩ<code>on</code> - PoE out is enabled regardless of the resistance on the port. <strong><em>Use this with caution as that can damage connected equipment!</em></strong><code>calibr</code> - manual port PoE out recalibration. It may be necessary if there are occasional problems with powering connected devices.</td>
+</tr>
+<tr>
+<td><strong>PoE Priority</strong></td>
+<td>Port priority for PoE out supply. If the installation is going over available power budget, the port with the lowest priority is going to be turned off first. <code>1</code> - the highest priority port; <code>4</code> - the lowest priority port</td>
+</tr>
+<tr>
+<td><strong>PoE Status</strong></td>
+<td>Current PoE out status of the port:<code>disabled</code> - PoE out is turned off<code>waiting for load</code> - <code>auto</code> mode detects out of range resistance to turn on PoE out<code>powered on</code> - PoE out is turned on<code>short circuit</code> - if it is detected, PoE out is turned off to ensure that there is no additional damage on the powered device and no damage on powering device<code>voltage too low</code> - not enough voltage supplied to turn on the device with PoE out<code>current too low</code> - not enough current supplied to turn on the device with PoE out<code>waiting for cable disconnect</code> - manual recalibration with <code>calibr</code> has detected connected device and waits for disconnection to complete the recalibration process</td>
+</tr>
+<tr>
+<td><strong>PoE Current</strong></td>
+<td>Shows current usage on the port measured in milliamperes</td>
+</tr>
+<tr>
+<td><strong>PoE Power</strong></td>
+<td>Shows PoE out power on the port measured in watts</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="sfp">SFP</h2>
+<p>The SFP tab allows you to monitor the status of SFP modules.</p>
+<p><em>[gambar: Swos sfp css106]</em></p>
+<hr />
+<h2 id="forwarding">Forwarding</h2>
+<p>Forwarding Tab provides advanced forwarding options among switch ports, port isolation, port locking, port mirroring and egress bandwidth limit features. Ingress rate per port and rate for broadcast traffic can be configured with <a href="#acl">Access Control List</a> by setting <code>Rate</code>. ACL must have one port per entry to provide bandwidth limiting properly.</p>
+<p><em>[gambar: 740px Swos forwarding2]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Forwarding</strong></td>
+<td>Forwarding table - allows or restricts traffic flow between specific ports</td>
+</tr>
+<tr>
+<td><strong>Port Lock</strong></td>
+<td><code>Port Lock</code> - Enables or disables MAC address learning on this port. When the option is enabled, it will restrict MAC address learning and static MAC addresses should be configured<code>Lock On First</code> - enable or disable MAC address learning on this port (MAC address from the first received packet will still be learned)</td>
+</tr>
+<tr>
+<td><strong>Port Mirroring</strong></td>
+<td><code>Mirror Ingress</code> - whether traffic entering this port must be copied and forwarded to the mirroring target port<code>Mirror Egress</code> - whether traffic leaving this port must be copied and forwarded to the mirroring target port<code>Mirror To</code> - mirroring target port</td>
+</tr>
+<tr>
+<td><strong>Bandwidth Limit</strong></td>
+<td><code>Egress Rate</code> - limit traffic leaving this port (bps)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="rstp">RSTP</h2>
+<p>Per-port and global RSTP configuration and monitoring are available in the RSTP menu.</p>
+<p><em>[gambar: Swos RSTP css106]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RSTP</strong></td>
+<td>Enable or disable STP/RSTP functionality on this port</td>
+</tr>
+<tr>
+<td><strong>Mode</strong></td>
+<td>Shows STP/RSTP functionality mode on a specific port (read-only):<code>RSTP``STP</code></td>
+</tr>
+<tr>
+<td><strong>Role</strong></td>
+<td>Shows specific port role (read-only):<code>root</code> - port that is facing towards the root bridge and will be used to forward traffic from/to the root bridge<code>alternate</code> - port that is facing towards root bridge, but is not going to forward traffic (a backup for root port)<code>backup</code> - port that is facing away from the root bridge, but is not going to forward traffic (a backup for non-root port)<code>designated</code> - port that is facing away from the root bridge and is going to forward traffic<code>disabled</code> - port that is not strictly part of STP (RSTP functionality is disabled)</td>
+</tr>
+<tr>
+<td><strong>Root Path Cost</strong></td>
+<td>Shows root path cost for ports that are facing root bridge (read-only)</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td><code>edge</code> - ports that are not supposed to receive any BPDUs, should be connected to end station (read-only)<code>point-to-point</code> - ports that operate in full-duplex links, can be part of STP and operate in forwarding state (read-only)</td>
+</tr>
+<tr>
+<td><strong>State</strong></td>
+<td>Shows each port state (read-only):<code>forwarding</code> - port participates in traffic forwarding and is learning MAC addresses, is receiving BPDUs<code>discarding</code> - port does not participate in traffic forwarding and is not learning MAC addresses, is receiving BPDU<code>learning</code> - port does not participate in traffic forwarding, but is learning MAC addresses</td>
+</tr>
+<tr>
+<td><strong>Bridge Priority (hex)</strong></td>
+<td>RSTP bridge priority for Root Bridge selection</td>
+</tr>
+<tr>
+<td><strong>Port Cost Mode</strong></td>
+<td>There are two methods for automatically detecting RSTP port cost depending on link speed.<code>short</code>: 10G - 2; 1G - 4; 100M - 10; 10M - 100<code>long</code>: 10G - 2000; 1G - 20000; 100M - 200000; 10M - 2000000</td>
+</tr>
+<tr>
+<td><strong>Forward Reserved Multicast</strong></td>
+<td>Whether to forward IEEE reserved multicast MAC address that are in the <strong>01:80:C2:00:00:0x</strong> range. Switches compliant with R/M/STP standards should refrain from forwarding these packets.If you enable this setting, SwOS will forward reserved multicast MAC packets and disable RSTP:- the switch will not process incoming BPDUs (Bridge Protocol Data Units)- it will also not send its own BPDUs- Bridge Priority and per-port RSTP configuration settings will no longer have any effect.Enabling forwarding of reserved MAC addresses may affect certain protocols relying on these addresses. It is advisable to enable forwarding only when absolutely necessary, such as in transparent bridging setups (e.g., extending long links, using bridge as media converters, or conducting network analysis).Notable MAC addresses and protocol examples (used by RouterOS):<code>01:80:C2:00:00:00</code> - Spanning Tree Protocol (STP)<code>01:80:C2:00:00:01</code> - Ethernet Flow Control<code>01:80:C2:00:00:02</code> - Link Aggregation Control Protocol (LACP)<code>01:80:C2:00:00:03</code> - Dot1x client and server<code>01:80:C2:00:00:08</code> - Spanning Tree Protocol (for 802.1ad bridges, using <code>ether-type=0x88a8</code>)<code>01:80:C2:00:00:0D</code> - Multiple VLAN Registration Protocol (for 802.1ad bridges, using <code>ether-type=0x88a8</code>)<code>01:80:C2:00:00:0E</code> - Link Layer Discovery Protocol, Multi-chassis Link Aggregation Group and Precision Time ProtocolThe Flow Control MAC address <code>01:80:C2:00:00:01</code> is an exception — it does not get forwarded by SwOS.</td>
+</tr>
+<tr>
+<td><strong>Root Bridge</strong></td>
+<td>The priority and MAC address of the selected Root Bridge in the network (read-only)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="statistics-errors">Statistics, Errors</h2>
+<p>Provides detailed information about received and transmitted packets.</p>
+<p><em>[gambar: Swos stats css106]</em></p>
+<p><em>[gambar: Swos error css106]</em></p>
+<hr />
+<h2 id="vlan-and-vlans">VLAN and VLANs</h2>
+<p>VLAN configuration for switch ports.</p>
+<p><em>[gambar: 740px Swos vlan2]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN Mode</strong></td>
+<td>VLAN mode for ingress port:<code>disabled</code> - VLAN table is not used; switch ignores VLAN tag part of tagged packets<code>optional</code> - Handle packets with VLAN tag ID that is not present in VLAN table just like packets without VLAN tag<code>enabled</code> - Drop packets with VLAN tag ID that is not present in VLAN table. Packets without VLAN tag are treated as tagged packets with <code>Default VLAN ID``strict</code> - Same as <code>enabled</code>, but also checks VLAN support for inbound interface (drop packets with VLAN tag ID and ingress port that are not present in VLAN table)</td>
+</tr>
+<tr>
+<td><strong>VLAN Receive</strong></td>
+<td>Defines the type of allowed packets on ingress port:<code>any</code> - allows tagged and untagged packets on a certain port<code>only tagged</code> - allows only packets with a VLAN tag<code>only untagged</code> - allows only packets without a VLAN tag</td>
+</tr>
+<tr>
+<td><strong>Default VLAN ID</strong></td>
+<td>The switch will treat both untagged and "Default VLAN ID" tagged ingress packets as they are tagged with this VLAN ID. It is also used to untag egress traffic if the packet's VLAN ID matches "Default VLAN ID". The VLAN tag itself will only be added if there is <code>VLAN Header = add if missing</code> specified on the egress port</td>
+</tr>
+<tr>
+<td><strong>Force VLAN ID</strong></td>
+<td>Whether to apply <code>Default VLAN ID</code> to incoming packets with VLAN tag</td>
+</tr>
+<tr>
+<td><strong>VLAN Header</strong></td>
+<td><code>leave as is</code> - if VLAN header is present it remains unchanged<code>always strip</code> - if VLAN header is present it is removed from the packet<code>add if missing</code> - if VLAN header is not present it is added to the packet (VLAN ID will be <code>Default VLAN ID</code> of ingress port)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> CSS106 devices running SwOS version 2.12 can filter RSTP BPDU packets when enabling VLAN filtering on ports (VLAN Mode <strong>enabled</strong> or <strong>strict</strong>). With SwOS version 2.13, it is recommended to set VLAN Receive to <strong>any</strong> on trunk ports.</p>
+<p><strong>Note:</strong> VLAN modes <code>enabled</code> and <code>strict</code> require VLAN ID 1 in the VLANs table to allow access of untagged traffic to the switch itself.</p>
+</blockquote>
+<p>VLAN table specifies forwarding rules for packets that have an IEEE 802.1Q tag. Basically, the table contains entries that map specific VLAN tag IDs to a group of one or more ports. Packets with VLAN tags leave the switch through one or more ports that are set in the corresponding table entry. VLAN table works together with destination MAC lookup to determine egress ports. VLAN table supports up to 250 entries.</p>
+<p><em>[gambar: Swos vlan css106]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>VLAN ID of the packet</td>
+</tr>
+<tr>
+<td><strong>IVL</strong></td>
+<td>Enables or disables independent VLAN learning (IVL)</td>
+</tr>
+<tr>
+<td><strong>IGMP Snooping</strong></td>
+<td>Enables or disables IGMP Snooping on the defined VLAN. When enabled, the switch will listen to IGMP Join and Leave requests from the defined VLAN and only forward traffic to ports which have sent IGMP membership requests from the defined VLAN. When disabled, the switch will flood all VLAN member ports with Multicast traffic.</td>
+</tr>
+<tr>
+<td><strong>Ports</strong></td>
+<td>Each port has individual <em>VLAN header</em> options for each VLAN ID. Depending on <em>VLAN mode</em>, if lookup is done in this table, the egress action of packets is processed by this option. The egress option from the <strong>VLAN tab</strong> is ignored.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vlan-configuration-examples">VLAN Configuration Examples</h3>
+<h4 id="trunk-and-access-ports">Trunk and Access Ports</h4>
+<p><em>[gambar: Access ports small]</em></p>
+<ol>
+<li>In the System menu enable independent VLAN learning (IVL).</li>
+</ol>
+<p><em>[gambar: Css106 ivl]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries, specify port membership, and enable IVL. The default "leave as is" port setting can be used; the tagging and untagging behavior can be changed with the "Default VLAN ID" setting, see the next step.</li>
+</ol>
+<p><em>[gambar: Css access trunk vlans]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned access ports (untagged), select the correct VLAN Receive setting (Port2 only tagged, Port3-5 only untagged), and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css106 access vlan]</em></p>
+<blockquote>
+<p><strong>Note:</strong> CSS106 devices running SwOS version 2.12 can filter RSTP BPDU packets when enabling VLAN filtering on ports (VLAN Mode <strong>enabled</strong> or <strong>strict</strong>). With SwOS version 2.13, it is recommended to set VLAN Receive to <strong>any</strong> on trunk ports.</p>
+</blockquote>
+<h4 id="trunk-and-hybrid-ports">Trunk and Hybrid Ports</h4>
+<p><em>[gambar: Hybrid ports small]</em></p>
+<ol>
+<li>In the System menu enable independent VLAN learning (IVL).</li>
+</ol>
+<p><em>[gambar: Css106 ivl 1]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries, specify port membership, and enable IVL. The default "leave as is" port setting can be used; the tagging and untagging behavior can be changed with the "Default VLAN ID" setting, see the next step.</li>
+</ol>
+<p><em>[gambar: Css hybrid vlan]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned hybrid ports (for untagged VLAN), select the correct VLAN Receive setting (Port2 only tagged, Port3-5 any), and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css hybrid vlans]</em></p>
+<blockquote>
+<p><strong>Note:</strong> CSS106 devices running SwOS version 2.12 can filter RSTP BPDU packets when enabling VLAN filtering on ports (VLAN Mode <strong>enabled</strong> or <strong>strict</strong>). With SwOS version 2.13, it is recommended to set VLAN Receive to <strong>any</strong> on trunk ports.</p>
+</blockquote>
+<h4 id="management-access">Management Access</h4>
+<p>In this example, switch management access on VLAN 200 will be created. The configuration scheme is the same as "<strong>Trunk and Access Ports</strong>" and steps <strong>1., 2., 3.</strong> are identical. The additional <strong>4th</strong> step requires specifying the management VLAN ID in the System menu. After applying the configuration, the switch will only respond to tagged VLAN 200 packets on Port2 and untagged packets on Port3. The DHCP client will also work in the specified VLAN ID.</p>
+<p><em>[gambar: Css106 system vlan]</em></p>
+<blockquote>
+<p><strong>Warning:</strong> Changing management VLAN can completely disable access to the switch management if VLAN settings are not correctly configured. Save a configuration backup before changing this setting and use <a href="#reset">Reset</a> in case management access is lost.</p>
+</blockquote>
+<hr />
+<h2 id="hosts">Hosts</h2>
+<p>This table represents dynamically learned MAC address to port mapping entries. It can contain two kinds of entries: dynamic and static. Dynamic entries get added automatically — this is also called a learning process: when a switch receives a packet from a certain port, it adds the packet's source MAC address X and port it received the packet from to the host table, so when a packet comes in with destination MAC address X it knows to which port it should forward the packet. If the destination MAC address is not present in the host table then it forwards the packet to all ports in the group (flood). Dynamic entries take about 5 minutes to time out.</p>
+<p>CSS106 series switches support 2048 host table entries.</p>
+<p><em>[gambar: Swos hosts css106]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>Ports the packet should be forwarded to (read-only)</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>Learned MAC address (read-only)</td>
+</tr>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>Learned VLAN ID (read-only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="static-hosts">Static Hosts</h3>
+<p>Static entries will take over dynamic entries if a dynamic entry with the same MAC address already exists. Adding a static entry also provides access to additional functionality.</p>
+<p><em>[gambar: 740px Swos static2]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ports</strong></td>
+<td>Ports the packet should be forwarded to</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>MAC address</td>
+</tr>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>VLAN ID</td>
+</tr>
+<tr>
+<td><strong>Drop</strong></td>
+<td>Packet with certain MAC address coming from certain ports can be dropped</td>
+</tr>
+<tr>
+<td><strong>Mirror</strong></td>
+<td>Packet can be cloned and sent to mirror-target port</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="igmp-groups">IGMP Groups</h2>
+<p>IGMP Snooping which controls multicast streams and prevents multicast flooding is implemented in SwOS starting from version 2.5. The feature allows a switch to listen in the IGMP conversation between hosts and routers.</p>
+<p>First, enable the option under the System tab.</p>
+<p><em>[gambar: Swos igmp2 css106]</em></p>
+<p>Available IGMP snooping data can be found under the IGMP Group tab.</p>
+<p><em>[gambar: Swos igmp css106]</em></p>
+<p>Possibility to enable or disable IGMP Snooping for a specific VLAN ID.</p>
+<p><em>[gambar: Swos igmp3 css106]</em></p>
+<hr />
+<h2 id="snmp">SNMP</h2>
+<p>SwOS supports SNMP v1 and v2c (the Response for GetRequest, GetNextRequest and GetBulkRequest) and uses IF-MIB, SNMPv2-MIB, BRIDGE-MIB and MIKROTIK-MIB (only for health, PoE-out and SFP diagnostics). SNMP traps and writing SwOS configuration are not supported.</p>
+<p>Available SNMP data:</p>
+<ul>
+<li>System information</li>
+<li>System uptime</li>
+<li>Port status</li>
+<li>Interface statistics</li>
+<li>Host table information</li>
+</ul>
+<p><em>[gambar: Swos snmp2]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable SNMP service</td>
+</tr>
+<tr>
+<td><strong>Community</strong></td>
+<td>SNMP community name</td>
+</tr>
+<tr>
+<td><strong>Contact Info</strong></td>
+<td>Contact information for the NMS</td>
+</tr>
+<tr>
+<td><strong>Location</strong></td>
+<td>Location information for the NMS</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="acl">ACL</h2>
+<p>An access control list (ACL) rule table is a very powerful tool allowing wire-speed packet filtering, forwarding, and VLAN tagging based on L2, L3, and L4 protocol header field conditions. SwOS allows you to implement a limited number of access control list rules (32 simple rules where only L2 conditions are used; 16 rules where both L2 and L3 conditions are used; or 8 advanced rules where all L2, L3, and L4 conditions are used). Each rule contains a conditions part and an action part.</p>
+<p><em>[gambar: 740px Swos acl2]</em></p>
+<p><strong>Conditions parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>The port that the packet came in from</td>
+</tr>
+<tr>
+<td><strong>MAC Src</strong></td>
+<td>Source MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>MAC Dst</strong></td>
+<td>Destination MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>Ethertype</strong></td>
+<td>Protocol encapsulated in the payload of an Ethernet Frame</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>VLAN header presence: <code>any</code> / <code>present</code> / <code>not present</code></td>
+</tr>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>VLAN tag ID</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Priority in VLAN tag</td>
+</tr>
+<tr>
+<td><strong>IP Src</strong> (IP/netmask:port)</td>
+<td>Source IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>IP Dst</strong> (IP/netmask:port)</td>
+<td>Destination IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>Protocol</strong></td>
+<td>IP protocol</td>
+</tr>
+<tr>
+<td><strong>DSCP</strong></td>
+<td>IP DSCP field</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Action parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Redirect To</strong></td>
+<td>Whether to force new destination ports (if "Redirect To" is enabled and no ports are specified in "Redirect To Ports", a packet will be dropped)</td>
+</tr>
+<tr>
+<td><strong>Redirect To Ports</strong></td>
+<td>Redirect destination ports</td>
+</tr>
+<tr>
+<td><strong>Mirror</strong></td>
+<td>Clones packet and sends it to mirror-target port</td>
+</tr>
+<tr>
+<td><strong>Rate</strong></td>
+<td>Limits bandwidth (bps)</td>
+</tr>
+<tr>
+<td><strong>Set VLAN ID</strong></td>
+<td>Changes the VLAN tag ID, if VLAN tag is present</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Changes the VLAN tag priority bits, if VLAN tag is present</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="reset">Reset</h2>
+<p>The CSS106-5G-1S and CSS106-1G-4P-1S have built-in backup SwOS firmware which can be loaded in case standard firmware breaks or upgrade fails:</p>
+<ul>
+<li>Holding the Reset button for a few seconds while the device is booting will reset the configuration and load backup firmware.</li>
+<li>After loading backup firmware, it is possible to connect to 192.168.88.1 (or a leased address from a DHCP server) using a web browser and install new SwOS firmware.</li>
+</ul>
+<hr />
+<h1 id="css610-series-manual">CSS610 series Manual</h1>
+<blockquote>
+<p>SwOS Lite is an operating system designed specifically for the administration of MikroTik CSS610 series switch products. CSS610 series switches support only SwOS Lite operating system.</p>
+</blockquote>
+<h1 id="css610-series-manual_1">CSS610 series Manual</h1>
+<h2 id="summary_1">Summary</h2>
+<p>SwOS Lite is an operating system designed specifically for the administration of MikroTik CSS610 series switch products. CSS610 series switches support only SwOS Lite operating system.</p>
+<p>The main differences compared to CSS3xx series switches are:</p>
+<ul>
+<li>unsupported Independent VLAN Learning</li>
+<li>unsupported VLAN mode "enabled"</li>
+<li>unsupported ACL Rate limiting</li>
+<li>supported Port Egress Rate limiting</li>
+</ul>
+<hr />
+<h2 id="css610-series-features">CSS610 series Features</h2>
+<table>
+<thead>
+<tr>
+<th>Features</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Forwarding</strong></td>
+<td>Full non-blocking wirespeed switchingUp to 16k MAC entries in the Host tableForwarding Database works based only on SVLPort IsolationJumbo frame support - 10218 bytes</td>
+</tr>
+<tr>
+<td><strong>Spanning Tree Protocol</strong></td>
+<td>RSTP support</td>
+</tr>
+<tr>
+<td><strong>Link Aggregation</strong></td>
+<td>Supports 802.3ad LACP groupsSupports static link aggregation groupsUp to 16 link aggregation groupsUp to 8 member ports per a groupHardware automatic failover and load balancing</td>
+</tr>
+<tr>
+<td><strong>Multicast Forwarding</strong></td>
+<td>IGMP Snooping supportUnknown Multicast Filtering</td>
+</tr>
+<tr>
+<td><strong>Mirroring</strong></td>
+<td>Port-based mirroring</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>Fully compatible with IEEE802.1QPort-based VLANUp to 250 VLAN entries (limited by SwOS)VLAN filtering</td>
+</tr>
+<tr>
+<td><strong>Security</strong></td>
+<td>Port LockBroadcast Storm ControlDHCP &amp; PPPoE Snooping</td>
+</tr>
+<tr>
+<td><strong>Quality of Service (QoS)</strong></td>
+<td>Ingress traffic limitingEgress traffic limiting</td>
+</tr>
+<tr>
+<td><strong>Access Control List</strong></td>
+<td>Ingress ACL tablesUp to 32 ACL rules (limited by SwOS)Classification based on ports, L2, L3, L4 protocol header fieldsACL actions include filtering, forwarding, and modifying the protocol header fields</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="connecting-to-the-switch_2">Connecting to the Switch</h2>
+<p>Open your web browser and enter the IP address of your switch (192.168.88.1 by default) and a login screen will appear. The switch can also run a DHCP client, see if a different IP address has been assigned by the DHCP server.</p>
+<p><em>[gambar: Swos login css610]</em></p>
+<p>SwOS default IP address: <strong>192.168.88.1</strong>, user name: <strong>admin</strong> and there is no password.</p>
+<p><a href="../../system-information-and-utilities/neighbor-discovery">MikroTik Neighbor Discovery</a> can be used to discover the IP address of the Mikrotik switch. LLDP is not supported.</p>
+<hr />
+<h2 id="interface-overview_1">Interface Overview</h2>
+<p>SwOS interface menu consists of multiple tabs depending on the device model. These are all possible SwOS menus: Link, PoE, SFP, Port Isolation, LAG, Forwarding, RSTP, Stats, Errors, Hist, VLAN, VLANs, Hosts, IGMP, SNMP, ACL, System, Health and Upgrade.</p>
+<p>Description of buttons in SwOS configuration tool:</p>
+<ul>
+<li><strong>Append</strong> - add a new item to the end of the list</li>
+<li><strong>Apply All</strong> - applies current configuration changes</li>
+<li><strong>Cut</strong> - removes an item from the list</li>
+<li><strong>Clear</strong> - reset properties of the item</li>
+<li><strong>Discard Changes</strong> - removes unsaved configuration</li>
+<li><strong>Insert</strong> - add a new item to the list (places it before current item)</li>
+<li><strong>Sort</strong> - sort VLAN table by VLAN-IDs; sort host table by MAC addresses</li>
+<li><strong>Change Password</strong> - changes the password of the switch</li>
+<li><strong>Logout</strong> - logout from the current switch</li>
+<li><strong>Reboot</strong> - reboot the switch</li>
+<li><strong>Reset Configuration</strong> - reset configuration back to factory defaults</li>
+<li><strong>Choose File</strong> - browse for upgrade or backup file</li>
+<li><strong>Upgrade</strong> - upgrade the firmware of the switch using the selected file</li>
+<li><strong>Download &amp; Upgrade</strong> - automatically try to download and upgrade the firmware, the PC which is running a web browser should be able to access the Internet</li>
+<li><strong>Restore Backup</strong> - restore switch using a selected backup file</li>
+<li><strong>Save Backup</strong> - generate and download the backup file from the switch</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> Each RouterBoard switch series device has its own firmware which cannot be installed on other series models!</p>
+<ul>
+<li>CSS610-1Gi-7R-2S+ supports SwOS Lite v2.12 and newer.</li>
+<li>CSS610-8G-2S+ supports SwOS Lite v2.12 and newer.</li>
+<li>CSS610-8P-2S+IN supports SwOS Lite v2.15 and newer.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="system_1">System</h2>
+<p>System Tab performs the following functions:</p>
+<ul>
+<li>General information about switch</li>
+<li>Switch management</li>
+<li>Configuration reset</li>
+<li>Backup and restore configuration</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> SwOS uses a simple algorithm to ensure TCP/IP communication - it just replies to the same IP and MAC address packet came from. This way there is no need for Default Gateway on the device itself.</p>
+</blockquote>
+<p><em>[gambar: Swos system css610]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Address Acquisition</strong></td>
+<td>Specify which address acquisition method to use:<code>DHCP with fallback</code> - the switch sends DHCP requests every second and, while no DHCP server is answering, immediately uses the configured <strong>Static IP Address</strong> value. When a server answers, the switch obtains a lease in 1-2 seconds and renews it at half the lease time. If a renewal goes unanswered, the switch returns to the <strong>Static IP Address</strong> value in 5 seconds and resumes sending requests every second.<code>static</code> - address is set as a <strong>Static IP Address</strong> value (IPv4 only)<code>DHCP only</code> - switch uses DHCPv4 client to acquire address</td>
+</tr>
+<tr>
+<td><strong>Static IP Address</strong></td>
+<td>IP address of the switch in case of <strong>Address Acquisition</strong> is set as <code>DHCP with fallback</code> or <code>static</code></td>
+</tr>
+<tr>
+<td><strong>Identity</strong></td>
+<td>Name of the switch (for Mikrotik Neighbor Discovery protocol)</td>
+</tr>
+<tr>
+<td><strong>Allow From</strong></td>
+<td>IP address from which the switch is accessible. Default value is <code>0.0.0.0/0</code> - any address</td>
+</tr>
+<tr>
+<td><strong>Allow From Ports</strong></td>
+<td>List of switch ports from which it is accessible</td>
+</tr>
+<tr>
+<td><strong>Allow From VLAN</strong></td>
+<td>VLAN ID from which the service is accessible. Make sure to first configure VLANs and VLAN pages</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong></td>
+<td>Enable or disable system Watchdog. It will reset CPU of the switch in case of fault condition</td>
+</tr>
+<tr>
+<td><strong>IGMP Snooping</strong></td>
+<td>Enable or disable IGMP Snooping</td>
+</tr>
+<tr>
+<td><strong>IGMP Querier</strong></td>
+<td>Enables or disables IGMP querier on the switch. Only applies when IGMP Snooping is enabled</td>
+</tr>
+<tr>
+<td><strong>IGMP Fast Leave</strong></td>
+<td>Enables or disables IGMP fast leave feature per switch port</td>
+</tr>
+<tr>
+<td><strong>IGMP Version</strong></td>
+<td>Changes IGMP version for switch querier. Only applies when IGMP Querier is enabled</td>
+</tr>
+<tr>
+<td><strong>Mikrotik Discovery Protocol</strong></td>
+<td>Enable or disable Mikrotik Neighbor Discovery protocol</td>
+</tr>
+<tr>
+<td><strong>MAC Address</strong></td>
+<td>MAC address of the switch (read-only)</td>
+</tr>
+<tr>
+<td><strong>Serial Number</strong></td>
+<td>Serial number of the switch (read-only)</td>
+</tr>
+<tr>
+<td><strong>Board Name</strong></td>
+<td>MikroTik model name of the switch (read-only)</td>
+</tr>
+<tr>
+<td><strong>Uptime</strong></td>
+<td>Current switch uptime (read-only)</td>
+</tr>
+<tr>
+<td><strong>PoE Out Mode</strong></td>
+<td>Specifies PoE-Out state (CSS610-1Gi-7R-2S+ model only):<code>auto-on</code> - the board will attempt to detect if power can be applied to the port. For power-on to happen there should be resistance on spare pairs in the range from 3kΩ to 26.5kΩ<code>forced-on</code> - detection range is removed. As a result power over Ethernet will be always on<code>off</code> - all detection and power is turned off for this port</td>
+</tr>
+<tr>
+<td><strong>PoE Out Status</strong></td>
+<td>Shows current PoE-Out status on port (read-only, CSS610-1Gi-7R-2S+ model only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="health">Health</h3>
+<p><em>[gambar: Swos lite health]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Temperature</strong></td>
+<td>Shows CPU temperature in celsius temperature scale (read-only)</td>
+</tr>
+<tr>
+<td><strong>PSU</strong></td>
+<td>Shows PSU voltage and consumed milliamperes by PoE-out connected devices (read-only, CSS610-8P-2S+IN model only)</td>
+</tr>
+<tr>
+<td><strong>Power Consumption</strong></td>
+<td>Shows PSU power consumption by PoE-out connected devices (read-only, CSS610-8P-2S+IN model only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dhcp-pppoe-snooping_1">DHCP &amp; PPPoE Snooping</h3>
+<p><em>[gambar: CSS610 DHCP Snooping]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Trusted Ports</strong></td>
+<td>Group of ports which allows DHCP or PPPoE servers to provide requested information. When enabled, it allows forwarding DHCP client packets towards the DHCP server through this port. Mainly used to limit unauthorized servers from providing malicious information for users; access ports usually are not configured as trusted. Ports that receive DHCP client packets with already added Option-82 must also be trusted, otherwise these packets are dropped. The setting does not apply to DHCPv6 packets.</td>
+</tr>
+<tr>
+<td><strong>Add Information Option</strong></td>
+<td>Enables or disables DHCP Option-82 information. When enabled, the Option-82 information (Agent Remote ID and Circuit ID) is added for DHCP packets received from untrusted ports. Can be used together with an Option-82 capable DHCP server to assign IP addresses and implement policies. The setting does not apply to DHCPv6 packets.For Agent Remote ID, SwOS uses the interface name where DHCP client resides. For Agent Circuit ID, SwOS uses the identity of the SwOS device, internally used port ID and VLAN ID. For example:Agent Remote ID - <code>Port1</code>Agent Circuit ID - <code>MikroTik eth 0/1:100</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="password-and-backup_1">Password and Backup</h3>
+<p><em>[gambar: Swos system3 css326]</em></p>
+<hr />
+<h2 id="link_1">Link</h2>
+<p>Link Tab allows you to configure each interface settings and monitor the link status.</p>
+<p><em>[gambar: Css610 link]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable port</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Editable port name</td>
+</tr>
+<tr>
+<td><strong>Link Status</strong></td>
+<td>Current link status (read-only)</td>
+</tr>
+<tr>
+<td><strong>Auto Negotiation</strong></td>
+<td>Enable or disable auto-negotiation</td>
+</tr>
+<tr>
+<td><strong>Speed</strong></td>
+<td>Specify speed setting of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Full Duplex</strong></td>
+<td>Specify the duplex mode of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Flow control Tx/Rx</strong></td>
+<td>Enable or disable 802.3x Flow control</td>
+</tr>
+<tr>
+<td><strong>Hops</strong></td>
+<td>Shows the number of GPER repeaters in the link</td>
+</tr>
+<tr>
+<td><strong>Last Hop</strong></td>
+<td>Shows the number of the last GPER repeater if the link is terminated</td>
+</tr>
+<tr>
+<td><strong>Length</strong></td>
+<td>Shows the length of the cable in meters if the link is terminated</td>
+</tr>
+<tr>
+<td><strong>Fault At</strong></td>
+<td>Shows the distance in meters to the failure point if the cable is damaged but the link is active</td>
+</tr>
+<tr>
+<td><strong>Cable Pairs</strong></td>
+<td>Shows four positions of the cable pairs with their status: <code>O</code> - open; <code>S</code> - short; <code>P</code> - reverse polarity</td>
+</tr>
+</tbody>
+</table>
+<p>The switch supports Jumbo frames up to 10218 bytes. Manually decreasing the MTU settings is not supported for SwOS Lite devices.</p>
+<hr />
+<h2 id="poe_1">PoE</h2>
+<p>Devices with PoE-out support have some configuration options and certain monitoring features, like PoE-out current, voltage, etc. For a more detailed description, see <a href="https://help.mikrotik.com/docs/display/ROS/PoE-Out">PoE-Out manual</a>.</p>
+<p><em>[gambar: SwOS PoE]</em></p>
+<hr />
+<h2 id="sfp_1">SFP</h2>
+<p>SFP tab allows you to monitor the status of SFP/SFP+ modules.</p>
+<p><em>[gambar: Swos sfp1 css326]</em></p>
+<hr />
+<h2 id="port-isolation">Port Isolation</h2>
+<p>The Port Isolation table allows or restricts traffic forwarding between specific ports. By default, all available switch chip ports can communicate with any other port — there is no isolation used. When the checkbox is enabled/ticked you allow traffic to forward from this port towards the ticked port. Below are some port isolation examples.</p>
+<p><em>[gambar: SwOS Isolated Groups]</em></p>
+<p>In some scenarios, you might need to isolate a group of devices from other groups. In this example devices on <strong>Port1-Port5</strong> are not able to communicate with <strong>Port6-Port10</strong> devices, and vice versa.</p>
+<p><em>[gambar: SwOS Private VLAN]</em></p>
+<p>In some scenarios, you might need to forward all traffic to an uplink port while all other ports are isolated from each other. This kind of setup is called a <strong>Private VLAN</strong> configuration. The switch will forward all Ethernet frames only to the uplink <strong>Port1</strong>, while the uplink can reach all other ports.</p>
+<p><em>[gambar: SwO isolation example3]</em></p>
+<p>Individual isolated <strong>Port1</strong> (e.g. for management purpose) — it cannot send or receive traffic from any other port.</p>
+<blockquote>
+<p><strong>Note:</strong> It is possible to check/uncheck multiple checkboxes by checking one of them and then dragging horizontally (Click &amp; Drag).</p>
+<p><strong>Note:</strong> (R)STP will only work properly in Private VLAN setups. In setups with multiple isolated switch groups, (R)STP might not properly receive BPDUs and therefore fail to detect network loops.</p>
+</blockquote>
+<hr />
+<h2 id="lag">LAG</h2>
+<p>IEEE 802.3ad (LACP) compatible link aggregation is supported, as well as static link aggregation to ensure failover and load balancing based only on Layer2 hashing. Up to 16 link aggregation groups with up to 8 ports per group are supported. Each individual port can be configured as Passive LACP, Active LACP, or a Static LAG port.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mode</strong> <em>(default: passive)</em></td>
+<td>Specify LACP packet exchange mode or Static LAG mode on ports:<code>Passive</code> - place port in listening state, use LACP only when its contrary port uses active LACP mode<code>Active</code> - prefer to start LACP regardless of contrary port mode<code>Static</code> - set port in a Static LAG mode; requires setting the same <strong>Group</strong> setting for all ports that need to be included in the same static LAG</td>
+</tr>
+<tr>
+<td><strong>Group</strong></td>
+<td>Specify a Static LAG group</td>
+</tr>
+<tr>
+<td><strong>Trunk</strong> <em>(read-only)</em></td>
+<td>Represents group number the port belongs to</td>
+</tr>
+<tr>
+<td><strong>Partner</strong> <em>(read-only)</em></td>
+<td>Represents partner MAC address; only available when ports are included in LACP</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="forwarding_1">Forwarding</h2>
+<p>Forwarding Tab provides advanced forwarding options among switch ports, port locking, port mirroring, bandwidth limit, and broadcast storm control features.</p>
+<p><em>[gambar: Swos forw css610]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port Lock</strong></td>
+<td><code>Port Lock</code> - Enables or disables MAC address learning on this port. When the option is enabled, it will restrict MAC address learning and static MAC addresses should be configured. Any received frames with unknown source MAC address will be dropped<code>Lock On First</code> - Allows learning of the source MAC address from the first received frame; this property should be used together with <code>Port Lock</code>. Learning of the first MAC address will reset every time an interface status changes</td>
+</tr>
+<tr>
+<td><strong>Port Mirroring</strong></td>
+<td><code>Mirror Ingress</code> - Whether traffic entering this port must be copied and forwarded to the mirroring target port<code>Mirror Egress</code> - Whether traffic leaving this port must be copied and forwarded to the mirroring target port<code>Mirror To</code> - Mirroring target port</td>
+</tr>
+<tr>
+<td><strong>Broadcast Storm Control</strong></td>
+<td><code>Storm Rate</code> - Limit the number of broadcast packets transmitted by an interface. The rate is measured in bits per second (bps)<code>Include Unknown Unicast</code> - Include unicast packets without an entry in the host table in <code>Storm Rate</code> limitation</td>
+</tr>
+<tr>
+<td><strong>Multicast Flood Control</strong></td>
+<td><code>Flood Unknown Multicast</code> - Changes the multicast flood option on a switch port; only controls egress traffic. When enabled, the bridge allows flooding multicast packets to the specified switch port; when disabled, it restricts multicast traffic from being flooded. The setting affects all multicast traffic, including non-IP, IPv4, IPv6 and the link-local multicast ranges (e.g. 224.0.0.0/24 and ff02::1)</td>
+</tr>
+<tr>
+<td><strong>Bandwidth Limit</strong></td>
+<td><code>Ingress Rate</code> - Limit traffic entering this port (bps)<code>Egress Rate</code> - Limit traffic leaving this port (bps)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> It is possible to limit ingress/egress traffic per port basis. The policer is used for ingress traffic, the shaper is used for egress traffic. The ingress policer controls the received traffic with packet drops — everything that exceeds the defined limit will get dropped. This can affect the TCP congestion control mechanism on end hosts and achieved bandwidth can be actually less than defined. The egress shaper tries to queue packets that exceed the limit instead of dropping them. Eventually, it will also drop packets when the output queue gets full; however, it should allow utilizing the defined throughput better.</p>
+</blockquote>
+<hr />
+<h2 id="rstp_1">RSTP</h2>
+<p>Per-port and global RSTP configuration and monitoring are available in the RSTP menu.</p>
+<p><em>[gambar: Swos rstp css326]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bridge Priority (hex)</strong></td>
+<td>RSTP bridge priority for Root Bridge selection</td>
+</tr>
+<tr>
+<td><strong>Port Cost Mode</strong></td>
+<td>There are two methods for automatically detecting RSTP port cost depending on link speed.<code>short</code>: 40G - 1; 10G - 2; 1G - 4; 100M - 10; 10M - 100<code>long</code>: 40G - 500; 10G - 2000; 1G - 20000; 100M - 200000; 10M - 2000000</td>
+</tr>
+<tr>
+<td><strong>Forward Reserved Multicast</strong></td>
+<td>Whether to forward IEEE reserved multicast MAC address that are in the <strong>01:80:C2:00:00:0x</strong> range. Switches compliant with R/M/STP standards should refrain from forwarding these packets.If you enable this setting, SwOS will forward reserved multicast MAC packets and disable RSTP:- the switch will not process incoming BPDUs (Bridge Protocol Data Units)- it will also not send its own BPDUs- Bridge Priority and per-port RSTP configuration settings will no longer have any effect.Enabling forwarding of reserved MAC addresses may affect certain protocols relying on these addresses. It is advisable to enable forwarding only when absolutely necessary, such as in transparent bridging setups (e.g., extending long links, using bridge as media converters, or conducting network analysis).Notable MAC addresses and protocol examples (used by RouterOS):<code>01:80:C2:00:00:00</code> - Spanning Tree Protocol (STP)<code>01:80:C2:00:00:01</code> - Ethernet Flow Control<code>01:80:C2:00:00:02</code> - Link Aggregation Control Protocol (LACP)<code>01:80:C2:00:00:03</code> - Dot1x client and server<code>01:80:C2:00:00:08</code> - Spanning Tree Protocol (for 802.1ad bridges, using <code>ether-type=0x88a8</code>)<code>01:80:C2:00:00:0D</code> - Multiple VLAN Registration Protocol (for 802.1ad bridges, using <code>ether-type=0x88a8</code>)<code>01:80:C2:00:00:0E</code> - Link Layer Discovery Protocol, Multi-chassis Link Aggregation Group and Precision Time ProtocolThe Flow Control MAC address <code>01:80:C2:00:00:01</code> is an exception — it does not get forwarded by SwOS.</td>
+</tr>
+<tr>
+<td><strong>Root Bridge</strong></td>
+<td>The priority and MAC address of the selected Root Bridge in the network (read-only)</td>
+</tr>
+<tr>
+<td><strong>RSTP</strong></td>
+<td>Enable or disable STP/RSTP functionality on this port</td>
+</tr>
+<tr>
+<td><strong>Mode</strong></td>
+<td>Shows STP/RSTP functionality mode on a specific port (read-only):<code>RSTP``STP</code></td>
+</tr>
+<tr>
+<td><strong>Role</strong></td>
+<td>Shows specific port role (read-only):<code>root</code> - port that is facing towards the root bridge and will be used to forward traffic from/to the root bridge<code>alternate</code> - port that is facing towards root bridge, but is not going to forward traffic (a backup for root port)<code>backup</code> - port that is facing away from the root bridge, but is not going to forward traffic (a backup for non-root port)<code>designated</code> - port that is facing away from the root bridge and is going to forward traffic<code>disabled</code> - port that is not strictly part of STP (RSTP functionality is disabled)</td>
+</tr>
+<tr>
+<td><strong>Root Path Cost</strong></td>
+<td>Shows root path cost for ports that are facing root bridge (read-only)</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td><code>edge</code> - ports that are not supposed to receive any BPDUs, should be connected to the end station (read-only)<code>point-to-point</code> - ports that operate in full-duplex links, can be part of STP and operate in a forwarding state (read-only)</td>
+</tr>
+<tr>
+<td><strong>State</strong></td>
+<td>Shows each port state (read-only):<code>forwarding</code> - port participates in traffic forwarding and is learning MAC addresses, is receiving BPDUs<code>discarding</code> - port does not participate in traffic forwarding and is not learning MAC addresses, is receiving BPDU<code>learning</code> - port does not participate in traffic forwarding but is learning MAC addresses</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="stats-errors-and-histogram">Stats, Errors and Histogram</h2>
+<p>These menus provide detailed information about received and transmitted packets.</p>
+<p><em>[gambar: Swos stat1 css326]</em></p>
+<p><em>[gambar: Swos stat2 css326]</em></p>
+<p><em>[gambar: Swos stat3 css326]</em></p>
+<blockquote>
+<p><strong>Note:</strong> Statistics for SFP+ interface are cleared whenever an active SFP+ link is established.</p>
+</blockquote>
+<hr />
+<h2 id="vlan-and-vlans_1">VLAN and VLANs</h2>
+<p>VLAN configuration for switch ports.</p>
+<p><em>[gambar: Swos vlan css610]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN Mode</strong> (<em>disabled | optional | strict</em>; Default: <strong>optional</strong>)</td>
+<td>VLAN filtering mode; these options are relevant to egress ports (except for strict mode).<code>disabled</code> - VLAN table is not used. The switch discards packets with a VLAN tag on egress ports. If the packet has a VLAN tag and the VLAN ID matches <code>Default VLAN ID</code> on egress ports, then with <code>VLAN Receive=any</code> the switch will remove the VLAN tag and forward the packet.<code>optional</code> - Disabled VLAN filtering. Handle packets with VLAN tag ID that is not present in the VLAN table just like packets without VLAN tag.<code>strict</code> - Enabled VLAN filtering with additional ingress filtering, which checks if the ingress port is a member of the received VLAN ID in the VLAN table. Received packets on the ingress port with a VLAN ID that does not match the VLAN table will be dropped. Default VLAN ID must be specified for access ports since it will be used to tag ingress traffic and untag egress traffic for a certain port.</td>
+</tr>
+<tr>
+<td><strong>VLAN Receive</strong> (<em>any | only tagged | only untagged</em>; Default: <strong>optional</strong>)</td>
+<td>Received traffic filtering based on VLAN tag presence.<code>any</code> - allows tagged and untagged packets on a certain port<code>only tagged</code> - allows only packets with a VLAN tag. The "Default VLAN ID" will not work, because it only applies for untagged traffic<code>only untagged</code> - allows only packets without a VLAN tag</td>
+</tr>
+<tr>
+<td><strong>Default VLAN ID</strong> (<em>integer: 1..4095</em>; Default: <strong>1</strong>)</td>
+<td>The switch will place received untagged packets in the "Default VLAN ID" VLAN. Only has an effect on untagged traffic, and when <strong>VLAN Receive</strong> is set to "any" or "only untagged". It does not apply for tagged traffic. This parameter is usually used to allocate access ports with a specific VLAN. It is also used to untag egress traffic if the packet's VLAN ID matches Default VLAN ID.</td>
+</tr>
+<tr>
+<td><strong>Force VLAN ID</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td>Assigns the <code>Default VLAN ID</code> value to all ingress traffic (tagged and untagged). Has effect in all VLAN Modes. If the port receives tagged traffic and <code>Default VLAN ID</code> is set to 1, then with this parameter the egress traffic will be untagged.</td>
+</tr>
+</tbody>
+</table>
+<p>VLAN membership configuration for switch ports.</p>
+<p><em>[gambar: Swos vlans css610]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN ID</strong> (<em>integer: 1..4095</em>; Default: <strong>0</strong>)</td>
+<td>VLAN ID to which assign ports</td>
+</tr>
+<tr>
+<td><strong>IGMP Snooping</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td>Enables or disables IGMP Snooping on the defined VLAN. When enabled, the switch will listen to IGMP Join and Leave requests from the defined VLAN and only forward traffic to ports which have sent IGMP membership requests from the defined VLAN. When disabled, the switch will flood all VLAN member ports with Multicast traffic.</td>
+</tr>
+<tr>
+<td><strong>Members</strong> (<em>ports</em>; Default: <strong>none</strong>)</td>
+<td>Group of ports which are allowed to forward traffic on the defined VLAN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vlan-configuration-examples_1">VLAN Configuration Examples</h3>
+<h4 id="trunk-and-access-ports_1">Trunk and Access Ports</h4>
+<p><em>[gambar: Access ports]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries and specify port membership.</li>
+</ol>
+<p><em>[gambar: Css610 vlans]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned access ports (untagged), select the correct VLAN Receive setting (Port2 only tagged, Port6-8 only untagged) and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css610 vlan]</em></p>
+<h4 id="trunk-and-hybrid-ports_1">Trunk and Hybrid Ports</h4>
+<p><em>[gambar: Hybrid ports]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries and specify port membership.</li>
+</ol>
+<p><em>[gambar: Css610 vlans hybrid]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned hybrid ports (for untagged VLAN), select the correct VLAN Receive setting (Port2 only tagged, Port6-8 any) and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css610 vlan hybrid]</em></p>
+<h4 id="management-access_1">Management Access</h4>
+<p>In this example, switch management access on VLAN 200 will be created. The configuration scheme is the same as "<strong>Trunk and Access Ports</strong>" and steps <strong>1., 2.</strong> are identical. The additional <strong>3rd</strong> step requires specifying the management VLAN ID in the System menu. After applying the configuration, the switch will only respond to tagged VLAN 200 packets on Port2 and untagged packets on Port6. The DHCP client will also work in the specified VLAN ID.</p>
+<p><em>[gambar: Css610 system vlan]</em></p>
+<blockquote>
+<p><strong>Warning:</strong> Changing management VLAN can completely disable access to the switch management if VLAN settings are not correctly configured. Save a configuration backup before changing this setting and use <a href="#reset-and-reinstall">Reset and Reinstall</a> in case management access is lost.</p>
+</blockquote>
+<hr />
+<h2 id="hosts_1">Hosts</h2>
+<p>This table represents dynamically learned MAC address to port mapping entries. It can contain two kinds of entries: dynamic and static. Dynamic entries get added automatically — this is also called a learning process: when a switch receives a packet from a certain port, it adds the packet's source MAC address and port it received the packet from to the host table, so when a packet comes in with a certain destination MAC address it knows to which port it should forward the packet. If the destination MAC address is not present in the host table then it forwards the packet to all ports in the group. Dynamic entries take about 5 minutes to time out.</p>
+<p>Static entries will take over dynamic entries if a dynamic entry with the same MAC address already exists. Adding a static entry also provides access to more functionality.</p>
+<p><em>[gambar: Swos shost css610]</em></p>
+<p><strong>Static host properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ports</strong></td>
+<td>Ports the packet should be forwarded to</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>MAC address</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dynamic host properties (read-only)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>Ports the packet should be forwarded to</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>Learned MAC address</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="igmp-snooping_1">IGMP Snooping</h2>
+<p>IGMP Snooping controls multicast streams and prevents multicast flooding. The feature allows a switch to listen in the IGMP conversation between hosts and routers.</p>
+<p>Enable this option under the System tab.</p>
+<p><em>[gambar: Css610 igmp snooping]</em></p>
+<p>Available IGMP snooping data can be found under the IGMP tab.</p>
+<p><em>[gambar: CSSxx IGMP]</em></p>
+<p>It is possible to enable IGMP Snooping for a specific VLAN ID under the VLANs menu.</p>
+<p><em>[gambar: Css610 igmp vlantab]</em></p>
+<hr />
+<h2 id="snmp_1">SNMP</h2>
+<p>SwOS supports SNMP v1 and v2c (the Response for GetRequest, GetNextRequest and GetBulkRequest) and uses IF-MIB, SNMPv2-MIB, BRIDGE-MIB and MIKROTIK-MIB (only for health, PoE-out and SFP diagnostics). SNMP traps and writing SwOS configuration are not supported.</p>
+<p>Available SNMP data:</p>
+<ul>
+<li>System information</li>
+<li>System uptime</li>
+<li>Port status</li>
+<li>Interface statistics</li>
+<li>Host table information</li>
+</ul>
+<p><em>[gambar: Swos snmp2 1]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable SNMP service</td>
+</tr>
+<tr>
+<td><strong>Community</strong></td>
+<td>SNMP community name</td>
+</tr>
+<tr>
+<td><strong>Contact Info</strong></td>
+<td>Contact information for the NMS</td>
+</tr>
+<tr>
+<td><strong>Location</strong></td>
+<td>Location information for the NMS</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="acl-and-acl-stats-tabs">ACL and ACL Stats Tabs</h2>
+<p>An access control list (ACL) rule table is a very powerful tool allowing wire-speed packet filtering, forwarding, and VLAN tagging based on L2, L3, and L4 protocol header field conditions. Each rule contains a conditions part and an action part.</p>
+<p><em>[gambar: CSS610 ACL table]</em></p>
+<p><strong>Conditions part parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>A port that the packet came in from</td>
+</tr>
+<tr>
+<td><strong>MAC Src</strong></td>
+<td>Source MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>MAC Dst</strong></td>
+<td>Destination MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>Ethertype</strong></td>
+<td>Protocol encapsulated in the payload of an Ethernet Frame</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>VLAN header presence: <code>any</code> / <code>present</code> / <code>not present</code></td>
+</tr>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>VLAN tag ID</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Priority in VLAN tag</td>
+</tr>
+<tr>
+<td><strong>IP Src</strong> (IP/netmask:port)</td>
+<td>Source IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>IP Dst</strong> (IP/netmask:port)</td>
+<td>Destination IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>Protocol</strong> <em>(integer)</em></td>
+<td>IP protocol</td>
+</tr>
+<tr>
+<td><strong>DSCP</strong></td>
+<td>IP DSCP field</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Action part parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Account as</strong></td>
+<td>Select the counter where matched packets will be counted</td>
+</tr>
+<tr>
+<td><strong>Redirect To</strong></td>
+<td>Force new packets destination port</td>
+</tr>
+<tr>
+<td><strong>Mirror</strong></td>
+<td>Clones packet and sends it to mirror-target port</td>
+</tr>
+<tr>
+<td><strong>Drop</strong></td>
+<td>Drop packet</td>
+</tr>
+<tr>
+<td><strong>Set VLAN ID</strong></td>
+<td>Changes the VLAN tag ID, if VLAN tag is present</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Changes the VLAN tag priority bits, if VLAN tag is present</td>
+</tr>
+<tr>
+<td><strong>DSCP</strong></td>
+<td>Changes the IP DSCP field</td>
+</tr>
+</tbody>
+</table>
+<p>Each ACL rule can be assigned to a specific counter where matched packets will be counted.</p>
+<p><em>[gambar: Css610 acl stats]</em></p>
+<hr />
+<h2 id="reset-and-reinstall_1">Reset and Reinstall</h2>
+<p>The CSS610 have built-in backup SwOS firmware which can be loaded in case standard firmware breaks or upgrade fails:</p>
+<ul>
+<li>Holding the Reset button for a few seconds while the device is booting will reset the configuration and load backup firmware.</li>
+<li>After loading backup firmware, it is possible to connect to 192.168.88.1 (or a leased address from a DHCP server) using a web browser and install new SwOS firmware.</li>
+</ul>
+<hr />
+<h1 id="gpen21-series-manual">GPEN21 series Manual</h1>
+<blockquote>
+<p>SwOS Lite manual for the MikroTik GPEN21 smart PoE power injector and repeater: features, port settings, VLANs, and switch management.</p>
+</blockquote>
+<h1 id="gpen21-series-manual_1">GPEN21 series Manual</h1>
+<h2 id="summary_2">Summary</h2>
+<p>The GPEN21 is a smart power injector that serves as an advanced software-controlled repeater. Not only can it power your uplink devices via PoE, but it can also provide a range of useful software features. GPEN21 has an Ethernet and SFP port for fiber connectivity. Customers can choose to use GPEN21 to power an optical module for uplink to the provider, or to provide PoE to power Ethernet uplink to the provider (that uses our GPeR and/or netPower products). The GPEN21 unit can be securely attached to a wall or the communications cabinet. The Ethernet cable can be routed either directly through its bottom cable opening or into the wall, as preferred.</p>
+<p>SwOS Lite is an operating system designed specifically for the administration of MikroTik GPEN21 products. GPEN21 supports only the SwOS Lite operating system.</p>
+<hr />
+<h2 id="gpen21-series-features">GPEN21 Series Features</h2>
+<table>
+<thead>
+<tr>
+<th>Features</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Forwarding</strong></td>
+<td>Full non-blocking wirespeed switchingUp to 2k MAC entries in the Host table ¹Forwarding Database works based only on SVLJumbo frame support - 10222 bytes</td>
+</tr>
+<tr>
+<td><strong>Monitoring</strong></td>
+<td>SNMPLink fault detectionSFP diagnosticsInterface statistics</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>Fully compatible with IEEE802.1QPort-based VLANUp to 250 VLAN entries (limited by SwOS)VLAN filtering</td>
+</tr>
+<tr>
+<td><strong>Security</strong></td>
+<td>Port LockBroadcast Storm Control</td>
+</tr>
+<tr>
+<td><strong>Quality of Service (QoS)</strong></td>
+<td>Ingress traffic limitingEgress traffic limiting</td>
+</tr>
+<tr>
+<td><strong>Access Control List</strong></td>
+<td>Ingress ACL tablesUp to 32 ACL rules (limited by SwOS)Classification based on ports, L2, L3, L4 protocol header fieldsACL actions include filtering, forwarding, and modifying the protocol header fields</td>
+</tr>
+</tbody>
+</table>
+<p>¹ The Host table limit does not affect forwarding because packets are sent from upstream to downstream ports and vice versa even when the MAC learning limit is reached.</p>
+<hr />
+<h2 id="connecting-to-the-device">Connecting to the Device</h2>
+<p>Open your web browser and enter the IP address of your device (192.168.88.1 by default) and a login screen will appear. The device can also run a DHCP client, see if a different IP address has been assigned by the DHCP server.</p>
+<p><em>[gambar: Gpen21 login]</em></p>
+<p>SwOS default IP address: <strong>192.168.88.1</strong>, user name: <strong>admin</strong> and there is no password.</p>
+<p><a href="../../system-information-and-utilities/neighbor-discovery">MikroTik Neighbor Discovery</a> can be used to discover the IP address of the Mikrotik switch. LLDP is not supported.</p>
+<hr />
+<h2 id="interface-overview_2">Interface Overview</h2>
+<p>SwOS interface menu consists of multiple tabs depending on the device model. These are all possible SwOS menus: Link, SFP, Forwarding, Stats, Errors, Hist, VLAN, VLANs, Hosts, SNMP, ACL, System, and Upgrade.</p>
+<p>Description of buttons in SwOS configuration tool:</p>
+<ul>
+<li><strong>Append</strong> - add a new item to the end of the list</li>
+<li><strong>Apply All</strong> - applies current configuration changes</li>
+<li><strong>Cut</strong> - removes an item from the list</li>
+<li><strong>Clear</strong> - reset properties of the item</li>
+<li><strong>Discard Changes</strong> - removes unsaved configuration</li>
+<li><strong>Insert</strong> - add a new item to the list (places it before current item)</li>
+<li><strong>Sort</strong> - sort VLAN table by VLAN-IDs; sort host table by MAC addresses</li>
+<li><strong>Change Password</strong> - changes the password of the device</li>
+<li><strong>Logout</strong> - logout from the current device</li>
+<li><strong>Reboot</strong> - reboot the device</li>
+<li><strong>Reset Configuration</strong> - reset configuration back to factory defaults</li>
+<li><strong>Choose File</strong> - browse for upgrade or backup file</li>
+<li><strong>Upgrade</strong> - upgrade the firmware of the device using the selected file</li>
+<li><strong>Download &amp; Upgrade</strong> - automatically try to download and upgrade the firmware, the PC which is running a web browser should be able to access the Internet</li>
+<li><strong>Restore Backup</strong> - restore device using a selected backup file</li>
+<li><strong>Save Backup</strong> - generate and download the backup file from the device</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> Each device has its own firmware which cannot be installed on other series models!</p>
+<ul>
+<li>GPEN21 supports SwOS Lite v2.13 and newer.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="system_2">System</h2>
+<p>System Tab performs the following functions:</p>
+<ul>
+<li>General information about the device</li>
+<li>Device management</li>
+<li>Configuration reset</li>
+<li>Backup and restore configuration</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> SwOS uses a simple algorithm to ensure TCP/IP communication - it just replies to the same IP and MAC address packet came from. This way there is no need for Default Gateway on the device itself.</p>
+</blockquote>
+<p><em>[gambar: Gpen21 system]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Address Acquisition</strong></td>
+<td>Specify which address acquisition method to use:<code>DHCP with fallback</code> - the switch sends DHCP requests every second and, while no DHCP server is answering, immediately uses the configured <strong>Static IP Address</strong> value. When a server answers, the switch obtains a lease in 1-2 seconds and renews it at half the lease time. If a renewal goes unanswered, the switch returns to the <strong>Static IP Address</strong> value in 5 seconds and resumes sending requests every second.<code>static</code> - address is set as a <strong>Static IP Address</strong> value (IPv4 only)<code>DHCP only</code> - switch uses DHCPv4 client to acquire address</td>
+</tr>
+<tr>
+<td><strong>Static IP Address</strong></td>
+<td>IP address of the device in case of <strong>Address Acquisition</strong> is set as <code>DHCP with fallback</code> or <code>static</code></td>
+</tr>
+<tr>
+<td><strong>Identity</strong></td>
+<td>Name of the device (for Mikrotik Neighbor Discovery protocol)</td>
+</tr>
+<tr>
+<td><strong>Allow From</strong></td>
+<td>IP address from which the device is accessible. Default value is <code>0.0.0.0/0</code> - any address</td>
+</tr>
+<tr>
+<td><strong>Allow From Ports</strong></td>
+<td>List of device ports from which it is accessible</td>
+</tr>
+<tr>
+<td><strong>Allow From VLAN</strong></td>
+<td>VLAN ID from which the service is accessible. Make sure to first configure VLANs and VLAN pages</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong></td>
+<td>Enable or disable system Watchdog. It will reset the CPU of the device in case of a fault condition</td>
+</tr>
+<tr>
+<td><strong>Mikrotik Discovery Protocol</strong></td>
+<td>Enable or disable Mikrotik Neighbor Discovery protocol</td>
+</tr>
+<tr>
+<td><strong>Dark Mode</strong></td>
+<td>Disable or enable all LEDs on the device</td>
+</tr>
+<tr>
+<td><strong>MAC Address</strong></td>
+<td>MAC address of the device (read-only)</td>
+</tr>
+<tr>
+<td><strong>Serial Number</strong></td>
+<td>Serial number of the device (read-only)</td>
+</tr>
+<tr>
+<td><strong>Board Name</strong></td>
+<td>MikroTik model name of the device (read-only)</td>
+</tr>
+<tr>
+<td><strong>Uptime</strong></td>
+<td>Current device uptime (read-only)</td>
+</tr>
+<tr>
+<td><strong>PoE Out Mode</strong></td>
+<td>Specifies PoE-Out state:<code>auto-on</code> - the board will attempt to detect if power can be applied to the port. For power-on to happen there should be resistance on spare pairs in the range from 3kΩ to 26.5kΩ<code>forced-on</code> - detection range is removed. As a result power over Ethernet will be always on<code>off</code> - all detection and power is turned off for this port</td>
+</tr>
+<tr>
+<td><strong>PoE Out Status</strong></td>
+<td>Shows current PoE-Out status on port (read-only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="password-and-backup_2">Password and Backup</h3>
+<p><em>[gambar: Swos system3 css326]</em></p>
+<hr />
+<h2 id="link_2">Link</h2>
+<p>Link Tab allows you to configure each interface settings and monitor the link status.</p>
+<p><em>[gambar: Gpen21 link]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable port</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Editable port name</td>
+</tr>
+<tr>
+<td><strong>Link Status</strong></td>
+<td>Current link status (read-only)</td>
+</tr>
+<tr>
+<td><strong>Auto Negotiation</strong></td>
+<td>Enable or disable auto-negotiation</td>
+</tr>
+<tr>
+<td><strong>Speed</strong></td>
+<td>Shows the negotiated speed, or allows manually changing the speed setting of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Full Duplex</strong></td>
+<td>Shows the negotiated duplex, or allows manually changing the duplex mode of the port (requires auto-negotiation to be disabled)</td>
+</tr>
+<tr>
+<td><strong>Hops</strong></td>
+<td>Shows the number of GPER repeaters in the link</td>
+</tr>
+<tr>
+<td><strong>Last Hop</strong></td>
+<td>Shows the number of the last GPER repeater if the link is terminated</td>
+</tr>
+<tr>
+<td><strong>Length</strong></td>
+<td>Shows the length of the cable in meters if the link is terminated</td>
+</tr>
+<tr>
+<td><strong>Fault At</strong></td>
+<td>Shows the distance in meters to the failure point if the cable is damaged but the link is active</td>
+</tr>
+<tr>
+<td><strong>Cable Pairs</strong></td>
+<td>Shows four positions of the cable pairs with their status: <code>O</code> - open; <code>S</code> - short; <code>P</code> - reverse polarity</td>
+</tr>
+</tbody>
+</table>
+<p>The device supports Jumbo frames up to 10222 bytes. Manually decreasing the MTU settings is not supported for SwOS Lite devices.</p>
+<hr />
+<h2 id="sfp_2">SFP</h2>
+<p>The SFP tab allows you to monitor the status of SFP modules.</p>
+<p><em>[gambar: Gpen21 sfp]</em></p>
+<hr />
+<h2 id="forwarding_2">Forwarding</h2>
+<p>Forwarding Tab provides advanced forwarding options among device ports, port locking, bandwidth limit, and broadcast storm control features.</p>
+<p><em>[gambar: Gpen21 forwarding]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port Lock</strong></td>
+<td><code>Port Lock</code> - Enables or disables MAC address learning on this port. When the option is enabled, it will restrict MAC address learning and static MAC addresses should be configured. Any received frames with an unknown source MAC address will be dropped.<code>Lock On First</code> - Allows learning of the source MAC address from the first received frame; this property should be used together with <code>Port Lock</code>. Learning of the first MAC address will reset every time an interface status changes.</td>
+</tr>
+<tr>
+<td><strong>Uplink Port</strong></td>
+<td><code>Set As Uplink Port</code> - Allows changing the uplink port between PoE-in (Port1), PoE-out (Port2), or SFP interfaces. Packets received on downstream ports are forwarded only to the uplink port; only a single interface can be used as an uplink.</td>
+</tr>
+<tr>
+<td><strong>Broadcast Storm Control</strong></td>
+<td><code>Storm Rate</code> - Limit the number of broadcast packets transmitted by an interface. The rate is measured in bits per second (bps).<code>Limit Unknown Unicast</code> - Include unicast packets without an entry in the host table in <code>Storm Rate</code> limitation.</td>
+</tr>
+<tr>
+<td><strong>Bandwidth Limit</strong></td>
+<td><code>Ingress Rate</code> - Limit traffic entering this port (bps)<code>Egress Rate</code> - Limit traffic leaving this port (bps)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> It is possible to limit ingress/egress traffic per port basis. The policer is used for ingress traffic, the shaper is used for egress traffic. The ingress policer controls the received traffic with packet drops — everything that exceeds the defined limit will get dropped. This can affect the TCP congestion control mechanism on end hosts and achieved bandwidth can be actually less than defined. The egress shaper tries to queue packets that exceed the limit instead of dropping them. Eventually, it will also drop packets when the output queue gets full; however, it should allow utilizing the defined throughput better.</p>
+</blockquote>
+<hr />
+<h2 id="stats-errors-and-histogram_1">Stats, Errors and Histogram</h2>
+<p>These menus provide detailed information about received and transmitted packets.</p>
+<p><em>[gambar: Gpen21 stats]</em></p>
+<p><em>[gambar: Gpen21 errors]</em></p>
+<p><em>[gambar: Gpen21 hist]</em></p>
+<hr />
+<h2 id="vlan-and-vlans_2">VLAN and VLANs</h2>
+<p>VLAN configuration for device ports.</p>
+<p><em>[gambar: Gpen21 vlan]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN Mode</strong> (<em>disabled | optional | strict</em>; Default: <strong>optional</strong>)</td>
+<td>VLAN filtering mode; these options are relevant to egress ports (except for strict mode).<code>disabled</code> - VLAN table is not used. The device discards packets with a VLAN tag on egress ports. If the packet has a VLAN tag and the VLAN ID matches <code>Default VLAN ID</code> on egress ports, then with <code>VLAN Receive=any</code> the device will remove the VLAN tag and forward the packet.<code>optional</code> - Disabled VLAN filtering. Handle packets with VLAN tag ID that is not present in the VLAN table just like packets without VLAN tag.<code>strict</code> - Enabled VLAN filtering with additional ingress filtering, which checks if the ingress port is a member of the received VLAN ID in the VLAN table. Received packets on the ingress port with a VLAN ID that does not match with the VLAN table will be dropped. Default VLAN ID must be specified for access ports since it will be used to tag ingress traffic and untag egress traffic for a certain port.</td>
+</tr>
+<tr>
+<td><strong>VLAN Receive</strong> (<em>any | only tagged | only untagged</em>; Default: <strong>optional</strong>)</td>
+<td>Received traffic filtering based on VLAN tag presence.<code>any</code> - allows tagged and untagged packets on a certain port<code>only tagged</code> - allows only packets with a VLAN tag. The "Default VLAN ID" will not work, because it only applies for untagged traffic<code>only untagged</code> - allows only packets without a VLAN tag</td>
+</tr>
+<tr>
+<td><strong>Default VLAN ID</strong> (<em>integer: 1..4095</em>; Default: <strong>1</strong>)</td>
+<td>The device will place received untagged packets in the "Default VLAN ID" VLAN. Only has an effect on untagged traffic, and when <strong>VLAN Receive</strong> is set to "any" or "only untagged". It does not apply for tagged traffic. This parameter is usually used to allocate access ports with a specific VLAN. It is also used to untag egress traffic if the packet's VLAN ID matches Default VLAN ID.</td>
+</tr>
+<tr>
+<td><strong>Force VLAN ID</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td>Assigns the <code>Default VLAN ID</code> value to all ingress traffic (tagged and untagged). Has effect in all VLAN Modes. If the port receives tagged traffic and <code>Default VLAN ID</code> is set to 1, then with this parameter the egress traffic will be untagged.</td>
+</tr>
+</tbody>
+</table>
+<p>VLAN membership configuration for device ports.</p>
+<p><em>[gambar: Gpen21 vlans]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VLAN ID</strong> (<em>integer: 1..4094</em>; Default: <strong>0</strong>)</td>
+<td>VLAN ID to which assign ports</td>
+</tr>
+<tr>
+<td><strong>Members</strong> (<em>ports</em>; Default: <strong>none</strong>)</td>
+<td>Group of ports which are allowed to forward traffic on the defined VLAN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vlan-configuration-examples_2">VLAN Configuration Examples</h3>
+<p>The VLAN configuration examples are taken from the <a href="https://help.mikrotik.com/docs/display/SWOS/CSS610+series+Manual#CSS610seriesManual-VLANConfigurationExample">CSS610 switch user manual</a>; however, the same principles can be applied to the GPEN21 device.</p>
+<h4 id="trunk-and-access-ports_2">Trunk and Access Ports</h4>
+<p><em>[gambar: Access ports]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries and specify port membership.</li>
+</ol>
+<p><em>[gambar: Css610 vlans]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned access ports (untagged), select the correct VLAN Receive setting (Port2 only tagged, Port6-8 only untagged) and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css610 vlan]</em></p>
+<h4 id="trunk-and-hybrid-ports_2">Trunk and Hybrid Ports</h4>
+<p><em>[gambar: Hybrid ports]</em></p>
+<ol>
+<li>In the VLANs menu add VLAN entries and specify port membership.</li>
+</ol>
+<p><em>[gambar: Css610 vlans hybrid]</em></p>
+<ol>
+<li>In the VLAN menu configure Default VLAN ID on planned hybrid ports (for untagged VLAN), select the correct VLAN Receive setting (Port2 only tagged, Port6-8 any) and enable strict VLAN filtering to ensure only allowed VLANs can pass through the ports.</li>
+</ol>
+<p><em>[gambar: Css610 vlan hybrid]</em></p>
+<h4 id="management-access_2">Management Access</h4>
+<p>In this example, device management access on VLAN 200 will be created. The configuration scheme is the same as "<strong>Trunk and Access Ports</strong>" and steps <strong>1., 2.</strong> are identical. The additional <strong>3rd</strong> step requires specifying the management VLAN ID in the System menu. After applying the configuration, the device will only respond to tagged VLAN 200 packets on Port2 and untagged packets on Port6. The DHCP client will also work in the specified VLAN ID.</p>
+<p><em>[gambar: Css610 system vlan]</em></p>
+<blockquote>
+<p><strong>Warning:</strong> Changing management VLAN can completely disable access to the device management if VLAN settings are not correctly configured. Save a configuration backup before changing this setting and use <a href="#reset-and-reinstall">Reset and Reinstall</a> in case management access is lost.</p>
+</blockquote>
+<hr />
+<h2 id="hosts_2">Hosts</h2>
+<p>This table represents dynamically learned MAC address to port mapping entries. It can contain two kinds of entries: dynamic and static. Dynamic entries get added automatically — this is also called a learning process: when a device receives a packet from a certain port, it adds the packet's source MAC address and port it received the packet from to the host table, so when a packet comes in with a certain destination MAC address it knows to which port it should forward the packet. If the destination MAC address is not present in the host table then it forwards the packet to all ports in the group. Dynamic entries take about 5 minutes to time out.</p>
+<p>Static entries will take over dynamic entries if a dynamic entry with the same MAC address already exists. Adding a static entry also provides access to more functionality.</p>
+<p><em>[gambar: Gpen21 hosts]</em></p>
+<p><strong>Static host properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ports</strong></td>
+<td>Ports the packet should be forwarded to</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>MAC address</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dynamic host properties (read-only)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>Ports the packet should be forwarded to</td>
+</tr>
+<tr>
+<td><strong>MAC</strong></td>
+<td>Learned MAC address</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="snmp_2">SNMP</h2>
+<p>SwOS supports SNMP v1 and v2c (the Response for GetRequest, GetNextRequest and GetBulkRequest) and uses IF-MIB, SNMPv2-MIB, BRIDGE-MIB and MIKROTIK-MIB (only for health, PoE-out and SFP diagnostics). SNMP traps and writing SwOS configuration are not supported.</p>
+<p>Available SNMP data:</p>
+<ul>
+<li>System information</li>
+<li>System uptime</li>
+<li>Port status</li>
+<li>Interface statistics</li>
+<li>Host table information</li>
+</ul>
+<p><em>[gambar: Swos snmp2 1]</em></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Enable or disable SNMP service</td>
+</tr>
+<tr>
+<td><strong>Community</strong></td>
+<td>SNMP community name</td>
+</tr>
+<tr>
+<td><strong>Contact Info</strong></td>
+<td>Contact information for the NMS</td>
+</tr>
+<tr>
+<td><strong>Location</strong></td>
+<td>Location information for the NMS</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="acl_1">ACL</h2>
+<p>An access control list (ACL) rule table is a very powerful tool allowing wire-speed packet filtering, forwarding, and VLAN tagging based on L2, L3, and L4 protocol header field conditions. Each rule contains a conditions part and an action part.</p>
+<p><em>[gambar: Gpen21 acl]</em></p>
+<p><strong>Conditions part parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>A port that the packet came in from</td>
+</tr>
+<tr>
+<td><strong>MAC Src</strong></td>
+<td>Source MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>MAC Dst</strong></td>
+<td>Destination MAC address and mask</td>
+</tr>
+<tr>
+<td><strong>Ethertype</strong></td>
+<td>Protocol encapsulated in the payload of an Ethernet Frame</td>
+</tr>
+<tr>
+<td><strong>VLAN</strong></td>
+<td>VLAN header presence: <code>any</code> / <code>present</code> / <code>not present</code></td>
+</tr>
+<tr>
+<td><strong>VLAN ID</strong></td>
+<td>VLAN tag ID</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Priority in VLAN tag</td>
+</tr>
+<tr>
+<td><strong>IP Src</strong> (IP/netmask:port)</td>
+<td>Source IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>IP Dst</strong> (IP/netmask:port)</td>
+<td>Destination IPv4 address, netmask, and L4 port number</td>
+</tr>
+<tr>
+<td><strong>Protocol</strong> <em>(integer)</em></td>
+<td>IP protocol</td>
+</tr>
+<tr>
+<td><strong>DSCP</strong></td>
+<td>IP DSCP field</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Action part parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Drop</strong></td>
+<td>Drop packet</td>
+</tr>
+<tr>
+<td><strong>Set VLAN ID</strong></td>
+<td>Changes the VLAN tag ID, if the VLAN tag is present</td>
+</tr>
+<tr>
+<td><strong>Priority</strong></td>
+<td>Changes the VLAN tag priority bits, if the VLAN tag is present</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="reset-and-reinstall_2">Reset and Reinstall</h2>
+<p>The GPEN21 has built-in backup SwOS firmware which can be loaded in case standard firmware breaks or an upgrade fails:</p>
+<ul>
+<li>Holding the Reset button for a few seconds while the device is booting will reset the configuration and load backup firmware. The reset button is located behind the front cover.</li>
+<li>After loading backup firmware, it is possible to connect to 192.168.88.1 (or a leased address from a DHCP server) using a web browser and install new SwOS firmware.</li>
+</ul>
+<hr />
+<h1 id="cannot-upgrade-swos">Cannot upgrade SwOS</h1>
+<blockquote>
+<p>MikroTik switches that support SwOS store two separate firmware images in flash memory: a primary (active) image and a backup image. Under normal operation, the device boots from the primary image. When a firmware...</p>
+</blockquote>
+<h1 id="cannot-upgrade-swos_1">Cannot upgrade SwOS</h1>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>MikroTik switches that support SwOS store two separate firmware images in flash memory: a <strong>primary</strong> (active) image and a <strong>backup</strong> image. Under normal operation, the device boots from the primary image. When a firmware upgrade is initiated — either automatically via the web interface or manually via file upload — the device writes the new image to the primary slot and reboots into it.</p>
+<p>Upgrade failures typically occur due to one of the following:</p>
+<ul>
+<li>Incorrect firmware file selected (wrong model or firmware branch)</li>
+<li>Interrupted write operation leaving the primary image corrupted</li>
+<li>Network connectivity issue preventing the automatic download from reaching MikroTik servers</li>
+<li>On dual-boot devices: device-mode policy restricting OS transitions (RouterOS 7.17+)</li>
+</ul>
+<p>SwOS-only devices and dual-boot devices require different recovery procedures, described separately below.</p>
+<hr />
+<h2 id="before-you-begin">Before You Begin</h2>
+<blockquote>
+<p><strong>Warning:</strong> The reset button procedure described in this article will erase the active configuration and load factory defaults. Export a configuration backup from the <strong>System</strong> tab before proceeding.</p>
+</blockquote>
+<p>Confirm which firmware file you need before attempting a manual upgrade. Each switch series uses a dedicated firmware binary — cross-series firmware files are not interchangeable and will be rejected or cause a boot failure. The correct file for your device can be found at:</p>
+<p><a href="https://mikrotik.com/download">mikrotik.com Software download centre</a></p>
+<hr />
+<h2 id="resolution">Resolution</h2>
+<h3 id="swos-only-devices-css-series">SwOS-only Devices (CSS series)</h3>
+<p>These devices do not run RouterOS and have no serial console boot menu. Recovery relies on the hardware backup firmware stored in a protected flash partition.</p>
+<p><strong>Step 1 — Attempt manual firmware upload</strong></p>
+<p>Navigate to the <strong>Upgrade</strong> tab in the SwOS web interface, select the correct <code>.swos</code> firmware file for your device model, and click <strong>Upgrade</strong>. Do not interrupt power during the write process. After the upload completes, the device will reboot automatically. Reload the web interface and verify the firmware version shown in the <strong>System</strong> tab.</p>
+<p><strong>Step 2 — Boot into backup firmware via hardware reset</strong></p>
+<p>If the manual upload fails or the device becomes unreachable after the upgrade attempt, the backup (primary) firmware can be force-loaded using the reset button:</p>
+<ol>
+<li>Disconnect power from the device.</li>
+<li>Hold the <strong>Reset</strong> button and reapply power.</li>
+<li>Continue holding the button for approximately 5 seconds until the device completes its boot sequence.</li>
+<li>Release the button.</li>
+</ol>
+<p>The device will load the backup firmware and apply the factory default configuration. It will be accessible at <strong>192.168.88.1</strong> or at a DHCP-assigned address.</p>
+<p><strong>Step 3 — Reattempt manual firmware upload</strong></p>
+<p>Once the device is accessible on the backup firmware, repeat the manual upgrade procedure from Step 1. The backup firmware environment provides a clean state from which the upgrade is more likely to succeed.</p>
+<hr />
+<h3 id="dual-boot-devices-crs-series">Dual-Boot Devices (CRS series)</h3>
+<p>Dual-boot devices store both SwOS and RouterOS and can boot into either operating system. This provides additional recovery paths, including upgrade via the RouterOS CLI.</p>
+<p><strong>Step 1 — Attempt manual firmware upload</strong></p>
+<p>As with SwOS-only devices, first attempt a manual upgrade via the <strong>Upgrade</strong> tab in the SwOS web interface using the correct firmware file for your device.</p>
+<p><strong>Step 2 — Boot into backup SwOS via serial console</strong></p>
+<p>If the manual upload fails, connect to the device using a serial console cable with the following parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Baud rate</td>
+<td>115200</td>
+</tr>
+<tr>
+<td>Data bits</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Stop bits</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Parity</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Flow control</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>At the boot menu prompt, select:</p>
+<pre><code>p - boot primary SwOS
+</code></pre>
+<p>This loads the factory backup SwOS image. Once the device is accessible, reattempt the manual firmware upload as described in Step 1.</p>
+<p><strong>Step 3 — Boot into RouterOS via reset button (no console access)</strong></p>
+<p>If no serial console port is available or no cable is at hand, the device can be forced into RouterOS using the reset button:</p>
+<ol>
+<li>With the device powered on, press and hold the <strong>Reset</strong> button.</li>
+<li>Hold until the user LED begins to flash (approximately 5 seconds).</li>
+<li>Release the button.</li>
+</ol>
+<p>The device will reset the RouterOS configuration to factory defaults and boot into RouterOS.</p>
+<blockquote>
+<p><strong>Warning:</strong> This procedure resets the RouterOS configuration. Ensure a RouterOS configuration backup exists before proceeding if the device was previously running RouterOS.</p>
+</blockquote>
+<p><strong>Step 4 — Upgrade SwOS from RouterOS CLI</strong></p>
+<p>Once booted into RouterOS, SwOS can be upgraded directly without using the web interface. The following command fetches and installs the latest available SwOS firmware for the device:</p>
+<pre><code>/system swos upgrade
+</code></pre>
+<p>Internet access is required for this command to resolve and download the correct firmware package from MikroTik's update servers. Verify connectivity before executing.</p>
+<p><strong>Step 5 — Device-mode restriction (RouterOS 7.17 and later)</strong></p>
+<p>Starting with RouterOS <strong>v7.17</strong>, the <code>device-mode</code> policy restricts OS transitions between SwOS and RouterOS on dual-boot hardware. If the upgrade command fails or OS switching is blocked, explicitly permit the transition with:</p>
+<pre><code>/system/device-mode/update routerboard=yes
+</code></pre>
+<p>This command must be executed in RouterOS before re-attempting the SwOS upgrade or switching back to SwOS.</p>
+<p><strong>Step 6 — Return to SwOS</strong></p>
+<p>After the SwOS firmware has been successfully updated from RouterOS, set the default boot target back to SwOS and reboot the device:</p>
+<pre><code>/system routerboard settings set boot-os=swos
+/system reboot
+</code></pre>
+<p>The device will restart and load the newly installed SwOS firmware.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

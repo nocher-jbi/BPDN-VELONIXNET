@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Mobile Networking</p>
+      <h1 id="gps">GPS</h1>
+<h1 id="gps_1">GPS</h1>
+<blockquote>
+<p>This page documents GPS configuration and monitoring in MikroTik RouterOS, covering properties like channel selection, coordinate formats, GPS initialization strings, and monitoring commands with parameters such as...</p>
+</blockquote>
+<h1 id="gps_2">GPS</h1>
+<p>This section covers GPS tracking examples. Use it to send RouterOS GPS data to HTTP endpoints, MQTT brokers, and IoT platforms.</p>
+<h3 id="summary">Summary</h3>
+<p><strong>Package requirement:</strong> <code>gps</code>
+<strong>Sub-menu:</strong> <code>/system/gps</code>
+<strong>Standards:</strong> <code>GPS, NMEA 0183, Simple Text Output Protocol</code></p>
+<p>Global Positioning System (GPS) is used for determining the precise location of a GPS receiver.</p>
+<h3 id="configuration-properties">Configuration Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Port channel used by the device</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>coordinate-format</strong> (<em>dd | dms | ddmm</em>; Default: <strong>dms</strong>)</td>
+<td style="text-align: left;">Which coordinate format to use, "Decimal Degrees", "Degrees Minutes Seconds" or "NMEA format DDDMM.MM[MM]"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether GPS is enabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>gps-antenna-select</strong> (<em>external | internal</em>; Default: <strong>internal</strong>)</td>
+<td style="text-align: left;">Depending on the model. The internal antenna can be selected, if the device has one installed.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>init-channel</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel for init-string execution</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>init-string</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">AT init string for GPS initialization</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the USB/Serial port where the GPS receiver is connected</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>set-system-time</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether to set the router's date and time to the one received from GPS.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monitoring-status">Monitoring Status</h3>
+<p><strong>Command:</strong> <code>/system/gps/monitor</code></p>
+<p>This command is used for monitoring the data received from a GPS receiver.</p>
+<p><strong>Parameters:</strong></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Starting with the 7.1rc3 firmware release, a new parameter was added, called "data-age" (measured in seconds). This parameter displays the time that has passed since the device received the last NMEA message.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>date-and-time</strong> (<em>date</em>)</td>
+<td style="text-align: left;">Date and time received from GPS</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>latitude</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">Latitude in DM (Degrees Minutes decimal) format</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>longitude</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">Longitude in DM (Degrees Minutes decimal) format</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>altitude</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">Altitude based on GPS data</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>speed</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">The current moving speed of the GPS unit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>destination-bearing</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">The bearing from the current position toward a configured destination waypoint</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>true-bearing</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">Current heading relative to true north</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>magnetic-bearing</strong> (<em>none | string</em>)</td>
+<td style="text-align: left;">Current heading relative to magnetic north</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>valid</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>satellites</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Number of satellites seen by the device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>fix-quality</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Quality of the signal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>horizontal-dilution</strong> (<em>decimal</em>)</td>
+<td style="text-align: left;">Horizontal dilution of precision (HDOP);</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>data-age</strong> (integer)</td>
+<td style="text-align: left;">The time that has passed since the device received the last NMEA message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="basic-examples">Basic examples</h3>
+<p>Check port usage, as only one instance can use the serial port simultaneously:</p>
+<pre><code class="language-ros">[admin@MikroTik] /port/print
+Flags: I - inactive 
+ #   DEVICE NAME                     CHANNELS USED-BY                   BAUD-RATE
+ 0          serial0                         1 Serial Console            auto    
+</code></pre>
+<p>In case there is one port and it is used by the console, release it from the console menu:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/console/print 
+Flags: X - disabled, U - used, F - free
+ #   PORT                                                                       TERM                                                                     
+ 0 U serial0                                                                    vt102 
+
+[admin@MikroTik] &gt; /system/console/disable 0   
+</code></pre>
+<p>Adjust port settings specifically for your device (leave "auto" for LtAP mini):</p>
+<pre><code class="language-ros">[admin@MikroTik] /port&gt; set 0 baud-rate=4800 parity=odd
+[admin@MikroTik] /port&gt; print detail 
+Flags: I - inactive 
+ 0   name=&quot;usb1&quot; used-by=&quot;&quot; channels=1 baud-rate=4800 data-bits=8 parity=odd stop-bits=1 flow-control=none
+</code></pre>
+<p>Enable GPS:</p>
+<pre><code class="language-ros">[admin@MikroTik] /system/gps&gt; set enabled=yes port=usb1
+[admin@MikroTik] /system/gps&gt; print 
+          enabled: yes
+             port: usb1
+          channel: 0
+     init-channel: 0
+      init-string:
+  set-system-time: no
+</code></pre>
+<p>Monitor status:</p>
+<pre><code class="language-ros">[admin@MikroTik] /system/gps&gt; monitor  
+        date-and-time: 2021-09-07 08:26:26
+             latitude: 56.969689
+            longitude: 24.162471
+              altitude: 25.799999 m
+                speed: 0.759320 km/h
+  destination-bearing: none
+         true-bearing: 185.500000 deg. True
+     magnetic-bearing: 0.000000 deg. Mag
+                valid: yes
+           satellites: 6
+          fix-quality: 1
+  horizontal-dilution: 1.3
+</code></pre>
+<h2 id="port-and-gps-settings-for-ltap">Port and GPS settings for <strong>LtAP</strong></h2>
+<pre><code class="language-ros">/port/set serial1 baud-rate=115200
+</code></pre>
+<pre><code class="language-ros">/system/gps/set port=serial1 channel=0 enabled=yes
+</code></pre>
+<p>We have also created an in-depth article about live GPS tracking, using scripting and a web server: <a href="./gps-tracking-using-http-post.md">GPS-tracking</a>.</p>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p>Note that sometimes to make the GPS module recognized in RouterOS you need to change the baud-rate setting in the <code>/port</code> menu.</p>
+<p><a href="https://mikrotik.com/product/ltap_mini">LtAP mini</a> has a low-gain GPS antenna built-in, and for a better experience, we suggest using an additional <a href="https://mikrotik.com/product/acgpsa">external antenna</a>.</p>
+<p>Switch between internal and external antennas under the GPS menu:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/gps/set gps-antenna-select=external
+</code></pre>
+<p>On some modems with GPS support, you need to send multiple init commands for continuous GPS monitoring, for example, for Huawei cards you need to send the "AT^WPDST=1,AT^WPDGP" init string to get continuous monitoring.</p>
+<hr />
+<h1 id="gps-tracking-using-http-post">GPS-tracking using HTTP POST</h1>
+<blockquote>
+<p>This page explains how to set up a vehicle tracking system using MikroTik RouterOS GPS functionality and HTTP POST to send coordinates to a web server, which stores them in an SQLite3 database for visualization with...</p>
+</blockquote>
+<h1 id="gps-tracking-using-http-post_1">GPS-tracking using HTTP POST</h1>
+<p>The following article explains how to create a simple vehicle tracking system using the RouterOS GPS function and scripting.</p>
+<h2 id="method">Method</h2>
+<p>This approach uses HTTP POST capability of the RouterOS Fetch tool. It allows you to POST any kind of data to a webserver, right from the RouterOS command line. Of course, you can use scripting to fill the POST data with variables. The posted data will be written to an SQLITE3 database (file is created, if it doesn't exist) and then read from the database and fed into a Leaflet.js Polyline array. This is a proof of concept example; there is no authentication, security, or error handling.</p>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>Web server of your choice.</li>
+<li>PHP.</li>
+<li>SQLite3 module for PHP.</li>
+<li>RouterOS device with a working GPS module.</li>
+<li>RouterOS.</li>
+<li>Set GPS format in RouterOS to <strong>dd</strong>.</li>
+</ul>
+<h2 id="routeros-script">RouterOS script</h2>
+<p>You can run this script in the Scheduler tool, with an interval of 1s, to have your coordinates sent every 1 second.</p>
+<pre><code class="language-ros">{
+:global lat
+:global lon
+/system/gps/monitor once do={
+:set $lat $(&quot;latitude&quot;)
+:set $lon $(&quot;longitude&quot;)
+}
+/tool/fetch mode=http url=&quot;http://YOURSERVER.com/index.php&quot; port=80 http-method=post http-data=(&quot;{\&quot;lat\&quot;:\&quot;&quot; . $lat . &quot;\&quot;,\&quot;lon\&quot;:\&quot;&quot; . $lon . &quot;\&quot;}&quot;) http-header-field=&quot;Content-Type: application/json&quot; 
+:put (&quot;{\&quot;lat\&quot;:\&quot;&quot; . $lat . &quot;\&quot;,\&quot;lon\&quot;:\&quot;&quot; . $lon . &quot;\&quot;}&quot;)
+}
+</code></pre>
+<h2 id="indexphp-file">index.php file</h2>
+<p>Create an empty directory called <strong>sqlite_db</strong> next to the index.php file. Make sure that the directory and files are writable by the group with <strong>chmod -R a+w sqlite_db/</strong></p>
+<pre><code class="language-ros">&lt;?php
+$loc = dirname(__FILE__).'/sqlite_db/coord.db';
+$db = new SQLite3($loc,SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE);
+$raw = file_get_contents('php://input');
+$raw = preg_replace('/\\x00/','',$raw);
+$data = json_decode($raw);
+
+if (!empty($data) &amp;&amp; is_object($data) &amp;&amp; property_exists($data,'lat') &amp;&amp; property_exists($data,'lon')){
+    if(file_exists($loc)) echo 'exists!'.chr(0xa);
+    $src = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'coordinates\'';
+    $res = $db-&gt;querySingle($src);
+    if ($res === false){
+            $db-&gt;exec('CREATE TABLE coordinates (latitude TEXT, longitude TEXT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, added TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) ');
+    }
+
+$regex = '/^(|\-)([0-9]{2,3}\.[0-9]{0,8})$/';
+
+if (preg_match($regex,$data-&gt;lat) &amp;&amp; preg_match($regex,$data-&gt;lon) )
+    {
+        $lat = $data-&gt;lat;
+        $lon = $data-&gt;lon;
+    }
+    $ins = 'INSERT INTO coordinates (latitude,longitude) VALUES (\''.SQLite3::escapeString($lat).'\',\''.SQLite3::escapeString($lon).'\')';
+    $db-&gt;exec($ins);
+    die();
+}
+?&gt;
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/leaflet@1.3.1/dist/leaflet.css&quot; integrity=&quot;sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ==&quot; crossorigin=&quot;&quot;/&gt;
+  &lt;script src=&quot;https://unpkg.com/leaflet@1.3.1/dist/leaflet.js&quot; integrity=&quot;sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw==&quot; crossorigin=&quot;&quot;&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+&lt;script&gt;
+var map = L.map('map').setView([0,0], 4);
+L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {attribution: 'OSM'}).addTo(map);
+
+&lt;?php
+    if($result = $db-&gt;query('SELECT latitude,longitude FROM coordinates')){
+    echo ' var latlngs = [ ';
+    while($obj = $result-&gt;fetchArray()){
+        if (!is_array($obj) || !isset($obj['latitude']) || !isset($obj['longitude']) || empty($obj['latitude']) || empty($obj['longitude'])) continue;
+        echo '[&quot;'. $obj['latitude'].'&quot;,&quot;'.$obj['longitude'].'&quot;],';
+    }
+    echo ']; ';
+    } else
+     echo('//'.$db-&gt;lastErrorMsg().chr(0xa));  
+
+?&gt;
+var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
+map.fitBounds(polyline.getBounds());
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<h2 id="result">Result</h2>
+<hr />
+<h1 id="gps-tracking-using-mqtt-and-thingsboard">GPS-tracking using MQTT and ThingsBoard</h1>
+<blockquote>
+<p>This page documents configuring GPS-tracking on MikroTik RouterOS using MQTT and ThingsBoard, detailing setup steps for GPS-enabled devices to send location data to a server. It covers broker configuration, device...</p>
+</blockquote>
+<h1 id="gps-tracking-using-mqtt-and-thingsboard_1">GPS-tracking using MQTT and ThingsBoard</h1>
+<p>Many RouterOS devices have <a href="./index.md">GPS</a> support. It allows RouterOS to determine the precise location of its GPS receiver. GPS coordinates will indicate the latitude and the longitude values (among other parameters) of the current position.</p>
+<p>Let's say, you have <a href="https://mikrotik.com/product/ltap">LTAP</a> (or any other RouterOS device with GPS support) and you wish to track its location. You want the router to send this data to a server, where the data will be stored and integrated into a map, as it is more convenient to monitor. In this guide, we will showcase how you can do that. This scenario will utilize MQTT protocol communication with a platform called <a href="https://thingsboard.io/">ThingsBoard</a>.</p>
+<p>ThingsBoard has a cloud solution and different local installation options (on different OSes).</p>
+<p>Since we've added a <a href="../../containers/index.md">container</a> feature, it has become possible to also run the platform within the RouterOS. This means, you can build this scenario solely on RouterOS units → devices with GPS support that you wish to track (for example, cars equipped with <a href="https://mikrotik.com/product/ltap">LTAP</a>s → RouterOS devices that act as <strong>MQTT publishers</strong>), and a ThingsBoard server running within a more powerful RouterOS device (like a <a href="../../getting-started/routeros-licensing/chr/index.md">CHR</a> machine → RouterOS device that acts as an <strong>MQTT broker</strong>).</p>
+<p>If you want to choose this route (container route), make sure to pick the devices that you plan on using as "servers" carefully, because this implementation can be heavy on RAM usage (it is suggested to have a device that has at least <strong>2 GB</strong> <strong>RAM</strong> or <strong>1 GB RAM</strong> <strong>with minimal load</strong> and is either <strong>ARM64</strong> or <strong>AMD64</strong> architecture).</p>
+<h2 id="configuration">Configuration</h2>
+<p>In this guide, we will demonstrate how to configure a GPS receiver (MQTT publisher) and how to set up ThingsBoard.</p>
+<p>In case you want to use the container feature to run the ThingsBoard instance (MQTT broker), check the guide <a href="../../containers/user-guides/container-thingsboard-mqtt-http-server.md">over here</a>. General guidelines on ThingsBoard and MQTT configuration can be found in the guide <a href="../../internet-of-things/mqtt/mqtt-and-thingsboard-configuration.md">over here</a>. Make sure to explore both guides as they will have additional useful information.</p>
+<p>Before proceeding, make sure that ThingsBoard is up and running and that you can access its WEB management portal. Confirm that the MQTT port is open and/or port-forwarded properly.</p>
+<h3 id="thingsboard-preparation">ThingsBoard preparation</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This example will showcase <a href="../../internet-of-things/mqtt/mqtt-and-thingsboard-configuration.md#access-token-scenario-1">access-token</a> and <a href="../../internet-of-things/mqtt/mqtt-and-thingsboard-configuration.md#one-way-ssl-communication-scenario">one-way SSL communication via access-token</a> scenarios for simplicity reasons, but you can use other available options as well.</p>
+</div>
+<p>Navigate to the "<strong>Devices</strong>" menu and add a new device via the "<strong>Add new device</strong>" button → name it and create it (for example, LTAP):</p>
+<p>Click on the device you've just added, go to the "<strong>Details</strong>" section, and generate an access token under the "<strong>Manage credentials/Device Credentials</strong>" setting:</p>
+<h3 id="mqtt-broker-configuration">MQTT broker configuration</h3>
+<p>In case it is a local test or the broker is available through the VPN, you can use non-SSL MQTT:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=1883 username=access_token
+</code></pre>
+<p>Where:</p>
+<ul>
+<li><code>name</code> is the name that you wish to give to the broker and this name will be used later in the script.</li>
+<li><code>address</code> is the IP address of the broker.</li>
+<li><code>port</code> is the TCP port that the broker is listening on → for non-SSL it is typically TCP 1883.</li>
+<li><code>username</code> is dictated by the MQTT broker and, in our case, it is an "access token" that was generated in the ThingsBoard management portal.</li>
+</ul>
+<p>In case of public access (when you want to access the broker via its public IP address), <strong>we advise you to use SSL MQTT</strong>:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=8883 username=access_token ssl=yes
+</code></pre>
+<p>Where:</p>
+<ul>
+<li><code>name</code> is the name that you wish to give to the broker and this name will be used later in the script.</li>
+<li><code>address</code> is the IP address of the broker.</li>
+<li><code>port</code> is the TCP port that the broker is listening on → for SSL it is typically TCP 8883.</li>
+<li><code>username</code> is dictated by the MQTT broker, and, in our case, it is an "access token" that was generated in the ThingsBoard management portal.</li>
+<li><code>ssl</code> enables SSL MQTT communication.</li>
+</ul>
+<h3 id="mqtt-publish">MQTT publish</h3>
+<p>You can test MQTT publish with a static message by using the command:</p>
+<pre><code class="language-ros">/iot/mqtt/publish broker=&quot;tb&quot; topic=&quot;v1/devices/me/telemetry&quot; message=&quot;{\&quot;test\&quot;:\&quot;123\&quot;}&quot;
+</code></pre>
+<p>To post GPS coordinates, import the script shown below:</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=mqttgps owner=admin policy=&quot;ftp,re\
+    boot,read,write,policy,test,password,sniff,sensitive,romon&quot; \
+    source=&quot;    ###Configuration###\r\
+    \n    #Enter pre-configured broker's name within \&quot;\&quot;:\r\
+    \n    :local broker \&quot;tb\&quot;\r\
+    \n    #Enter the topic name within \&quot;\&quot;, per the broker's config\
+    uration:\r\
+    \n    :local topic \&quot;v1/devices/me/telemetry\&quot;\r\
+    \n\r\
+    \n    ###Variables####\r\
+    \n    :global lat\r\
+    \n    :global lon\r\
+    \n    :global alt1\r\
+    \n    :global alt2\r\
+    \n\r\
+    \n    ###GPS####\r\
+    \n    :put (\&quot;[*] Capturing GPS coordinates...\&quot;)\r\
+    \n    /system/gps/monitor once do={\r\
+    \n    :set \$lat \$(\&quot;latitude\&quot;);\r\
+    \n    :set \$lon \$(\&quot;longitude\&quot;);\r\
+    \n    :set \$alt1 \$(\&quot;altitude\&quot;)}\r\
+    \n    ###remove \&quot;meters\&quot; from the value because JSON format wi\
+    ll not understand it###\r\
+    \n    :set \$alt2 [:pick \$alt1 0 [find \$alt1 \&quot; m\&quot;]]\r\
+    \n\r\
+    \n    :local message \\\r\
+    \n    \&quot;{\\\&quot;latitude\\\&quot;:\$lat,\\\r\
+    \n    \\\&quot;longitude\\\&quot;:\$lon,\\\r\
+    \n    \\\&quot;altitude\\\&quot;:\$alt2}\&quot;\r\
+    \n\r\
+    \n    ###MQTT###\r\
+    \n    :if (\$lat != \&quot;none\&quot;) do={\\\r\
+    \n    :put (\&quot;[*] Sending message to MQTT broker...\&quot;);\r\
+    \n    /iot/mqtt/publish broker=\$broker topic=\$topic message=\$\
+    message} else={:put (\&quot;[*] Latitude=none, not posting anything!\
+    \&quot;);:log info \&quot;Latitude=none, not posting anything!\&quot;}&quot;
+</code></pre>
+<p>In short, the script captures GPS information, specifically the latitude, longitude, and altitude values. Then it structures a JSON message out of them. In case at the moment when the script is initiated, the latitude value equals anything other than "none" (equals any actual value-number) → it sends the JSON message via MQTT to the broker named "<strong>tb</strong>". In case the GPS data can not be captured →  "latitude" is recognized as "none" →  the script just logs that nothing could be captured and does nothing else.</p>
+<p>This is a very basic example. Feel free to alter the script and add your own "if" (maybe an email notification if there is no GPS signal) and additional parameters (any other RouterOS captured value, like, maybe, its firmware version) per your requirements.</p>
+<p>Run the script with the command:</p>
+<pre><code class="language-ros">/system/script/run mqttgps 
+[*] Capturing GPS coordinates...
+        date-and-time: 2023-02-01 10:39:37
+             latitude: 56.969862
+            longitude: 24.162425
+             altitude: 31.799999 m
+                speed: 1.000080 km/h
+  destination-bearing: none
+         true-bearing: 153.089996 deg. True
+     magnetic-bearing: 0.000000 deg. Mag
+                valid: yes
+           satellites: 6
+          fix-quality: 1
+  horizontal-dilution: 1.42
+             data-age: 0s
+[*] Sending message to MQTT broker...
+</code></pre>
+<p>To automate the process, add a <a href="../../system-information-and-utilities/scheduler.md">scheduler</a> (to run the script, for example, every 30 seconds):</p>
+<pre><code class="language-ros">/system/scheduler/add name=mqttgpsscheduler interval=30s on-event=&quot;/system/script/run mqttgps&quot;
+</code></pre>
+<h2 id="result-verification">Result verification</h2>
+<p>Go to the "Latest telemetry" section under your created device and confirm that the data was posted:</p>
+<h2 id="data-visualization-using-maps">Data visualization using maps</h2>
+<p>ThingsBoard allows you to use <a href="https://thingsboard.io/docs/user-guide/ui/widget-library/">Widgets</a> to create visually appealing dashboards. In our case, we want to track our LTAP GPS coordinates, so we will need a map widget.</p>
+<p>Select the latitude and longitude values and click on the "<strong>Show on widget</strong>" button:</p>
+<p>Find the "<strong>Maps</strong>" bundle and click on the "<strong>Add to dashboard</strong>":</p>
+<p>Select an existing dashboard or create a new one and name it however you like:</p>
+<p>Run the script via the scheduler or manually and check the result:</p>
+<p>Now, we can install it on a moving target and track its location:</p>
+<hr />
+<h1 id="mikrotik-connectivity">MikroTik Connectivity</h1>
+<blockquote>
+<p>MikroTik Connectivity introduces an eSIM solution for seamless device connectivity without physical SIM swaps, featuring activation steps through the MikroTik account portal and RouterOS CLI/WinBox interfaces.</p>
+</blockquote>
+<h1 id="mikrotik-connectivity_1">MikroTik Connectivity</h1>
+<h3 id="summary_1">Summary</h3>
+<p>MikroTik Connectivity is our new built-in eSIM solution that ensures your devices stay connected anywhere, without the need for physical SIM swaps or external activation steps. For additional info visit <a href="https://mikrotik.com/connectivity">https://mikrotik.com/connectivity</a></p>
+<h3 id="activation-example">Activation example</h3>
+<p>1) Sign in to your MikroTik account, select "My devices".</p>
+<p>1) Enter your device’s Serial Number – the system will detect. Choose the region and then press "Add to list".</p>
+<p>1) Choose a data plan and payment method that suits your needs. Then add it to the cart.</p>
+<p>1) Proceed with payment in the cart.</p>
+<p>1) Once payment is done go back to "My devices" and you will see that the subscription is now Active.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>MikroTik eSIM profiles are preloaded, so there’s no need for an internet connection during activation. The activation itself usually takes a few minutes, but in some cases it can take even a few hours.</p>
+</div>
+<p>1) In RouterOS check that your device is set to use "esim" and the correct profile is active.  </p>
+<p>CLI:</p>
+<pre><code>[admin@EG25-G&amp;KNe] &gt; /interface/lte/settings/print 
+                 mode: auto    
+         esim-channel: auto    
+        firmware-path: firmware
+  link-recovery-timer: 120     
+             sim-slot: sim      
+[admin@EG25-G&amp;KNe] &gt; /interface/lte/settings/set sim-slot=esim      
+[admin@EG25-G&amp;KNe] &gt; /interface/lte/esim/print
+Flags: A - ACTIVE
+Columns: INTERFACE, NAME, SPN, ICCID
+#   INTERFACE  NAME       SPN                      ICCID
+0 A lte1       Profile 1  MikroTik  89358152000001049461
+1   lte1       Profile 4  MikroTik  89358152000001349465
+</code></pre>
+<p>In WinBox:</p>
+<p>Go to Interfaces &gt; LTE &gt; Modem to select the esim SIM slot:</p>
+<p>Go to Interfaces &gt; LTE &gt; eSIM to check which is the active esim profile:</p>
+<p>If you need to change the Active profile, right click on the profile and select "Activate":</p>
+<h4 id="video-tutorial-our-official-yt-channel-mikrotips-series"><a href="https://www.youtube.com/watch?v=2YxHL9A4Ys0">Video Tutorial: Our official YT channel, MikroTips series</a></h4>
+<h3 id="faq">FAQ</h3>
+<details>
+<summary>Is the IP address assigned to my device a public IP address?</summary>
+
+No, the IP address is private. You can configure BTH to get access to your device remotely: [Back To Home](../network-management/cloud/back-to-home)
+
+</details>
+
+<details>
+<summary>Is IPv6 also supported?</summary>
+
+Only IPv4 is supported.
+
+</details>
+
+<details>
+<summary>What Access Point Name (APN) should I configure?</summary>
+
+You can use the "use-network-apn=yes" option, or set the APN manually to "[mikrotik.net](http://mikrotik.net "http://mikrotik.net/")"
+
+</details>
+
+<details>
+<summary>Why is the latency higher when using MikroTik Connectivity compared to using my local operator’s SIM?</summary>
+
+MikroTik Connectivity works as a roaming service. It routes data through a set pool of PDN gateways that can be located in another country. The extra distance and additional network hop increase round‑trip time, so the latency appears higher than when you use local operators' service.
+
+</details>
+
+<details>
+<summary>Why is the download/upload speed lower when using MikroTik Connectivity compared to using my local operator’s SIM?</summary>
+
+MikroTik Connectivity works as a roaming service. It routes data through a set pool of PDN gateways that can be located in another country. The extra distance and additional network hop increase round‑trip time so the latency increases. Because of this higher latency, TCP performance is directly affected. TCP relies on acknowledgements to increase its congestion window and scale throughput. When the round-trip time becomes longer, acknowledgements take more time to return, the congestion window grows more slowly, and the achievable throughput decreases.
+
+</details>
+
+<details>
+<summary>How do I pause, upgrade, or cancel my MikroTik Connectivity subscription?</summary>
+
+To manage your eSIM subscription plan, log into your **mikrotik.com** account and navigate to the **"My devices"** section. Search for your device's serial number and click on it.
+
+From there, you have two ways to manage your plan:
+
+* **Via the "Plan" tab:** Here you will find the option to **"Unsubscribe"** or upgrade by choosing a different data plan.
+* **Via the "Details" tab:** Go to the **"Status"** field, which allows you to switch between **Active**, **Pause data transfer**, or **Cancel subscription**.
+
+</details>
+
+<hr />
+<h1 id="sms">SMS</h1>
+<blockquote>
+<p>This page documents SMS functionality in MikroTik RouterOS, enabling GSM modem communication for sending and receiving SMS messages via AT commands. It covers sending methods, parameters like port, phone number,...</p>
+</blockquote>
+<h1 id="sms_1">SMS</h1>
+<h2 id="summary_2">Summary</h2>
+<p>It is possible to connect the GSM modem to the RouterOS device and use it to send and receive SMS messages. RouterOS lists such a modem as a serial port that appears in the <code>/port/print</code> listing. The GSM standard defines AT commands for sending SMS messages and defines how messages should be encoded in these commands. <code>'/tool/sms/send'</code> uses standard GSM AT commands to send SMS.</p>
+<h2 id="sending">Sending</h2>
+<p><strong>Sub-menu:</strong> <code>/tool/sms/send</code></p>
+<h3 id="example"><strong>Example</strong></h3>
+<p>Sending a command for the ppp interface:</p>
+<pre><code class="language-ros">/tool/sms/send usb3 &quot;20000000&quot; \ message=&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#\$%^&amp;*(){}[]\&quot;'~&quot;
+</code></pre>
+<p>For the LTE interface use the LTE interface name in the port field:</p>
+<pre><code class="language-ros">/tool/sms/send lte1 &quot;20000000&quot; \ message=&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#\$%^&amp;*(){}[]\&quot;'~&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Name of port from <code>/port</code> that GSM modem is attached to.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>phone-number</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Recipient phone number. Allowed characters are "0123456789*#abc". If the first character is "+" then the phone number type is set to <em>international</em>, otherwise, it is set to <em>unknown</em>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Which modem channel to use for sending.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>message</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Message contents. It is encoded using GSM 7 encoding (UCS2 currently is not supported), so the message length is limited to 160 characters. Characters <code>^{}\\[]~</code> are extended GSM 7-bit characters that each consume two character slots, reducing the effective limit below 160 when present.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>smsc</strong> (<em>string</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (<em>string</em>)</td>
+<td style="text-align: left;">If set to <em>class-0</em>, then send a class 0 SMS message. It is displayed immediately and not stored in the phone.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sms-storage</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Select the storage where to save received SMS (modem/sim)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>status-report-request</strong> (<em>yes | no</em>; Default: yes)</td>
+<td style="text-align: left;">Set "no" to not request a confirmation message indicating whether a text message was successfully sent to the recipient.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ussd-messages">USSD messages</h2>
+<p>USSD (Unstructured Supplementary Service Data) messages can be used to communicate with a mobile network provider to receive additional information, enabling additional services or adding funds to prepaid cards. USSD messages can be processed by using AT commands (commands can differ or even may be blocked on some modems).</p>
+<p><strong>3G or GSM network modes must be activated to use this functionality</strong>, as it's not supported under LTE only mode (<strong>R11e-LTE</strong> modem auto switches to 3G mode to send out USSD messages).</p>
+<p>PDU (Protocol Data Unit) message and its decrypted version are printed under LTE debug logging.</p>
+<h3 id="example_1"><strong>Example</strong></h3>
+<p>Check if LTE debug logging is active:</p>
+<pre><code class="language-ros">/system/logging/print
+Flags: X - disabled, I - invalid, * - default 
+# TOPICS ACTION PREFIX 
+0 * info memory 
+1 * error memory 
+2 * warning memory 
+3 * critical echo 
+</code></pre>
+<p>If there is no logging entry, add it by running this command:</p>
+<pre><code class="language-ros">/system/logging/add topics=lte,!raw
+
+/system/logging/print
+Flags: X - disabled, I - invalid, * - default 
+# TOPICS ACTION PREFIX 
+0 * info memory 
+1 * error memory 
+2 * warning memory 
+3 * critical echo 
+4 lte,!raw memory 
+</code></pre>
+<p>To receive account status from <strong>*245#</strong></p>
+<pre><code class="language-ros">/interface/lte/at-chat lte1 input=&quot;AT+CUSD=1,\&quot;*245#\&quot;,15&quot;
+output: OK
+/log/print
+11:51:20 lte,async lte1: sent AT+CUSD=1,&quot;*245#&quot;,15 
+11:51:20 lte,async lte1: rcvd OK 
+11:51:23 lte,async,event +CUSD: 0,&quot;EBB79B1E0685E9ECF4BADE9E03&quot;, 0 
+11:51:23 gsm,info USSD: konta atlikums
+</code></pre>
+<h2 id="receiving">Receiving</h2>
+<p>RouterOS also supports receiving SMS messages, can execute scripts, and even responds to the sender.</p>
+<p>Before the router can receive SMS, the relevant configuration is required in the <code>/tool/sms</code> menu. The following parameters are configurable:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>allowed-number</strong> (<em>string</em>; Default: "")</td>
+<td style="text-align: left;">The sender number that will be allowed to run commands must specify the country code i.e. +371XXXXXXX</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>integer</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which modem channel to use for receiving.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keep-max-sms</strong> (<em>integer</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Maximum number of messages that will be saved. If you set this bigger than the SIM supports, new messages will not be received. Replaced with the <code>auto-erase</code> parameter starting from RouterOS v6.44.6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>auto-erase</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">SIM storage size is read automatically. When <code>auto-erase=no</code> new SMS will not be received if storage is full. Set <code>auto-erase=yes</code> to delete the oldest received SMS to free space for new ones automatically. Available starting from v6.44.6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>string</em>; Default: (<strong>unknown</strong>))</td>
+<td style="text-align: left;">Modem port (modem can be used only by one process "/port&gt; print")</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>receive-enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Must be turned on to receive messages</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>secret</strong> (<em>string</em>; Default: "") <em><a href="../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">The secret password, mandatory</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>polling</strong>(<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Checking the modem for new SMS every 10s, instead of updating the inbox only after receiving the command from the modem. Available starting from v7.16</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>sim-pin</strong>(string; Default:) <em><a href="../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">SIM card's PIN code.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="basic-example-configuration-to-be-able-to-view-received-messages">Basic Example configuration to be able to view received messages</h3>
+<pre><code class="language-ros">/tool/sms/set receive-enabled=yes port=lte1
+
+/tool/sms/print 
+           status: running
+  receive-enabled: yes
+             port: lte1
+          channel: 0
+           secret: 
+   allowed-number: 
+       auto-erase: no
+          sim-pin: 
+        last-ussd: 
+</code></pre>
+<h3 id="inbox"><strong>Inbox</strong></h3>
+<p><strong>Sub-menu:</strong> <code>/tool/sms/inbox</code></p>
+<p>If you have enabled the reader, you will see incoming messages in this submenu:</p>
+<p>Read-only properties:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>phone</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Sender's phone number.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>message</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Message body</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>timestamp</strong> (<em>time</em>)</td>
+<td style="text-align: left;">The time when the message was received. It is the time sent by the operator, not the router's local time.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Message type</td>
+</tr>
+</tbody>
+</table>
+<h3 id="syntax"><strong>Syntax</strong></h3>
+<pre><code class="language-ros"> :cmd SECRET script NAME [[ VAR[=VAL] ] ... ]
+</code></pre>
+<ul>
+<li><strong>SECRET</strong> - the password</li>
+<li><strong>NAME</strong> - the name of the script that's available in <code>/system/script</code></li>
+<li><strong>VAR</strong> - variables that will be passed to the script (can be passed as VAR or as VAR=value), separated by spaces.</li>
+</ul>
+<p>Other things to remember:</p>
+<ul>
+<li>*Parameters can be put into quotes "VAR"="VAL" if necessary.</li>
+<li>*Escaping of values is not supported (VAR="\"").</li>
+<li>*Combined SMS are not supported, every SMS will be treated separately.</li>
+<li>* 16Bit unicode messages are not supported.</li>
+<li>* SMS are decoded with the standard GSM7 alphabet, so you can't send in other encodings, otherwise they will be decoded incorrectly.</li>
+</ul>
+<h3 id="examples"><strong>Examples</strong></h3>
+<h4 id="wrong">Wrong</h4>
+<pre><code class="language-ros">:cmd script mans_skripts
+:cmd slepens script mans skripts
+:cmd slepens script mans_skripts var=
+:cmd slepens script mans_skripts var= a
+:cmd slepens script mans_skripts var=a a
+</code></pre>
+<h4 id="right">Right</h4>
+<pre><code class="language-ros">:cmd slepens script mans_skripts
+:cmd slepens script &quot;mans skripts&quot;
+:cmd slepens script mans_skripts var
+:cmd slepens script mans_skripts var=a
+:cmd slepens script mans_skripts var=&quot;a a&quot; 
+</code></pre>
+<h2 id="debugging">Debugging</h2>
+<p><code>/tool/sms/send</code> command is logging data that is written and read. It is logged with tags <em>gsm,debug,write</em> and <em>gsm,debug,read</em>. For more information see <code>/system/logging</code>.</p>
+<h2 id="implementation-details">Implementation details</h2>
+<p><em>AT+CMGS</em> and <em>AT+CMGF</em> commands are used. The port is acquired for the duration of the command and cannot be used concurrently by another RouterOS component. The message sending process can take a long time. It times out after a minute and after two seconds during the initial AT command exchange.</p>
+<hr />
+<h1 id="ppp">PPP</h1>
+<blockquote>
+<p>PPP in RouterOS enables point-to-point protocol communication for transporting multi-protocol datagrams, featuring LCP and NCP components. It supports PPP client and server configurations with examples like...</p>
+</blockquote>
+<h1 id="ppp_1">PPP</h1>
+<h2 id="overview">Overview</h2>
+<p>The Point-to-Point Protocol (PPP) provides a standard method for transporting multi-protocol datagrams over point-to-point links. PPP in RouterOS is based on <a href="https://tools.ietf.org/html/rfc1661">RFC 1661 standard.</a></p>
+<h2 id="introduction">Introduction</h2>
+<p>The basic purpose of PPP at this point is to transport Layer-3 packets across a Data Link layer point-to-point link.  Packets between both peers are assumed to be delivered in order.</p>
+<p>PPP is comprised of three main components:</p>
+<ol>
+<li>A method for encapsulating multi-protocol datagrams.</li>
+<li>A Link Control Protocol (LCP) for establishing, configuring, and testing the data-link connection.</li>
+<li>A family of Network Control Protocols (NCPs) for establishing and configuring different network-layer protocols.</li>
+</ol>
+<p>For detailed PPP packet processing in RouterOS, you can see in the <a href="../firewall-and-quality-of-service/packet-flow-in-routeros.md">Packet Flow Diagram</a>.</p>
+<h3 id="ppp-client">PPP Client</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/ppp-client</code></p>
+<h3 id="ppp-client-example">PPP Client example</h3>
+<p>This is an example of how to add a client using an exposed serial port from an LTE modem.</p>
+<pre><code class="language-ros">/interface/ppp-client/add apn=yourapn dial-on-demand=no disabled=no port=usb2
+</code></pre>
+<p>The dial-on-demand should be set to 'no' for a continuous connection.</p>
+<h3 id="ppp-server">PPP Server</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/ppp-server</code></p>
+<h2 id="knot-rb924i-2nd-bt5bg77">KNOT RB924i-2nD-BT5&amp;BG77</h2>
+<p>If you see the message “<em>A newer version of modem firmware is available!</em>” and you want to upgrade the firmware of your BG77 modem, use this command:</p>
+<pre><code class="language-routeros">/interface/ppp-client/firmware-upgrade [find] upgrade=yes
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

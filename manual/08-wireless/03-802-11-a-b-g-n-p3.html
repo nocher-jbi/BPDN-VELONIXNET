@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>802.11 a/b/g/n · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="80211-abgn-part-33">802.11 a/b/g/n (part 3/3)</h1>
+<h1 id="wireless-troubleshooting">Wireless Troubleshooting</h1>
+<blockquote>
+<p>This page explains how to troubleshoot wireless connectivity issues in MikroTik RouterOS by enabling and analyzing detailed debug logs for client connections, disconnections, and security events like MIC failures or...</p>
+</blockquote>
+<h1 id="wireless-troubleshooting_1">Wireless Troubleshooting</h1>
+<h2 id="wireless-debug-logs">Wireless Debug Logs</h2>
+<p>Debugging wireless problems using Logs.</p>
+<p>By default RouterOS wireless log shows that a client connects and disconnects as simple entries:</p>
+<pre><code class="language-ros">22:32:18 wireless,info 00:80:48:41:AF:2A@wlan1: connected
+</code></pre>
+<p>It is enough for regular users to know that the wireless client with MAC address "00:80:48:41:AF:2A" is connected to wireless interface "wlan1". But actually there are more log entries available than are shown in standard logging. They are called 'debug' logs, which give more detailed information. In the following Debug Log example you will see the same client connecting to the AP in more detail than found in typical logging:</p>
+<pre><code class="language-ros">22:33:20 wireless,debug wlan1: 00:80:48:41:AF:2A attempts to connect
+22:33:20 wireless,debug wlan1: 00:80:48:41:AF:2A not in local ACL, by default accept
+22:33:20 wireless,info 00:80:48:41:AF:2A@wlan1: connected
+</code></pre>
+<p>Debug Logs will give you more specific information on each step of the Client wireless connection and disconnection. The first line shows that the wireless client tried to connect to the AP. On the second line the AP checked to see if that client was allowed to connect to the AP and showed the resulting action. And only on the third line do you see that the client is connected. This is merely one example of the debug log messages. The description of all debug entries is written below.</p>
+<p>To enable the wireless debug logs you should execute such commands:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /system/logging                                            
+[admin@MikroTik] /system/logging&gt; add topics=wireless,debug action=memory
+</code></pre>
+<p>This will help you understand and fix wireless problems with ease and with less interaction with the support team.</p>
+<h3 id="station-mode">STATION MODE</h3>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: lost connection, &lt;REASON&gt;
+</code></pre>
+<p>Station has lost connection to the AP because of \&lt;REASON&gt;.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: failed to connect, &lt;REASON&gt;
+</code></pre>
+<p>The station attempted to connect to the AP, but failed due to \&lt;REASON&gt;.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: established connection on &lt;FREQ&gt;, SSID &lt;SSID&gt;
+</code></pre>
+<p>Station attempted and successfully connected to AP with SSID \&lt;SSID&gt; on frequency \&lt;FREQ&gt;.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: MIC failure!!!
+</code></pre>
+<p>TKIP message integrity check failure, somebody must be trying to break into or DOS the network. If more than 1 MIC failure is encountered during a 60s period, "TKIP countermeasures" state is entered.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: enter TKIP countermeasures
+</code></pre>
+<p>Entered TKIP countermeasures state, this means that Station will disconnect from AP and keep silent for 60s.</p>
+<h3 id="ap-mode">AP MODE</h3>
+<pre><code class="language-ros">&lt;DEV&gt;: radar detected on &lt;FREQ&gt;
+</code></pre>
+<p>Radar detected on frequency \&lt;FREQ&gt;, AP will look for another channel.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: data from unknown device &lt;MAC&gt;, sent deauth [(XXX events suppressed, YYY deauths suppressed)]
+</code></pre>
+<p>Data frame from unknown device (read - not registered to this AP) with mac address \&lt;MAC&gt; was received, AP sent a deauthentication frame to it (as per 802.11). XXX is the number of events that are not logged so that the log does not become too large (logs are limited to 1 entry per 5s after the first 5 entries), YYY is the number of deauthentication frames that should have been sent, but were not sent, so that resources are not wasted sending too many deauthentication frames (only 10 deauth frames per second are allowed).</p>
+<p>The likely cause of such a message is that the Station previously connected to the AP, which does not yet know it has been dropped from the AP registration table, is sending data to the AP. The deauthentication message tells the Station that it is no longer connected.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: denying assoc to &lt;MAC&gt;, failed to setup compression
+</code></pre>
+<p>Failed to initialize compression on AP, most likely because there are too many clients attempting to connect and use compression.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: &lt;MAC&gt; is new WDS master
+</code></pre>
+<p>WDS slave has established a connection to the WDS master, this means that WDS slave starts accepting clients and acting as an AP.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: &lt;MAC&gt; was WDS master
+</code></pre>
+<p>This message appears after connection with \&lt;MAC&gt; is lost, which means that WDS slave will disconnect all clients and start scanning to find a new WDS master.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: connected [, is AP][, wants WDS]
+</code></pre>
+<p>Station with address \&lt;MAC&gt; connected. If "is AP" present - remote device is AP, if "wants WDS" is present, remote device wants to establish WDS link.</p>
+<pre><code class="language-ros">&lt;MAC&gt;@&lt;DEV&gt;: disconnected, &lt;REASON&gt;
+</code></pre>
+<p>Connection with Station with address \&lt;MAC&gt; was terminated due to \&lt;REASON&gt;.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: TKIP countermeasures over, resuming
+</code></pre>
+<p>TKIP countermeasures (60s silence period) are over, the AP resumes acting as an AP.</p>
+<pre><code class="language-ros">&lt;DEV&gt;: starting TKIP countermeasures
+</code></pre>
+<p>Entering TKIP countermeasures state (60s silence period), all clients will be lost.</p>
+<h3 id="reason">\&lt;REASON&gt;</h3>
+<p><strong>"joining failed"</strong> - can only happen on Prism cards in station mode, failed to connect to an AP due to some reason.</p>
+<p><strong>"join timeout"</strong> - happens on Station, failed to synchronize to AP (receiving the first beacon frame). Most likely weak signal, remote turned off, strong interference, some other RF related issue that makes communication impossible.</p>
+<p><strong>"no beacons"</strong> - no beacons received from the remote end of the WDS link. Most likely weak signal, remote turned off, strong interference, some other RF-related issue that makes communication impossible.</p>
+<p><strong>"extensive data loss"</strong> - local interface decided to drop the connection to the remote device because of the inability to send data to remote after multiple failures at the lowest possible rate. Possible causes - too weak signal, remote device turned off, strong interference, some other RF related issue that makes communication impossible.</p>
+<p><strong>"decided to deauth, \&lt;802.11 reason&gt;"</strong> - local interface decided to deauthenticate remote device using 802.11 reason \&lt;802.11 reason&gt;.</p>
+<p><strong>"inactivity"</strong> - remote device was inactive for too long.</p>
+<p><strong>"device disabled"</strong> - the local interface got disabled.</p>
+<p><strong>"got deauth, \&lt;802.11 reason&gt;"</strong> - received a deauthentication frame from the remote device, the 802.11 reason code is reported in \&lt;802.11 reason&gt;.</p>
+<p><strong>"got disassoc, \&lt;802.11 reason&gt;"</strong> - received a disassociation frame from the remote device, 802.11 reason code is reported in \&lt;802.11 reason&gt;.</p>
+<p><strong>"auth frame from AP"</strong> - authentication frame from a remote device that is known to be an AP, most likely mode changes on the remote device from AP to Station.</p>
+<p><strong>"bad ssid"</strong> - bad ssid for WDS link.</p>
+<p><strong>"beacon from non AP"</strong> - received a beacon frame from a remote device that is known to be a non-AP node, most likely mode changes on the remote device from Station to AP.</p>
+<p><strong>"no WDS support"</strong> - does not report WDS support.</p>
+<p><strong>"failed to confirm SSID"</strong> - failed to confirm SSID of the other end of the WDS link.</p>
+<p><strong>"hardware failure"</strong> - some hardware failure or unexpected behavior. Not likely to be seen.</p>
+<p><strong>"lost connection"</strong> - can only happen on Prism cards in station mode, connection to the AP is lost due to some reason.</p>
+<p><strong>"auth failed \&lt;802.11 status&gt;"</strong> - happens on the Station, the AP denies authentication, the 802.11 status code is reported in \&lt;802.11 status&gt;.</p>
+<p><strong>"assoc failed \&lt;802.11 status&gt;"</strong> - happens on Station, AP denies association, 802.11 status code is reported in \&lt;802.11 status&gt;.</p>
+<p><strong>"auth timeout"</strong> - happens on Station, Station does not receive a response to authentication frames, either a bad link or AP is ignoring this Station for some reason.</p>
+<p><strong>"assoc timeout"</strong> - happens on a Station, the Station does not receive a response to association frames, either a bad link or the AP is ignoring this Station for some reason.</p>
+<p><strong>"reassociating"</strong> - happens on AP, connection is assumed to be lost, because Station that is considered already associated attempts to associate again. All connection related information must be deleted, because during the association process connection parameters are negotiated (therefore "disconnected"). The reason why Station reassociates must be looked for on Station (most likely cause is that Station for some reason dropped connection without telling AP - e.g. data loss, configuration changes).</p>
+<p><strong>"compression setup failure"</strong> - connection impossible, because there are not enough resources to do compression (too many stations that want to use compression already connected).</p>
+<p><strong>"control frame timeout"</strong> - AP was unable to transmit to the client (similar to the error message that you see in the 802.11 protocol - extensive data loss).</p>
+<h3 id="80211-reason-and-80211-status">\&lt;802.11 reason&gt; and \&lt;802.11 status&gt;</h3>
+<p>These are numeric reason/status codes encoded into 802.11 management messages. Log messages include a numeric code and a textual description from the appropriate standard in the 802.11 standards group. Although these are intended to be as descriptive as possible, it must be taken into account that the actual reason/status code that appears in management frames depends solely on the equipment or software manufacturer - where one device sends an 802.11 management frame including a proper reason/status code for the situation that caused the frame, another may send a frame with an "unspecified" reason/status code. Therefore the reason/status code should only be considered informational.</p>
+<p>As 802.11 standards evolve, RouterOS may miss textual descriptions for reason/status codes that some devices use. In such a case the numeric value should be used to look up meaning in 802.11 standards.</p>
+<p>In order to properly interpret reason/status codes, a good understanding of 802.11 group standards is necessary. Most of the textual descriptions are self-explaining. Explanation for some of the most commonly seen reason/status codes follows:</p>
+<ul>
+<li>
+<p><strong>class 2 frame received (6)</strong> - the device received a "class 2" frame (association/reassociation management frame) before completing 802.11 authentication process;</p>
+</li>
+<li>
+<p><strong>class 3 frame received (7)</strong> - the device received a "class 3" frame (data frame) before completing the association process.</p>
+</li>
+</ul>
+<h2 id="wireless-faq">Wireless FAQ</h2>
+<h3 id="settings">Settings</h3>
+<p><strong>Why I can't connect to MikroTik 802.11n AP with Apple Mac devices?</strong></p>
+<p>This problem is only seen on Mac devices based on Broadcom wireless chipsets. In order to connect with such a wireless device to a MikroTik 802.11n AP, make sure that you don't use 'short' preamble-mode. Use 'long' or 'both' preamble-mode, and Mac wireless devices will be able to connect.</p>
+<p><strong>By changing some wireless settings the wireless link works unstable.</strong></p>
+<p>Sometimes when you change some wireless settings for tuning the links you get so far that the link isn't establishing any more or works unstably and you don't remember what settings you had in the beginning. In this case, you can use the <em>reset-configuration</em> command in the wireless menu - it will reset all the wireless settings for the specific wireless interface and you will be able to configure the interface from the start. Note that executing this command also disables the interface, so please be careful not to execute this command if you are configuring the router remotely using that wireless link that you want to reset the configuration for.</p>
+<p><strong>What are wireless retransmits and where to check them?</strong></p>
+<p>Wireless retransmission occurs when an interface sends out a frame and doesn't receive back an acknowledgment (ACK), causing it to try sending the frame again until an acknowledgment is received or the maximum allowed retransmission count for a packet is reached. Wireless retransmits increase the latency and lower the throughput of a wireless link. The number of retransmissions taking place can be determined by subtracting the value of the <strong>frames</strong> parameter from the value of the <strong>hw-frames</strong> parameter for a given entry in the registration table. Some number of retransmissions is to be expected, but if the value of <strong>hw-frames</strong> exceeds the value of <strong>frames</strong> multiple times, there is an issue with the wireless link that requires troubleshooting.</p>
+<p><strong>Can I compare frames with hw-frames also on Nstreme links?</strong></p>
+<p>The <strong>frames</strong> counts only those which contain actual data. In the case of Nstreme, only the ACK can be transmitted in a single frame, if there is no other data to send. These ACK frames will not be added to the <strong>frames</strong> count, but they will appear at <strong>hw-frames</strong>. If there is traffic in both directions at maximum speed (eg. there will be no only-ack frames), then you can't compare <strong>frames</strong> to <strong>hw-frames</strong> as in the case of regular wireless links.</p>
+<p><strong>What TX-power values can I use?</strong></p>
+<p>The tx-power default setting is the maximum tx-power that the card can use and is taken from the card's eeprom. If you want to use larger tx-power values, you are able to set them, but <strong>do it at your own risk</strong>, as it will probably damage your card eventually! Usually, one should use this parameter only to reduce the tx-power.</p>
+<p>In general, tx-power controlling properties should be left at the default settings. Changing the default setting may help with some cards in some situations, but without testing, the most common result is the degradation of range and throughput. Some of the problems that may occur are:</p>
+<ul>
+<li>Overheating of the power amplifier chip and the card will cause lower efficiency and more data errors;</li>
+<li>Overdriving the amplifier will cause more data errors;</li>
+<li>Excessive power usage for the card may overload the 3.3V power supply of the board that the card is located on resulting in voltage drop and reboot or excessive temperatures for the board.</li>
+</ul>
+<p><strong>What TX-power-mode is the best?</strong></p>
+<p><em>TX-power-mode</em> tells the wireless card which tx-power values should be used. By default, this setting is set to <em>default</em>.</p>
+<ul>
+<li><strong>default</strong> means that the card will use the tx-power values from the card's eeprom and will ignore the setting that is specified by the user in the <em>tx-power</em> field.</li>
+<li><strong>card-rates</strong> means that for different data rates the tx-power is calculated according to the card's transmit power algorithm from the card's eeprom and as an argument it takes the <em>tx-power</em> value specified by the user.</li>
+<li><strong>all-rates-fixed</strong> means that the card will use one tx-power value for all data rates which is specified by the user in the <em>tx-power</em> field.</li>
+</ul>
+<p>Note that it is not recommended to use 'all-rates-fixed' mode as the wireless card tx-power for the higher data rates is lower and forcing the use of the fixed tx-power rates also for the higher data rates might result in the same problems as in the previous question about tx-power setting. In the case of MikroTik Radio devices, the power will not be higher than the power written in the EEPROM. For most cases if you want to change the tx-power settings it is recommended to use the <em>tx-power-mode=card-rates</em> and it is recommended to lower and not to raise tx-power. In the case of AR9300 and newer Atheros wireless chipsets "tx-power-mode=all-rates-fixed" is the only option as "card-rates" option isn't working on those chipsets.</p>
+<p><strong>What is CCQ and how are the values determined?</strong></p>
+<p>Client Connection Quality (CCQ) is a value in percent that shows how effectively the bandwidth is used regarding the theoretical maximum available bandwidth. CCQ is a weighted average of values Tmin/Treal, that get calculated for every transmitted frame, where Tmin is the time it would take to transmit the given frame at the highest rate with no retries and Treal is the time it took to transmit the frame in real life (taking into account necessary retries it took to transmit the frame and transmit rate).</p>
+<p><strong>What is hw-retries setting?</strong></p>
+<p>Number of times sending a frame is retried without considering it a transmission failure. The data rate is decreased upon failure and the frame is sent again. Three sequential failures on the lowest supported rate suspend transmission to this destination for the duration of <em>on-fail-retry-time</em>. After that, the frame is sent again. The frame is being retransmitted until transmission success, or until the client is disconnected after <em>disconnect-timeout</em>. The frame can be discarded during this time if <em>frame-lifetime</em> is exceeded. In the case of Nstreme "on-fail-retry-time", "disconnect-timeout" and "frame-lifetime" settings are not used. So after three sequential failures on the lowest supported rate, the wireless link is disconnected with an "extensive data loss" message.</p>
+<p><strong>What is disconnect-timeout setting?</strong></p>
+<p>This interval is measured from the third sending failure on the lowest data rate. At this point 3 * (<em>hw-retries</em> + 1) frame transmissions on the lowest data rate have failed. During <em>disconnect-timeout</em>, packet transmission will be retried with <em>on-fail-retry-time</em> interval. If no frame can be transmitted successfully during <em>disconnect-timeout</em>, the connection is closed, and this event is logged as "extensive data loss". Successful frame transmission resets this timer.</p>
+<p><strong>What is adaptive-noise-immunity setting?</strong></p>
+<p>Adaptive Noise Immunity (ANI) adjusts various receiver parameters dynamically to minimize interference and noise effect on the signal quality. This setting is added in the wireless driver for Atheros AR5212 and newer chipset cards.</p>
+<p><strong>How does wireless device measure signal strength, when access-list or connect-list are used ?</strong></p>
+<p>The reported signal level is an exponentially weighted moving average with a smoothing factor of 50%.</p>
+<p><strong>What error correction methods are supported in the RouterOS wireless?</strong></p>
+<p>ARQ method is supported in nstreme protocols. The regular 802.11 standard does not include ARQ - retransmission of corrupt frames is based on the acknowledgment protocol. RouterOS supports forward error correction coding (convolutional coding) with coding rates: 1/2, 2/3, or 3/4.</p>
+<p><strong>Configuring RouterOS device for 160MHz use.</strong></p>
+<p>If the RouterOS device supports 4x4 transmission, in addition to setting 160MHz channel width, make sure to set "rate-set=default" on the wireless interface so all streams are available</p>
+<p>If the client does not support Extended NSS and can only perform 2x2 transmission, set "vht-supported-mcs=mcs0-9,mcs0-9,none".</p>
+<h3 id="setups">Setups</h3>
+<p><strong>Will an amplifier improve the speed on my link?</strong></p>
+<p>It depends on your signal quality and noise. Remember that you can probably get a better link with a low output power setting, and a good antenna. An amplifier increases the noise and will only cause problems with the link.</p>
+<p>The amplifier gets a boost on both the transmitted <strong>and</strong> received signals. Thus, in "silent" areas, where you are alone or with very little "noise" or "competition", you might get excellent results. On the other side, in crowded areas, with lots of wireless activity, you will also increase signal received from every other competitor or noise source, which may dramatically lower the overall quality of the link. Also, take into account the EIRP to see if your link remains in legal limits.</p>
+<p>You could also get a better signal on "11b only" radios, which see most of 802.11g as "noise", thus filtering the usable signal better.</p>
+<p><strong>How to fine-tune the wireless link with hw-retries?</strong></p>
+<p>You should understand that for 802.11 devices there is a really limited amount of information (or "feedback" from the environment) that devices can use to tune their behavior:</p>
+<ul>
+<li>Signal strength, which could be used to figure out the best transmit rate knowing receiver sensitivity. Still this is not reliable taking into account that sensitivity for different receivers varies (e.g. changes over time), path conditions are not symmetric (and device can only measure signal strength it receives), etc.</li>
+<li>By receiving/not receiving acknowledgment for the frame sent.</li>
+</ul>
+<p>Taking into account that using signal strength is not reliable, 802.11 devices are essentially left with only one "feedback" to tune their operation - success/failure of transmission. When transmission fails (ACK not received in time), there is no way the sender can figure out why it failed - either because of noise, multipath, direct interference (and whether that disturbed the actual data frame or the ACK itself) - the frame just did not make it and in general it does not matter "why". All that matters is the packet error rate.</p>
+<p>Therefore RouterOS implements an algorithm to try to use the medium most efficiently in any environment by using only this limited information, giving users the ability to control how the algorithm works and describing the algorithm. And there are only a few usage guidelines, not a set of values you should use in a particular situation.</p>
+<p>In general - the larger <em>hw-retries</em>, the better "feedback" device gets about medium ability to deliver frame at particular rate (e.g. if sending frame with rate 54mbps fails 16 times, it is telling you more than if it fails with 2 retries) and the better it can figure out optimal transmit rate, at the expense of latency it can introduce in network - because during all those failing retries, other devices in this channel cannot send. So <strong>bigger</strong> <em>hw-retries</em> can be suggested for ptp backbone links - where it is known that link must be always on. <strong>Less</strong> <em>hw-retries</em> make rate selection adapt faster at the expense of some accuracy (going below 2 is not reasonable in most cases), this can be suggested for ptmp links, where it is normal for links to connect/disconnect and keeping latency down is important.</p>
+<p><em>on-fail-retry-time</em> and <em>disconnect-timeout</em> control how hard the device will try to consider the remote party "connected". Larger <em>disconnect-timeout</em> will make the device not "disconnect" the other party, even if there are lots of loss at the smallest possible transmission rate. This again is most useful for "weak" links that are known that they "must" be established (e.g. backbone links). In ptmp networks large <em>disconnect-timeout</em> will again increase latency in the network during the time e.g. the AP will attempt to send data to some client that has just been disabled (AP will try to do this for the whole <em>disconnect-timeout</em>).</p>
+<p><em>frame-lifetime</em> allows tuning for how long the AP is attempting to use a frame for transmitting before considering that it is not worth delivering it (for example, if sending a frame fails at the lowest possible rate, the <em>on-fail-retry-time</em> timer is enabled. If during this time <em>frame-lifetime</em> expires, the particular frame is dropped and the next transmission attempt will happen with the next frame. Disabled <em>frame-lifetime</em> means that wireless will ensure in-order delivery of "all" data frames, no matter how long it takes, "or" will drop the connection if everything fails). This allows optimizing for different types of traffic, e.g., for real-time traffic - if the primary use of the wireless network is, e.g., voip, then it can be reasonable to limit <em>frame-lifetime</em>, because voip tolerates small loss better than high latency.</p>
+<p><strong>Is it possible to use the wireless repeater only with one radio interface?</strong></p>
+<p>This setup is possible by using WDS on the wireless interface which is running in ap-bridge mode. And in newer RouterOS versions it is possible to configure wireless repeater mode.</p>
+<p><strong>Nv2 wireless link disconnects very often.</strong></p>
+<p>When the Nv2 wireless link experiences disconnections and in the log section most of the messages are 'control frame timeout', you can try to lower the transmit output power of the wireless cards if the signal of the link is strong. We suggest using tx-power-mode=card-rates for lowering the tx-power of the wireless card. If the problem continues, try to use a different wireless frequency that might have less interference. If that also didn't help, please contact <a href="mailto:support@mikrotik.com">support@mikrotik.com</a> with a support output file from the affected AP and the Station which are made after those disconnections.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Btrfs · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Storage</p>
+      <h1 id="btrfs">Btrfs</h1>
+<h1 id="btrfs_1">Btrfs</h1>
+<blockquote>
+<p>Btrfs is a stable copy-on-write file system with features like bitrot protection, subvolumes, and snapshots. It is available with the Storage package and supports RAID configurations, subvolume management, and...</p>
+</blockquote>
+<h1 id="btrfs_2">Btrfs</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="../">Storage</a>.</p>
+</div>
+<p>Btrfs is a feature-rich copy-on-write file system. It is the default file system of some popular Linux distributions, such as <a href="https://en.wikipedia.org/wiki/Fedora_Linux">Fedora</a>. The most significant features are:</p>
+<ul>
+<li>Bitrot protection (when used in Btrfs-RAID mode).</li>
+<li>Subvolumes.</li>
+<li>Snapshots.</li>
+<li>Snapshot transfer between devices.</li>
+</ul>
+<h2 id="quickstart-format-a-disk-as-btrfs">Quickstart: format a disk as Btrfs</h2>
+<p>Format a single disk to Btrfs and use it under the default mount point:</p>
+<pre><code class="language-routeros">/disk/print
+/disk/format &lt;disk-name&gt; file-system=btrfs
+/disk/btrfs/filesystem/print
+</code></pre>
+<p>Once formatted, the disk appears with a new Btrfs filesystem entry under <code>/disk/btrfs/filesystem/print</code>, labelled <code>&lt;disk-name&gt;-fs</code> by default (the label can be changed with <code>/disk/btrfs/filesystem/set &lt;label&gt; label=MyLabel</code>). The disk mounts like any other drive and is accessible in <code>/file</code>. From here you can label the file system, create <a href="./snapshots">subvolumes and snapshots</a>, combine several disks into a <a href="./raid">Btrfs RAID</a>, or set up routine <a href="./maintenance">maintenance</a>.</p>
+<p>The Btrfs functionality lives under three menus:</p>
+<ul>
+<li><a href="../../cli-reference/disk/btrfs/filesystem/"><code>/disk/btrfs/filesystem</code></a> - one entry per formatted Btrfs file system: labels, device membership (<a href="../../cli-reference/disk/btrfs/filesystem/add-device"><code>add-device</code></a>, <a href="../../cli-reference/disk/btrfs/filesystem/remove-device"><code>remove-device</code></a>, <a href="../../cli-reference/disk/btrfs/filesystem/replace-device"><code>replace-device</code></a>), RAID profiles and maintenance jobs (<a href="../../cli-reference/disk/btrfs/filesystem/balance-start"><code>balance-start</code></a>, <a href="../../cli-reference/disk/btrfs/filesystem/scrub-start"><code>scrub-start</code></a>, <a href="../../cli-reference/disk/btrfs/filesystem/reset-counters"><code>reset-counters</code></a>).</li>
+<li><a href="../../cli-reference/disk/btrfs/subvolume"><code>/disk/btrfs/subvolume</code></a> - subvolumes and snapshots of a file system.</li>
+<li><a href="../../cli-reference/disk/btrfs/transfer"><code>/disk/btrfs/transfer</code></a> - send and receive of snapshots to and from other devices.</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="./raid">Btrfs RAID</a> - RAID1 and RAID10 setups, disk replacement, and the Braid check scripts.</li>
+<li><a href="./snapshots">Btrfs subvolumes and snapshots</a> - creating subvolumes, taking snapshots, transferring snapshots between devices.</li>
+<li><a href="./maintenance">Btrfs maintenance</a> - periodic scrubbing, balancing, automated snapshot rotation, and free-space management.</li>
+</ul>
+<hr />
+<h1 id="btrfs-maintenance">Btrfs maintenance</h1>
+<blockquote>
+<p>This page covers Btrfs maintenance tasks including periodic scrubbing to detect and correct data corruption in RAID arrays, balancing to optimize storage space usage, and creating snapshots for data recovery. It...</p>
+</blockquote>
+<h1 id="btrfs-maintenance_1">Btrfs maintenance</h1>
+<p>Similar to other feature-rich filesystems, Btrfs needs periodic maintenance. This page covers the routine tasks relevant to Btrfs.</p>
+<h2 id="scrub-periodically">Scrub periodically</h2>
+<p>In a RAID array, your data is stored on multiple disks or multiple disks contain information how to reassemble the data. Without RAID your disks in rare events might corrupt a few bytes of your data and you might not even notice that the data has been corrupted. With RAID arrays your data is compared with other copies of data (or checked on assembly) when you read a file and will alert you that data is corrupted. With <a href="../raid/">regular RAID</a> and, for example, in RAID1 configuration the RAID array is not able to tell which copy of the file is correct. It will only inform you that the data corruption has been detected. With Btrfs RAID you are not only able to detect the data corruption, but you are also able to distinguish which copy of the file is the correct one by using checksums and restore it automatically.</p>
+<p>Scrubbing is a process that re-reads the whole RAID array and, in case of Btrfs RAID, corrects any data corruption. While Btrfs RAID will correct the data on file read operations, for example, you want to download a file from your RouterOS device, avoiding scrubbing is highly <strong>NOT</strong> recommended. In rare events it is possible that, for example, in RAID1 configuration both disks have corrupted data and Btrfs RAID might not be able to restore the data. To avoid such situations and protect valuable data, consider running scrubbing on a regular basis.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Excessive detected data corruption usually indicates a failing storage device. Consider checking the storage device when you notice many data corruption warnings.</p>
+</div>
+<p>The interval of how often to run scrubbing is going to depend on each use case. Scrubbing is an intensive task on your storage devices. It re-reads the whole RAID array and performs additional checks. During scrubbing you can experience a noticeable performance drop on the disks until the scrubbing has finished. If you are worried about the performance during scrubbing, consider running scrubbing less often. If you are more worried about data integrity, consider running scrubbing more often.</p>
+<ul>
+<li>Summary: Used to detect and correct data corruption</li>
+<li>Recommended interval: 1 week</li>
+<li><a href="./raid#monitor-the-array-with-the-braid-scripts">Working example</a></li>
+</ul>
+<p>Example command:</p>
+<pre><code class="language-routeros">/disk/btrfs/filesystem/print
+/disk/btrfs/filesystem/scrub-start 0
+</code></pre>
+<p>Cancel a running scrub with:</p>
+<pre><code class="language-routeros">/disk/btrfs/filesystem/scrub-cancel 0
+</code></pre>
+<h2 id="balance-periodically">Balance periodically</h2>
+<p>In Btrfs data is stored in allocated chunks, which then allow storing your data in blocks. Over time due to various data activities, the chunks can become partially full and distributed between many chunks in a suboptimal way. Balancing a Btrfs file system means re-arranging the data in these chunks and restoring the unallocated space. As a result you can restore lost usable free space and performance of the Btrfs file system. This is somewhat similar to a defragmentation operation on other file systems.</p>
+<p>An important parameter for balancing is the <code>data-usage</code> parameter. This is a filter that prevents the balancing function from processing chunks that are above a certain usage percentage. For example, <code>data-usage=50</code> will only process chunks that are 50% full or less. You can run the balancing command multiple times with different values and therefore reduce the amount of time each balancing operation requires. Balancing can be an intensive task depending on your free space available and how data has been written since last balancing action, and therefore you might benefit from running the balance command with different <code>data-usage</code> values separately to reduce the time window when balancing causes a performance drop due to intensive disk reads and writes.</p>
+<p>In case you want to run balancing commands separately, you should use <code>data-usage</code> values of 25, 50, 75 and 90. It is not recommended to go above 90%. For most users running the balance command separately is not required and running it once per interval with <code>data-usage</code> of 50% is sufficient.</p>
+<ul>
+<li>Summary: Used to restore free space and improve performance.</li>
+<li>Recommended interval: twice a month.</li>
+<li>Recommended <code>data-usage</code>: 50.</li>
+<li><a href="./raid#monitor-the-array-with-the-braid-scripts">Working example</a>.</li>
+</ul>
+<p>Example command:</p>
+<pre><code class="language-routeros">/disk/btrfs/filesystem/print
+/disk/btrfs/filesystem/balance-start data-usage=50 0
+</code></pre>
+<p>Cancel a running balance with:</p>
+<pre><code class="language-routeros">/disk/btrfs/filesystem/balance-cancel 0
+</code></pre>
+<h2 id="take-periodic-snapshots">Take periodic snapshots</h2>
+<p>Snapshots can be used to save changes of your files at a set interval. Snapshots are most useful when you have a reliable interval at which data is copied so you can always revert your data to a previous state. The following scripts create read-only snapshots of every subvolume of every Btrfs file system once a day (<code>BraidSnapshotStart</code>, skipped when the file system is more than 80% used) and delete snapshots that are older than 10 days or exceed 10 per subvolume (<code>BraidSnapshotCleanUpStart</code>). The snapshots are stored in the <code>@snapshots</code> subvolume, which must exist on each file system:</p>
+<pre><code class="language-routeros">/disk/btrfs/subvolume/add name=@snapshots fs=BtrfsDisk
+</code></pre>
+<p>The scripts:</p>
+<pre><code class="language-routeros">/system/scheduler
+add interval=1d name=BraidSnapshotStartCall on-event=BraidSnapshotStart policy=ftp,read,write,policy,test,sniff start-date=1970-01-01 start-time=23:15:00
+add interval=1d name=BraidSnapshotCleanUpStartCall on-event=BraidSnapshotCleanUpStart policy=ftp,read,write,policy,test,sniff start-date=1970-01-01 start-time=23:00:00
+
+/system/script
+add dont-require-permissions=no name=BraidSnapshotStart owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfssnapshotstatuscheck;\
+    \n:global snapshotdirectoryname; \
+    \n:local maxusedspace;\
+    \n:local sysadmin;\
+    \n\
+    \n:set \$maxusedspace ( \$maxusedspace 80 );\
+    \n:set \$sysadmin ( \$sysadmin \&quot;&lt;servername@domain.tld&gt;\&quot; );\
+    \n:set \$snapshotdirectoryname (\$snapshotdirectoryname \&quot;@snapshots\&quot;);\
+    \n\
+    \n if (\$btrfssnapshotstatuscheck != \&quot;started\&quot;) do={\
+    \n         :set \$btrfssnapshotstatuscheck (\$btrfssnapshotstatuscheck \&quot;started\&quot;);\
+    \n         foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n           :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n           :local valueofusedspace [/disk/print count-only where use&gt;=\$maxusedspace and fs-label=\$temp];\
+    \n           if ( \$valueofusedspace=0) do={\
+    \n            foreach j in=[/disk/btrfs/subvolume/find  where fs=\$temp and top-level!=\$snapshotdirectoryname and fullname!=\$snapshotdirectoryname ] do={\
+    \n               :local parentvar [ /disk/btrfs/subvolume/get value-name=name \$j; ];\
+    \n               :local datentime ([/system/clock/get date].\&quot;-\&quot;.[/system/clock/get time]);\
+    \n                  /disk/btrfs/subvolume/add read-only=yes fs=\&quot;\$temp\&quot; parent=\&quot;\$parentvar\&quot; name=\&quot;\$snapshotdirectoryname/\$temp-\$parentvar-\$datentime\&quot;;\
+    \n                   /log/info message=\&quot;INFO: Braid snapshot created for  \$temp subvolume \$parentvar snapshotname  \$snapshotdirectoryname/\$temp-\$parentvar-\$datentime\&quot;;\
+    \n                :delay 1;\
+    \n            }\
+    \n          } else={\
+    \n                   /log/info message=\&quot;ERROR: Snapshot was not created for safety reason.  Braid array \$temp used space exceeded \$maxusedspace %. Add more disks or cleanup storage.\&quot;; \
+    \n                   /tool/e-mail/send to= \$sysadmin  subject=([/system/identity/get name].\&quot; ERROR: Braid snapshot was not created \&quot;) body=(\&quot;Snapshot was not created for safety reason.  Braid array \&quot; .\$temp. \&quot; used space exceeded \&quot; .\$max\
+    usedspace. \&quot; % Add more disks or cleanup storage. \&quot; );\
+    \n          }\
+    \n\
+    \n          :delay 3; \
+    \n         }\
+    \n        :set \$btrfssnapshotstatuscheck (\$btrfssnapshotstatuscheck \&quot;done\&quot;);\
+    \n}\
+    \n&quot;
+add dont-require-permissions=no name=BraidSnapshotCleanUpStart owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfssnapshotcleanupstatuscheck;\
+    \n:global snapshotdirectoryname; \
+    \n:local maxsnapshotstokeep;\
+    \n:local maxdaysoldsnapshotstokeep;\
+    \n:local sysadmin;\
+    \n\
+    \n:set \$maxsnapshotstokeep ( \$maxsnapshotstokeep 10);\
+    \n:set \$maxdaysoldsnapshotstokeep (\$maxdaysoldsnapshotstokeep \&quot;10d\&quot;);\
+    \n:set \$sysadmin ( \$sysadmin \&quot;&lt;servername@domain.tld&gt;\&quot; );\
+    \n:set \$snapshotdirectoryname (\$snapshotdirectoryname \&quot;@snapshots\&quot;);\
+    \n\
+    \n if (\$btrfssnapshotcleanupstatuscheck != \&quot;started\&quot;) do={\
+    \n         :set \$btrfssnapshotcleanupstatuscheck (\$btrfssnapshotcleanupstatuscheck \&quot;started\&quot;);\
+    \n         foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n           :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n           :local currenttimestamp; :set  \$currenttimestamp ( \$currenttimestamp [/system/clock/get date ] );\
+    \n          :set  \$currenttimestamp ( \$currenttimestamp  -\$maxdaysoldsnapshotstokeep);\
+    \n            foreach j in=[/disk/btrfs/subvolume/find  where fs=\$temp and top-level=\$snapshotdirectoryname ] do={\
+    \n               :local parentname [ /disk/btrfs/subvolume/get value-name=name \$j;];\
+    \n               :local parentsubvol [ /disk/btrfs/subvolume/get value-name=parent \$j; ];\
+    \n               :local creationtimeofsnapshot; :set \$creationtimeofsnapshot (\$creationtimeofsnapshot [/disk/btrfs/subvolume/get value-name=creation-time \$j; ]);\
+    \n               :local countparentsnapshots;  :set \$countparentsnapshots (\$countparentsnapshots [/disk/btrfs/subvolume/print count-only  where fs=\$temp and top-level=\$snapshotdirectoryname and parent=\$parentsubvol]);\
+    \n               if ([:len \$parentsubvol]=0) do={\
+    \n                   :local parentfullname [ /disk/btrfs/subvolume/get value-name=fullname \$j;];\
+    \n                    /log/info message=\&quot;INFO: SnapshotCleanup found snapshot of completely deleted subvolume. Location of snapshot \$temp/\$snapshotdirectoryname/\$parentname. This can only be removed manually.\&quot;;\
+    \n               } else={\
+    \n                if (\$currenttimestamp&gt;=\$creationtimeofsnapshot or  \$countparentsnapshots&gt;\$maxsnapshotstokeep ) do={\
+    \n                   /log/info message=\&quot;INFO: Braid snapshot  \$snapshotdirectoryname/\$parentname deleted. SnapshotCleanUp keeps  \$maxsnapshotstokeep snapshots or snapshots not older than \$maxdaysoldsnapshotstokeep days.\&quot;;\
+    \n                  /disk/btrfs/subvolume/remove \$parentname;\
+    \n                :delay 1;\
+    \n               }\
+    \n             }\
+    \n            }\
+    \n          :delay 3; \
+    \n         }\
+    \n        :set \$btrfssnapshotcleanupstatuscheck (\$btrfssnapshotcleanupstatuscheck \&quot;done\&quot;);\
+    \n}\
+    \n&quot;
+</code></pre>
+<h2 id="keep-free-space">Keep free space</h2>
+<p>In Btrfs, due to how data is stored in chunks, it is important to make sure there is enough free space in order for not just regular maintenance tasks to run properly, but also for the performance of the file system to be optimal. To make sure your Btrfs file system is working properly, consider checking that there is enough free space on your Btrfs file system. An optimal value of free space is 10%, but you should not allow your Btrfs file system to fill up to 5% free space.</p>
+<ul>
+<li>Summary: Do not allow the Btrfs file system to be full.</li>
+<li>Recommended free space: 5-10%.</li>
+</ul>
+<p>Check the used space of each disk in the <code>spaces</code> column of <code>/disk/btrfs/filesystem/print</code>.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>In case you require more space, consider adding the disk to a Btrfs RAID array with one or more disks.</p>
+</div>
+<hr />
+<h1 id="btrfs-raid">Btrfs RAID</h1>
+<blockquote>
+<p>This page provides step-by-step instructions for setting up a Btrfs RAID array in RouterOS, covering disk preparation, formatting, adding devices, balancing data, expanding the array, replacing members, and ensuring...</p>
+</blockquote>
+<h1 id="btrfs-raid_1">Btrfs RAID</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="../">Storage</a>.</p>
+</div>
+<p>A Btrfs file system can span multiple disks with different <em>storage profiles</em> per data kind (<code>data</code>, <code>meta</code>, <code>system</code>). Converting a one-disk file system into RAID1 or RAID10 takes two steps: add the disks with <a href="../../cli-reference/disk/btrfs/filesystem/add-device"><code>add-device</code></a>, then convert the profiles with <a href="../../cli-reference/disk/btrfs/filesystem/balance-start"><code>balance-start</code></a> - all without unmounting and without losing data.</p>
+<h2 id="two-disk-btrfs-raid-raid1">Two disk Btrfs-RAID (RAID1)</h2>
+<p>In case you want to create a reliable data storage solution with just two disks (for example, NAS), then you can follow these steps to successfully create a RAID1 array with Btrfs:</p>
+<ol>
+<li>Find the names of the disks you want to use for setting up a Btrfs-RAID.  </li>
+</ol>
+<p><code>routeros
+   /disk/print</code></p>
+<div class="adm adm-warning" markdown="block">
+
+**WARNING**
+
+   In this example, the disks used are going to be called `&lt;disk-name-1&gt;`  and `&lt;disk-name-2&gt;` , make sure you replace these placeholders with your actual disk names!
+   :::
+2. Format one of your disks to Btrfs, in this case `&lt;disk-name-1&gt;`. The newly created Btrfs file system is automatically labelled `&lt;disk-name-1&gt;-fs`.  
+
+   ```routeros
+   /disk/format &lt;disk-name-1&gt; file-system=btrfs
+   ```
+
+3. You can check the current status of Btrfs disks using the following command.  
+
+   ```routeros
+   /disk/btrfs/filesystem/print
+   ```
+
+   :::info
+   In case there was an existing RAID on your disks and you want to remove any obsolete configuration for simplicity, then you can wipe the disks with `/disk/format &lt;disk-name-x&gt; file-system=wipe-quick` . This is useful when you have unwanted entries under `/disk/btrfs/filesystem/print`
+   :::
+4. Add a label for the Btrfs drive for simplicity.  
+
+   ```routeros
+   /disk/btrfs/filesystem/set [find where devs=&lt;disk-name-1&gt;] label=BtrfsRAID
+   ```
+
+5. Add a disk to an existing Btrfs disk. This only adds the disk to the file system - the new disk receives no data yet.  
+
+   ```routeros
+   /disk/btrfs/filesystem/add-device [find where devs=&lt;disk-name-1&gt;] device=&lt;disk-name-2&gt;
+   ```
+
+6. Start the Btrfs balance process to convert the file system to RAID1. The balance rewrites every chunk to the new profile on both disks:  
+
+   ```routeros
+   /disk/btrfs/filesystem/balance-start [find where label=BtrfsRAID] data-profile=raid1 metadata-profile=raid1 system-profile=raid1
+   ```
+
+   Progress is reported under `balance-status` in `/disk/btrfs/filesystem/print detail`; the finished state is `done`. Cancel a running balance with [`balance-cancel`](../../cli-reference/disk/btrfs/filesystem/balance-cancel).
+7. **IMPORTANT:** Double check that all Btrfs profiles for the disks match. In this case, you need to make sure that the `data` , `meta`  and `system` profiles are `raid1` in the `spaces` column.  
+
+   ```routeros
+   /disk/btrfs/filesystem/print
+   ```
+
+    :::danger
+    If the output has a `single` profile, for example `data,single:436MB`, run the `/disk/btrfs/filesystem/balance-start` command again.
+    :::
+
+   :::info
+   The desired state is when the output is similar to the one below with the Btrfs profile for `data` , `system` and `meta set to raid1` :
+
+   ```text
+   data,raid1:1.31GB pcie5:1.31GB pcie6:1.31GB, used:0%
+   system,raid1:33.6MB pcie5:33.6MB pcie6:33.6MB, used:0%
+   meta,raid1:268MB pcie5:268MB pcie6:268MB, used:0%
+   ```
+
+   After the first balance, a `data,single` chunk can remain, for example:
+
+   ```text
+   data,raid1:436MB pcie5:436MB pcie6:436MB, used:0%
+   data,single:436MB pcie6:436MB, used:0%
+   ```
+
+   :::
+
+   :::tip
+   The [Braid check scripts](#monitor-the-array-with-the-braid-scripts) warn you about inconsistent Btrfs profiles.
+   :::
+8. Set `mount-filesystem=no` for the second disk to prevent the files showing up twice.  
+
+   ```routeros
+   /disk/set &lt;disk-name-2&gt; mount-filesystem=no
+   ```
+
+   :::info
+   Btrfs has a feature that allows you to mount any of the Btrfs-RAID members and you will still be able to access the whole Btrfs-RAID array. A downside of this feature is that if you have mounted the same array twice, then your files will appear twice as well. To prevent this, you can simply disable mounting one of the Btrfs-RAID members automatically.
+   :::
+9. You can also change the mount point's name for simplicity.  
+
+   ```routeros
+   /disk/set &lt;disk-name-1&gt; mount-point-template=BtrfsRAID
+   ```
+
+10. Your newly created Btrfs-RAID array is now accessible through the `/BtrfsRAID/` folder.
+
+With a reliable storage solution such as Btrfs-RAID, consider adding useful features to your RouterOS device by following the suggested guides below:
+
+- running your own [Containers](../../containers/)
+- [DLNA Media Server](../dlna)
+- [SMB server](../smb)
+- [NFS server](../nfs)
+
+
+</div>
+<p>warning
+When regular <a href="../raid/">RAID</a> is used with Btrfs filesystem, then your RAID array will not be able to heal itself from Bitrot, your RAID array can only detect Bitrot with regular RAID. It is recommended to use Btrfs-RAID (the configuration described in this section) when possible.
+:::</p>
+<h2 id="four-disk-btrfs-raid-raid10">Four disk Btrfs-RAID (RAID10)</h2>
+<p>In case you want to create a redundant and high capacity RAID10 array using Btrfs, follow the commands below:</p>
+<ol>
+<li>Find the names of the disks you want to use for setting up a Btrfs-RAID.  </li>
+</ol>
+<p><code>routeros
+   /disk/print</code></p>
+<div class="adm adm-warning" markdown="block">
+
+**WARNING**
+
+   In this example, the disks are called `&lt;disk-name-1&gt;`, `&lt;disk-name-2&gt;`, `&lt;disk-name-3&gt;` and `&lt;disk-name-4&gt;`. Replace these placeholders with your actual disk names.
+   :::
+
+2. Format one of your disks to Btrfs, in this case `&lt;disk-name-1&gt;` :  
+
+   ```routeros
+   /disk/format &lt;disk-name-1&gt; file-system=btrfs
+   ```
+
+3. You can check the current status of Btrfs disks using the following command:  
+
+   ```routeros
+   /disk/btrfs/filesystem/print
+   ```
+
+   :::info
+   In case there was an existing RAID on your disks and you want to remove any obsolete configuration for simplicity, then you can wipe the disks with `/disk/format &lt;disk-name-x&gt; file-system=wipe-quick` . This is useful when you have unwanted entries under `/disk/btrfs/filesystem/print`
+   :::
+4. Add a label for the Btrfs drive for simplicity:  
+
+   ```routeros
+   /disk/btrfs/filesystem/set [find where devs=&lt;disk-name-1&gt;] label=BtrfsRAID
+   ```
+
+5. Add other disks to an existing Btrfs disk:  
+
+   ```routeros
+   /disk/btrfs/filesystem/add-device [find where devs=&lt;disk-name-1&gt;] device=&lt;disk-name-2&gt;
+   /disk/btrfs/filesystem/add-device [find where devs=&lt;disk-name-1&gt;] device=&lt;disk-name-3&gt;
+   /disk/btrfs/filesystem/add-device [find where devs=&lt;disk-name-1&gt;] device=&lt;disk-name-4&gt;
+   ```
+
+6. Start the Btrfs balance process to convert the file system to RAID10:  
+
+   ```routeros
+   /disk/btrfs/filesystem/balance-start [find where label=BtrfsRAID] data-profile=raid10 metadata-profile=raid1c4 system-profile=raid1c4
+   ```
+
+   :::info
+   There are many possible configurations of `data-profile` , `metadata-profile` and `system-profile` . For a RAID10 array, use either `raid1c3` or `raid1c4` for both `system-profile` and `metadata-profile`. The `raid1c4` profile stores 4 copies of the data on different disks. This makes the data more redundant, but uses more disk space.
+   :::
+
+   :::danger
+   Btrfs RAID5 and RAID6 is not supported. Use [regular RAID](../raid/) if you need such RAID configurations. Be aware that when using [regular RAID](../raid/) with Btrfs you will not have bit-rot protection.
+   :::
+
+   :::warning
+   For most use cases set `metadata-profile` to the same value as `system-profile` . Avoid using different values for both of these profiles.
+   :::
+7. Set `mount-filesystem=no` for other disks to prevent the files from showing up twice:  
+
+   ```routeros
+   /disk/set &lt;disk-name-2&gt; mount-filesystem=no
+   /disk/set &lt;disk-name-3&gt; mount-filesystem=no
+   /disk/set &lt;disk-name-4&gt; mount-filesystem=no
+   ```
+
+8. You can also change the mount point's name for simplicity:  
+
+   ```routeros
+   /disk/set &lt;disk-name-1&gt; mount-point-template=BtrfsRAID
+   ```
+
+9. Your newly created Btrfs-RAID array is now accessible through the `/BtrfsRAID/` folder.
+
+## Replacing a disk in a Btrfs RAID array
+
+In case of a disk failure or you need to replace a disk in your existing Btrfs RAID array, then follow the procedure below:
+
+1. Make sure you determine the correct disk that needs replacing. Use `/disk/print detail` and `/disk/blink` to determine the correct disk. We will assume that the faulty disk is `disk2` .
+2. Eject the faulty disk:  
+
+   ```routeros
+   /disk/eject disk2
+   ```
+
+3. Physically remove the faulty disk.
+4. Print out the current status of your Btrfs RAID array:  
+
+   ```routeros
+   /disk/btrfs/filesystem/print
+   ```
+
+5. Look for the `DEV-ID` in the command's output for the missing disk:  
+
+   ```routeros
+   [admin@MikroTik] /disk&gt; /disk/btrfs/filesystem/print
+   Flags: I - MISSING-DEVS
+   Columns: LABEL, DEV-IDS, DEVS, DEFAULT-SUBVOLUME, SPACES, BALANCE-STATUS, UUID, WRITE-ERRORS, READ-ERRORS, FLUSH-ERRORS, CORRUPTION-ERRORS, GENERATION-ERRORS
+   #   LABEL      DEV-IDS  DEVS     DEFAULT-SUBVOLUME  SPACES                                     BALANCE-STATUS  UUID                                  W  R  F  C  G
+   0 I BtrfsRAID        1  disk1    &lt;FS_ROOT&gt;          disk1:480GB, used:0%                       done            9246dfaa-be9f-4e08-a560-53cb8e82023b  0  0  0  0  0
+                        2  missing                     data,raid1:1.07GB disk1:1.07GB, used:0%                                                          0  0  0  0  0
+                                                        data,single:1.07GB, used:0%                                                                                   
+                                                        system,raid1:33.6MB disk1:33.6MB, used:0%                                                                     
+                                                        meta,raid1:1.07GB disk1:1.07GB, used:0%                                                                       
+                                                        global-reserve:3.41MB, used:0%                                                                                
+
+   ```
+
+   :::info
+   In this case the missing disk's `DEV-ID` is "2".
+   :::
+6. Insert a new disk.
+7. Determine the new disk's name:  
+
+   ```routeros
+   /disk/print
+   ```
+
+   :::info
+   In this case the new disk's name is `disk3`
+   :::
+8. Run the following command to replace the disk in the Btrfs RAID array:  
+
+   ```routeros
+   /disk/btrfs/filesystem/replace-device device-to-remove-id=2 device-to-add=disk3 BtrfsRAID
+   ```
+
+   :::warning
+   Make sure you set the correct `device-to-remove-id` to the `DEV-ID` that you determined previously!
+   :::
+
+   :::info
+   [`replace-device`](../../cli-reference/disk/btrfs/filesystem/replace-device) works on a missing (ejected) or unmounted device. If the source disk is healthy and still mounted, unmount it first (`/disk/set &lt;disk&gt; mount-filesystem=no`), otherwise the command fails with `could not unmount &lt;disk&gt;`. Track it under `replace-status`; stop it with [`replace-cancel`](../../cli-reference/disk/btrfs/filesystem/replace-cancel).
+   :::
+9. Check the replace status and make sure that `REPLACE-STATUS` is marked as `done` .  
+
+   ```routeros
+   &gt; /disk/btrfs/filesystem/print
+   Columns: LABEL, DEV-IDS, DEVS, DEFAULT-SUBVOLUME, SPACES, BALANCE-STATUS, REPLACE-STATUS, UUID, WRITE-ERRORS, READ-ERRORS, FLUSH-ERRORS, CORRUPTION-ERRORS, GENERATION-ERRORS
+   # LABEL   DEV-IDS  DEVS   DEFAULT-SUBVOLUME  SPACES                                                 BALANCE-STATUS  REPLACE-STATUS  UUID                                  WRITE-ERRORS  READ-ERRORS  F  C  G
+   0 BtrfsRAID     1  disk1  &lt;FS_ROOT&gt;          disk1:480GB, used:9%                                   done            done            9246dfaa-be9f-4e08-a560-53cb8e82023b             0            0  0  0  0
+                   2  disk3                     disk3:480GB, used:9%                                                                                                                    0  0  0  0  0
+                                                 data,raid1:40.8GB disk1:40.8GB disk3:40.8GB, used:72%                                                                                                          
+                                                 system,raid1:101MB disk1:101MB disk3:101MB, used:0%                                                                                                            
+                                                 meta,raid1:3.22GB disk1:3.22GB disk3:3.22GB, used:1%                                                                                                           
+                                                 global-reserve:30.7MB, used:0%                                                 
+   ```
+
+   :::info
+   Ensure that your Btrfs RAID array does not have inconsistent Btrfs profiles for `data` , `system`  or `meta` . The desired profiles will depend on your specific setup. For RAID1 setups you will most likely want these profiles to match, but in a RAID10 setup these values can be different. In any RAID setup there should not be a `single` profile for either `data` , `system`  or `meta` .
+   :::
+
+### Replace a disk with add-device and remove-device
+
+You can also replace a disk in two steps: add the new disk to the file system, then remove the old one. Btrfs moves the data from the removed disk to the remaining disks and keeps the profiles. For a missing disk, remove it by its `DEV-ID`:
+
+
+<pre><code class="language-routeros">/disk/btrfs/filesystem/add-device [find where label=BtrfsRAID] device=disk3
+/disk/btrfs/filesystem/remove-device [find where label=BtrfsRAID] device-id=2
+</code></pre>
+
+
+For a disk that is still present, use `device=&lt;disk-name&gt;` instead of `device-id`. Check `spaces` in `/disk/btrfs/filesystem/print` afterwards: all chunks have the old profiles, spread over the new set of disks.
+
+## Expanding Btrfs-RAID
+
+Btrfs is a live filesystem which can be expanded easily by adding additional members to the RAID.
+
+### Adding additional members to the RAID
+
+Adding disks increases both capacity and redundancy. For example, you can expand the two-disk RAID1 array from the [first section](#two-disk-btrfs-raid-raid1) into a four-disk RAID10 array. Data stays online throughout the process:
+
+1. Add the new disks to the file system. [`add-device`](../../cli-reference/disk/btrfs/filesystem/add-device) registers each disk at its full size, but does not move any data to it yet:  
+
+   ```routeros
+   /disk/btrfs/filesystem/add-device [find where label=BtrfsRAID] device=&lt;disk-name-3&gt;
+   /disk/btrfs/filesystem/add-device [find where label=BtrfsRAID] device=&lt;disk-name-4&gt;
+   ```
+
+   ```text
+   pcie5:2.15GB, used:54%
+   pcie6:2.15GB, used:54%
+   pcie1:2.15GB, used:0%
+   pcie2:2.15GB, used:0%
+   data,raid1:872MB pcie5:872MB pcie6:872MB, used:0%
+   system,raid1:33.6MB pcie5:33.6MB pcie6:33.6MB, used:0%
+   meta,raid1:268MB pcie5:268MB pcie6:268MB, used:0%
+   global-reserve:3.41MB, used:0%
+   ```
+
+   All chunks are still on the first two disks.
+2. Convert the profiles to RAID10. The balance rewrites every chunk to the new profile and spreads the data over all four disks:  
+
+   ```routeros
+   /disk/btrfs/filesystem/balance-start [find where label=BtrfsRAID] data-profile=raid10 metadata-profile=raid1c4 system-profile=raid1c4
+   ```
+
+3. **IMPORTANT:** Check the `spaces` output for leftover chunks with the previous profile. A profile conversion can leave behind a chunk in the old profile:  
+
+   ```text
+   data,raid10:1.44GB pcie5:1.44GB pcie6:1.44GB pcie1:1.44GB pcie2:1.44GB, used:0%
+   data,raid1:872MB pcie1:872MB pcie2:872MB, used:0%
+   system,raid1c4:33.6MB pcie5:33.6MB pcie6:33.6MB pcie1:33.6MB pcie2:33.6MB, used:0%
+   meta,raid1c4:268MB pcie5:268MB pcie6:268MB pcie1:268MB pcie2:268MB, used:0%
+   ```
+
+   :::danger
+   If you notice, for example, `data,raid1:872MB` alongside `data,raid10:...` in the output, execute the `/disk/btrfs/filesystem/balance-start` command again until every `data` , `system`  and `meta`  chunk has the target profile. Until then the array does not have RAID10 redundancy for those chunks.
+   :::
+
+   The desired state has a single profile per data kind:  
+
+   ```text
+   data,raid10:1.94GB pcie5:1.94GB pcie6:1.94GB pcie1:1.94GB pcie2:1.94GB, used:2%
+   system,raid1c4:33.6MB pcie5:33.6MB pcie6:33.6MB pcie1:33.6MB pcie2:33.6MB, used:0%
+   meta,raid1c4:268MB pcie5:268MB pcie6:268MB pcie1:268MB pcie2:268MB, used:0%
+   ```
+
+4. Set `mount-filesystem=no` for the newly added disks to prevent the files from showing up twice:  
+
+   ```routeros
+   /disk/set &lt;disk-name-3&gt; mount-filesystem=no
+   /disk/set &lt;disk-name-4&gt; mount-filesystem=no
+   ```
+
+The usable capacity grows with the new profile as soon as the balance finishes: a RAID10 array of four equal disks holds twice the data of the previous two-disk RAID1 array. Your files remain accessible the whole time.
+
+## Monitor the array with the Braid scripts
+
+The following scripts start a balance and a scrub once a week, report their progress in the log, and check the array every 30 seconds for missing members, errors and `single` profiles (`BraidHealthCheck`), with an e-mail when it finds a problem:
+
+
+<pre><code class="language-routeros">/system/scheduler
+add interval=1w30s name=BraidBalanceStartCall on-event=BraidBalanceStart policy=ftp,read,write,policy,test,sniff start-date=1970-01-01 start-time=01:00:00
+add interval=1w30s name=BraidScrubStartCall on-event=BraidScrubStart policy=ftp,read,write,policy,test,sniff start-date=1970-01-01 start-time=02:00:00
+add interval=2m name=BraidBalanceStatusCheckCall on-event=BraidBalanceStatus policy=ftp,read,write,policy,test,sniff start-time=startup
+add interval=2m name=BraidScrubStatusCheckCall on-event=BraidScrubStatus policy=ftp,read,write,policy,test,sniff start-time=startup
+add interval=30s name=BraidHealthCheckCall on-event=BraidHealthCheck policy=ftp,read,write,policy,test,sniff start-time=startup
+add interval=2m name=BraidReplaceStatusCheckCall on-event=BraidReplaceStatus policy=ftp,read,write,policy,test,sniff start-time=startup
+
+/system/script
+add dont-require-permissions=no name=BraidScrubStart owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfsscrubstatuscheck;\
+    \nif (\$btrfsscrubstatuscheck != \&quot;started\&quot;) do={\
+    \n  :set \$btrfsscrubstatuscheck (\$btrfsscrubstatuscheck \&quot;started\&quot;);\
+    \n  foreach i in=[/disk/btrfs/filesystem/find] do={ /disk/btrfs/filesystem/scrub-start \$i;\
+    \n    :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n    /log/info message=\&quot;INFO: Btrfs scrub process started on  \$temp\&quot;;\
+    \n    :delay 3; \
+    \n  }\
+    \n}\
+    \n&quot;
+add dont-require-permissions=no name=BraidBalanceStart owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfsbalancestatuscheck;\
+    \nif (\$btrfsbalancestatuscheck != \&quot;started\&quot;) do={\
+    \n:set \$btrfsbalancestatuscheck (\$btrfsbalancestatuscheck \&quot;started\&quot;);\
+    \n:local percentage;\
+    \n:set \$percentage (\$percentage 50);\
+    \n  foreach i in=[/disk/btrfs/filesystem/find] do={ /disk/btrfs/filesystem/balance-start data-usage=\$percentage \$i;\
+    \n    :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n    /log/info message=\&quot;INFO: Btrfs balance process started on  \$temp\&quot;;\
+    \n    :delay 3; \
+    \n  }\
+    \n}&quot;
+add dont-require-permissions=no name=BraidBalanceStatus owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfsbalancestatuscheck;\
+    \nif (\$btrfsbalancestatuscheck = \&quot;started\&quot;) do={\
+    \n:local arraycnt [/disk/btrfs/filesystem/print count-only as-value];\
+    \n:local counter [:set \$counter (\$counter 0)];\
+    \n:local counterdiff [:set \$counterdiff (\$counterdiff 0)];\
+    \n  foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n    :local barray [ /disk/btrfs/filesystem/get value-name=balance-status  \$i;]\
+    \n    :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n    if ( \$barray != \&quot;done\&quot; and \$btrfsbalancestatuscheck = \&quot;started\&quot;) do={\
+    \n        /log/info message=\&quot;INFO: Btrfs current balance status on  \$temp is \$barray\&quot;;\
+    \n    }\
+    \n    if ( \$barray = \&quot;done\&quot; and \$btrfsbalancestatuscheck = \&quot;started\&quot;) do={\
+    \n      :set \$counter (\$counter +1);\
+    \n      :set \$counterdiff (\$arraycnt - \$counter);\
+    \n      if (\$counterdiff =1) do={\
+    \n        /log/info message=\&quot;INFO: Btrfs balancing already done on \$counter arrays\&quot;;\
+    \n      }\
+    \n    }\
+    \n    if ( \$counter = \$arraycnt) do={\
+    \n      /log/info message=\&quot;INFO: Btrfs array balance status on  \$temp is \$barray \&quot;;\
+    \n      :set \$btrfsbalancestatuscheck (\$btrfsbalancestatuscheck \&quot;done\&quot;);\
+    \n    }\
+    \n  } \
+    \n}&quot;
+add dont-require-permissions=no name=BraidScrubStatus owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfsscrubstatuscheck;\
+    \nif (\$btrfsscrubstatuscheck = \&quot;started\&quot;) do={\
+    \n:local arraycnt [/disk/btrfs/filesystem/print count-only as-value];\
+    \n:local counter [:set \$counter (\$counter 0)];\
+    \n:local counterdiff [:set \$counterdiff (\$counterdiff 0)];\
+    \n  foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n    :local barray [ /disk/btrfs/filesystem/get value-name=scrub-status  \$i;]\
+    \n    :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n    if ( \$barray != \&quot;done\&quot; and \$btrfsscrubstatuscheck = \&quot;started\&quot;) do={\
+    \n      /log/info message=\&quot;INFO: Btrfs current scrub status on  \$temp is \$barray\&quot;;\
+    \n    }\
+    \n    if ( \$barray = \&quot;done\&quot; and \$btrfsscrubstatuscheck = \&quot;started\&quot;) do={\
+    \n      :set \$counter (\$counter +1);\
+    \n      :set \$counterdiff (\$arraycnt - \$counter);\
+    \n      if (\$counterdiff =1) do={\
+    \n        /log/info message=\&quot;INFO: Btrfs scrubbing already done on \$counter arrays\&quot;;\
+    \n      }\
+    \n    }\
+    \n    if ( \$counter = \$arraycnt ) do={\
+    \n      /log/info message=\&quot;INFO: Btrfs array scrub status on  \$temp is \$barray \&quot;;\
+    \n      :set \$btrfsscrubstatuscheck (\$btrfsscrubstatuscheck \&quot;done\&quot;);\
+    \n    }\
+    \n  } \
+    \n}&quot;
+add dont-require-permissions=no name=BraidReplaceStatus owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;:global btrfsreplacestatuscheck;\
+    \nif (\$btrfsreplacestatuscheck = \&quot;started\&quot;) do={\
+    \n:local arraycnt [/disk/btrfs/filesystem/print count-only as-value];\
+    \n:local counter [:set \$counter (\$counter 0)];\
+    \n:local counterdiff [:set \$counterdiff (\$counterdiff 0)];\
+    \n  foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n    :local barray [ /disk/btrfs/filesystem/get value-name=replace-status  \$i;]\
+    \n    :local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n    :local multipleprofiles [ /disk/btrfs/filesystem/get value-name=spaces \$i; ]\
+    \n    if ( \$barray ~ \&quot;working\&quot; and \$btrfsreplacestatuscheck = \&quot;started\&quot;) do={\
+    \n      /log/info message=\&quot;INFO: Btrfs current replace status on  \$temp is \$barray\&quot;;\
+    \n    }\
+    \n    if ( \$barray ~ \&quot;done\&quot; and \$btrfsreplacestatuscheck = \&quot;started\&quot; and \$multipleprofiles~\&quot;single\&quot; ) do={\
+    \n      /log/info message=\&quot;INFO: Braid balance after replace-device  started on  \$temp\&quot;;\
+    \n         if (\$btrfsbalancestatuscheck!=\&quot;started\&quot;) do={\
+    \n             /disk/btrfs/filesystem/balance-start \$temp;\
+    \n             :set \$btrfsbalancestatuscheck (\$btrfsbalancestatuscheck \&quot;started\&quot;);\
+    \n         }\
+    \n    }\
+    \n    if ( \$barray = \&quot;done\&quot; and \$btrfsreplacestatuscheck = \&quot;started\&quot;) do={\
+    \n      :set \$counter (\$counter +1);\
+    \n      :set \$counterdiff (\$arraycnt - \$counter);\
+    \n      if (\$counterdiff =1) do={\
+    \n        /log/info message=\&quot;INFO: Btrfs replace already done on \$counter arrays\&quot;;\
+    \n      }\
+    \n    }\
+    \n    if ( \$counter = \$arraycnt ) do={\
+    \n      /log/info message=\&quot;INFO: Btrfs array replace status on  \$temp is \$barray \&quot;;\
+    \n      :set \$btrfsreplacestatuscheck (\$btrfsreplacestatuscheck \&quot;done\&quot;);\
+    \n    }\
+    \n  } \
+    \n}\
+    \n:set \$btrfsreplacestatuscheck (\$btrfsreplacestatuscheck \&quot;started\&quot;);&quot;
+add dont-require-permissions=no name=BraidHealthCheck owner=admin policy=ftp,read,write,policy,test,sniff source=&quot;foreach i in=[/disk/btrfs/filesystem/find] do={ \
+    \n:local sysadmin; \
+    \n\
+    \n:set  \$sysadmin \&quot;&lt;servername@domain.tld&gt;\&quot;;\
+    \n\
+    \n:local temp [ /disk/btrfs/filesystem/get value-name=label \$i;]\
+    \n:local haserror [/disk/btrfs/filesystem/get value-name=about \$i; ]\
+    \n:local hasmissing [ /disk/btrfs/filesystem/get value-name=devs \$i; ]\
+    \n:local hasmultiprofile [ /disk/btrfs/filesystem/get value-name=spaces \$i; ]\
+    \n:local replacestatus [ /disk/btrfs/filesystem/get value-name=replace-status \$i; ]\
+    \n:local multiplediskarray [:len [/disk/btrfs/filesystem/find where label=\$temp and dev-ids~\&quot;2\&quot;];]\
+    \n\
+    \n  if ( \$hasmissing~\&quot;missing\&quot; and ([:len \$replacestatus]=0)) do= {\
+    \n    /log/info message=\&quot;ERROR: BtrfsHealthCheck found missing array member on \$temp\&quot;;\
+    \n    /tool/e-mail/send to= \$sysadmin  subject=([/system/identity/get name].\&quot; BtrfsHealthCheck found missing array member\&quot;) body=(\&quot;Btrfs array where found missing array member on \&quot; .\$temp . \&quot;   \&quot;);\
+    \n   :delay 19; \
+    \n  }\
+    \n\
+    \n  if ( \$multiplediskarray &gt; 0 and \$hasmultiprofile~\&quot;single\&quot;) do= {\
+    \n    /log/info message=\&quot;ERROR: BtrfsHealthCheck found multiprofile on \$temp array. To start balance process, run  /disk/btrfs/filesystem/balance-start \$temp command \&quot;;\
+    \n    /tool/e-mail/send to= \$sysadmin  subject=([/system/identity/get name].\&quot; BtrfsHealthCheck found multiprofile on \&quot; .\$temp. \&quot; array.\&quot;) body=(\&quot;Btrfs array where found with multiprofile status on \&quot; .\$temp . \&quot;To start balance process, run once\
+    \_ /disk/btrfs/filesystem/balance-start \&quot; .\$temp. \&quot; command \&quot;);\
+    \n   :delay 19; \
+    \n  }  \
+    \n\
+    \n  if (([:len \$haserror]) &gt; 0 ) do= {\
+    \n    /log/info message=\&quot;ERROR: BtrfsHealthCheck found errors on \$temp\&quot;;\
+    \n    /tool/e-mail/send to= \$sysadmin  subject=([/system/identity/get name].\&quot; BtrfsHealthCheck found errors\&quot;) body=(\&quot;Btrfs array where found errors on \&quot; .\$temp . \&quot;   \&quot;);\
+    \n    :delay 20; \
+    \n  }\
+    \n}\
+    \n&quot;
+</code></pre>
+
+
+You also need to adjust e-mail server settings on your RouterOS device:
+
+
+<pre><code class="language-routeros">/tool/e-mail
+set from=&lt;raidcheck@domain.tld&gt; port=587 server=smtp.domain.com tls=starttls
+</code></pre>
+
+
+
+</div>
+<p>warning
+Make sure you adjust the e-mail settings with the required settings on your e-mail server. Remember to adjust the e-mail address in the script above.</p>
+<p>:::</p>
+<hr />
+<h1 id="btrfs-subvolumes-and-snapshots">Btrfs subvolumes and snapshots</h1>
+<blockquote>
+<p>This page guides users through creating Btrfs subvolumes and snapshots in RouterOS, explaining how to organize data, format disks, set up subvolumes like Documents and Photos, and create snapshots for efficient...</p>
+</blockquote>
+<h1 id="btrfs-subvolumes-and-snapshots_1">Btrfs subvolumes and snapshots</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="../">Storage</a>.</p>
+</div>
+<h2 id="create-subvolumes">Create subvolumes</h2>
+<p>The main benefit of creating subvolumes is to organize data on your Btrfs main (root) subvolume. Consider subvolumes as folders with features of a partition, while still sharing the total disk space between all subvolumes. You can later use these subvolumes for much more advanced tasks and it is recommended to create subvolumes when you have large amounts of different types of data, especially data that requires frequent backups. Follow the guide to set up a few example subvolumes:</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>Subvolumes are most useful when used together with snapshots. Be sure to check out the snapshot feature as well.</p>
+</div>
+<ol>
+<li>Find the disk name of your disk that you want to use as your Btrfs disk:  </li>
+</ol>
+<p><code>routeros
+   /disk/print</code></p>
+<div class="adm adm-warning" markdown="block">
+
+**WARNING**
+
+   In this example, the disk used is going to be called `&lt;disk-name-1&gt;` , make sure you replace the placeholder with your actual disk name!
+   :::
+2. Format the disk to Btrfs, in this case `&lt;disk-name-1&gt;` :  
+
+   ```routeros
+   /disk/format &lt;disk-name-1&gt; file-system=btrfs
+   ```
+
+3. Add a label for the Btrfs disk for simplicity (by default it is automatically labelled `&lt;disk-name-1&gt;-fs` after the format):  
+
+   ```routeros
+   /disk/btrfs/filesystem/set [find where devs=&lt;disk-name-1&gt;] label=BtrfsDisk
+   ```
+
+4. You can also change the Btrfs disk mount point for simplicity:  
+
+   ```routeros
+   /disk/set &lt;disk-name-1&gt; mount-point-template=BtrfsDisk
+   ```
+
+5. Create a new subvolume called `Documents` to `BtrfsDisk`:  
+
+   ```routeros
+   /disk/btrfs/subvolume/add name=Documents fs=BtrfsDisk
+   ```
+
+   :::info
+   Subvolumes are also snapshots. You might encounter both of these names in various menus. In simple terms, snapshots are subvolumes created at a specific time and contain data from that time point.
+   :::
+6. Create another subvolume called `Photos` to `BtrfsDisk`:  
+
+   ```routeros
+   /disk/btrfs/subvolume/add name=Photos fs=BtrfsDisk
+   ```
+
+7. You can view the currently available subvolumes:  
+
+   ```routeros
+   /disk/btrfs/subvolume/print
+   ```
+
+8. You can now access these subvolumes as `/BtrfsDisk/Documents` and `/BtrfsDisk/Photos`.
+
+## Create snapshots
+
+Snapshots are a space efficient way to create backups for your data. By creating a snapshot you save the current state of your data which you can later access.
+
+
+</div>
+<p>warning</p>
+<p>Snapshots don't create a copy of your data, they save the current state of your data while allowing you to make changes to your current data. Snapshots contain the information on how to revert the current data to a state that was present at the time when the snapshot was created. Snapshots don't create multiple copies of your data like, for example, a full backup does.</p>
+<p>:::</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>While you can create snapshots of a root subvolume, it is recommended to create a new subvolume for your data and then use the snapshot feature. This is only a preference when managing many snapshots.</p>
+</div>
+<ol>
+<li>
+<p>Create subvolumes (or use the root subvolume, see above) and put data in them, for example <code>BtrfsDisk/Documents/document1.txt</code> and <code>BtrfsDisk/Photos/photo1.jpg</code>.</p>
+</li>
+<li>
+<p>To keep the snapshots organized, create a subvolume called <code>Snapshots</code>:  </p>
+</li>
+</ol>
+<p><code>routeros
+   /disk/btrfs/subvolume/add name=Snapshots fs=BtrfsDisk</code></p>
+<ol start="3">
+<li>Create read-only snapshots of <code>Documents</code> and <code>Photos</code>:  </li>
+</ol>
+<p><code>routeros
+   /disk/btrfs/subvolume/add read-only=yes parent=Documents fs=BtrfsDisk \
+       name=Snapshots/Documents-22012025
+   /disk/btrfs/subvolume/add read-only=yes parent=Photos fs=BtrfsDisk \
+       name=Snapshots/Photos-22012025</code></p>
+<p>The snapshots contain the files that the subvolumes had at that time. Files that you add later, for example <code>document2.txt</code> and <code>photo2.jpg</code>, appear only in the subvolumes.</p>
+<ol start="4">
+<li>Create new snapshots:  </li>
+</ol>
+<p><code>routeros
+   /disk/btrfs/subvolume/add read-only=yes parent=Documents fs=BtrfsDisk \
+       name=Snapshots/Documents-23012025
+   /disk/btrfs/subvolume/add read-only=yes parent=Photos fs=BtrfsDisk \
+       name=Snapshots/Photos-23012025</code></p>
+<p>Each subvolume now has two snapshots: one with the older files, and one with the older and the newer files (<code>/file/print where name~"^BtrfsDisk"</code>):  </p>
+<p><code>text
+    # NAME                                                
+    2 BtrfsDisk                                           
+    3 BtrfsDisk/Documents                                 
+    4 BtrfsDisk/Photos                                    
+    5 BtrfsDisk/Snapshots                                 
+    6 BtrfsDisk/Documents/document1.txt                   
+    7 BtrfsDisk/Documents/document2.txt                   
+    8 BtrfsDisk/Photos/photo1.jpg                         
+    9 BtrfsDisk/Photos/photo2.jpg                         
+   10 BtrfsDisk/Snapshots/Documents-22012025              
+   11 BtrfsDisk/Snapshots/Photos-22012025                 
+   12 BtrfsDisk/Snapshots/Documents-23012025              
+   13 BtrfsDisk/Snapshots/Photos-23012025                 
+   14 BtrfsDisk/Snapshots/Documents-22012025/document1.txt
+   15 BtrfsDisk/Snapshots/Documents-23012025/document1.txt
+   16 BtrfsDisk/Snapshots/Documents-23012025/document2.txt
+   17 BtrfsDisk/Snapshots/Photos-22012025/photo1.jpg      
+   18 BtrfsDisk/Snapshots/Photos-23012025/photo1.jpg      
+   19 BtrfsDisk/Snapshots/Photos-23012025/photo2.jpg</code></p>
+<div class="adm adm-note" markdown="block">
+
+**NOTE**
+
+   Multiple snapshots do not create multiple copies of each file, but if a file has been deleted and it still exists in a snapshot, then the deleted file will take up space. If a file exists in multiple snapshots, then it will take up space for only 1 file.
+   :::
+
+5. Delete a snapshot that you no longer need. `name` is the last part of the full name, without `Snapshots/`:  
+
+   ```routeros
+   /disk/btrfs/subvolume/remove [find where name=Documents-22012025]
+   /disk/btrfs/subvolume/remove [find where name=Photos-22012025]
+   ```
+
+## Transfer your snapshots
+
+[`/disk/btrfs/transfer`](../../cli-reference/disk/btrfs/transfer) sends a read-only snapshot as a stream and receives it on another Btrfs file system. In this example, `RouterA` (10.99.0.1) has the snapshots, and `RouterB` (10.99.0.2) keeps the backups on a Btrfs file system labelled `BackupBtrfsDisk`.
+
+### Between RouterOS devices
+
+Send the snapshot to a file, copy the file to the other router, and receive it there.
+
+1. On `RouterA`, send the snapshot `Documents-23012025` to a file. `send-subvolumes` takes the snapshot name, not its path:  
+
+   ```routeros
+   /disk/btrfs/transfer/add type=send fs=BtrfsDisk \
+       send-subvolumes=Documents-23012025 file=BtrfsDisk/doc.send
+   ```
+
+   When the stream is written, the entry in `/disk/btrfs/transfer/print detail` has `status="done"` and the size in `bytes`.
+
+2. Copy the file to `RouterB`, for example with [`/file/sync`](../rsync.md), and remove the sync entry afterwards:  
+
+   ```routeros
+   /file/sync/add local-path=BtrfsDisk/doc.send remote-address=10.99.0.2 \
+       remote-path=BackupBtrfsDisk/doc.send user=admin mode=upload
+   ```
+
+3. On `RouterB`, receive the snapshot from the file:  
+
+   ```routeros
+   /disk/btrfs/transfer/add fs=BackupBtrfsDisk type=receive \
+       file=BackupBtrfsDisk/doc.send
+   ```
+
+   The snapshot appears as a read-only subvolume at the top of the file system, `BackupBtrfsDisk/Documents-23012025`, with its files.
+
+### Send over SSH to a Linux host
+
+With `ssh-address`, `ssh-user` and `ssh-receive-mount` instead of `file`, the router connects to a remote host over SSH and runs a `btrfs` command there to receive the stream. The receiver must therefore be a host with the Btrfs tools, such as a Linux server; a RouterOS router cannot receive over SSH. The router authenticates with the private key imported for its user in [`/user/ssh-keys/private`](../../cli-reference/user/ssh-keys/private/private.md), and the remote host key must be trusted in [`/ip/ssh/known-hosts`](../../management-tools/ssh.md#verify-remote-host-keys); check the result on the receiving host.
+
+---
+
+# DLNA Media Server
+
+&gt; The DLNA media server shares video, music and picture files from a disk folder with TVs, phones and players on one interface. It covers limiting a server to one device, the servers that disk sharing creates, and how...
+
+# DLNA Media Server
+
+DLNA (Digital Living Network Alliance) is a set of network protocols that devices use to share digital media such as videos, photos and music. DLNA is built on UPnP (Universal Plug and Play), which gives devices discovery and control: devices find each other with SSDP (Simple Service Discovery Protocol), exchange control messages with SOAP (Simple Object Access Protocol), and describe themselves and their services in XML.
+
+The RouterOS media server shares the media files of a folder on a disk, for example a USB disk, another disk or a [tmpfs](tmpfs) folder, with TVs, phones and player applications such as VLC. Each server runs on one interface. Players on that interface find the server by its name and play the files from the router. The router serves the files as they are and does not convert them, so the player must support the file format.
+
+
+</div>
+<p>info
+The media server is not available on SMIPS devices, the small MIPS-based devices whose <code>architecture-name</code> in <code>/system/resource/print</code> is <code>smips</code>.
+:::</p>
+<h2 id="share-a-usb-disk-with-the-tvs-on-the-lan">Share a USB disk with the TVs on the LAN</h2>
+<p>Add a server for the <code>media</code> folder of the USB disk on the LAN bridge:</p>
+<pre><code class="language-ros">/ip/media/add friendly-name=&quot;Office media&quot; interface=bridge \
+    path=usb1/media
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/media/print
+Columns: INTERFACE, FRIENDLY-NAME, PATH, ALLOWED-IP, STATUS
+# INTERFACE  FRIENDLY-NAME  PATH        ALLOWED-IP  STATUS
+0 bridge     Office media   usb1/media  0.0.0.0     Running
+</code></pre>
+<p>Players on the LAN list the server as <code>Office media</code>. Devices on Wi-Fi interfaces that are ports of the bridge are on the <code>bridge</code> too. The folders under <code>usb1/media</code> show as folders.</p>
+<p><code>path</code> can also be the root folder of a disk, for example <code>path=usb1</code>. Always set <code>path</code>: a server without it shares the whole file list of the router, with all its disks and folders.</p>
+<p>The server lists video, music and picture files, such as <code>.mp4</code>, <code>.mkv</code>, <code>.mp3</code>, <code>.flac</code> and <code>.jpg</code> files; other files, such as <code>.txt</code> files, are not listed. It recognises a media file only by a lower-case extension, so rename files with upper-case extensions such as <code>.MP4</code> or <code>.JPG</code>, which cameras often write. An <code>.srt</code> file with the same name as a video, for example <code>holiday.srt</code> next to <code>holiday.mp4</code>, is offered with the video as its subtitles. A file you copy to the folder later appears the next time a player opens the folder.</p>
+<h2 id="limit-a-server-to-one-device">Limit a server to one device</h2>
+<p>On routers where automatic media sharing is on, for example with the default configuration of the hAP ax², the disk already has a dynamic server that every device on the bridge can use (described in the section on servers created for disks automatically). A dynamic server cannot be changed (<code>failure: can't edit dynamic object</code>), so turn it off before you add limited servers:</p>
+<pre><code class="language-ros">/disk/set usb1 media-sharing=no
+</code></pre>
+<p>By default, every device on the interface can use a server. To limit a server to one device, set one of these:</p>
+<ul>
+<li><code>allowed-ip</code> - the IP address of the device. It takes one address; a subnet is refused. Give the device a static DHCP lease, so that its address does not change (see <a href="../network-management/dhcp/server#leases">Leases</a>).</li>
+<li><code>allowed-hostname</code> - the host name of the device's DHCP lease on this router's DHCP server. The name must match exactly, including upper and lower case.</li>
+</ul>
+<p>A server takes only one of the two: setting both fails with <code>failure: can't set both allowed IP and allowed hostname</code>. The server refuses other devices, so they do not see its files.</p>
+<p>For example, give the TV in the children's room only the children's films, and the living room TV the rest. Each TV gets its own server:</p>
+<pre><code class="language-ros">/ip/media/add friendly-name=adults interface=bridge \
+    path=usb1/media/adults allowed-hostname=Living-Room-TV
+/ip/media/add friendly-name=kids interface=bridge \
+    path=usb1/media/kids allowed-hostname=Kids-Room-TV
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/media/print
+Columns: INTERFACE, FRIENDLY-NAME, PATH, ALLOWED-IP, ALLOWED-HOSTNAME, STATUS
+# INTERFACE  FRIENDLY-NAME  PATH               ALLOWED-IP  ALLOWED-HOSTNAME  STATUS
+0 bridge     adults         usb1/media/adults  0.0.0.0     Living-Room-TV    Running
+1 bridge     kids           usb1/media/kids    0.0.0.0     Kids-Room-TV      Running
+</code></pre>
+<p>To find the host name of a device, look at the <code>HOST-NAME</code> column of its lease:</p>
+<pre><code class="language-ros">/ip/dhcp-server/lease/print
+</code></pre>
+<p>A device that sends no host name in its DHCP request has an empty <code>HOST-NAME</code> and cannot match <code>allowed-hostname</code>. Limit such a device with <code>allowed-ip</code> and a static lease instead.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p><code>allowed-ip</code> and <code>allowed-hostname</code> are not access control. They check only the source address of a request or the host name a device sends in DHCP. The server asks for no password, and the files go over plain HTTP, so any device on the network can take another device's address or host name. To keep files from some devices, put them on a separate network with its own server, or share them over <a href="smb">SMB</a> with users and passwords.</p>
+</div>
+<h2 id="servers-created-for-disks-automatically">Servers created for disks automatically</h2>
+<p>RouterOS also adds media servers by itself:</p>
+<ul>
+<li>For a disk with <code>media-sharing=yes</code> in <code>/disk</code>.</li>
+<li>For every new disk and <a href="tmpfs#check-what-the-folder-shares">tmpfs</a> folder when <code>/disk/settings</code> has <code>auto-media-sharing=yes</code>. The default configuration of the hAP ax², for example, sets <code>auto-media-sharing=yes</code> and <code>auto-media-interface=bridge</code>.</li>
+</ul>
+<p>Such a server is a dynamic entry (flag <code>D</code>) on the interface from <code>media-interface</code> (or <code>auto-media-interface</code>), named after the router identity and the disk slot, for example <code>MikroTik usb1 media</code>. Its <code>allowed-ip</code> is <code>0.0.0.0</code>, so every device on that interface can read the disk's media files. A dynamic server cannot be edited or removed. To limit it, stop the media sharing of the disk and add a static server.</p>
+<p>To stop the server of one disk:</p>
+<pre><code class="language-ros">/disk/set usb1 media-sharing=no
+</code></pre>
+<p>To stop the automatic servers for disks you add later:</p>
+<pre><code class="language-ros">/disk/settings/set auto-media-sharing=no
+</code></pre>
+<p>The same settings also share disks over SMB, to the <code>guest</code> user without a password (see <a href="tmpfs#check-what-the-folder-shares">Tmpfs</a>). To stop that for one disk, and for disks you add later:</p>
+<pre><code class="language-ros">/disk/set usb1 smb-sharing=no
+/disk/settings/set auto-smb-sharing=no
+</code></pre>
+<h2 id="check-and-troubleshoot">Check and troubleshoot</h2>
+<p>First check that a server exists and runs. <code>/ip/media/print</code> shows the state of each server in <code>STATUS</code>:</p>
+<ul>
+<li><code>Running</code> - the server announces itself and serves files.</li>
+<li><code>Error, can't find directory</code> - the folder in <code>path</code> does not exist. Check the disk slot and the folder name in <code>/file/print</code>.</li>
+</ul>
+<p>While a server runs, <code>/ip/service/print</code> shows its dynamic <code>upnp</code> listeners on UDP port 1900 and TCP port 2828. To test the server from a computer, use a player such as VLC, which lists UPnP media servers in its local network section.</p>
+<p>When a player does not list the server:</p>
+<ul>
+<li>The player must be on the server's <code>interface</code>. Players in another subnet or VLAN cannot discover the server, because the SSDP discovery messages stay in one network. Add a second server with the same <code>path</code> on that interface.</li>
+<li>The firewall of the router must accept UDP port 1900 and TCP port 2828 from the players. The default firewall accepts all traffic from the LAN.</li>
+<li><code>allowed-ip</code> or <code>allowed-hostname</code> must match the player. A device they do not match sees nothing.</li>
+<li>Open the player's list of servers again, or restart the player, so that it searches for servers again.</li>
+</ul>
+<p>When a file is missing from the list, check that it is a video, music or picture file with a lower-case extension. Other files are not listed.</p>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="discovery">Discovery</h3>
+<p>The server announces itself with SSDP <code>NOTIFY</code> messages to the UPnP multicast group <code>239.255.255.250:1900</code>, as a <code>urn:schemas-upnp-org:device:MediaServer:1</code> device with the <code>ContentDirectory:1</code> and <code>ConnectionManager:1</code> services. It also answers the <code>M-SEARCH</code> requests players send to find servers. The messages carry <code>CACHE-CONTROL: max-age=3600</code> and the address of the server description, for example <code>LOCATION: http://192.168.88.1:2828/mediaserver_description-1.xml</code>. The number in the file name differs for each server entry.</p>
+<h3 id="content">Content</h3>
+<p>Players browse the folders through the ContentDirectory service and download the files over HTTP from TCP port 2828. Each folder is a container, and each media file an item with its media type, for example <code>video/mp4</code>, <code>audio/mpeg</code> or <code>image/jpeg</code>. A subtitle file is an extra <code>text/srt</code> resource of its video.</p>
+<h3 id="thumbnails">Thumbnails</h3>
+<p><code>/ip/media/settings</code> sets the cover pictures of folders:</p>
+<pre><code class="language-ros">/ip/media/settings/set thumbnails=folder.jpg
+</code></pre>
+<p>A file named <code>folder.jpg</code> is then no longer listed as a picture, and becomes the cover picture of the other files in its folder. <code>thumbnails</code> takes a comma-separated list of file names.</p>
+<h3 id="interface-binding">Interface binding</h3>
+<p>A server serves requests that arrive on its interface, also from devices in another subnet whose traffic is routed to the router through that interface. The listeners accept connections on every interface, but a request for the server that arrives on another interface gets an HTTP 404 error, whichever router address it uses. The firewall is what keeps the WAN out: the default firewall drops input from the WAN.</p>
+<p>For all parameters, see the CLI reference for <a href="../cli-reference/ip/media/"><code>/ip/media</code></a> and <a href="../cli-reference/ip/media/settings"><code>/ip/media/settings</code></a>.</p>
+<hr />
+<h1 id="encrypted-storage-dm-crypt">Encrypted storage (dm-crypt)</h1>
+<blockquote>
+<p>Encrypted storage (dm-crypt) enables transparent disk encryption for block devices in RouterOS, configured with type=crypted and an encryption key. Examples show creating encrypted file systems on USB drives or on...</p>
+</blockquote>
+<h1 id="encrypted-storage-dm-crypt_1">Encrypted storage (dm-crypt)</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="./index.md">Storage</a>.</p>
+</div>
+<p>RouterOS supports transparent block device encryption with <code>dm-crypt</code>. Add a disk item with <code>type=crypted</code> and point <code>crypted-backend</code> at the drive or partition to encrypt; decryption is done with <code>encryption-key</code>. The data written to the backend disk is encrypted, and the backend disk gets the <code>c</code> (encrypted) flag in <code>/disk/print</code>.</p>
+<p>RouterOS keeps the key in its configuration and opens the encrypted device at startup without any input. The encryption therefore protects the data on a disk that is removed from the router, not on a router that is taken together with its disks. <code>/disk/export</code> hides the key; <code>/disk/export show-sensitive</code> shows it.</p>
+<h2 id="examples">Examples</h2>
+<h3 id="encrypted-file-system-on-a-disk">Encrypted file system on a disk</h3>
+<p>Create the encrypted device on <code>usb1</code>. All data on the disk is lost:</p>
+<pre><code class="language-routeros">/disk/add crypted-backend=usb1 encryption-key=&lt;secret_key&gt; \
+    slot=crypted-usb1 type=crypted
+</code></pre>
+<p>Format the encrypted device:</p>
+<pre><code class="language-routeros">/disk/format crypted-usb1 file-system=ext4
+</code></pre>
+<h3 id="encrypted-raid-1-array">Encrypted RAID 1 array</h3>
+<p>Create a RAID 1 array and put an encrypted file system on top of it:</p>
+<pre><code class="language-routeros">/disk/add raid-device-count=2 raid-type=1 slot=raid1 type=raid
+/disk/set nvme3 raid-master=raid1 raid-role=0
+/disk/set nvme4 raid-master=raid1 raid-role=1
+/disk/add crypted-backend=raid1 encryption-key=&lt;secret_key&gt; \
+    slot=crypted-raid1 type=crypted
+</code></pre>
+<p>Format the encrypted device to Btrfs:</p>
+<pre><code class="language-routeros">/disk/format crypted-raid1 file-system=btrfs
+</code></pre>
+<hr />
+<h1 id="iscsi">iSCSI</h1>
+<blockquote>
+<p>iSCSI enables IP-based storage access with RouterOS supporting both target and initiator modes, featuring properties like iscsi-address, IQN identifiers, and configurable ports for both client and server roles.</p>
+</blockquote>
+<h1 id="iscsi_1">iSCSI</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="./index.md">Storage</a>.</p>
+</div>
+<p>iSCSI gives access to block storage over an IP network: the initiator (client) sees the remote device as a local disk. RouterOS works as both. As a target, it exports a disk or a file disk (<code>iscsi-export=yes</code>); as an initiator, it adds a remote target as a new disk.</p>
+<p>On the target, <code>iscsi-server-port</code> (default <code>3260</code>) sets the TCP port, and <code>iscsi-server-iqn</code> shows the IQN of the export, by default <code>iqn.2000-02.com.mikrotik:&lt;slot&gt;</code>. On the initiator, <code>iscsi-address</code>, <code>iscsi-port</code> and <code>iscsi-iqn</code> select the target.</p>
+<h2 id="configuration-example">Configuration example</h2>
+<p>On the target, export a disk:</p>
+<pre><code class="language-routeros">/disk/set pcie1 iscsi-export=yes
+</code></pre>
+<p>A file can be exported as well. Create a file disk on a mounted disk and export it:</p>
+<pre><code class="language-routeros">/disk/add type=file file-path=pcie1/iscsi.img file-size=200M slot=file1
+/disk/set file1 iscsi-export=yes
+</code></pre>
+<p>The export of <code>file1</code> has the IQN <code>iqn.2000-02.com.mikrotik:file1</code> (<code>/disk/print detail where slot=file1</code>).</p>
+<p>On a RouterOS initiator, add a disk of <code>type=iscsi</code> with the target's address and IQN:</p>
+<pre><code class="language-routeros">/disk/add type=iscsi iscsi-address=192.168.1.1 \
+    iscsi-iqn=iqn.2000-02.com.mikrotik:file1
+</code></pre>
+<p>The remote disk appears in <code>/disk/print</code> as <code>iscsi1</code> with <code>state="connected"</code>, and can be formatted and used like a local disk.</p>
+<p>On a Linux initiator (open-iscsi), discover the targets and log in:</p>
+<pre><code class="language-bash">iscsiadm -m discovery -t sendtargets -p 192.168.1.1
+iscsiadm -m node -T iqn.2000-02.com.mikrotik:file1 -p 192.168.1.1 --login
+</code></pre>
+<hr />
+<h1 id="nfs">NFS</h1>
+<blockquote>
+<p>NFS enables network directory sharing in RouterOS using NFS v4, requiring the Storage package. It uses port TCP/2049 and is configured via the nfs-sharing, nfs-address and nfs-share arguments of /disk.</p>
+</blockquote>
+<h1 id="nfs_1">NFS</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="./index.md">Storage</a>.</p>
+</div>
+<p>NFS shares the router's disks over the network, and mounts NFS shares of other devices as disks. The RouterOS NFS server supports NFS version 4 only; clients that use version 3 cannot mount it.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>NFS uses TCP port 2049. If the port is not reachable, the NFS disk on the client is not mounted, and <code>state</code> in <code>/disk/print detail</code> shows the error, for example <code>state="Connection refused"</code>.</p>
+</div>
+<h2 id="configuration-example_1">Configuration example</h2>
+<p>On the host, enable NFS sharing of a mounted disk:</p>
+<pre><code class="language-routeros">/disk/set pcie1 nfs-sharing=yes
+</code></pre>
+<p>The host exports one tree, <code>/</code>, with a folder for each shared disk, named after the disk's mount point.</p>
+<p>On a RouterOS client, add a disk of <code>type=nfs</code>. Without <code>nfs-share</code>, it mounts the whole tree, as the slot <code>nfs-&lt;address&gt;-</code>:</p>
+<pre><code class="language-routeros">/disk/add type=nfs nfs-address=192.168.1.1
+</code></pre>
+<p>With <code>nfs-share</code>, it mounts only the folder of one shared disk, as the slot <code>nfs-&lt;address&gt;-&lt;share&gt;</code>:</p>
+<pre><code class="language-routeros">/disk/add type=nfs nfs-address=192.168.1.1 nfs-share=pcie1
+</code></pre>
+<p>On a Linux client, mount the tree with NFS version 4:</p>
+<pre><code class="language-bash">mkdir /mnt/files
+mount -t nfs4 192.168.1.1:/ /mnt/files
+</code></pre>
+<hr />
+<h1 id="nvme-over-tcp">NVMe over TCP</h1>
+<blockquote>
+<p>NVMe over TCP enables network-attached NVMe storage access for both initiators and targets, with configurable IP addresses, ports, and host-based access control. Examples show mounting a disk from a RouterOS client...</p>
+</blockquote>
+<h1 id="nvme-over-tcp_1">NVMe over TCP</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This feature requires the <code>rose-storage</code> package; see <a href="./index.md">Storage</a>.</p>
+</div>
+<p>NVMe over TCP allows accessing storage over the network as an NVMe block device on the initiator (client) side. On the target (host) side the device can be an HDD/SSD/NVMe drive, a file, or a RAID array.</p>
+<p>On the target, <code>nvme-tcp-server-port</code> (default <code>4420</code>) sets the TCP port, and <code>nvme-tcp-server-nqn</code> shows the NQN of the export, by default <code>nqn.2000-02.com.mikrotik:&lt;slot&gt;</code>. On the client, <code>nvme-tcp-address</code>, <code>nvme-tcp-port</code> and <code>nvme-tcp-nqn</code> select the export. The remote disk appears on a RouterOS client as <code>nvme-tcp1</code>, <code>nvme-tcp2</code> and so on, with <code>state="live"</code> when it is connected.</p>
+<h2 id="examples_1">Examples</h2>
+<h3 id="mount-a-disk">Mount a disk</h3>
+<p>In this example, one RouterOS device is used as a storage server (<strong>Host</strong>) and another RouterOS device mounts the storage over the network (<strong>Client</strong>).</p>
+<ol>
+<li>On the <strong>Host</strong>, export the disk:</li>
+</ol>
+<p><code>routeros
+   /disk/set disk1 nvme-tcp-export=yes</code></p>
+<ol start="2">
+<li>On the <strong>Client</strong>, add the remote disk. <code>/disk/nvme-discover 192.168.1.1</code> lists the NQNs that the host exports:</li>
+</ol>
+<p><code>routeros
+   /disk/add type=nvme-tcp nvme-tcp-address=192.168.1.1 \
+       nvme-tcp-nqn=nqn.2000-02.com.mikrotik:disk1</code></p>
+<ol start="3">
+<li>The <strong>Client</strong> now has a disk, <code>nvme-tcp1</code>, that is mounted over the network using NVMe over TCP.</li>
+</ol>
+<h4 id="linux-client">Linux client</h4>
+<p>Use these commands to set up NVMe over TCP on a Linux <strong>Client</strong> (nvme-cli).</p>
+<ol>
+<li>Load the kernel module:</li>
+</ol>
+<p><code>bash
+   modprobe nvme_tcp</code></p>
+<ol start="2">
+<li>Discover the exports of the host. In this output, the host exports a file disk called <code>file2</code>:</li>
+</ol>
+<p><code>bash
+   nvme discover -t tcp -a 192.168.1.1 -s 4420</code></p>
+<p><code>text
+   Discovery Log Number of Records 1, Generation counter 5
+   =====Discovery Log Entry 0======
+   trtype:  tcp
+   adrfam:  ipv4
+   subtype: nvme subsystem
+   treq:    not specified, sq flow control disable supported
+   portid:  4420
+   trsvcid: 4420
+   subnqn:  nqn.2000-02.com.mikrotik:file2
+   traddr:  10.0.2.15
+   eflags:  none
+   sectype: none</code></p>
+<ol start="3">
+<li>Connect to an export:</li>
+</ol>
+<p><code>bash
+   nvme connect -t tcp -a 192.168.1.1 -s 4420 -n nqn.2000-02.com.mikrotik:disk1</code></p>
+<ol start="4">
+<li>A new NVMe block device is now available, for example <code>/dev/nvme0n1</code>; the number depends on the NVMe devices that the client already has:</li>
+</ol>
+<p><code>bash
+   ls /dev/nvme*</code></p>
+<ol start="5">
+<li>You can now use the block device like any other block device on your Linux <strong>Client</strong>.</li>
+</ol>
+<p>To disconnect the block device:</p>
+<pre><code class="language-bash">nvme disconnect -n nqn.2000-02.com.mikrotik:disk1
+</code></pre>
+<h3 id="mount-a-file-as-a-block-device">Mount a file as a block device</h3>
+<p>In this example, one RouterOS device is used as a storage server (<strong>Host</strong>) and another RouterOS device mounts the storage over the network (<strong>Client</strong>).</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>A file lets you give the <strong>Client</strong> a part of a disk instead of the whole disk. Mounting a file has lower performance than mounting a disk (or partition) using NVMe over TCP.</p>
+</div>
+<ol>
+<li>On the <strong>Host</strong>, create a file that is used as a block device, and export it:</li>
+</ol>
+<p><code>routeros
+   /disk/add type=file file-path=disk1/BIGFILE.img file-size=10G \
+       slot=blockdevice1
+   /disk/set blockdevice1 nvme-tcp-export=yes</code></p>
+<ol start="2">
+<li>On the <strong>Client</strong>, add the remote disk and format it:</li>
+</ol>
+<p><code>routeros
+   /disk/nvme-discover 192.168.1.1
+   /disk/add type=nvme-tcp nvme-tcp-address=192.168.1.1 \
+       nvme-tcp-nqn=nqn.2000-02.com.mikrotik:blockdevice1
+   /disk/format nvme-tcp1 file-system=ext4</code></p>
+<ol start="3">
+<li>The <strong>Client</strong> now has a new disk, <code>nvme-tcp1</code>, even though on the <strong>Host</strong> the storage device is a file.</li>
+</ol>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>To mount the block device on a Linux <strong>Client</strong>, see the <a href="#linux-client">Linux client</a> section.</p>
+</div>
+<h3 id="mount-a-raid-array">Mount a RAID array</h3>
+<p>In this example, the <strong>Host</strong> exports a <a href="./raid/">RAID</a> array, so the <strong>Client</strong> gets a single disk with data redundancy.</p>
+<ol>
+<li>Set up a RAID array on the <strong>Host</strong> and export it, for example:</li>
+</ol>
+<p><code>routeros
+   /disk/add type=raid slot=RAID6_array raid-type=6 raid-device-count=8
+   /disk/set disk1 raid-master=RAID6_array raid-role=0
+   /disk/set disk2 raid-master=RAID6_array raid-role=1
+   /disk/set disk3 raid-master=RAID6_array raid-role=2
+   /disk/set disk4 raid-master=RAID6_array raid-role=3
+   /disk/set disk5 raid-master=RAID6_array raid-role=4
+   /disk/set disk6 raid-master=RAID6_array raid-role=5
+   /disk/set disk7 raid-master=RAID6_array raid-role=6
+   /disk/set disk8 raid-master=RAID6_array raid-role=7
+   /disk/set RAID6_array nvme-tcp-export=yes</code></p>
+<ol start="2">
+<li>On the <strong>Client</strong>, add the remote disk:</li>
+</ol>
+<p><code>routeros
+   /disk/add type=nvme-tcp nvme-tcp-address=192.168.1.1 \
+       nvme-tcp-nqn=nqn.2000-02.com.mikrotik:RAID6_array</code></p>
+<ol start="3">
+<li>The <strong>Client</strong> now sees a single disk that is a RAID array on the <strong>Host</strong>.</li>
+</ol>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>To mount the block device on a Linux <strong>Client</strong>, see the <a href="#linux-client">Linux client</a> section.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Do not mount multiple disks from different RouterOS devices on a Linux Client and put them into a software RAID configuration (for example, mdadm). While this type of configuration does provide some redundancy, you can expect abnormal latency issues or even timeouts. Create a RAID array on your RouterOS device instead and export the RAID array as a block device to your Linux Client.</p>
+</div>
+<h2 id="limit-access-to-an-export">Limit access to an export</h2>
+<p><code>nvme-tcp-server-allow-host-name</code> on the exported disk limits it to clients with that host name. A client sends its host name in <code>nvme-tcp-host-name</code>, by default <code>MikroTik</code>:</p>
+<pre><code class="language-routeros"># On the host:
+/disk/set disk1 nvme-tcp-server-allow-host-name=backup-client
+# On the client:
+/disk/set nvme-tcp1 nvme-tcp-host-name=backup-client
+</code></pre>
+<p>A client with another host name cannot use the disk; its <code>state</code> shows <code>I/O error</code>. For authentication with a secret, see <code>nvme-tcp-server-password</code> and <code>nvme-tcp-server-secret</code> in the <a href="../cli-reference/disk/disk.md"><code>/disk</code></a> reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

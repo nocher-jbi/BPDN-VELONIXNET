@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firewall &amp; Keamanan Router · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="firewall-keamanan-router">Firewall &amp; Keamanan Router</h1>
+<p>Mengamankan router supaya tidak mudah diserang dari internet. Ini ringkasan
+praktis dari bab <em>Securing your router</em> dan <em>Firewall</em>.</p>
+<h2 id="prinsip-utama">Prinsip utama</h2>
+<p>Firewall <strong>input chain</strong> melindungi router itu sendiri. Konfigurasi default
+MikroTik sudah menutup akses manajemen dari WAN (<code>defconf: drop all not coming
+from LAN</code>). <strong>Jangan hapus rule itu.</strong></p>
+<h2 id="1-input-chain-dasar-router-tanpa-default-config">1. Input chain dasar (router tanpa default config)</h2>
+<pre><code>/ip/firewall/filter
+add chain=input action=accept connection-state=established,related,untracked \
+    comment=&quot;accept established,related,untracked&quot;
+add chain=input action=drop connection-state=invalid comment=&quot;drop invalid&quot;
+add chain=input action=accept in-interface=ether1 protocol=icmp comment=&quot;accept ICMP&quot;
+add chain=input action=drop in-interface=ether1 comment=&quot;block everything else&quot;
+</code></pre>
+<p>Sesuaikan <code>ether1</code> dengan interface WAN (kalau PPPoE/LTE, ganti). Salah
+interface bisa membuat kamu kehilangan akses.</p>
+<h2 id="2-kalau-router-sudah-pakai-default-config">2. Kalau router sudah pakai default config</h2>
+<p>Tambahkan accept <strong>di depan</strong> rule defconf dengan <code>place-before</code>:</p>
+<pre><code>add chain=input action=accept in-interface-list=WAN protocol=tcp dst-port=8291 \
+    comment=&quot;allow WinBox&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<h2 id="3-hardening-checklist">3. Hardening checklist</h2>
+<ul>
+<li>Update RouterOS ke versi stabil terbaru</li>
+<li>Ganti user <code>admin</code>, pakai password ≥12 karakter:</li>
+</ul>
+<pre><code>/user/add name=myname password=&quot;...&quot; group=full
+/user/disable admin
+</code></pre>
+<ul>
+<li>Satu akun per admin; pakai SSH key</li>
+<li>Batasi user ke IP tertentu: <code>/user/set 0 address=192.168.88.0/24</code></li>
+<li>Matikan MAC-server:</li>
+</ul>
+<pre><code>/tool/mac-server/set allowed-interface-list=none
+/tool/mac-server/mac-winbox/set allowed-interface-list=none
+/tool/mac-server/ping/set enabled=no
+</code></pre>
+<ul>
+<li>Matikan Neighbor Discovery: <code>/ip/neighbor/discovery-settings/set discover-interface-list=none</code></li>
+<li>Matikan bandwidth server: <code>/tool/bandwidth-server/set enabled=no</code></li>
+<li>Matikan service tak terpakai: <code>/ip/service/disable telnet,ftp,www,api</code></li>
+<li>Ganti port SSH &amp; kuatkan kripto:</li>
+</ul>
+<pre><code>/ip/service/set ssh port=2200
+/ip/ssh/set strong-crypto=yes
+</code></pre>
+<ul>
+<li>Matikan proxy/SOCKS/UPnP: <code>/ip/proxy/set enabled=no</code>, <code>/ip/socks/set enabled=no</code>, <code>/ip/upnp/set enabled=no</code></li>
+<li>Disable interface yang tidak dipakai</li>
+</ul>
+<h2 id="4-proteksi-brute-force-ssh">4. Proteksi brute-force SSH</h2>
+<p>Rule menaikkan sumber lewat 3 address-list, blacklist di koneksi ke-4:</p>
+<pre><code>/ip/firewall/filter
+add chain=input action=add-src-to-address-list protocol=tcp dst-port=22 \
+    connection-state=new in-interface-list=WAN src-address-list=connection3 \
+    address-list=bruteforce_blacklist address-list-timeout=1d \
+    comment=&quot;SSH brute force: blacklist&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+# (lanjut: connection2-&gt;connection3, connection1-&gt;connection2, first-&gt;connection1)
+add chain=input action=accept protocol=tcp dst-port=22 in-interface-list=WAN \
+    src-address-list=!bruteforce_blacklist comment=&quot;SSH brute force: accept&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=drop protocol=tcp dst-port=22 in-interface-list=WAN \
+    comment=&quot;SSH brute force: drop blacklisted&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<h2 id="peringatan">Peringatan</h2>
+<ul>
+<li><strong>Jangan expose WinBox/SSH ke internet.</strong> Pakai VPN (WireGuard) untuk akses jauh.</li>
+<li>Kalau terpaksa buka dari WAN: password kuat, batasi source address, aktifkan
+  brute-force protection, update terus, dan pantau log.</li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>02 Getting Started → Securing your router</em></li>
+<li>Manual: <em>13 Firewall and QoS</em> (+ <em>User Guides</em>: brute-force, DDoS, port knocking)</li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

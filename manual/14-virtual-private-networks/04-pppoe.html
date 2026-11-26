@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPPoE · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Virtual Private Networks</p>
+      <h1 id="pppoe">PPPoE</h1>
+<h1 id="pppoe_1">PPPoE</h1>
+<blockquote>
+<p>PPPoE in RouterOS: connect a router to an internet provider with a PPPoE client, run a PPPoE server (access concentrator) for subscribers, choose service names, handle the 1492-byte MTU, and how the PPPoE discovery...</p>
+</blockquote>
+<h1 id="pppoe_2">PPPoE</h1>
+<p>Point-to-Point Protocol over Ethernet (PPPoE, <a href="https://tools.ietf.org/html/rfc2516">RFC 2516</a>) carries PPP links over an Ethernet network. Internet providers use it to give each subscriber a connection with a user name and a password, in place of a static address or DHCP. RouterOS has both sides:</p>
+<ul>
+<li>The PPPoE client connects a router to any PPPoE server, for example to an internet provider.</li>
+<li>The PPPoE server, also called the access concentrator, serves many PPPoE clients. Clients exist for almost all operating systems and routers.</li>
+</ul>
+<p>Both work on any layer 2 interface: Ethernet, wireless, VLAN, EoIP and others. The users of a PPPoE server and their settings are in the PPP user database or on a RADIUS server: see <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</p>
+<p><em>[gambar: A PPPoE client connects to a PPPoE server over an Ethernet network]</em></p>
+<h2 id="connect-to-an-internet-provider">Connect to an internet provider</h2>
+<p>Add a PPPoE client on the interface that is connected to the provider, with the user name and the password that the provider gave you:</p>
+<pre><code class="language-ros">/interface/pppoe-client/add name=pppoe-out1 interface=ether1 \
+    user=alice password=Example-pass-1 add-default-route=yes \
+    use-peer-dns=yes disabled=no
+</code></pre>
+<ul>
+<li><code>add-default-route=yes</code> adds a default route through the connection.</li>
+<li><code>use-peer-dns=yes</code> uses the DNS servers that the provider sends.</li>
+<li>With the default configuration, the firewall and NAT use the interface list <code>WAN</code>. Add the PPPoE client interface to this list: <code>/interface/list/member/add list=WAN interface=pppoe-out1</code>.</li>
+</ul>
+<p><code>monitor</code> shows the state of the connection, the server and the addresses:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /interface/pppoe-client/monitor pppoe-out1 once
+               status: connected            
+               uptime: 12s                  
+         active-links: 1                    
+             encoding:                      
+         service-name: internet             
+              ac-name: Server               
+               ac-mac: 52:54:0B:80:03:01    
+                  mtu: 1492                 
+                  mru: 1492                 
+        local-address: 10.0.0.94            
+       remote-address: 10.0.0.1             
+   local-ipv6-address: fe80::7fe3:8e52:0:b  
+  remote-ipv6-address: fe80::13af:5abb:f0:ae
+</code></pre>
+<p><code>scan</code> lists the PPPoE servers that answer on an interface, with their service names:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /interface/pppoe-client/scan ether1 duration=5
+Columns: SERVICE, MAC-ADDRESS, AC-NAME
+SERVICE   MAC-ADDRESS        AC-NAME
+          52:54:0B:80:03:01  Server 
+internet  52:54:0B:80:03:01  Server 
+</code></pre>
+<ul>
+<li>With an empty <code>service-name</code>, the client connects to any service. With a name, it connects only to a server that has this service.</li>
+<li><code>ac-name</code> limits the client to the access concentrator with this name.</li>
+<li>Do not use a large number of PPPoE clients on one device.</li>
+</ul>
+<h2 id="run-a-pppoe-server">Run a PPPoE server</h2>
+<p>Add a pool, a profile and a user, and then a server on the interface where the clients are:</p>
+<pre><code class="language-ros">/ip/pool/add name=pppoe-pool ranges=10.0.0.10-10.0.0.100
+/ppp/profile/add name=subscribers local-address=10.0.0.1 \
+    remote-address=pppoe-pool
+/ppp/secret/add name=alice password=Example-pass-1 \
+    profile=subscribers service=pppoe
+/interface/pppoe-server/server/add service-name=internet \
+    interface=ether3 default-profile=subscribers disabled=no
+</code></pre>
+<p>For each connected user the server adds a dynamic interface, and <code>/ppp/active</code> lists the user with the MAC address of the client:</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/pppoe-server/print detail
+Flags: D - DYNAMIC; R - RUNNING
+0 DR name=&quot;&lt;pppoe-alice&gt;&quot; user=&quot;alice&quot; service=&quot;internet&quot; mtu=1492 mru=1492
+     remote-address=&quot;52:54:0B:81:03:01&quot; encoding=&quot;&quot; uptime=13s interface=ether3
+</code></pre>
+<ul>
+<li>An interface can have several servers with different service names. The clients select the server by the service name and by the name of the access concentrator.</li>
+<li>The name of the access concentrator is the <a href="../../system-information-and-utilities/identity">identity</a> of the router.</li>
+<li>Do not use static addresses or DHCP for the clients on an interface that has a PPPoE server, and do not give that interface an IP address: a device could then use the network without a PPPoE login.</li>
+<li>The server checks that a client is still there with echo requests. With <code>keepalive-timeout=10</code> (the default) it closes a session that does not answer. With 0, a session stays until the client logs out or the router restarts; <code>one-session-per-host=yes</code> helps in that case.</li>
+<li>Some instructions for Windows give the "phone number" as <code>MikroTik_AC\mt1</code>: the name of the access concentrator and then the service name.</li>
+</ul>
+<h2 id="send-full-size-packets">Send full-size packets</h2>
+<p>An Ethernet frame carries 1500 bytes. PPPoE uses 6 of them and PPP 2, so a PPPoE link has an MTU of 1492 bytes: a 1492-byte packet passes, and a 1500-byte packet that must not be fragmented does not.</p>
+<p>TCP connections normally find the lower MTU with path MTU discovery, but this fails where routers or firewalls drop the ICMP messages that it needs. There are two ways to help:</p>
+<ul>
+<li>Lower the MSS of the TCP connections that pass the PPPoE link: see <a href="../../firewall-and-quality-of-service/firewall/mangle">Change MSS</a>. The built-in PPP profiles do this with <code>change-tcp-mss=yes</code>.</li>
+<li>Use Multilink PPP on the link. With <code>mrru</code> on the server and on the client, large packets are split and joined again, and 1500-byte packets pass: see <a href="mlppp-over-single-and-multiple-links">MLPPP over single and multiple links</a>.</li>
+</ul>
+<h2 id="serve-vlans-with-one-server">Serve VLANs with one server</h2>
+<p><code>pppoe-over-vlan-range</code> makes one server accept clients in a range of VLANs on its interface. <code>accept-untagged=no</code> then refuses clients without a VLAN tag.</p>
+<p>Do not use this setting together with a VLAN interface whose VLAN ID is in the range:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether2 name=vlan15 vlan-id=15
+/interface/pppoe-server/server
+add disabled=no interface=ether2 pppoe-over-vlan-range=10-20
+</code></pre>
+<p>If you need both, take the VLAN ID out of the range and add a second server on the VLAN interface:</p>
+<pre><code class="language-ros">/interface/vlan
+add interface=ether2 name=vlan15 vlan-id=15
+/interface/pppoe-server/server
+add disabled=no interface=ether2 pppoe-over-vlan-range=10-14,16-20
+add disabled=no interface=vlan15
+</code></pre>
+<h2 id="how-pppoe-works">How PPPoE works</h2>
+<p>PPPoE has two phases: discovery and session.</p>
+<h3 id="discovery">Discovery</h3>
+<p>In the discovery phase the client finds a server. After four packets, both sides know the session ID and the MAC address of the other side, which together identify the session:</p>
+<ol>
+<li><strong>PADI (Active Discovery Initiation).</strong> The client sends a PADI packet to the broadcast address. The packet has the service name, if one is set on the client.</li>
+<li><strong>PADO (Active Discovery Offer).</strong> A server that has the requested service answers with a PADO packet to the address of the client. If the PADI has no service name, the PADO lists the services of the server.</li>
+<li><strong>PADR (Active Discovery Request).</strong> The client answers the first valid PADO with a PADR packet to the address of the server. If the PADI had no service name, the PADR has the first service name of the PADO.</li>
+<li><strong>PADS (Active Discovery Session-confirmation).</strong> The server makes a session ID and sends it to the client in a PADS packet.</li>
+</ol>
+<p>Either side can end the session at any time with a <strong>PADT (Active Discovery Terminate)</strong> packet.</p>
+<h3 id="session">Session</h3>
+<p>In the session phase, PPP frames travel in Ethernet frames of the type 0x8864. PPP starts with these steps:</p>
+<ol>
+<li>LCP negotiates the link.</li>
+<li>The client authenticates (PAP, CHAP or MS-CHAP).</li>
+<li>IPCP gives the client an IP address.</li>
+</ol>
+<p>If a step fails, the LCP negotiation starts again.</p>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">What you see</th>
+<th style="text-align: left;">What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">The client stays <code>disconnected</code>.</td>
+<td style="text-align: left;">Run <code>scan</code> on the interface. If no server is listed, check the cable, the interface and the VLAN. If a server is listed, compare <code>service-name</code> and <code>ac-name</code> of the client with the list.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Web pages open slowly or not at all, while ping works.</td>
+<td style="text-align: left;">The MTU: see "Send full-size packets" on this page.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../../cli-reference/interface/pppoe-client/"><code>/interface/pppoe-client</code></a>, <a href="../../cli-reference/interface/pppoe-server/server"><code>/interface/pppoe-server/server</code></a>, <a href="../../cli-reference/interface/pppoe-server/"><code>/interface/pppoe-server</code></a></li>
+<li><a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a></li>
+<li><a href="ipv6-pd-over-ppp">IPv6 PD over PPP</a></li>
+<li><a href="mlppp-over-single-and-multiple-links">MLPPP over single and multiple links</a></li>
+</ul>
+<hr />
+<h1 id="ipv6-pd-over-ppp">IPv6 PD over PPP</h1>
+<blockquote>
+<p>IPv6 prefix delegation over PPP in RouterOS: give each PPPoE user an IPv6 prefix from a pool with a dynamic DHCPv6 server, request the prefix on the client, and use it on the LAN.</p>
+</blockquote>
+<h1 id="ipv6-pd-over-ppp_1">IPv6 PD over PPP</h1>
+<p>A PPP server can give each user an IPv6 prefix for the network behind the user's router. This is DHCPv6 prefix delegation (PD) over the PPP link: when a user connects, the server adds a dynamic <a href="../../network-management/dhcp/dhcpv6-server">DHCPv6 server</a> on the interface of the user, and the router of the user asks it for a prefix with a DHCPv6 client.</p>
+<p>The example uses PPPoE.</p>
+<h2 id="server">Server</h2>
+<p>Add an IPv6 pool. This pool gives a /60 prefix to each user from a /56 block:</p>
+<pre><code class="language-ros">/ipv6/pool/add name=pd-pool prefix=2001:db8:7501:ff00::/56 \
+    prefix-length=60
+</code></pre>
+<p>Set the pool in <code>dhcpv6-pd-pool</code> of the PPP profile that the users have:</p>
+<pre><code class="language-ros">/ppp/profile/set subscribers dhcpv6-pd-pool=pd-pool
+</code></pre>
+<p>The setting applies to users that connect after the change. <a href="./">PPPoE</a> shows how to add the server, the profile and the users.</p>
+<h2 id="client">Client</h2>
+<p>On the router of the user, add a DHCPv6 client on the PPPoE client interface. It asks for a prefix and puts it into an IPv6 pool:</p>
+<pre><code class="language-ros">/ipv6/dhcp-client/add interface=pppoe-out1 request=prefix \
+    pool-name=lan-pool pool-prefix-length=64 add-default-route=yes
+</code></pre>
+<p>Give the LAN an address from the pool. <code>advertise=yes</code> announces the prefix to the devices of the LAN:</p>
+<pre><code class="language-ros">/ipv6/address/add interface=bridge from-pool=lan-pool advertise=yes
+</code></pre>
+<h2 id="check">Check</h2>
+<p>On the server, a dynamic DHCPv6 server exists for the user, and the binding shows the prefix:</p>
+<pre><code class="language-ros">[admin@Server] &gt; /ipv6/dhcp-server/print
+Flags: D - DYNAMIC
+Columns: NAME, INTERFACE, ADDRESS-POOL, PREFIX-POOL, PREFERENCE, LEASE-TIME
+#   NAME           INTERFACE      ADDRESS-POOL  PREFIX-POOL  PREFERENCE  LE
+0 D &lt;pppoe-alice&gt;  &lt;pppoe-alice&gt;  static-only   pd-pool             255  1d
+
+[admin@Server] &gt; /ipv6/dhcp-server/binding/print
+Flags: D - DYNAMIC
+Columns: ADDRESS, DUID, SERVER, STATUS
+#   ADDRESS                  DUID                    SERVER         STATUS
+0 D 2001:db8:7501:ff00::/60  0x0003000152540b7e0101  &lt;pppoe-alice&gt;  bound 
+</code></pre>
+<p>The server also adds a route for the prefix through the interface of the user.</p>
+<p>On the client, the DHCPv6 client is <code>bound</code> and the pool has the prefix:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /ipv6/dhcp-client/print
+Columns: INTERFACE, STATUS, REQUEST, PREFIX
+# INTERFACE   STATUS  REQUEST  PREFIX                            
+0 pppoe-out1  bound   prefix   2001:db8:7501:ff00::/60, 23h59m45s
+
+[admin@Client] &gt; /ipv6/pool/print
+Flags: D - DYNAMIC
+Columns: NAME, PREFIX, PREFIX-LENGTH, ACTUAL-PREFIX, VALID-LIFETIME
+#   NAME      PREFIX                   PR  ACTUAL-PREFIX            VALID-LIF
+0 D lan-pool  2001:db8:7501:ff00::/60  64  2001:db8:7501:ff00::/60  23h59m44s
+</code></pre>
+<p>The LAN interface then has a /64 prefix from the pool, here 2001:db8:7501:ff00::/64: see <code>/ipv6/address/print</code>.</p>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="../../cli-reference/ppp/profile"><code>/ppp/profile</code></a>, <a href="../../cli-reference/ipv6/dhcp-client/"><code>/ipv6/dhcp-client</code></a>, <a href="../../cli-reference/ipv6/pool/"><code>/ipv6/pool</code></a></li>
+<li><a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a></li>
+<li><a href="./">PPPoE</a></li>
+<li><a href="../../network-management/dhcp/dhcpv6-server">DHCPv6 server</a></li>
+</ul>
+<hr />
+<h1 id="mlppp-over-single-and-multiple-links">MLPPP over single and multiple links</h1>
+<blockquote>
+<p>Multilink PPP in RouterOS: use MRRU on a single PPP link to carry full-size packets without lowering the TCP MSS, and join several PPPoE links to one provider into a single connection.</p>
+</blockquote>
+<h1 id="mlppp-over-single-and-multiple-links_1">MLPPP over single and multiple links</h1>
+<p>Multilink PPP (MP, MLPPP, <a href="https://tools.ietf.org/html/rfc1990">RFC 1990</a>) splits packets into fragments, sends them over one or more PPP links, and joins them again on the other side. Both sides must support it: they agree on it with an LCP option when the link starts. RouterOS uses it in two ways:</p>
+<ul>
+<li>On a single link, to carry packets that are larger than the MTU of the link.</li>
+<li>On several links to the same server, to use them as one connection.</li>
+</ul>
+<h2 id="mlppp-over-a-single-link">MLPPP over a single link</h2>
+<p>A PPP link has a lower MTU than Ethernet: 1492 bytes for PPPoE, for example. With the Maximum Received Reconstructed Unit (<code>mrru</code>) set on both sides, the link splits larger packets and the other side joins them, so full 1500-byte packets pass.</p>
+<p>Set <code>mrru</code> on the server and on the client:</p>
+<pre><code class="language-ros">/interface/pppoe-server/server/set [find service-name=internet] \
+    mrru=1600
+</code></pre>
+<pre><code class="language-ros">/interface/pppoe-client/set pppoe-out1 mrru=1600
+</code></pre>
+<p>After the client connects again, <code>monitor</code> shows a larger MTU for the link (1596 with <code>mrru=1600</code>), and a 1500-byte packet that must not be fragmented passes.</p>
+<ul>
+<li>With MRRU on both sides, the TCP MSS does not have to be lowered with a firewall mangle rule, and MRRU needs less CPU than two mangle rules for each client.</li>
+<li><code>mrru</code> can be up to 65535 bytes.</li>
+<li>Windows calls this "Negotiate multi-link for single link connections", in the settings of the Networking tab of the connection. Its MRRU is always 1614, so use <code>mrru=1614</code> on a server for Windows clients.</li>
+<li>With MPPE encryption, the MTU of the link is 4 bytes lower.</li>
+</ul>
+<h2 id="mlppp-over-multiple-links">MLPPP over multiple links</h2>
+<p>A PPPoE client can use several physical links to one provider as a single connection, for example two DSL lines. All links must end on the same server, the server must support MLPPP over multiple links, and all links use the same user name and password.</p>
+<p>RouterOS supports this as a client only. A RouterOS PPPoE server does not join several links.</p>
+<p><em>[gambar: A router is connected to the internet provider with two links]</em></p>
+<p>Name all the interfaces in <code>interface</code> of the client:</p>
+<pre><code class="language-ros">/interface/pppoe-client/add name=pppoe-out1 service-name=ISP \
+    interface=ether1,ether2 user=alice password=Example-pass-1 \
+    add-default-route=yes use-peer-dns=yes disabled=no
+</code></pre>
+<p><code>active-links</code> in the output of <code>/interface/pppoe-client/monitor</code> shows how many links the connection uses. If it is 1 with two interfaces, the server does not support MLPPP over multiple links.</p>
+<p>The rest of the configuration is the same as for a client on one link: the PPPoE client interface is the WAN interface of the router. See <a href="./">PPPoE</a> and, for the firewall, <a href="../../firewall-and-quality-of-service/firewall/filter">Filter</a>.</p>
+<h2 id="read-more_2">Read more</h2>
+<ul>
+<li><a href="../../cli-reference/interface/pppoe-client/"><code>/interface/pppoe-client</code></a>, <a href="../../cli-reference/interface/pppoe-server/server"><code>/interface/pppoe-server/server</code></a></li>
+<li><a href="./">PPPoE</a></li>
+</ul>
+<hr />
+<h1 id="pptp">PPTP</h1>
+<blockquote>
+<p>PPTP is a legacy VPN protocol that carries a PPP session over TCP 1723 and GRE. The page covers a router-to-router client and server example, PPP authentication and encryption profiles, MTU, static and dynamic server...</p>
+</blockquote>
+<h1 id="pptp_1">PPTP</h1>
+<p>PPTP (Point-to-Point Tunneling Protocol) is a legacy VPN protocol that carries a PPP session
+between a client and a server. RouterOS can be either end: <a href="../cli-reference/interface/pptp-client/"><code>/interface/pptp-client</code></a>
+connects to a remote server, and <a href="../cli-reference/interface/pptp-server/"><code>/interface/pptp-server</code></a>
+accepts clients. PPTP is built into Windows and many older devices, so it is still used where
+compatibility is the main requirement.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>PPTP is not secure. Its authentication and encryption mechanisms are weak by current standards,
+and implementations have a history of vulnerabilities. An exposed PPTP server is a security risk;
+keep RouterOS up to date and use PPTP only for legacy clients. For new deployments, use
+<a href="./l2tp/">L2TP/IPsec</a>, <a href="./sstp">SSTP</a>, <a href="./openvpn">OpenVPN</a> or <a href="./wireguard">WireGuard</a>.</p>
+</div>
+<p>PPTP runs over IPv4. The control connection uses TCP port 1723, and the tunneled PPP frames travel
+in GRE (IP protocol 47). Both must be allowed between the endpoints. The PPP session can carry IPv4
+and IPv6 traffic, according to the PPP profile.</p>
+<p>Authentication, encryption and accounting come from PPP. Users are configured in <code>/ppp/secret</code> or
+on a RADIUS server, and the session options come from a
+<a href="../authentication-authorization-accounting/ppp-aaa">PPP profile</a>.
+The default <code>default-encryption</code> profile enables MPPE encryption, which requires MSCHAP
+authentication; the <code>default</code> profile does not encrypt. See
+<a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> for RADIUS.</p>
+<h2 id="how-pptp-works">How PPTP works</h2>
+<p>The client opens a TCP connection to the server on port 1723 and establishes the tunnel. The
+tunneled PPP frames are then exchanged in GRE packets. On the server, each connected user is served
+by a PPP interface: a dynamic interface, or the static entry for that user. The client entry also
+creates an interface; it is running (flag <code>R</code>) only while the tunnel is connected.</p>
+<p>Both ends have a maximum transmit and receive unit (<code>max-mtu</code> and <code>max-mru</code>), 1450 by default. When
+the values differ, the tunnel comes up with the lower value. The client's
+<code>/interface/pptp-client/monitor</code> shows the negotiated MTU, the encryption, and the local and remote
+tunnel addresses.</p>
+<h2 id="example-two-routers">Example: two routers</h2>
+<p>This example connects RouterOS as a PPTP client to RouterOS as a PPTP server over an IPv4 link.
+ether5 on the client has 192.0.2.2/24 and ether5 on the server has 192.0.2.1/24; the tunnel uses
+10.0.0.100 for the client and 10.0.0.1 for the server.</p>
+<pre><code class="language-mermaid">graph LR
+    client[&quot;PPTP clientether5 192.0.2.2tunnel 10.0.0.100&quot;] ---|&quot;TCP 1723, GRE 47&quot;| server[&quot;PPTP serverether5 192.0.2.1tunnel 10.0.0.1&quot;]
+</code></pre>
+<h3 id="server_1">Server</h3>
+<p>Enable the PPTP server and create a PPP secret for the client:</p>
+<pre><code class="language-ros">/interface/pptp-server/server/set enabled=yes
+/ppp/secret/add name=pptp-test password=&lt;password&gt; service=pptp \
+    profile=default-encryption local-address=10.0.0.1 \
+    remote-address=10.0.0.100
+</code></pre>
+<p>The server listens on TCP port 1723. The secret supplies the user name, password and tunnel
+addresses; in the secret, <code>local-address</code> is the server's end of the tunnel and <code>remote-address</code>
+is the client's end. The PPP profile supplies authentication and encryption settings. The server
+accepts MSCHAP1 and MSCHAP2 by default; the <code>authentication</code> setting in
+<code>/interface/pptp-server/server</code> changes that. A client that does not support MPPE can use the
+<code>default</code> profile with an authentication method it supports, such as PAP; the tunnel then comes up
+without encryption. A user can also be authenticated through RADIUS.</p>
+<h3 id="client_1">Client</h3>
+<p>Create the client entry with the server address and the same credentials:</p>
+<pre><code class="language-ros">/interface/pptp-client/add connect-to=192.0.2.1 name=pptp-out1 user=pptp-test \
+    password=&lt;password&gt; profile=default-encryption disabled=no
+</code></pre>
+<p>A new PPTP client is disabled by default, so <code>disabled=no</code> is needed to start it. Check the
+interface:</p>
+<pre><code class="language-ros">/interface/pptp-client/print
+Flags: R - RUNNING
+0 R name=&quot;pptp-out1&quot; max-mtu=1450 max-mru=1450 mrru=disabled
+    connect-to=192.0.2.1 user=&quot;pptp-test&quot; profile=default-encryption
+    keepalive-timeout=60 use-peer-dns=no add-default-route=no dial-on-demand=no
+    allow=pap,chap,mschap1,mschap2
+</code></pre>
+<p>The server shows a dynamic interface for the connected user:</p>
+<pre><code class="language-ros">/interface/pptp-server/print
+Flags: D - DYNAMIC; R - RUNNING
+Columns: NAME, USER, MTU, CLIENT-ADDRESS, UPTIME, ENCODING
+#    NAME              USER        MTU  CLIENT-ADDRESS  UPTIME  ENCODING
+0 DR &lt;pptp-pptp-test&gt;  pptp-test  1450  192.0.2.2      4s      MPPE128 stateless
+</code></pre>
+<p>The <code>CLIENT-ADDRESS</code> column is the client's outer IPv4 address (192.0.2.2), not its tunnel address.</p>
+<p>The client can reach the server's tunnel address:</p>
+<pre><code class="language-ros">/ping 10.0.0.1 count=3
+  SEQ HOST                                     SIZE TTL TIME       STATUS
+    0 10.0.0.1                                   56  64 469us
+    1 10.0.0.1                                   56  64 374us
+    2 10.0.0.1                                   56  64 350us
+    sent=3 received=3 packet-loss=0% min-rtt=350us avg-rtt=397us
+   max-rtt=469us
+</code></pre>
+<p>A route to the peer's tunnel address (<code>10.0.0.1/32</code>) is added automatically. To reach the server's
+LAN, add a route to that network through the tunnel. To route all traffic through the tunnel, use
+<code>add-default-route=yes</code> on the client. This adds an IPv4 default route and does not change DNS; set
+<code>use-peer-dns=yes</code> if the client should also use the DNS servers from the peer.</p>
+<h3 id="static-and-dynamic-server-interfaces">Static and dynamic server interfaces</h3>
+<p>A dynamic interface exists only while the user is connected. It is named after the user, for
+example <code>&lt;pptp-pptp-test&gt;</code>, so it disappears on disconnect and cannot be referenced in
+configuration.</p>
+<p>When a firewall rule or another configuration needs a stable interface name, add a static entry on
+the server for that user:</p>
+<pre><code class="language-ros">/interface/pptp-server/add name=pptp-in1 user=pptp-test
+</code></pre>
+<p>The static interface exists whether the user is connected or not, and the server uses it instead of
+a dynamic interface when that user connects. If the user already has an active session through the
+static interface, a second connection gets a dynamic interface, because two interfaces cannot share
+the name. A static entry only names the interface; the user must still exist in <code>/ppp/secret</code> or
+RADIUS, otherwise authentication fails.</p>
+<h2 id="firewall">Firewall</h2>
+<p>The server must accept TCP port 1723 and GRE from the client. The client must accept GRE from the
+server. On a default configuration, the input chain ends with a drop rule for traffic that does not
+come from the LAN, so the rules must be placed ahead of it:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input protocol=tcp dst-port=1723 action=accept \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+/ip/firewall/filter/add chain=input protocol=gre action=accept \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>On a router without that rule, place the two rules before whatever rule drops the traffic. These
+are the server's rules; on the client, only the GRE rule is needed. On a router with a default
+configuration, the input chain accepts established and related traffic, but GRE is a separate
+protocol; from the WAN it is dropped unless it is accepted explicitly. Restrict the rules to the
+WAN interface or the peer address when possible.</p>
+<p>If the PPTP server is behind NAT, both TCP 1723 and GRE must reach it. Not every NAT device
+forwards GRE correctly; a public address for the server avoids the problem. Traffic from clients
+that the server forwards to its LAN passes through the forward chain and needs forwarding rules and
+routes like any other traffic.</p>
+<h2 id="mtu">MTU</h2>
+<p>The tunnel MTU defaults to 1450 on both ends. PPTP does not discover the path MTU, so choose a
+value that fits the path between the endpoints. Set <code>max-mtu</code> on either end to change it; when the
+two values differ, the tunnel comes up with the lower one. A client with <code>max-mtu=1400</code> brings the
+tunnel up with MTU 1400 even when the server allows 1450.</p>
+<p>Lower the MTU when large packets stall or connections open but data transfers fail, for example
+when the path between the endpoints has a smaller MTU than 1500. A PPP profile can also change the
+TCP MSS to fit the tunnel MTU (<code>change-tcp-mss</code>).</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="the-client-does-not-connect">The client does not connect</h3>
+<ul>
+<li><strong>The client is disabled.</strong> A newly added PPTP client has <code>disabled=yes</code>; enable it in the
+  client entry. The client shows the <code>R</code> flag only when it is connected.</li>
+<li><strong>TCP port 1723 is blocked.</strong> The client does not connect and the interface has no <code>R</code> flag.
+  Check the input chain on the server and the counters on any rule that drops TCP 1723.</li>
+<li><strong>The credentials are wrong.</strong> The server log reports <code>user &lt;name&gt; authentication failed</code>. Check
+  the <code>/ppp/secret</code> entry or the RADIUS server.</li>
+<li><strong>The server is not enabled.</strong> Check <code>/interface/pptp-server/server/print</code>; <code>enabled</code> must be
+  <code>yes</code>.</li>
+</ul>
+<h3 id="the-tunnel-is-up-but-no-traffic-passes">The tunnel is up but no traffic passes</h3>
+<ul>
+<li><strong>GRE is blocked at either end.</strong> The TCP control connection stays up and the interface keeps the
+  <code>R</code> flag, but pings and other data time out. Check the input chain on both routers for a rule that
+  drops <code>protocol=gre</code>; <code>/ip/firewall/filter/print stats</code> shows whether the rule matches.</li>
+<li><strong>No route to the remote network.</strong> The router adds a /32 route for the peer's tunnel address.
+  A remote LAN needs its own route through the tunnel, or <code>add-default-route=yes</code> on the client.</li>
+<li><strong>The forward chain blocks the traffic.</strong> Traffic that the server forwards between the tunnel and
+  its LAN passes through the forward chain.</li>
+<li><strong>The MTU is too high for the path.</strong> Small packets pass, but large ones stall. Lower
+  <code>max-mtu</code> on the client or server.</li>
+</ul>
+<h3 id="large-packets-stall">Large packets stall</h3>
+<p>Lower <code>max-mtu</code> on either end and check the PPP profile's TCP MSS setting (<code>change-tcp-mss</code>). The
+tunnel comes up with the lower of the client and server MTU values.</p>
+<h2 id="technical-details">Technical details</h2>
+<p>PPTP carries a PPP session: the control connection manages the call over TCP 1723, and the PPP
+frames travel in GRE. Authentication and encryption are PPP features, not PPTP features, so the
+same secrets, profiles and RADIUS settings work for PPTP, L2TP, PPPoE and other PPP services.</p>
+<p>MPPE encryption is derived from the MSCHAP authentication exchange. With the <code>default</code> profile and
+a server that allows only PAP, the tunnel comes up without encryption; the client's monitor shows an
+empty <code>encoding</code> field in that case.</p>
+<p>Because PPTP runs over IPv4 GRE, the outer packets cannot use IPv6. The PPP session can still carry
+IPv6 traffic when the PPP profile enables it.</p>
+<p>The menu and its arguments are described in the
+<a href="../cli-reference/interface/pptp-client/"><code>/interface/pptp-client</code></a>,
+<a href="../cli-reference/interface/pptp-server/"><code>/interface/pptp-server</code></a> and
+<a href="../cli-reference/interface/pptp-server/server"><code>/interface/pptp-server/server</code></a> CLI references.</p>
+<hr />
+<h1 id="sstp">SSTP</h1>
+<blockquote>
+<p>SSTP in RouterOS: set up an SSTP server and client, secure the tunnel with a server certificate, require client certificates, choose the TLS settings, open the firewall, and find why a client does not connect.</p>
+</blockquote>
+<h1 id="sstp_1">SSTP</h1>
+<p>The Secure Socket Tunneling Protocol (SSTP) carries a PPP link inside a TLS session. It uses TCP port 443, the port of HTTPS, so it passes most firewalls, NAT devices and web proxies. Use SSTP where networks block other VPN protocols.</p>
+<ul>
+<li>The users and their settings are in the PPP user database or on a RADIUS server: see <a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</li>
+<li>SSTP runs over TCP. It is reliable on a bad link, but it has more overhead than a VPN protocol that uses UDP.</li>
+<li>Microsoft Windows has an SSTP client.</li>
+</ul>
+<p>A connection is made in four steps:</p>
+<p><em>[gambar: The four steps of an SSTP connection between a client and a server]</em></p>
+<ol>
+<li>The client opens a TCP connection to the server, to port 443 by default.</li>
+<li>TLS starts, and the client checks the certificate of the server if it is set to do so.</li>
+<li>The client sends SSTP control packets inside the HTTPS session, and both sides set up the SSTP connection.</li>
+<li>PPP starts over SSTP: the client authenticates and the link gets its addresses.</li>
+</ol>
+<h2 id="set-up-a-server-and-a-client">Set up a server and a client</h2>
+<p><em>[gambar: An SSTP client connects to an SSTP server over the internet]</em></p>
+<p>On the server, add a pool, a profile and a user, and enable the SSTP server:</p>
+<pre><code class="language-ros">/ip/pool/add name=vpn-pool ranges=10.0.0.10-10.0.0.100
+/ppp/profile/add name=vpn local-address=10.0.0.1 \
+    remote-address=vpn-pool
+/ppp/secret/add name=alice password=Example-pass-1 profile=vpn \
+    service=sstp
+/interface/sstp-server/server/set enabled=yes default-profile=vpn
+</code></pre>
+<p>On a RouterOS client, add an SSTP client with the address of the server:</p>
+<pre><code class="language-ros">/interface/sstp-client/add name=sstp-office connect-to=203.0.113.1 \
+    user=alice password=Example-pass-1 disabled=no
+</code></pre>
+<pre><code class="language-ros">[admin@Client] &gt; /interface/sstp-client/monitor sstp-office once
+               status: connected            
+               uptime: 11s                  
+             encoding: AES256-CBC           
+                  mtu: 1500                 
+        local-address: 10.0.0.99            
+       remote-address: 10.0.0.1             
+   local-ipv6-address: fe80::885c:c65:0:8   
+  remote-ipv6-address: fe80::c17c:122c:f0:18
+</code></pre>
+<p>The server adds a dynamic interface for the user:</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/sstp-server/print detail
+Flags: D - DYNAMIC; R - RUNNING
+0 DR name=&quot;&lt;sstp-alice&gt;&quot; user=&quot;alice&quot; mtu=1500 client-address=&quot;203.0.113.2&quot;
+     uptime=12s encoding=&quot;AES256-CBC&quot;
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>This tunnel has no certificates. It works only between two RouterOS devices, and it is encrypted but not protected against an attacker in the path, who can pretend to be the server. Use a server certificate for a tunnel over the internet.</p>
+</div>
+<h2 id="secure-the-tunnel-with-a-server-certificate">Secure the tunnel with a server certificate</h2>
+<p>With a certificate, the client can check that it talks to the right server. The server needs a certificate with its address or DNS name, and the client needs the certificate authority (CA) that signed it. <a href="../authentication-authorization-accounting/certificates">Certificates</a> explains how to create, sign, export and import certificates. In this example the server certificate has the name <code>sstp-server</code> and contains the address 203.0.113.1.</p>
+<p>On the server, set the certificate:</p>
+<pre><code class="language-ros">/interface/sstp-server/server/set certificate=sstp-server
+</code></pre>
+<p>On the client, import the CA certificate as a trusted certificate and turn the check on:</p>
+<pre><code class="language-ros">/interface/sstp-client/set sstp-office verify-server-certificate=yes
+</code></pre>
+<ul>
+<li>The client connects only when a trusted CA signed the certificate of the server.</li>
+<li>With <code>verify-server-address-from-certificate=yes</code> (the default), the address or name in <code>connect-to</code> must also be in the certificate.</li>
+<li>The client uses the certificate to bind the TLS session to the PPP authentication, and this lets the server check that both are secure. For this, use MS-CHAPv2 authentication.</li>
+<li>A Windows client always checks the server certificate. A certificate from a CA that Windows already trusts works at once. For your own CA, import the CA certificate into the trusted root store of the Windows computer.</li>
+<li>The RSA key of a certificate for SSTP must have at least 472 bits.</li>
+<li><code>add-sni=yes</code> on the client adds the server name (TLS SNI) to the first TLS packet.</li>
+</ul>
+<h2 id="require-a-client-certificate">Require a client certificate</h2>
+<p>The server can also ask each client for a certificate. Give the client a certificate that the CA of the server trusts, with its private key:</p>
+<pre><code class="language-ros">/interface/sstp-client/set sstp-office certificate=sstp-client
+</code></pre>
+<p>On the server, the CA must be a trusted certificate. Turn the check on:</p>
+<pre><code class="language-ros">/interface/sstp-server/server/set verify-client-certificate=yes
+</code></pre>
+<p>A client without a certificate is then refused, and the log of the server has <code>ssl: empty certificate chain received</code>. A Windows client cannot send a client certificate, so this setup is for RouterOS clients.</p>
+<h2 id="choose-the-tls-settings">Choose the TLS settings</h2>
+<ul>
+<li><code>tls-version</code> on the server and on the client: <code>any</code>, <code>only-1.2</code>, <code>only-1.3</code>, <code>min-1.2</code> or <code>min-1.3</code>.</li>
+<li><code>pfs</code> selects the key exchange. <code>yes</code> uses ECDHE-RSA and DHE-RSA, which give perfect forward secrecy, and <code>required</code> uses only ECDHE.</li>
+<li><code>ciphers</code> selects the encryption algorithms.</li>
+<li><code>port</code> of the server and of the client changes the TCP port.</li>
+<li><code>http-proxy</code> and <code>proxy-port</code> of the client connect through a web proxy.</li>
+</ul>
+<p>Use settings that both sides allow, for example <code>tls-version=only-1.2 pfs=yes</code> on the server and on the client.</p>
+<h2 id="allow-sstp-in-the-firewall">Allow SSTP in the firewall</h2>
+<p>The default firewall drops connections that come from the internet. Accept the port of the SSTP server before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=tcp \
+    dst-port=443 in-interface-list=WAN comment=&quot;accept SSTP&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<h2 id="bridge-ethernet-over-the-tunnel">Bridge Ethernet over the tunnel</h2>
+<p>As other PPP tunnels, SSTP can carry Ethernet frames with the Bridge Control Protocol (BCP), so that the networks on both sides are one layer 2 network. Set <code>bridge</code> in the PPP profile on both sides: see <a href="l2tp/">L2TP</a> for the steps.</p>
+<h2 id="troubleshoot_1">Troubleshoot</h2>
+<p>A RouterOS client writes the reason of a failed connection to its log. In this output the client connected to another address of the server than the one in the certificate:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /log/print where topics~&quot;sstp&quot;
+ 2026-11-20 09:11:23 sstp,ppp,info sstp-office: terminating... - ssl: name verification failed for: &quot;CN=203.0.113.1&quot; (6)
+ 2026-11-20 09:11:23 sstp,ppp,info sstp-office: disconnected
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Message</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>name verification failed</code></td>
+<td style="text-align: left;">The address or name in <code>connect-to</code> is not in the certificate of the server. Connect by the name in the certificate, or set <code>verify-server-address-from-certificate=no</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>empty certificate chain received</code> (on the server)</td>
+<td style="text-align: left;">The server asks for a client certificate and the client has none.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Certificate is not yet valid</code></td>
+<td style="text-align: left;">The start date of the certificate is in the future. Check the clock of the router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Certificate has expired</code></td>
+<td style="text-align: left;">The end date of the certificate is in the past. Check the clock of the router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Invalid certificate purpose</code></td>
+<td style="text-align: left;">The certificate cannot be used for this purpose.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Self signed certificate in a chain</code></td>
+<td style="text-align: left;">The certificate chain has no trusted root on this router.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Unable to get issuer certificate locally</code></td>
+<td style="text-align: left;">The CA certificate is not imported on this router.</td>
+</tr>
+</tbody>
+</table>
+<p>When the client stays <code>disconnected</code> without a message, check that the CA certificate on the client is trusted, that the firewall of the server accepts the port, and that the user name and the password are right.</p>
+<h2 id="read-more_3">Read more</h2>
+<ul>
+<li><a href="../cli-reference/interface/sstp-server/server"><code>/interface/sstp-server/server</code></a>, <a href="../cli-reference/interface/sstp-server/"><code>/interface/sstp-server</code></a>, <a href="../cli-reference/interface/sstp-client/"><code>/interface/sstp-client</code></a></li>
+<li><a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a></li>
+<li><a href="../authentication-authorization-accounting/certificates">Certificates</a></li>
+<li><a href="l2tp/">L2TP</a></li>
+</ul>
+<hr />
+<h1 id="wireguard">WireGuard</h1>
+<blockquote>
+<p>WireGuard is a modern VPN solution offering fast, secure encryption across platforms with detailed configuration options including private/public keys, VRF routing, and peer management for establishing encrypted...</p>
+</blockquote>
+<p>WireGuard is a simple, fast, and modern VPN that uses state-of-the-art cryptography. It aims to be faster, simpler, and leaner than IPsec, and considerably more performant than OpenVPN. WireGuard is a general-purpose VPN designed for embedded interfaces and supercomputers alike, fit for many different circumstances. Initially released for the Linux kernel, it is now cross-platform (Windows, macOS, BSD, iOS, Android) and widely deployable.</p>
+<h2 id="importing-and-exporting-wireguard">Importing and Exporting WireGuard</h2>
+<p>Configuration can be done in various ways. An example file is available for download: <a href="pathname:///assets/wireguard1.conf">wireguard1.conf</a>. Replace its example keys and endpoint before use.</p>
+<h3 id="importing-a-wireguard-configuration">Importing a WireGuard configuration</h3>
+<p><a href="../cli-reference/interface/wireguard/wg-import"><code>/interface/wireguard/wg-import</code></a> accepts configurations in the standard WireGuard format (<code>[Interface]</code> / <code>[Peer]</code> sections). A minimal working file:</p>
+<pre><code class="language-ini">[Interface]  
+Address =192.168.88.3/24  
+ListenPort = 13533  
+PrivateKey = UBLqJEFZZf9wszZSUF2BPWa9dsMX99RbEcxlNfxWffk=
+</code></pre>
+<p>Save the file to the device (for example, via the WebFig/WinBox Files menu) and import it with:</p>
+<pre><code class="language-ros">/interface/wireguard/wg-import config-file=wireguard1.conf
+</code></pre>
+<p>The same configuration can be imported directly, without a file, using the <code>config-string</code> parameter:</p>
+<pre><code class="language-ros">/interface/wireguard/wg-import config-string=&quot;
+[Interface]
+Address = 192.168.88.3/24
+ListenPort = 13533
+PrivateKey = UBLqJEFZZf9wszZSUF2BPWa9dsMX99RbEcxlNfxWffk=
+
+[Peer]
+PublicKey = EoF7HlFu3fbOnuYbyGqLMJkPZgQk9n3WwONZuJZ6qWc=
+Endpoint = 192.0.2.10:51820
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25&quot;
+</code></pre>
+<h3 id="exporting-client-configurations">Exporting client configurations</h3>
+<p>Client-side configurations (for phones, laptops and other peer devices) are generated per peer with <a href="../cli-reference/interface/wireguard/peers/show-client-config"><code>/interface/wireguard/peers/show-client-config</code></a> — either as text (<code>conf</code> output, or saved to a file with the <code>file</code> argument), or as a QR code (<code>qr</code> output) that a WireGuard client application can scan.</p>
+<p>The generated configuration is built from the peer's <code>client-*</code> properties (see <a href="../cli-reference/interface/wireguard/peers/"><code>/interface/wireguard/peers</code></a>). If the peer's <code>client-address</code> is left empty, the default address <code>192.168.177.2/24</code> is used in the generated configuration.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The "<strong>AllowedIPs</strong>" value in the generated client configuration is <code>0.0.0.0/0, ::/0</code>. Since RouterOS 7.21 it can be adjusted with the peer's <code>client-allowed-address</code> property; on older versions the value is fixed and can only be changed in the remote peer software.</p>
+</div>
+<h3 id="exporting-a-wireguard-interface">Exporting a WireGuard interface</h3>
+<p><a href="../cli-reference/interface/wireguard/wg-export"><code>/interface/wireguard/wg-export</code></a> writes the selected interface and its peers in standard WireGuard configuration format:</p>
+<pre><code class="language-ros">/interface/wireguard/wg-export [find name=wireguard1] \
+    file=wireguard1.conf
+</code></pre>
+<p>Import this file with <code>wg-import</code>. The export contains <code>[Interface]</code> and <code>[Peer]</code> sections, but does not include the interface's IP addresses or RouterOS routes and firewall rules. Configure those separately on the destination router.</p>
+<p>For a RouterOS configuration script, use the regular <code>/interface/wireguard/export</code> command instead. Treat exports and generated client configurations containing private keys as secrets.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>When you encounter issues with reply traffic having the wrong source address, translating packet source addresses to your loopback interface with NAT is a common workaround. This approach helps ensure the source address is consistent and correct when packets are routed back through the network.</p>
+</div>
+<h2 id="application-examples">Application examples</h2>
+<h3 id="site-to-site-wireguard-tunnel">Site to Site WireGuard tunnel</h3>
+<p>Consider the setup illustrated below. Two remote office routers are connected to the internet and office workstations are behind NAT. Each office has its own local subnet, 10.1.202.0/24 for Office1 and 10.1.101.0/24 for Office2. Both remote offices need secure tunnels to local networks behind routers.</p>
+<p><em>[gambar: Two office LANs connected through a WireGuard tunnel between their routers]</em></p>
+<h4 id="wireguard-interface-configuration">WireGuard interface configuration</h4>
+<p>First, configure WireGuard interfaces on both sites to allow automatic private and public key generation. The command is the same for both routers:</p>
+<pre><code class="language-ros">/interface/wireguard
+add listen-port=13231 name=wireguard1
+</code></pre>
+<p>Read the public key on each router and exchange only the public keys.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A private key is never needed on the remote side device — hence the name private.</p>
+</div>
+<p><strong>Office1</strong></p>
+<pre><code class="language-ros">:put [/interface/wireguard/get [find name=wireguard1] public-key]
+</code></pre>
+<p><strong>Office2</strong></p>
+<pre><code class="language-ros">:put [/interface/wireguard/get [find name=wireguard1] public-key]
+</code></pre>
+<h4 id="peer-configuration">Peer configuration</h4>
+<p>Peer configuration defines who can use the WireGuard interface and what kind of traffic can be sent over it. To identify the remote peer, its public key must be specified together with the created WireGuard interface. Replace <code>&lt;Office2-public-key&gt;</code> on Office1 with the key read on Office2, and <code>&lt;Office1-public-key&gt;</code> on Office2 with the key read on Office1.</p>
+<p><strong>Office1</strong></p>
+<pre><code class="language-ros">/interface/wireguard/peers
+add allowed-address=10.1.101.0/24,10.255.255.2/32 \
+    endpoint-address=192.168.80.1 endpoint-port=13231 \
+    interface=wireguard1 \
+    public-key=&quot;&lt;Office2-public-key&gt;&quot;
+</code></pre>
+<p><strong>Office2</strong></p>
+<pre><code class="language-ros">/interface/wireguard/peers
+add allowed-address=10.1.202.0/24,10.255.255.1/32 \
+    endpoint-address=192.168.90.1 endpoint-port=13231 \
+    interface=wireguard1 \
+    public-key=&quot;&lt;Office1-public-key&gt;&quot;
+</code></pre>
+<h4 id="ip-and-routing-configuration">IP and routing configuration</h4>
+<p>Lastly, IP and routing information must be configured to allow traffic to be sent over the tunnel.</p>
+<p><strong>Office1</strong></p>
+<pre><code class="language-ros">/ip/address
+add address=10.255.255.1/30 interface=wireguard1
+/ip/route
+add dst-address=10.1.101.0/24 gateway=wireguard1
+</code></pre>
+<p><strong>Office2</strong></p>
+<pre><code class="language-ros">/ip/address
+add address=10.255.255.2/30 interface=wireguard1
+/ip/route
+add dst-address=10.1.202.0/24 gateway=wireguard1
+</code></pre>
+<h4 id="firewall-considerations">Firewall considerations</h4>
+<p>The default RouterOS firewall blocks the tunnel from establishing properly. The traffic must be accepted in the <code>input</code> chain before any drop rules on both sites. These commands insert rules before the first existing rule in the corresponding chain. If a chain is empty, omit <code>place-before</code>.</p>
+<p><strong>Office1</strong></p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    dst-port=13231 protocol=udp src-address=192.168.80.1 \
+    place-before=([find chain=input]-&gt;0)
+</code></pre>
+<p><strong>Office2</strong></p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    dst-port=13231 protocol=udp src-address=192.168.90.1 \
+    place-before=([find chain=input]-&gt;0)
+</code></pre>
+<p>The "forward" chain can also restrict communication between the subnets, so such traffic should also be accepted before any drop rules.</p>
+<p><strong>Office1</strong></p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept \
+    dst-address=10.1.202.0/24 src-address=10.1.101.0/24 \
+    place-before=([find chain=forward]-&gt;0)
+add chain=forward action=accept \
+    dst-address=10.1.101.0/24 src-address=10.1.202.0/24 \
+    place-before=([find chain=forward]-&gt;0)
+</code></pre>
+<p><strong>Office2</strong></p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept \
+    dst-address=10.1.101.0/24 src-address=10.1.202.0/24 \
+    place-before=([find chain=forward]-&gt;0)
+add chain=forward action=accept \
+    dst-address=10.1.202.0/24 src-address=10.1.101.0/24 \
+    place-before=([find chain=forward]-&gt;0)
+</code></pre>
+<h2 id="roadwarrior-wireguard-tunnel">RoadWarrior WireGuard tunnel</h2>
+<h3 id="routeros-configuration">RouterOS configuration</h3>
+<p>Add a new WireGuard interface and assign an IP address to it.</p>
+<pre><code class="language-ros">/interface/wireguard
+add listen-port=13231 name=wireguard1
+/ip/address
+add address=192.168.100.1/24 interface=wireguard1
+</code></pre>
+<p>Adding a new WireGuard interface automatically generates a pair of private and public keys. Configure the public key on your remote devices. To obtain the public key value, run:</p>
+<pre><code class="language-ros">:put [/interface/wireguard/get [find name=wireguard1] public-key]
+</code></pre>
+<p>For the next steps, obtain the public key of the remote device. Once you have it, add a new peer by specifying the public key of the remote device and allowed addresses that will be allowed over the WireGuard tunnel.</p>
+<pre><code class="language-ros">/interface/wireguard/peers
+add allowed-address=192.168.100.2/32 interface=wireguard1 \
+    public-key=&quot;&lt;paste public key from remote device here&gt;&quot;
+</code></pre>
+<h3 id="firewall-considerations_1">Firewall considerations</h3>
+<p>If you have a default or strict firewall configured, you need to allow a remote device to establish the WireGuard connection to your device.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    comment=&quot;allow WireGuard&quot; dst-port=13231 protocol=udp \
+    place-before=([find chain=input]-&gt;0)
+</code></pre>
+<p>To allow remote devices to connect to the RouterOS services (e.g. request DNS), allow the WireGuard subnet in the input chain.</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    comment=&quot;allow WireGuard traffic&quot; in-interface=wireguard1 \
+    src-address=192.168.100.0/24 \
+    place-before=([find chain=input]-&gt;0)
+</code></pre>
+<p>Alternatively, add the WireGuard interface to the <code>LAN</code> interface list. This gives VPN peers the access granted to your LAN by rules that match this list; use separate firewall rules when VPN peers should have less access.</p>
+<pre><code class="language-ros">/interface/list/member
+add interface=wireguard1 list=LAN
+</code></pre>
+<h3 id="ios-configuration">iOS configuration</h3>
+<p>Download the WireGuard application from the App Store. Open it up and create a new configuration from scratch.</p>
+<p><em>[gambar: WireGuard on iOS with the Create from scratch option selected]</em></p>
+<p>First, give your connection a <code>Name</code> and choose <code>Generate a keypair</code>. The generated <code>Public key</code> is necessary for the peer configuration on the RouterOS side.</p>
+<p><em>[gambar: New iOS WireGuard configuration with keypair, address and DNS fields]</em></p>
+<p>Specify an IP address in the <code>Addresses</code> field that is in the same subnet as configured on the RouterOS side. This address is used for communication. For this example, the RouterOS side uses <code>192.168.100.1/24</code>. You can use <code>192.168.100.2/24</code> here.</p>
+<p>If necessary, configure the <code>DNS servers</code>. If <code>allow-remote-requests</code> is set to <code>yes</code> under <code>/ip/dns</code> on the RouterOS side, you can specify the remote WireGuard IP address here.</p>
+<p><em>[gambar: iOS WireGuard address 192.168.100.2 and DNS server 192.168.100.1]</em></p>
+<p>Select <code>Add peer</code> to reveal more parameters.</p>
+<p>The <code>Public key</code> value is the public key value that is generated on the WireGuard interface on the RouterOS side.</p>
+<p><code>Endpoint</code> is the IP or DNS with a port number of the RouterOS device that the iOS device can communicate with over the Internet.</p>
+<p><code>Allowed IPs</code> are set to <code>0.0.0.0/0</code> to allow all traffic to be sent over the WireGuard tunnel.</p>
+<p><em>[gambar: iOS peer settings with the router endpoint and Allowed IPs set to 0.0.0.0/0]</em></p>
+<p>If the RouterOS device is behind another NAT router, configure port forwarding on that upstream router to forward the WireGuard UDP port to the RouterOS device. If the upstream router is running RouterOS:</p>
+<pre><code class="language-ros">/ip/firewall/nat
+add chain=dstnat action=dst-nat \
+    protocol=udp dst-port=13231 in-interface=WAN \
+    to-addresses=192.168.1.2 to-ports=13231
+</code></pre>
+<p>Replace <code>WAN</code>, <code>192.168.1.2</code> and <code>13231</code> with the appropriate upstream interface name, the RouterOS device's IP address on the upstream network, and the WireGuard listen port.</p>
+<h3 id="windows-configuration">Windows configuration</h3>
+<p>Download the WireGuard installer from <a href="https://www.wireguard.com/install/">WireGuard</a> and run it as Administrator.</p>
+<p>Press <kbd>Control</kbd>+<kbd>N</kbd> to add a new empty tunnel. Add a name for the interface — the public key should be auto-generated. Copy it to the RouterOS peer configuration.<br />
+Add it to the server configuration. The full configuration should look like this (keep your auto-generated <code>PrivateKey</code> in the <code>[Interface]</code> section):</p>
+<pre><code class="language-ini">[Interface]
+PrivateKey = your_autogenerated_private_key=
+Address = 192.168.100.2/24
+DNS = 192.168.100.1
+
+[Peer]
+PublicKey = your_MikroTik_public_KEY=
+AllowedIPs = 0.0.0.0/0
+Endpoint = example.com:13231
+</code></pre>
+<p>Save the configuration and select <code>Activate</code>.</p>
+<h2 id="the-vrf-parameter-in-the-wireguard-context">The vrf parameter in the WireGuard context</h2>
+<p>The <code>vrf</code> parameter does <strong>not</strong> apply to the WireGuard interface itself (e.g., <code>wg0</code>, <code>wg1</code>), but rather to the <strong>UDP socket</strong> used for transporting encrypted packets.</p>
+<p>There are two distinct layers in WireGuard operation:</p>
+<ol>
+<li><strong>WireGuard interface</strong> — a virtual network device that handles plain (unencrypted) IP packets. Outgoing packets entering the interface are encrypted by WireGuard and sent through a UDP socket; incoming encrypted UDP packets are decrypted by WireGuard and delivered as plain IP packets through the interface.</li>
+<li><strong>UDP socket</strong> — handles encrypted WireGuard traffic, receiving encrypted packets from the network and sending encrypted packets to the network.</li>
+</ol>
+<p>The <code>vrf</code> parameter is relevant to <strong>the UDP socket layer</strong> (case 2). It specifies <strong>which routing table (VRF)</strong> the socket should use to determine how encrypted packets are sent or received.<br />
+This ensures that encrypted traffic follows the correct routing path and uses the proper source IP, preventing issues where packets might otherwise go out through the wrong interface or route.  </p>
+<h3 id="example">Example</h3>
+<blockquote>
+<p>Suppose interface <code>eth1</code> belongs to VRF <code>foo</code>.<br />
+If you want WireGuard to send and receive encrypted packets through <code>eth1</code>, configure WireGuard with <code>vrf=foo</code>.<br />
+It is normal for the WireGuard interface (<code>wg0</code>) itself to be in a different VRF than the one specified by the <code>vrf</code> parameter used by the internal UDP socket.</p>
+</blockquote>
+<h2 id="multi-wan-setup">Multi-WAN setup</h2>
+<p>For WireGuard there is no inherent server-client relationship. Both ends can serve as an endpoint and both ends stream UDP handshake messages to each other if they have endpoints defined in their configurations. You can enable the "responder" option in the peer settings to emulate server-client behavior, where the "server" peer only replies to handshake messages from "client" peers and does not stream handshake messages by itself.<br />
+Because of this tunnel establishment behavior, handshake messages from different endpoints of the WireGuard tunnel are treated as two separate connections.<br />
+You need to account for this in setups with multiple paths to the "client" peer, as this can cause the "server" to reply to the "client" through a different route instead of the incoming route.<br />
+Below is a configuration example that addresses this behavior and ensures the "server" uses the incoming route to reply to the "client".</p>
+<h3 id="configuration-example">Configuration example</h3>
+<p>This example does not include WireGuard interface configuration as it is applicable to both <a href="./wireguard#roadwarrior-wireguard-tunnel">RoadWarrior</a> and <a href="./wireguard#site-to-site-wireguard-tunnel">Site to Site</a> setups with two WAN connections such as <a href="../high-availability-solutions/load-balancing/per-connection-classifier">PCC</a> setup.
+The <code>wan2</code> and <code>wan3</code> routing tables must already exist, each with a route to the peer through its corresponding WAN. Replace the interface and table names to match your configuration. The output rules match the local WireGuard source port, because a remote peer can use a different port.</p>
+<p>For these rules to work as intended, you need to enable the "responder" option in WireGuard peer settings, as the "server" could send handshakes via the incorrect interface because routing was not marked.</p>
+<pre><code class="language-ros">/ip/firewall/mangle
+add chain=prerouting action=add-src-to-address-list \
+    address-list=WAN2_WireGuard_clients address-list-timeout=1m \
+    dst-port=13231 in-interface=ether2 protocol=udp \
+    comment=&quot;Track WireGuard peers on WAN2&quot;
+add chain=output action=mark-connection \
+    dst-address-list=WAN2_WireGuard_clients src-port=13231 \
+    new-connection-mark=wan2 protocol=udp \
+    comment=&quot;Mark WireGuard replies&quot;
+add chain=output action=mark-routing \
+    connection-mark=wan2 src-port=13231 new-routing-mark=wan2 \
+    protocol=udp \
+    comment=&quot;Route WireGuard replies through WAN2&quot;
+add chain=prerouting action=add-src-to-address-list \
+    address-list=WAN3_WireGuard_clients address-list-timeout=1m \
+    dst-port=13231 in-interface=ether3 protocol=udp \
+    comment=&quot;Track WireGuard peers on WAN3&quot;
+add chain=output action=mark-connection \
+    dst-address-list=WAN3_WireGuard_clients src-port=13231 \
+    new-connection-mark=wan3 protocol=udp \
+    comment=&quot;Mark WireGuard replies&quot;
+add chain=output action=mark-routing \
+    connection-mark=wan3 src-port=13231 new-routing-mark=wan3 \
+    protocol=udp \
+    comment=&quot;Route WireGuard replies through WAN3&quot;
+
+/ip/firewall/nat
+add chain=srcnat action=masquerade \
+    protocol=udp src-port=13231 out-interface=ether2 \
+    comment=&quot;Use the WAN2 source address&quot;
+add chain=srcnat action=masquerade \
+    protocol=udp src-port=13231 out-interface=ether3 \
+    comment=&quot;Use the WAN3 source address&quot;
+</code></pre>
+<p>The first mangle rule catches the source IP address by matching the destination port of the incoming WireGuard handshake and adds it to the list, which is later used to mark the outgoing WireGuard handshake. The timeout ensures that the same source IP address can later establish a WireGuard tunnel through a different WAN interface.<br />
+The second mangle rule marks connections that are used for routing marks and ensures the mark stays on the connection after the IP address is gone from the address list and the tunnel is established.<br />
+The third mangle rule forces the packet to use the correct routing table for the second WAN interface.<br />
+The last NAT rule ensures the packet is sent out with the correct source IP, as it is not adjusted by the mangle rules. Without this rule, the packet could have a different source IP depending on the setup.
+The rules are duplicated for WAN3 to ensure the WAN3 interface is also usable with WireGuard.  </p>
+<p>This rule set ensures the WireGuard tunnel is established on the interface that received the incoming handshake.</p>
+<h2 id="2fa-setup">2FA setup</h2>
+<p><a href="../authentication-authorization-accounting/hotspot-captive-portal/">HotSpot</a> services can be bound to WireGuard interfaces in RouterOS v7. This allows administrators to combine WireGuard's high-performance encryption with the HotSpot's captive portal features, supporting additional user-level authentication through a local database, User Manager, or RADIUS. The OTP feature strengthens security further.</p>
+<h3 id="configuration-example_1">Configuration example</h3>
+<p>Make sure the WireGuard interface <code>wg1</code> is configured on your device.</p>
+<p>Set up HotSpot on the WireGuard interface:</p>
+<pre><code class="language-ros">/ip/hotspot/setup
+</code></pre>
+<p>Select <code>wg1</code> when prompted for the HotSpot interface. To create the server without the interactive setup, configure a HotSpot profile and use:</p>
+<pre><code class="language-ros">/ip/hotspot/add interface=wg1
+</code></pre>
+<p>After HotSpot setup, once a WireGuard peer is connected, an additional login to the portal is required to proceed. Regular HotSpot username/password authorization can be used. For better security, configure <code>otp-secret</code> in <code>/ip/hotspot/user</code> or <code>/user-manager/user</code>. Generate a unique Base32 secret for each user and add it to the authenticator app. Replace the example secret before use:</p>
+<pre><code class="language-ros">/ip/hotspot/user/add name=peer1 \
+    otp-secret=HVR4CFHAFOWFGGFAGSA5JVTIMMPG6GMT
+</code></pre>
+<p>You can find multiple open-source totp generator tools that can provide you with an appropriate key and necessary options to import it into your "authenticator" app.</p>
+<p>After setup is complete, launch WireGuard on your device. Open the HotSpot login page through the tunnel and enter the HotSpot username and the six-digit time-based one-time password (TOTP) from the authenticator app. WireGuard authenticates the peer key; the HotSpot login authorizes user traffic separately.</p>
+<p>You should use an HTTPS login page for HotSpot and make sure the WireGuard peer can verify the login page certificate.</p>
+<hr />
+<h1 id="zerotier">ZeroTier</h1>
+<blockquote>
+<p>ZeroTier is a network virtualization engine for MikroTik RouterOS that enables secure, cross-network device connectivity via Ethernet virtualization and cryptographic peer-to-peer networks. It supports gaming, LAN...</p>
+</blockquote>
+<h1 id="zerotier_1">ZeroTier</h1>
+<p>The <a href="https://docs.zerotier.com/">ZeroTier</a> network hypervisor is a self-contained network virtualization engine that implements an Ethernet virtualization layer similar to VXLAN built atop a cryptographically secure global peer-to-peer network. It provides advanced network virtualization and management capabilities on par with an enterprise SDN switch, but across both local and wide area networks and connecting almost any kind of app or device.</p>
+<p>MikroTik has added ZeroTier to RouterOS v7.1rc2 as a separate package for the <strong>ARM/ARM64</strong> architecture.</p>
+<h3 id="use-cases">Use cases</h3>
+<ul>
+<li>Hosting a game server at home (suited for LAN-only games) or creating a LAN party with friends.</li>
+<li>Accessing LAN devices behind NAT directly.</li>
+<li>Accessing LAN devices with SSH without opening a port to the Internet.</li>
+<li>Using your local Pi-Hole setup from anywhere over the Internet.</li>
+</ul>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>ZeroTier functionality can be blocked by <code>device-mode</code>. Before configuring ZeroTier, make sure it is enabled in <code>system/device-mode</code>. (<a href="../system-information-and-utilities/device-mode.md">more info</a>)</p>
+</div>
+<h3 id="video-tutorial">Video tutorial</h3>
+<ul>
+<li><a href="https://youtu.be/60uIlyF8Z5s">ZeroTier</a></li>
+</ul>
+<h2 id="required-network-configuration">Required Network Configuration</h2>
+<h3 id="what-ports-does-zerotier-use">What ports does ZeroTier use?</h3>
+<p>It listens on 3 UDP ports:</p>
+<ul>
+<li>9993 - The default</li>
+<li>A random, high-numbered port derived from your ZeroTier address</li>
+<li>A random, high-numbered port for use with UPnP/NAT-PMP mappings</li>
+</ul>
+<p>That means your <em>peers</em> could be listening on any port. To talk with them directly, you need to be able to send to them on any port.</p>
+<h3 id="recommended-local-network-and-internet-gateway-configuration">Recommended Local Network and Internet Gateway Configuration</h3>
+<p>These ZeroTier recommended guidelines are consistent with the vast majority of typical deployments with commodity gateways and access points:</p>
+<ul>
+<li>Don't restrict outbound UDP traffic.</li>
+<li>Supporting either UPnP or NAT-PMP on your network can greatly improve performance by allowing ZeroTier endpoints to map external ports and avoid NAT traversal entirely.</li>
+<li>IPv6 is recommended and can greatly improve direct connection reliability if supported on both ends of a direct link. If present, implement it without NAT (NAT is unnecessary with IPv6 and adds complexity) and with a stateful firewall that permits bidirectional UDP conversations.</li>
+<li>Do not use "symmetric" NAT. Use "full cone" or "port restricted cone" NAT. Symmetric NAT is extremely hostile to peer-to-peer traffic and degrades VoIP, video chat, games, WebRTC, and many other protocols as well as ZeroTier.</li>
+<li>No more than one layer of NAT should be present between ZeroTier endpoints and the Internet. Multiple layers introduce connection instability from chaotic interactions between states and behaviors at different levels. Do not use double NAT.</li>
+<li>NAT devices should have a port mapping or connection timeout no shorter than 60 seconds.</li>
+<li>Place no more than 16,000 devices behind each NAT-managed external IP address to ensure each device can map a sufficient number of ports.</li>
+<li>Switches and wireless access points should allow direct local traffic between local devices. Turn off any "local isolation" features. If switches allow finer-grained control, allow local UDP traffic to/from port 9993.</li>
+</ul>
+<h2 id="configuration-example_2">Configuration example</h2>
+<p>ZeroTier is designed to be zero-configuration — you can start a new node without writing configuration files or providing the IP addresses of other nodes. Any two devices in the world can locate each other and communicate almost instantly. The following example enables ZeroTier on a RouterOS device and connects one mobile phone with the ZeroTier application.</p>
+<ol>
+<li>
+<p>Register on <a href="https://my.zerotier.com/">my.zerotier.com</a> and <strong>Create A Network</strong>, obtain the <em>Network ID</em>, in this example: <em>1d71939404912b40</em>.  </p>
+</li>
+<li>
+<p><a href="https://mikrotik.com/download">Download</a> and install the ZeroTier NPK package. You can find it under "Extra packages". Upload the package to the device and reboot.</p>
+</li>
+<li>Enable the default (official) ZeroTier instance:</li>
+</ol>
+<p><code>ros
+   [admin@MikroTik] &gt; /zerotier/enable zt1</code></p>
+<ol start="4">
+<li>Add a new network, specifying the network ID you created in the ZeroTier cloud console:</li>
+</ol>
+<p><code>ros
+   [admin@mikrotik] /zerotier/interface/add network=1d71939404912b40 instance=zt1</code></p>
+<ol start="5">
+<li>Verify ZeroTier configuration:</li>
+</ol>
+<p><code>ros
+   [admin@MikroTik] &gt; /zerotier/interface/print
+   Flags: R - RUNNING
+   Columns: NAME, MAC-ADDRESS, NETWORK, NETWORK-NAME, STATUS
+   #   NAME       MAC-ADDRESS        NETWORK           NETWORK-NAME     STATUS
+   0 R zerotier1  42:AC:0D:0F:C6:F6  1d71939404912b40  modest_metcalfe  OK</code></p>
+<ol start="6">
+<li>You may need to allow connections from the ZeroTier interface to your router, and optionally, to your other LAN interfaces:</li>
+</ol>
+<p><code>ros
+   /ip/firewall/filter/add action=accept chain=forward in-interface=zerotier1 place-before=0
+   /ip/firewall/filter/add action=accept chain=input in-interface=zerotier1 place-before=0</code></p>
+<ol start="7">
+<li>Install a ZeroTier client on your smartphone or computer. Follow the ZeroTier manual to connect to the same network.</li>
+<li>
+<p>If <strong>"Access Control"</strong> is set to <strong>"Private"</strong>, you must authorize nodes before they become members:  </p>
+</li>
+<li>
+<p><code>``ros
+   [admin@MikroTik] &gt;</code>/ip/address/print` where interface~"zero"
+   Flags: D - DYNAMIC
+   Columns: ADDRESS, NETWORK, INTERFACE
+   #   ADDRESS             NETWORK        INTERFACE
+   3 D 192.168.192.105/24  192.168.192.0  zerotier1</p>
+</li>
+</ol>
+<p>[admin@MikroTik] &gt; ping 192.168.192.252 count=3
+   SEQ HOST                                     SIZE TTL TIME       STATUS                                                                                                                                         <br />
+   0 192.168.192.252                            56  64 407us   <br />
+   1 192.168.192.252                            56  64 452us   <br />
+   2 192.168.192.252                            56  64 451us   <br />
+   sent=3 received=3 packet-loss=0% min-rtt=407us avg-rtt=436us max-rtt=452us 
+   ```</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>You should specify routes to specific internal subnets in the <a href="https://my.zerotier.com/">ZeroTier cloud console</a> to ensure you can access those networks when connecting from other devices.</p>
+</div>
+<h1 id="controller">Controller</h1>
+<p>RouterOS implements ZeroTier functionality in the role of a node where most of the network configuration must be done on the ZeroTier webpage dashboard. However, in situations where you would prefer to do all the configuration on your own device, RouterOS offers to host your own controller.</p>
+<p>A common misunderstanding is to conflate network controllers with root servers (planet and moons). Root servers are connection facilitators that operate at the <strong><a href="https://docs.zerotier.com/zerotier/manual/#2networkhypervisoroverviewaname2a">VL1 level</a></strong>. Network controllers are configuration managers and certificate authorities that belong to the <strong><a href="https://docs.zerotier.com/zerotier/manual/#22vl2theethernetvirtualizationlayeraname2_2a">VL2 level</a>.</strong> Generally, root servers don’t join or control virtual networks and network controllers are not root servers, though it is possible to have a node do both.</p>
+<p>Every ZeroTier instance has a self-hosting network controller that can be used to host virtual networks. A controller is responsible for admitting members to the network and issuing default configuration information including certificates. Controllers can in theory host up to 2^24 networks and serve many millions of devices, but you should spread large numbers of networks across many controllers for load balancing and fault tolerance.</p>
+<p>Controller is configured in <a href="../cli-reference/zerotier/controller/controller.md"><code>/zerotier/controller</code></a> menu.</p>
+<h2 id="configuration-example_3">Configuration example</h2>
+<p>This example uses the RouterOS built-in ZeroTier controller to send the new network hosts appropriate certificates, credentials, and configuration information. The controller operates from the "RouterOS Home" device and joins 3 units to the network: a mobile phone, a laptop, and a RouterOS Office device. You can join up to 100 devices in one network.</p>
+<h3 id="routeros-home">RouterOS Home</h3>
+<p>First, enable the default instance which operates at the <strong>VL1</strong> level:</p>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; print
+Columns: NAME, PORT, IDENTITY.PUBLIC
+# NAME  PORT  IDENTITY.PUBLIC
+;;; ZeroTier Central controller - https://my.zerotier.com/
+0 zt1   9993  879c0b5265:0:d5fd2d17805e011d9b93ce8779385e427c8f405e520eea9284809d8444de0335a817xxb21aa4ba153bfbc229ca34d94e08de96d925a4aaa19b252da546693a28
+</code></pre>
+<p>Now, create a new network through the controller section which operates at the <strong>VL2</strong> level. Each network has its own controller and each network ID is generated from the controller address and controller ID combination.</p>
+<p>Use the <strong><em>private=yes</em></strong> option for a more secure network:</p>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; controller/add name=ZT-private instance=zt1 ip-range=172.27.27.10-172.27.27.20 private=yes routes=172.27.27.0/24
+[admin@Home] /zerotier&gt; controller/print
+Columns: INSTANCE, NAME, NETWORK, PRIVATE
+# INSTANCE  NAME        NETWORK           PRIVATE
+0 zt1       ZT-private  879c0b5265a99e4b  yes
+</code></pre>
+<p>Add the new network under the interface section:</p>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; interface/add network=879c0b5265a99e4b name=myZeroTier instance=zt1 
+[admin@Home] /zerotier&gt; interface/print interval=1
+Columns: NAME, MAC-ADDRESS, NETWORK, STATUS
+# NAME        MAC-ADDRESS        NETWORK           STATUS
+0 myZeroTier  4A:19:35:6E:00:6E  879c0b5265a99e4b  ACCESS_DENIED
+</code></pre>
+<p>Each new peer asks the controller to join the network. In this case, the status is <em>ACCESS_DENIED</em> and the peer must be authorized, because the <strong>private=yes</strong> option was used.</p>
+<p>After authorization, each member in the network receives information from the controller about new peers and approval to exchange packets with them:</p>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; controller/member/print
+Columns: NETWORK, ZT-ADDRESS
+# NETWORK     ZT-ADDRESS
+0  ZT-private  879a0b5265
+[admin@Home] /zerotier&gt; controller/member/set 0 authorized=yes
+</code></pre>
+<h2 id="verify-newly-configured-ip-address-and-route">Verify newly configured IP address and route</h2>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; `/ip/address/print` where interface~&quot;Zero&quot;
+Flags: D - DYNAMIC
+Columns: ADDRESS, NETWORK, INTERFACE
+# ADDRESS          NETWORK      INTERFACE
+4 D 172.27.27.15/24  172.27.27.0  myZeroTier
+
+[admin@Home] /zerotier&gt; `/ip/route/pr` where gateway~&quot;Zero&quot;
+Flags: D - DYNAMIC; A - ACTIVE; c, y - COPY
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS     GATEWAY     DISTANCE
+DAc 172.27.27.0/24  myZeroTier         0
+</code></pre>
+<h3 id="routeros-office">RouterOS Office</h3>
+<p>Configuration on the Office device. Enable the default instance and ask the controller to join the <em>879c0b5265a99e4b</em> network:</p>
+<pre><code class="language-ros">[admin@office] /zerotier&gt; interface/add network=879c0b5265a99e4b instance=zt1 name=ZT-interface 
+[admin@office] /zerotier&gt; interface/print interval=1
+Columns: NAME, MAC-ADDRESS, NETWORK, STATUS
+# NAME          MAC-ADDRESS        NETWORK           STATUS
+0 ZT-interface  4A:40:1C:38:97:BA  879c0b5265a99e4b  ACCESS_DENIED
+</code></pre>
+<p>As before, because the network is private, the new peer must be authorized on the "RouterOS Home" device. After that, verify the IP address and route received from the controller:</p>
+<pre><code class="language-ros">[admin@Home] /zerotier&gt; controller/member/print
+Flags: A - AUTHORIZED
+Columns: NETWORK, ZT-ADDRESS, IP-ADDRESS, LAST-SEEN
+# NETWORK     ZT-ADDRESS  IP-ADDRESS    LAST-SEEN
+0 A  ZT-private  879a0b5265  172.27.27.15           
+1 A  ZT-private  554a914c7f  172.27.27.17           
+2 A  ZT-private  a83ac6032a  172.27.27.10           
+3    ZT-private  deba5dc5b1  172.27.27.13  3s348ms  
+[admin@Home] /zerotier&gt; controller/member/set 3 authorized=yes
+[admin@Home] /zerotier&gt; controller/member/print               
+Flags: A - AUTHORIZED
+Columns: NETWORK, ZT-ADDRESS, IP-ADDRESS, LAST-SEEN
+# NETWORK     ZT-ADDRESS  IP-ADDRESS    LAST-SEEN
+0 A  ZT-private  879a0b5265  172.27.27.15           
+1 A  ZT-private  554a914c7f  172.27.27.17           
+2 A  ZT-private  a83ac6032a  172.27.27.10           
+3 A  ZT-private  deba5dc5b1  172.27.27.13  4s55ms 
+</code></pre>
+<p>Verify the IP address and route obtained through ZeroTier:</p>
+<pre><code class="language-ros">[admin@office] /zerotier&gt; `/ip/address/print` where interface~&quot;ZT&quot;
+Flags: D - DYNAMIC
+Columns: ADDRESS, NETWORK, INTERFACE
+# ADDRESS          NETWORK      INTERFACE
+0 D 172.27.27.13/24  172.27.27.0  ZT-interface
+
+[admin@office] /zerotier&gt; `/ip/route/print` where gateway~&quot;ZT&quot;
+Flags: D - DYNAMIC; A - ACTIVE; c, y - COPY
+Columns: DST-ADDRESS, GATEWAY, DISTANCE
+    DST-ADDRESS     GATEWAY       DISTANCE
+DAc 172.27.27.0/24  ZT-interface         0
+</code></pre>
+<h3 id="other-devices">Other devices</h3>
+<p><a href="https://www.zerotier.com/download/">Download the ZeroTier app</a> for your mobile phone or computer and join your newly created network:</p>
+<ol>
+<li>From the laptop ZeroTier application, join the <em>879c0b5265a99e4b</em> network.</li>
+<li>Use the ZeroTier mobile app to join the <em>879c0b5265a99e4b</em> network.</li>
+</ol>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>All other new hosts must also be authorized in the <code>/zerotier/controller/member/</code> section.</p>
+</div>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

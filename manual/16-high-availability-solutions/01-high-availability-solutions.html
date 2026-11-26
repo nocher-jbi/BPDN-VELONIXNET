@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>High Availability Solutions · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">High Availability Solutions</p>
+      <h1 id="high-availability-solutions">High Availability Solutions</h1>
+<h1 id="high-availability-solutions_1">High Availability Solutions</h1>
+<blockquote>
+<p>High availability in RouterOS: bonding, multi-chassis link aggregation (MLAG), VRRP, WAN failover and load balancing over several internet links, and which one to use for what.</p>
+</blockquote>
+<h1 id="high-availability-solutions_2">High Availability Solutions</h1>
+<p>This section is about keeping the network working when a link or a device fails, and about using several links at the same time.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">You want to</th>
+<th style="text-align: left;">See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Join several links between two devices into one</td>
+<td style="text-align: left;"><a href="bonding">Bonding</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Connect a device to two switches with one LACP bond</td>
+<td style="text-align: left;"><a href="multi-chassis-link-aggregation-group">Multi-chassis Link Aggregation Group</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Keep the gateway address of a network alive when a router fails</td>
+<td style="text-align: left;"><a href="vrrp">VRRP</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Use a second internet link when the first one fails</td>
+<td style="text-align: left;"><a href="load-balancing/failover-wan-backup">Failover (WAN Backup)</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Use two internet links at the same time</td>
+<td style="text-align: left;"><a href="load-balancing/per-connection-classifier">Per connection classifier</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="bonding">Bonding</h1>
+<blockquote>
+<p>Bonding in RouterOS: join several Ethernet-like interfaces into one link for more capacity and failover, monitor the links with MII or ARP, choose a mode (LACP, balance-xor, balance-rr, active-backup and others) and...</p>
+</blockquote>
+<h1 id="bonding_1">Bonding</h1>
+<p>Bonding joins several Ethernet-like interfaces into one virtual interface. The traffic is spread over the links, and when a link fails the others carry it.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A bonding interface does not have a larger link speed. It balances traffic over its links, so one connection is not faster than one link in most modes. See <a href="../bridging-and-switching/user-guides/layer2-misconfiguration">LAG interfaces and load balancing</a>.</p>
+</div>
+<h2 id="join-two-links-between-two-routers">Join two links between two routers</h2>
+<p>The interfaces of a bond must not have IP addresses of their own. Add a bonding interface with the two interfaces as <code>slaves</code>, and an address on it. On Router1:</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 slaves=ether1,ether2
+/ip/address/add address=172.16.0.1/24 interface=bond1
+</code></pre>
+<p>On Router2:</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 slaves=ether1,ether2
+/ip/address/add address=172.16.0.2/24 interface=bond1
+</code></pre>
+<p>The bond needs a few seconds before it passes traffic. Then test it with <code>/ping 172.16.0.2</code> on Router1. <code>/interface/bonding/monitor bond1</code> shows the mode and the links in <code>active-ports</code> and <code>inactive-ports</code>.</p>
+<p>Without <code>mode</code>, the bond uses <code>balance-rr</code>. To connect to a switch with LACP, use <code>mode=802.3ad</code>.</p>
+<h2 id="monitor-the-links">Monitor the links</h2>
+<p>The bond must know when a link fails, or it keeps sending packets to the failed link and they are lost. There are two checks, and a bond uses one of them (<code>link-monitoring=none</code> turns both off).</p>
+<h3 id="mii-monitoring">MII monitoring</h3>
+<p><code>link-monitoring=mii</code> is the default. It looks at the state of the local interface: when the interface has no link, the bond stops using it (<code>mii-interval</code>, 100 ms by default).</p>
+<p>If the driver of an interface does not report the link state, the link always looks up. A failure that MII monitoring sees is found almost at once, sooner than with ARP monitoring.</p>
+<p>MII monitoring cannot see whether the link really passes traffic. If the link stays up while the path is broken, for example through a media converter, a switch or a tunnel, MII monitoring does not notice the failure.</p>
+<h3 id="arp-monitoring">ARP monitoring</h3>
+<p><code>link-monitoring=arp</code> sends ARP requests to one or more addresses through each link, and uses the answers as the sign that the link works. It sees failures that MII monitoring does not. On Router1:</p>
+<pre><code class="language-ros">/interface/bonding/set [find name=bond1] link-monitoring=arp \
+    arp-ip-targets=172.16.0.2
+</code></pre>
+<p>On Router2:</p>
+<pre><code class="language-ros">/interface/bonding/set [find name=bond1] link-monitoring=arp \
+    arp-ip-targets=172.16.0.1
+</code></pre>
+<p>When a link fails, a few packets can be lost until the check notices it. The failed link is then in <code>inactive-ports</code> of <code>/interface/bonding/monitor bond1</code>.</p>
+<ul>
+<li><code>arp-interval</code> is 100 ms by default.</li>
+<li>Give several addresses in <code>arp-ip-targets</code> where you can. With one target, a failure of the target looks like a failure of all links.</li>
+<li>The answers are not checked: any packet that arrives on the interface marks it as active.</li>
+<li>With <code>balance-rr</code> or <code>balance-xor</code> through a switch, the switch must spread the packets evenly over the links. If all ARP answers arrive on one link, the other links look failed.</li>
+<li>ARP monitoring works without an IP address on the device.</li>
+<li>The ARP requests of the bond have no VLAN tag, also when the address of the target network is on a VLAN interface.</li>
+</ul>
+<h2 id="bonding-modes">Bonding modes</h2>
+<h3 id="8023ad">802.3ad</h3>
+<p>IEEE 802.3ad is the standard for link aggregation, also known as LACP (Link Aggregation Control Protocol). The two devices agree on the links of the group automatically, so the switch needs little configuration. The standard requires that frames arrive in order, so connections do not get packets out of order. All links of the group must have the same speed and duplex.</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 slaves=ether1,ether2 mode=802.3ad
+</code></pre>
+<p>The device at the other end, usually a switch, must run LACP on the same links. Check the bond with <code>monitor</code>: when LACP works, all ports are in <code>active-ports</code> and <code>lacp-partner-system-id</code> shows the other device. If the other end does not run LACP, there is no <code>lacp-partner-system-id</code>, only one port is active, and the link can lose traffic.</p>
+<ul>
+<li>LACP balances the outgoing traffic over the active ports by a hash of the packet headers, and accepts incoming traffic on any active port. <code>transmit-hash-policy</code> selects the fields of the hash: the Ethernet addresses, the VLAN tag, and with the layer 3 policies the IP addresses.</li>
+<li>Do not use ARP monitoring with LACP: the other device can send all ARP answers through one port because of its own hash.</li>
+<li><code>lacp-rate=1sec</code> makes the devices exchange LACP packets every second in place of every 30 seconds.</li>
+<li>The <code>layer-3-and-4</code> hash policy is not fully compatible with LACP: see the <a href="https://www.kernel.org/doc/Documentation/networking/bonding.txt">Linux bonding documentation</a>.</li>
+</ul>
+<h3 id="balance-xor">balance-xor</h3>
+<p>This mode balances the outgoing traffic over the active ports by a hash of the packet headers and accepts incoming traffic on any active port. It is like LACP without the protocol. Use it with a static link aggregation group (LAG) on the switch.</p>
+<h3 id="balance-rr">balance-rr</h3>
+<p>Packets are sent in turn through each link, from the first to the last. This is the only mode that sends the packets of one connection through several links. With several links on both sides, packets often arrive out of order, and TCP then sends segments again. For other protocols such as UDP this is not a problem if the application accepts packets out of order. This mode can join several wireless links, but the links need equal bandwidth: with one slower link, the bond has the bandwidth of the slowest link on each of its links. If a switch connects the links, its ports need a matching configuration, and many switches do not support this mode.</p>
+<h3 id="active-backup">active-backup</h3>
+<p>Only one link sends and receives. Another link takes over when the active one fails. <code>primary</code> selects the link to use when it works:</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 slaves=ether1,ether2 \
+    mode=active-backup primary=ether1
+</code></pre>
+<p>The MAC address of the bond is seen on the active port only, so switches are not confused. This mode is the best choice for high availability with several switches that are connected to each other.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>ARP monitoring does not work correctly in this mode when the two routers are connected directly. Use MII monitoring, or put a switch between the routers.</p>
+</div>
+<h3 id="broadcast">broadcast</h3>
+<p>All links send the same data. This gives fault tolerance but no balancing.</p>
+<h3 id="balance-tlb">balance-tlb</h3>
+<p>This mode balances the outgoing traffic for each peer. The links can have different speeds and duplex settings, and the switch needs no configuration. Only MII monitoring works in this mode (ARP monitoring is ignored), and incoming traffic is not balanced: it uses the <code>primary</code> link.</p>
+<p>In this example <code>ether1</code> can carry 10 Mbps and <code>ether2</code> 5 Mbps. The first link has more capacity, so it is the primary one:</p>
+<pre><code class="language-ros">/interface/bonding/add mode=balance-tlb slaves=ether1,ether2 \
+    primary=ether1
+</code></pre>
+<p><em>[gambar: A router connected to a switch with two links, with balance-tlb: outgoing traffic uses both links, incoming traffic uses the primary link]</em></p>
+<p>The router can send to the clients behind the switch with the capacity of both links together (15 Mbps). The clients can send to the router with the capacity of the primary link (10 Mbps).</p>
+<h3 id="balance-alb">balance-alb</h3>
+<p>This mode is like <code>balance-tlb</code>, and it also balances incoming IPv4 traffic. It does this with ARP: the bond changes the source MAC address in the ARP messages that the router sends, so that different peers use the MAC addresses of different links. Only MII monitoring works (ARP monitoring is ignored). The drivers of the interfaces must be able to change the MAC address, and the mode does not work together with <code>local-proxy-arp</code>.</p>
+<p><em>[gambar: A router connected to a switch with two links, with balance-alb: outgoing and incoming traffic use both links]</em></p>
+<h2 id="check-the-state-of-a-bond">Check the state of a bond</h2>
+<p><code>monitor</code> shows the active and inactive ports of each bond. For <code>802.3ad</code> it also shows the LACP system IDs:</p>
+<pre><code class="language-text">/interface/bonding/monitor [find] 
+                      mode: 802.3ad           active-backup
+              active-ports: ether4            ether6
+                            ether5            
+            inactive-ports:                   ether7
+            lacp-system-id: CC:2D:E0:11:22:33 
+      lacp-system-priority: 65535             
+    lacp-partner-system-id: B8:69:F4:44:55:66
+</code></pre>
+<p><code>monitor-slaves</code> shows the LACP state of each port of a bond:</p>
+<pre><code class="language-text">/interface/bonding/monitor-slaves bond1
+Flags: A - active, P - partner 
+ AP port=ether4 key=17 flags=&quot;A-GSCD--&quot; partner-sys-id=D4:CA:6D:12:06:65 partner-sys-priority=65535 partner-key=9 partner-flags=&quot;A-GSCD--&quot; 
+
+ AP port=ether5 key=17 flags=&quot;A-GSCD--&quot; partner-sys-id=D4:CA:6D:12:06:65 partner-sys-priority=65535 partner-key=9 partner-flags=&quot;A-GSCD--&quot; 
+</code></pre>
+<h2 id="hardware-offloading">Hardware offloading</h2>
+<p>MikroTik devices with a Marvell Prestera switch chip and with the 88E6393X, 88E6191X and 88E6190 switch chips support bridge hardware offloading with bonding interfaces.</p>
+<ul>
+<li>Only the modes <code>802.3ad</code>, <code>balance-xor</code> and <code>active-backup</code> are hardware offloaded. The other modes use the CPU.</li>
+<li>Devices with a Marvell Prestera switch chip always use the layer 2, 3 and 4 fields for the transmit hash. The 88E6393X, 88E6191X and 88E6190 chips use layer 2 only. A change of <code>transmit-hash-policy</code> has no effect while hardware offloading is used.</li>
+</ul>
+<p>See <a href="../bridging-and-switching/marvell-prestera-switch-chip-features">Marvell Prestera switch chip features</a>, which also has an example of VLANs with bonds.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../cli-reference/interface/bonding/"><code>/interface/bonding</code></a></li>
+<li><a href="user-guides/bonding-examples">Bonding Examples</a></li>
+<li><a href="multi-chassis-link-aggregation-group">Multi-chassis Link Aggregation Group</a></li>
+<li><a href="../bridging-and-switching/user-guides/layer2-misconfiguration">Layer 2 misconfiguration</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

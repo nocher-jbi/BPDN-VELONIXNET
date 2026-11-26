@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPIO · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Internet of Things</p>
+      <h1 id="gpio">GPIO</h1>
+<h1 id="gpio_1">GPIO</h1>
+<blockquote>
+<p>GPIO allows configuring digital and analog input/output pins on MikroTik routers for tasks like voltage measurement, dry contact sensing, and relay control. Settings are managed via CLI under /iot/gpio with submenus...</p>
+</blockquote>
+<h1 id="gpio_2">GPIO</h1>
+<p><em><strong>note</strong>: In order to access GPIO settings, make sure that the <strong>iot</strong> <a href="../../getting-started/installation-and-upgrade/packages">package</a> is installed beforehand.</em></p>
+<p>You can find more information about GPIO by following the <a href="https://en.wikipedia.org/wiki/General-purpose_input/output">link</a>.</p>
+<p>GPIO stands for General-Purpose Input/Output. It is a digital signal pin/pins on the routerboard that allows you to send/receive the signal. It can be useful in different scenarios, like:</p>
+<ol>
+<li>Measuring voltage through an ADC input.</li>
+<li>Reading 0 and 1 signals received from another device - "dry contact".</li>
+<li>Controlling connected relays by sending a logical 0 or 1 signal to the pin.</li>
+</ol>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><a href="https://help.mikrotik.com/docs/spaces/UM/pages/41680915/RB924i-2nD-BT5+BG77">KNOT</a>, <a href="https://mikrotik.com/product/knot_embedded_lte4">KNOT Embedded LTE4</a> and <a href="https://help.mikrotik.com/docs/spaces/UM/pages/14222434/RBM33G">RBM33G</a> support GPIO functionality.</p>
+<ul>
+<li><a href="https://help.mikrotik.com/docs/spaces/UM/pages/41680915/RB924i-2nD-BT5+BG77#RB924i2nDBT5%26BG77-GPIOpinout">KNOT pinout can be found here</a>.</li>
+<li><a href="https://help.mikrotik.com/docs/spaces/UM/pages/366477381/KNOT+Embedded+LTE4+EC25-EU+KNe#KNOTEmbeddedLTE4EC25EU%26KNe-GPIOpinout">KNOT embedded LTE 4 pinout, here.</a></li>
+<li><a href="https://help.mikrotik.com/docs/spaces/UM/pages/14222434/RBM33G#RBM33G-GPIOpinout">RBM33G pinout, here</a>.</li>
+</ul>
+</div>
+<h3 id="routeros-configuration">RouterOS configuration</h3>
+<p><strong>GPIO settings are available only using the CLI.</strong></p>
+<p><strong>Sub-menu:</strong> <code>/iot/gpio</code></p>
+<p>GPIO settings are divided into:</p>
+<ul>
+<li>analog (/iot/gpio/analog)</li>
+<li>digital (/iot/gpio/digital)</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>In our examples, we are using <a href="https://mikrotik.com/product/knot">KNOT</a> as a reference device (with x2 analog input pins, x2 digital output pins and x1 digital input pin). Other devices may have a different pinout but the same principles apply.</p>
+</div>
+<h4 id="analog-pin">Analog pin</h4>
+<p><strong>Sub-menu:</strong> <code>/iot/gpio/analog</code></p>
+<p><em><strong>note</strong>:</em> please check on a product page whether your hardware supports analog input or not.</p>
+<p>In the "analog" setting you can measure voltages on the analog input/ADC input pins:</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/analog&gt; print
+ # NAME                                                                                     VALUE       OFFSET
+ 0 pin2                                                                                       0mV          0mV
+ 1 pin3                                                                                      32mV          0mV
+</code></pre>
+<p>"OFFSET" can be used to manually compensate for voltage drop on the wires. "VALUE" is measured with <code>value = adc_input + offset</code>, where adc_input is the voltage on the pin.</p>
+<p>"OFFSET" configuration example is shown below:</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/analog&gt; set pin2 offset  
+
+Offset ::= [-]Num[mV]
+  Num ::= -2147483648..2147483647    (integer number)
+
+[admin@device] /iot/gpio/analog&gt; set pin2 offset 2   
+[admin@device] /iot/gpio/analog&gt; print            
+ # NAME                                                                                           VALUE       OFFSET
+ 0 pin2                                                                                             2mV          2mV
+ 1 pin3                                                                                             0mV          0mV 
+</code></pre>
+<h4 id="digital-pin">Digital pin</h4>
+<p><strong>Sub-menu:</strong> <code>/iot/gpio/digital</code></p>
+<p>In the "digital" section you can send/receive a logical 0 or 1 signal using the digital output/input pins (output pins are "open drain"):</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/digital&gt; print             
+Flags: X - disabled 
+ #   NAME                                        DIRECTION OUTPUT INPUT SCRIPT                                   
+ 0   pin5                                        input     0      0    
+ 1   pin4                                        output    0     
+ 2   pin6                                        output    0     
+</code></pre>
+<p>"DIRECTION" for the pin can be either "input" (a pin that can receive the signal) or "output" (a pin that can send the signal).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><a href="https://mikrotik.com/product/knot">KNOT</a> pins' "DIRECTION" for pin4 and pin6 cannot be changed. Both pins are meant to be used only as "output" pins.</p>
+</div>
+<p>When the pin's direction is set to "output", you can configure the "OUTPUT" value. Changing the "OUTPUT" value sends the signal to the pin.</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/digital&gt; set pin4 output=
+
+Output ::= 0 | 1
+
+[admin@device] /iot/gpio/digital&gt; set pin4 output=1        
+[admin@device] /iot/gpio/digital&gt; print            
+Flags: X - disabled 
+ #   NAME                                        DIRECTION OUTPUT INPUT SCRIPT                                      
+ 0   pin5                                        input     0      0    
+ 1   pin4                                        output    1     
+ 2   pin6                                        output    0     
+</code></pre>
+<p>The "script" field allows you to configure a script that will be initiated whenever the "INPUT" or "OUTPUT" value changes (from 0 to 1 or from 1 to 0).</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/digital&gt; set pin4 script=script1
+[admin@device] /iot/gpio/digital&gt; set pin5 script=&quot;/system ..&quot;   
+[admin@device] /iot/gpio/digital&gt; print                       
+Flags: X - disabled 
+ #   NAME                                        DIRECTION OUTPUT INPUT SCRIPT                                      
+ 0   pin5                                        input     0      0     /system ..                                  
+ 1   pin4                                        output    1            script1                                     
+ 2   pin6                                        output    0     
+</code></pre>
+<h3 id="different-scenarios">Different scenarios</h3>
+<h4 id="controlling-relays">Controlling relays</h4>
+<p>One of the scenarios for the GPIO implementation is "controlling other relays" using digital output pins. Basically, sending a "0" or "1" signal to the unit that is connected to the pin. To automate the process, you can use a <a href="../../system-information-and-utilities/scheduler">scheduler</a>, which will run the script at specific times.</p>
+<p>For example, you can add the first <a href="../../developer-guides/scripting/">script</a> (a single line shown below) and name it "output=0":</p>
+<pre><code class="language-ros">/iot/gpio/digital set pin4 output=0
+</code></pre>
+<p>Then add a second script (a single line shown below) and name it "output=1":</p>
+<pre><code class="language-ros">/iot/gpio/digital set pin4 output=1
+</code></pre>
+<p>Having both scripts, you can configure a schedule:</p>
+<pre><code class="language-ros">[admin@device] /system/scheduler&gt; add name=run-30s interval=30s on-event=&quot;output=0&quot;
+</code></pre>
+<p>The schedule configuration shown above will run the script with the name "output=0" every 30 seconds.</p>
+<pre><code class="language-ros">[admin@device] /system/scheduler&gt; add name=run-45s interval=45s on-event=&quot;output=1&quot;
+</code></pre>
+<p>The schedule configuration shown above will run the script with the name "output=1" every 45 seconds.</p>
+<p>As a result, the device will automatically send a signal to the 4th pin (digital output pin) with output value=0 every 30 seconds and a signal with output value=1 every 45 seconds.</p>
+<p>You can change the scheduled time as you see fit (depending on the requirements).</p>
+<h4 id="monitoring-input-signal">Monitoring input signal</h4>
+<p>Another scenario is to "monitor input signal" using the digital input pins. You need a script that will initiate e-mail notification or MQTT/HTTPS (fetch) publish whenever the "INPUT" value changes for the pin with the direction="input" (whenever the RouterOS device receives a signal "0 or 1" from another device connected to the pin).</p>
+<p><em>E-mail notification script:</em></p>
+<pre><code class="language-ros">/tool/e-mail/send to=&quot;config@mydomain.com&quot; subject=&quot;$[/system/identity/get name]&quot; body=&quot;$[/iot/gpio/digital/get pin5 input]&quot;
+</code></pre>
+<p>After creating a script, apply/set it to the "input" pin:</p>
+<pre><code class="language-ros">[admin@device] /iot/gpio/digital&gt; set pin5 script=script1 
+[admin@device] /iot/gpio/digital&gt; print                  
+Flags: X - disabled 
+ #   NAME                     DIRECTION OUTPUT INPUT SCRIPT                    
+ 0   pin5                     input     0      0     script1                   
+ 1   pin4                     output    0            script1                   
+ 2   pin6                     output    0     
+</code></pre>
+<p>In the example above, the e-mail notification script is named "script1".</p>
+<p>As a result, whenever the input value changes (from 0 to 1 or from 1 to 0), the script automatically initiates an e-mail notification that will display the input value in the e-mail body.</p>
+<p>Do not forget to change the script line and configure the e-mail settings (<a href="../../system-information-and-utilities/e-mail">/tool/e-mail</a> accordingly:</p>
+<pre><code class="language-ros">/tool/e-mail/send to=&quot;config@mydomain.com&quot; subject=&quot;$[/system/identity/get name]&quot;  body=&quot;$[/iot/gpio/digital/get pin5 input]&quot;
+</code></pre>
+<p>Configure the actual e-mail address that you use. You can also change the subject and the body of the mail as you see fit.</p>
+<p><em>MQTT publish script:</em></p>
+<pre><code class="language-ros">:local broker &quot;name&quot;
+:local topic &quot;topic&quot;
+:local message &quot;\{\&quot;inputVALUE\&quot;:$[/iot/gpio/digital/get pin5 input]}&quot;  
+/iot/mqtt/publish broker=$broker topic=$topic message=$message
+</code></pre>
+<p>This script works the same way as the "<em>e-mail notification</em>" script, only when the input value changes, the script initiates MQTT publish (instead of e-mail notification) and sends the input value received on the pin in the JSON format.</p>
+<p>Do not forget to set up an MQTT broker (<em><code>/iot/mqtt/brokers/add</code> ..</em>) and alter a few script lines beforehand:</p>
+<pre><code class="language-ros">:local broker &quot;name&quot;
+</code></pre>
+<p>The broker's "name" should be changed accordingly (you can check all created brokers and their names using the CLI command /<em>iot mqtt brokers print</em>).</p>
+<pre><code class="language-ros">:local topic &quot;topic&quot;
+</code></pre>
+<p>The topic should be changed as well. The topic itself is configured on the server-side, so make sure that the correct topic is used.</p>
+<p>Do not forget to apply/set the script to pin5 (/iot/gpio/digital/set pin5 script=script_name), as shown in the "email notification" example above.</p>
+<p>If the mechanical switch is used to send the signal to the GPIO pin, it is suggested to use the following script instead (in case the script is initiated more than once when the signal is received on the pin):</p>
+<pre><code class="language-ros">:global gpioscriptrunning;  
+if (!$gpioscriptrunning) do=\{:set $gpioscriptrunning true;  
+:log info &quot;script started - GPIO changed&quot;;  
+:do \{if ([/iot/gpio/digital/get pin5 input] = &quot;0&quot;) do=\{/tool/e-mail/send to=&quot;config@mydomain.com&quot; subject=&quot;$[/system/identity/get name]&quot; body=&quot;pin5 received logical 0&quot;} else \{/tool/e-mail/send to=&quot;config@mydomain.com&quot; subject=&quot;$[/system/identity/get name]&quot;  body=&quot;pin5 received logical 1&quot;};  
+:delay 1s;  
+:set $gpioscriptrunning false} on-error=\{:set $gpioscriptrunning false;  
+:log info &quot;e-mail error, resetting script state...&quot;}}
+</code></pre>
+<p>If the GPIO pin state changes more than once within milli/microseconds - the script above is going to make sure that e-mail notification is not sent more than once.</p>
+<h4 id="monitoring-voltage">Monitoring voltage</h4>
+<p>Last but not least is to "monitor voltage" using the analog pins.  You need a script that will read/monitor voltage on schedule and then send the data via e-mail, MQTT or HTTPS (fetch).</p>
+<p>Create a script, as shown below. In this example, we will be using MQTT publish (but you can create a similar script with "/tool/e-mail .." to use e-mail notifications):</p>
+<pre><code class="language-ros">:local broker &quot;name&quot;
+:local topic &quot;topic&quot;
+:local message &quot;\{\&quot;voltage(mV)\&quot;:$[/iot/gpio/analog/get pin3 value]}&quot;  
+/iot/mqtt/publish broker=$broker topic=$topic message=$message
+</code></pre>
+<p>The script will read/measure the voltage on pin3 and publish the data to the MQTT broker.</p>
+<p>Do not forget to set up an MQTT broker (<em><code>/iot/mqtt/brokers/add</code> ..</em>) and alter a few script lines beforehand:</p>
+<pre><code class="language-ros">:local broker &quot;name&quot;
+</code></pre>
+<p>The broker's "name" should be changed accordingly (you can check all created brokers and their names using the CLI command <code>/iot/mqtt/brokers/print</code>).</p>
+<pre><code class="language-ros">:local topic &quot;topic&quot;
+</code></pre>
+<p>The topic should be changed as well. The topic itself is configured on the server-side, so make sure that the correct topic is used.</p>
+<p>Save the script and name it, for example, "voltagepublish". To automate the process, you can use the <a href="../../system-information-and-utilities/scheduler">scheduler</a>.</p>
+<pre><code class="language-ros">[admin@device] /system/scheduler&gt; add name=run-45s interval=45s on-event=&quot;voltagepublish&quot;
+</code></pre>
+<p>The schedule configuration shown above will run the script every 45 seconds.</p>
+<hr />
+<h1 id="using-the-gpio-as-pulse-input-from-a-meter-device">Using the GPIO as pulse input from a meter device</h1>
+<blockquote>
+<p>Use a MikroTik device's GPIO as a pulse input to read water, energy, or other meters, with a RouterOS script that counts the pulses.</p>
+</blockquote>
+<p>Some water, energy or other meters have pulse outputs. The specification of the meter describes how many pulses represents one integer measurement unit. For example, the energy meter we used to create this manual generates 1000 pulses to represent 1kWh, so each pulse is 1Wh. You can use the digital GPIO input of the KNOT (pin5) to read these pulses and count the energy consumed behind the energy meter. In order to do so, it requires to create a simple MOSFET schematic and connect everything as in the following image:</p>
+<p>The next step is to write a RouterOS script that is executed on every pulse received:</p>
+<pre><code class="language-bash">/iot gpio digital
+set pin5 script=&quot;:global scriptRunning; :global pulse;\
+:if (\$scriptRunning!=true) do={\
+:set \$scriptRunning true;\
+:set \$pulse (\$pulse+1);\
+:log info message=(\&quot;GPIO pulse No. \&quot;.\$pulse);\
+:delay 1s;\
+:set \$scriptRunning false;\
+}&quot;
+</code></pre>
+<p>When the GPIO is configured, the script above will create an log entry on each pulse:</p>
+<pre><code class="language-bash">15:32:22 script,info GPIO pulse No. 1 
+15:38:01 script,info GPIO pulse No. 2 
+15:43:38 script,info GPIO pulse No. 3 
+15:49:15 script,info GPIO pulse No. 4 
+15:54:51 script,info GPIO pulse No. 5 
+16:00:27 script,info GPIO pulse No. 6 
+16:06:02 script,info GPIO pulse No. 7 
+16:11:37 script,info GPIO pulse No. 8 
+16:17:12 script,info GPIO pulse No. 9 
+16:22:48 script,info GPIO pulse No. 10 
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

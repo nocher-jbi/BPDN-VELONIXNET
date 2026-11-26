@@ -1,0 +1,3757 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disks · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Hardware</p>
+      <h1 id="disks-part-12">Disks (part 1/2)</h1>
+<h1 id="disks">Disks</h1>
+<blockquote>
+<p>How RouterOS detects, formats and manages disks and partitions: slot names, automatic mounting, mount points, partitions, swap space, RAM-backed folders, file system checks and performance tests.</p>
+</blockquote>
+<h1 id="disks_1">Disks</h1>
+<p><a href="../../cli-reference/disk/"><em>Disks CLI Reference</em></a></p>
+<p>RouterOS detects the storage drives connected to the router (USB, SATA, NVMe and microSD drives) and mounts them automatically at boot or when they are plugged in. You can use as many drives as the router supports, for example for the User Manager database, the web proxy cache, container storage or log files.</p>
+<p>This page covers the drives themselves: how they are detected, formatted and managed. Network storage protocols (iSCSI, NFS, SMB, NVMe over TCP), RAID and the advanced file systems are part of the <a href="../../storage/">Storage</a> package and are covered in the <a href="../../storage/">Storage</a> section.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The <strong>Storage package</strong> adds disk monitoring, RAID, rsync, iSCSI, NVMe over TCP, NFS, an SMB client and the Btrfs and XFS file systems. See the <a href="../../storage/">Storage</a> section for details.</p>
+</div>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Always use <code>/disk/eject</code> before physically removing a disk from a RouterOS device, otherwise data can be lost.</p>
+</div>
+<h2 id="how-disks-are-detected">How disks are detected</h2>
+<p>The <code>/disk</code> menu lists every attached storage device that is supported and in working condition, including empty drive slots. Each drive gets a slot name from the interface it is connected with and a number, for example <code>usb1</code>, <code>sata1</code> or <code>nvme1</code>.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print proplist=slot,model,interface,size,fs where slot=nvme9
+Flags: B - BLOCK-DEVICE
+Columns: SLOT, MODEL, INTERFACE, SIZE, FS
+#   SLOT   MODEL        INTERFACE                   SIZE  FS
+0 B nvme9  TS1TUTE210T  PCIe 2x8 GT/s  1 024 209 543 168  -
+</code></pre>
+<p>Key flags in the print output:</p>
+<ul>
+<li><code>B - BLOCK-DEVICE</code> marks a device that stores data, so it can be formatted and used. Devices without this flag, for example a PCIe bridge, only describe the disk layout.</li>
+<li><code>E - EMPTY</code> marks an empty slot.</li>
+<li><code>M - MOUNTED</code> marks a disk or partition whose file system is mounted.</li>
+</ul>
+<p>The complete flag list is described in the <a href="../../cli-reference/disk/">Disks CLI Reference</a>.</p>
+<p>A drive with a supported file system and partition table is mounted automatically and appears in <code>/file</code>. To confirm that a drive is usable, check that it is present in <code>/file</code> after it is connected.</p>
+<h2 id="format-a-disk">Format a disk</h2>
+<p>The first thing to do with a new drive is to format it. To format a disk, select the file system and run <code>/disk/format</code> with the slot name. RouterOS asks for confirmation, formats the drive and mounts it automatically:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/format nvme9 file-system=ext4
+nvme9: file-system: ext4
+nvme9: mke2fs -t ext4 -L nvme9-fs /dev/nvme0n1
+...
+nvme9: Creating journal (262144 blocks): done
+nvme9: Writing superblocks and filesystem accounting information: done
+nvme9: format done
+</code></pre>
+<p>Without a label, RouterOS labels the file system <code>&lt;slot&gt;-fs</code>, so the label of <code>nvme9</code> is <code>nvme9-fs</code>. File system choices:</p>
+<ul>
+<li><code>ext4</code>  -  the default choice for most use cases. Supports multiple partitions, journaling and is fast.</li>
+<li><code>fat32</code> and <code>exfat</code>  -  readable by almost any device, for example cameras or Android phones. <code>fat32</code> has a 4 GB file size limit.</li>
+<li><code>btrfs</code> and <code>xfs</code>  -  advanced file systems that need the <a href="../../storage/">Storage</a> package. See <a href="../../storage/btrfs/">Btrfs</a>.</li>
+<li><code>discard</code> and <code>discard-secure</code>  -  discard all blocks of the drive without writing a file system.</li>
+<li><code>wipe</code> and <code>wipe-quick</code>  -  remove the file system and all data. <code>wipe</code> overwrites the data so it cannot be recovered; <code>wipe-quick</code> only removes the file system.</li>
+</ul>
+<p>Formatting destroys all data on the target. For a disk with a partially filled file system, use <code>file-system=wipe-quick</code> to remove it fast.</p>
+<p>After formatting, the drive is mounted automatically:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print where slot=nvme9
+Flags: B - BLOCK-DEVICE; M - MOUNTED
+Columns: SLOT, MOUNT-POINT, MODEL, INTERFACE, SIZE, FS
+#    SLOT   MOUNT-POINT  MODEL        INTERFACE                   SIZE  FS
+0 BM nvme9  nvme9        TS1TUTE210T  PCIe 2x8 GT/s  1 024 209 543 168  ext4
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /file/print where name~&quot;nvme9&quot;
+Columns: NAME, TYPE, LAST-MODIFIED
+# NAME              TYPE       LAST-MODIFIED
+0 nvme9             disk       2026-09-25 11:47:05
+1 nvme9/lost+found  directory  2026-09-25 11:47:05
+</code></pre>
+<h2 id="mount-points">Mount points</h2>
+<p>A mounted file system is accessible under its mount point, which is also the path prefix used in <code>/file</code> and when other features reference a file. By default the mount point is the slot name, so files on <code>nvme1</code> are addressed as <code>nvme1/...</code>.</p>
+<p>When the same drive can end up in different slots between boots, for example in a multi-bay enclosure, give it a stable mount point with <code>mount-point-template</code>. The template can combine the following variables:</p>
+<ul>
+<li><code>[slot]</code></li>
+<li><code>[model]</code></li>
+<li><code>[serial]</code></li>
+<li><code>[fw-version]</code></li>
+<li><code>[fs-label]</code></li>
+<li><code>[fs-uuid]</code></li>
+<li><code>[fs]</code></li>
+</ul>
+<p>For example, to mount a drive by its serial number:</p>
+<pre><code class="language-ros">/disk/set nvme1 mount-point-template=&quot;[serial]&quot;
+</code></pre>
+<p>Variables can be combined, for example <code>mount-point-template="[model]-[fs]"</code>. An empty template is rejected. The <code>default-mount-point-template</code> setting in <code>/disk/settings</code> applies the template to every new disk and partition.</p>
+<h2 id="partitions">Partitions</h2>
+<p>To split a drive into several partitions, format it without a partition table and then add partitions. RouterOS keeps the partition information in a GUID partition table (GPT).</p>
+<pre><code class="language-ros">/disk/format nvme9 file-system=ext4
+/disk/add type=partition parent=nvme9 partition-size=4G
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print where slot~&quot;nvme9&quot;
+Flags: B - BLOCK-DEVICE; g - GUID-PARTITION-TABLE, p - PARTITION
+Columns: SLOT, MODEL, INTERFACE, SIZE, FS
+#    SLOT         MODEL        INTERFACE                   SIZE  FS
+0 Bg nvme9        TS1TUTE210T  PCIe 2x8 GT/s  1 024 209 543 168  -
+1 Bp nvme9-part1  TS1TUTE210T                     4 000 000 000  -
+</code></pre>
+<p>Each partition gets a slot name of its own, derived from the parent: the first partition of <code>nvme9</code> is <code>nvme9-part1</code>. The <code>g - GUID-PARTITION-TABLE</code> flag marks the parent and <code>p - PARTITION</code> marks the partitions.</p>
+<ul>
+<li>Without <code>partition-size</code>, the partition uses all remaining space on the drive.</li>
+<li>Use <code>partition-offset</code> to set where the partition starts, in bytes.</li>
+<li>A partition is used like a disk: format it, mount it and manage it under its own slot name.</li>
+<li><code>mbr-partition-table=yes</code> in <code>/disk/format</code> writes an MBR partition table instead; use it only when a GPT table is not accepted by the target system.</li>
+</ul>
+<h2 id="swap-space">Swap space</h2>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Swap space requires the <a href="../../containers/">container</a> package.</p>
+</div>
+<p>Swap space is reserved for <a href="../../containers/">containers</a> and lets them run with more memory than the router has. It can be a whole partition or a file. Swap size is limited to 10 times the router's available RAM.</p>
+<p>A swap partition dedicates the whole disk or partition to swap and gives better performance than a file:</p>
+<pre><code class="language-ros">/disk/set nvme9-part1 swap=yes
+</code></pre>
+<p>A swap file resides on an existing file system, for example on a <a href="../../storage/btrfs/">Btrfs</a> disk, and uses only as much space as its size:</p>
+<pre><code class="language-ros">/disk/add type=file file-path=nvme9-part1/swapfile file-size=512M swap=yes
+</code></pre>
+<p>The swap file appears in <code>/disk</code> with the <code>S - SWAP-ENABLED</code> flag:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/print where slot~&quot;nvme9&quot;
+Flags: B - BLOCK-DEVICE; M - MOUNTED, S - SWAP-ENABLED
+       g - GUID-PARTITION-TABLE, p - PARTITION
+Columns: SLOT, MOUNT-POINT, SIZE, FS, SWAP
+#     SLOT                       MOUNT-POINT               SIZE  FS    SWAP
+0 B g nvme9                                   1 024 209 543 168  -     no
+1 BMp nvme9-part1                nvme9-part1      4 000 000 000  ext4  no
+2  S  file-nvme9-part1-swapfile                     536 866 816  -     yes
+</code></pre>
+<h2 id="ram-backed-folder">RAM-backed folder</h2>
+<p>To keep files in RAM, add a <code>tmpfs</code> folder. Its content is emptied when the router reboots or loses power.</p>
+<pre><code class="language-ros">/disk/add type=tmpfs tmpfs-max-size=100M
+</code></pre>
+<p>The folder appears in <code>/file</code> as a disk entry, for example <code>tmp1</code>. <code>tmpfs-max-size</code> caps how much RAM the folder can use. Use a RAM-backed folder on devices with limited storage or for data that must be cleared on reboot. For size limits, sharing and what happens after a reboot, see <a href="../../storage/tmpfs">Tmpfs</a>.</p>
+<h2 id="mount-images">Mount images</h2>
+<p>RouterOS can also mount <code>.iso</code> and <code>.squashfs</code> images directly. To mount an image, use the following command:</p>
+<pre><code class="language-ros">/disk/add type=file file-path=disk1/mycopy.iso
+</code></pre>
+<p>Make sure you change <code>disk1/mycopy.iso</code> to your correct path, where the image is located.</p>
+<h2 id="log-on-disk">Log on disk</h2>
+<p>When configuring logging on disk, make sure that you create directories in which you want to store the log files manually, as non-existent directories will not be created automatically in this case.</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /system/logging/action/set disk disk-file-name=disk1/log
+</code></pre>
+<p>The log files appear in <code>/file</code> under the directory you created:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /file/print where name~&quot;disk1/log&quot;
+ # NAME                                              TYPE                             SIZE CREATION-TIME
+ 0 disk1/log                                        directory                             2015-07-03 12:44:09
+ 1 disk1/log/syslog.0.txt                           .txt file                         160 2015-07-03 12:44:11
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Logging topics such as firewall and web-proxy tend to save a large amount or rapid printing of logs on the system NAND disk, which can wear it out faster. Use attached storage or remote logging in this case, or save data in a RAM folder.</p>
+</div>
+<h2 id="web-proxy-cache-on-a-disk">Web proxy cache on a disk</h2>
+<p>The web proxy carries its cache on a disk, usually a USB drive. Set the cache path under <code>IP -&gt; Proxy</code> (the <code>cache-path</code> setting of <code>/ip/proxy</code>) and the web proxy store is automatically created in <code>/file</code>. If a non-existent directory path is used, the additional sub-directories are also created automatically:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /ip/proxy/set cache-path=usb1/cache-n-db/proxy/
+</code></pre>
+<pre><code class="language-ros">[admin@MikroTik] &gt;  /file/print
+ # NAME                                              TYPE                             SIZE CREATION-TIME
+ 0 skins                                             directory                             2015-03-02 18:56:23
+ 1 sys-note.txt                                      .txt file                        23   2015-07-03 11:40:48
+ 2 usb1                                             disk                                  2015-07-03 11:35:05
+ 3 usb1/lost+found                                  directory                             2015-07-03 11:34:56
+ 4 usb1/cache-n-db                                  directory                             2015-07-03 11:41:54
+ 5 usb1/cache-n-db/proxy                            web-proxy store                       2015-07-03 11:42:09
+</code></pre>
+<p>See <a href="../../network-management/proxy/web-proxy">Web proxy</a> for the cache configuration.</p>
+<h2 id="check-and-repair">Check and repair</h2>
+<p><code>/disk/check</code> and <code>/disk/repair</code> run a file system check on a drive, the equivalent of <code>fsck</code>/<code>e2fsck</code>. They work on ext4, Btrfs and XFS. A file system that is still in use cannot be checked:</p>
+<pre><code class="language-ros">/disk/check nvme9-part1
+Columns: OUTPUT
+OUTPUT
+could not unmount, stop using it first
+</code></pre>
+<p>This also happens when a swap file on the partition keeps it in use  -  remove the swap item before checking the partition. Unmount the file system first:</p>
+<pre><code class="language-ros">/disk/set nvme9-part1 mount-filesystem=no
+</code></pre>
+<p><code>check</code> reports errors without changing anything:</p>
+<pre><code class="language-ros">/disk/check nvme9-part1
+Columns: OUTPUT
+OUTPUT
+e2fsck 1.46.5 (30-Dec-2021)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+nvme9-part1-fs: 12/244320 files (0.0% non-contiguous), 166617/976562 blocks
+</code></pre>
+<p><code>repair</code> fixes the errors it finds:</p>
+<pre><code class="language-ros">/disk/repair nvme9-part1
+Columns: OUTPUT
+OUTPUT
+e2fsck 1.46.5 (30-Dec-2021)
+nvme9-part1-fs: clean, 12/244320 files, 166617/976562 blocks
+</code></pre>
+<h2 id="test-disk-performance">Test disk performance</h2>
+<p><code>/disk/test</code> measures the sustained throughput and IOPS of a drive. The test runs in the background and prints a row per completed block, plus a <code>TOT</code> row that aggregates the result.</p>
+<pre><code class="language-ros">/disk/test disk=nvme9-part2 direction=read pattern=sequential type=device block-size=4K duration=20
+Columns: SEQ, RATE, IOPS, BYTES, DISK, THREAD, TYPE, PATTERN, DIR, BSIZE, STATE
+  ...  11.7Gbps  359 651  1404.9MiB  nvme9-part2  0  device  sequential  read  4096
+  ...  11.8Gbps  360 192  1407.0MiB  nvme9-part2  0  device  sequential  read  4096
+R TOT  11.8Gbps  360 676  26.1GiB    nvme9-part2  0  device  sequential  read  4096
+</code></pre>
+<ul>
+<li><code>direction=read</code> leaves the drive content unchanged and works on a mounted file system.</li>
+<li><code>direction=write</code> destroys all data on the target; run write tests only on drives you are ready to wipe.</li>
+<li>Give the test a <code>duration</code> so it stops by itself; without one it keeps running until stopped.</li>
+<li>A new test prepares for a while  -  the <code>state</code> column shows <code>clear caches</code> until it starts producing numbers.</li>
+</ul>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Disk performance tests may slowly degrade disk health.</p>
+<p>A write will destroy all data on the drive it is run on.</p>
+</div>
+<h2 id="monitor-traffic-and-counters">Monitor traffic and counters</h2>
+<p><code>/disk/monitor-traffic</code> shows live activity of a drive: I/O operations, transferred bytes and speed, as totals and per second:</p>
+<pre><code class="language-ros">/disk/monitor-traffic nvme9-part2 once
+                  slot:    nvme9-part2
+              read-ops:        113 229
+   read-ops-per-second:              0
+            read-bytes: 29 668 814 848
+             read-rate:           0bps
+           read-merges:              0
+             read-time:       48s149ms
+             write-ops:              0
+</code></pre>
+<p><code>/disk/reset-counters</code> resets these counters to zero, including the error counters.</p>
+<h2 id="eject-and-scan">Eject and scan</h2>
+<p>Before removing a drive, eject it so no data is lost:</p>
+<pre><code class="language-ros">/disk/eject nvme9
+</code></pre>
+<p>An ejected drive is unmounted and its slot shows the <code>E - EMPTY</code> flag until the drive is removed. <code>/disk/scan</code> re-detects drives that were plugged in or removed without a reboot and brings back a drive after reconnecting it.</p>
+<p><code>/disk/trim</code> discards the unused blocks of a mounted file system (<code>fstrim</code> equivalent) so SSD write performance does not degrade. Trimming is not supported on USB drives, and some NVMe enclosures do not support it either.</p>
+<h2 id="smart-drive-health">S.M.A.R.T. drive health</h2>
+<p>Drive health monitoring with S.M.A.R.T. reads the diagnostics of drives that support it, for example temperature, use and error counters. See <a href="./smart">S.M.A.R.T. info</a>.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../../storage/">Storage</a>  -  RAID, network storage protocols and the advanced file systems.</li>
+<li><a href="../../containers/">Containers</a>  -  uses disk space for images and swap space.</li>
+<li><a href="./smart">S.M.A.R.T. info</a>  -  drive health monitoring.</li>
+<li><a href="../../cli-reference/disk/">Disks CLI Reference</a>  -  every command and parameter of <code>/disk</code>.</li>
+</ul>
+<hr />
+<h1 id="smart-info">S.M.A.R.T. info</h1>
+<blockquote>
+<p>S.M.A.R.T. drive health monitoring in RouterOS: read drive health, temperature, use and error counters with the /disk smart-info command, and what the reported attributes mean.</p>
+</blockquote>
+<h1 id="smart-info_1">S.M.A.R.T. info</h1>
+<p><a href="../../cli-reference/disk/smart-info"><em>S.M.A.R.T. info CLI Reference</em></a></p>
+<p>S.M.A.R.T. (Self-Monitoring, Analysis and Reporting Technology) is a monitoring system built into modern storage drives. It lets you read diagnostics of the drive: overall health, temperature, use, error counters and, for NVMe drives, the SMART/Health attributes.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>S.M.A.R.T. information requires the <a href="../../storage/">Storage</a> package.</p>
+</div>
+<p>For any attached storage device that supports S.M.A.R.T., read the diagnostics with the <code>/disk/smart-info</code> command:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /disk/smart-info nvme1
+</code></pre>
+<pre><code class="language-ros">[admin@R2DUTRDS22162XG4S4XS2XQ20DISKS] &gt; disk/smart-info nvme1
+Columns: OUTPUT
+OUTPUT                                                                     
+smartctl 7.1 2019-12-30 r5022 [aarch64-linux-5.6.3] (local build)          
+Copyright (C) 2002-19, Bruce Allen, Christian Franke, www.smartmontools.org
+=== START OF INFORMATION SECTION ===                                       
+Model Number:                       U.2 SSD 4TG2-P                         
+Serial Number:                      &lt;S/N&gt;                      
+Firmware Version:                   E21T4C                                 
+PCI Vendor/Subsystem ID:            0x1bc0                                 
+IEEE OUI Identifier:                0x24693e                               
+Controller ID:                      0                                      
+Number of Namespaces:               1                                      
+Namespace 1 Size/Capacity:          960,197,124,096 [960 GB]               
+Namespace 1 Formatted LBA Size:     512                                    
+Namespace 1 IEEE EUI-64:            &lt;EUI-64&gt;                  
+Firmware Updates (0x02):            1 Slot                                 
+Optional Admin Commands (0x0017):   Security Format Frmw_DL Self_Test      
+Optional NVM Commands (0x0054):     DS_Mngmt Sav/Sel_Feat Timestmp         
+Maximum Data Transfer Size:         512 Pages                              
+Warning  Comp. Temp. Threshold:     100 Celsius                            
+Critical Comp. Temp. Threshold:     110 Celsius                            
+Supported Power States                                                     
+St Op     Max   Active     Idle   RL RT WL WT  Ent_Lat  Ex_Lat             
+ 0 +    20.00W       -        -    0  0  0  0        5       5             
+Supported LBA Sizes (NSID 0x1)                                             
+Id Fmt  Data  Metadt  Rel_Perf                                             
+ 0 +     512       0         0                                             
+=== START OF SMART DATA SECTION ===                                        
+SMART overall-health self-assessment test result: PASSED                   
+SMART/Health Information (NVMe Log 0x02)                                   
+Critical Warning:                   0x00                                   
+Temperature:                        33 Celsius                             
+Available Spare:                    100%                                   
+Available Spare Threshold:          10%                                    
+Percentage Used:                    0%                                     
+Data Units Read:                    5,774,165 [2.95 TB]                    
+Data Units Written:                 10,770,860 [5.51 TB]                   
+Host Read Commands:                 75,868,764                             
+Host Write Commands:                61,379,337                             
+Controller Busy Time:               22                                     
+Power Cycles:                       579                                    
+Power On Hours:                     4,203                                  
+Unsafe Shutdowns:                   105                                    
+Media and Data Integrity Errors:    0                                      
+Error Information Log Entries:      0                                      
+Warning  Comp. Temperature Time:    0                                      
+Critical Comp. Temperature Time:    0                                      
+Temperature Sensor 1:               45 Celsius                             
+Temperature Sensor 2:               33 Celsius                             
+Temperature Sensor 3:               33 Celsius                             
+Temperature Sensor 4:               34 Celsius                             
+Temperature Sensor 5:               34 Celsius                             
+Temperature Sensor 6:               35 Celsius                             
+Temperature Sensor 7:               32 Celsius                             
+Temperature Sensor 8:               31 Celsius                             
+Error Information (NVMe Log 0x01, max 64 entries)                          
+No Errors Logged      
+</code></pre>
+<h2 id="reading-the-output">Reading the output</h2>
+<p>The important values for drive health:</p>
+<ul>
+<li><code>SMART overall-health self-assessment test result</code>  -  the drive reports whether it considers itself healthy. A drive that reports <code>FAILED</code> should be replaced.</li>
+<li><code>Temperature</code>  -  the current temperature of the drive. The warning and critical thresholds are listed in the information section.</li>
+<li><code>Available Spare</code>  -  how much spare capacity the drive still has before it cannot remap bad blocks. When it drops to the <code>Available Spare Threshold</code>, the drive is close to the end of its life.</li>
+<li><code>Percentage Used</code>  -  the estimated lifetime use of the drive, based on the manufacturer's rated endurance. At 100% the drive has reached its rated lifespan.</li>
+<li><code>Unsafe Shutdowns</code> and <code>Media and Data Integrity Errors</code>  -  how often the drive lost power unexpectedly and how many data errors it detected. Repeated unsafe shutdowns increase the risk of corruption.</li>
+</ul>
+<p>The output is the same as <code>smartctl</code> reports on Linux, so the S.M.A.R.T. documentation of the drive vendor applies.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Some USB enclosures cannot pass S.M.A.R.T. information through. If the drive is behind such an enclosure, <code>/disk/smart-info</code> reports an error even though the drive itself supports S.M.A.R.T.</p>
+</div>
+<h2 id="related_1">Related</h2>
+<ul>
+<li><a href="./">Disks</a>  -  formatting, mounting and managing drives.</li>
+</ul>
+<hr />
+<h1 id="grounding">Grounding</h1>
+<blockquote>
+<p>Grounding requirements for MikroTik RouterOS devices emphasize proper installation of shielded cables, lightning arresters, and reliable grounding infrastructure using 2.5-4 mm² Cu wire with corrosion-resistant...</p>
+</blockquote>
+<h1 id="grounding_1">Grounding</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Shielded cable installation infrastructure (towers and masts), as well as antennas and the router itself, must be properly grounded. Lightning arresters must be installed on all external antenna cables (near the antennas or on the antennas themselves) to prevent equipment damage and human injury. Note that lightning arresters will not be effective if they are not properly grounded.</p>
+<p>Use 2.5-4 mm² Cu (AWG 11–13) wire with corrosion-resistant connectors for grounding. Ensure that the grounding infrastructure you use is fully functional (not merely decorative, as seen in some installations):</p>
+<ol>
+<li>For shielded connectors, please use shielded cables as they provide better immunity.</li>
+<li>The grounding wire should be connected to the RouterBOARD grounding wire attachment point if such is provided. This wire should then be connected to the base of the tower, ensuring the connection meets grounding standards. The antenna's grounding wire should be connected near the RouterBOARD outdoor case and can be joined with the same grounding wire used for the RouterBOARD.</li>
+</ol>
+<h2 id="shielded-rj45-port-vs-unshielded-rj45-port">Shielded RJ45 Port vs Unshielded RJ45 Port</h2>
+<h3 id="device-with-shielded-ports">Device with Shielded Ports</h3>
+<p><em>[gambar: shielded.png]</em></p>
+<h3 id="device-with-unshielded-ports">Device with Unshielded Ports</h3>
+<p><em>[gambar: unshielded.png]</em></p>
+<h3 id="poe-injector-with-shielded-connectors">PoE injector with shielded connectors</h3>
+<p><em>[gambar: poeinjector.png]</em></p>
+<h2 id="routerboard-grounding-wire-attachment-points">RouterBOARD grounding wire attachment points</h2>
+<p><em>[gambar: screw1.png]</em></p>
+<p><em>[gambar: screw2.png]</em></p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You should not use Power Sourcing Equipment (PSE) with the positive terminal connected to Protective Earth (PE) if it power a MikroTik device. It may cause a short circuit, harm you and your device.</p>
+</div>
+<hr />
+<h1 id="lcd-touchscreen">LCD Touchscreen</h1>
+<blockquote>
+<p>The page documents the LCD touchscreen functionality on MikroTik RouterOS, covering configuration options like backlight timeout, color schemes, and screen defaults. It explains calibration procedures, screenshot...</p>
+</blockquote>
+<h1 id="lcd-touchscreen_1">LCD Touchscreen</h1>
+<h2 id="summary">Summary</h2>
+<p>RouterBOARD 2011U and CCR series devices are equipped with a resistive touchscreen for quick access to device statistics and simple configuration options. The touchscreen requires pressure against the surface to register a touch; therefore, light swipes and quick or short taps might not be registered (unlike capacitive touchscreens commonly found on phones). If you encounter difficulty operating the screen with your finger, you can also try a stylus or the opposite end of a pen.</p>
+<h2 id="configuration">Configuration</h2>
+<p><strong>Sub-menu:</strong> <code>/lcd</code></p>
+<p>This sub-menu provides configuration options for the LCD touchscreen.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>backlight-timeout</strong> (<em>time interval: 5m..2h | never</em>; Default: <strong>30m</strong>)</td>
+<td style="text-align: left;">Specifies the duration of inactivity before the LCD touchscreen backlight turns off. Set to "never" to keep the backlight always on.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>color-scheme</strong> (<em>dark | light</em>; Default: depends on RouterBoard model)</td>
+<td style="text-align: left;">Sets the color scheme for the LCD display, choosing between a dark or light background.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>default-screen</strong> (<em>informative-slideshow|interface|log|main-menu|stat-slideshow|stats|stats-all</em>; Default: <strong>main-menu</strong>)</td>
+<td style="text-align: left;">Defines the default screen displayed on the LCD after the router boots up.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables or disables the LCD touchscreen. When disabled, the touchscreen stops functioning, statistics gathering resets, and the LCD program closes.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>read-only-mode</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Enables or disables Read-Only mode. When enabled, menus that allow configuration changes are hidden from the LCD interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>time-interval</strong> (<em>min | hour | daily | weekly</em>; Default: <strong>min</strong>)</td>
+<td style="text-align: left;">Sets the time interval for displayed interface statistics in the Stats screen.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>touch-screen</strong> (<em>enabled | disabled</em>, Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;">Enables or disables touch screen input functionality.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="available-functions">Available Functions</h3>
+<p>The LCD touchscreen supports the following functions:</p>
+<ul>
+<li><strong>backlight</strong> - Turns the LCD backlight on or off. The LCD program continues running.</li>
+<li><strong>recalibrate</strong> - Starts the LCD touchscreen calibration process.</li>
+<li><strong>show</strong> - Specifies which screen is displayed on the LCD.</li>
+<li><strong>take-screenshot</strong> - Creates a screenshot of the currently displayed LCD screen.</li>
+</ul>
+<h3 id="lcd-touchscreen-calibration">LCD Touchscreen Calibration</h3>
+<p>The LCD touchscreen requires calibration before it can be used for the first time. Calibration data is stored on the router after a successful calibration. If no calibration data exists, the calibration process starts automatically.</p>
+<p>During calibration or recalibration, you must touch four points displayed on the screen. Three of these points are used to calculate the calibration variables, while the fourth point verifies whether the calibration was successful. If calibration fails, the calibration variables are not saved. After touching the fourth point, a message displays the calibration result.</p>
+<h3 id="take-lcd-screenshot">Take LCD Screenshot</h3>
+<p>The take-screenshot function captures the current LCD screen as a BMP image and saves it to the File List using the specified file name. Screenshots without a file name are not saved. If a file with the specified name already exists, it will be overwritten.</p>
+<p>Example:</p>
+<pre><code class="language-ros">[admin@MikroTik] /lcd/take-screenshot file-name=screen-1
+Screenshot taken
+[admin@MikroTik] &gt;
+</code></pre>
+<h2 id="lcd-interface">LCD Interface</h2>
+<p><strong>Sub-menu:</strong> <code>/lcd/interface</code></p>
+<p>The Interfaces submenu configures how individual interface statistics are displayed in the Stat Slideshow. Up to 10 additional (non-physical) interfaces can be added to the LCD for monitoring purposes.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (*yes</td>
+<td style="text-align: left;">no*; Default: <strong>no</strong>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-speed</strong> (*integer</td>
+<td style="text-align: left;">auto*; Default:)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>timeout</strong> (<em>time interval: 1s..1m</em>; Default: <strong>10s</strong>)</td>
+<td style="text-align: left;">Specifies how long each interface slide displays during the slideshow</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>display</strong> - Displays the interface in the Stats screen.</li>
+</ul>
+<h3 id="all-interface-graph-screen">All Interface Graph Screen</h3>
+<p><strong>Sub-menu:</strong> <code>/lcd/interface/pages</code></p>
+<p>A Page is a screen that can contain up to 12 interface bar graphs. The Sub-menu allows configuring which interfaces are shown in a page. Up to 5 pages can be added to the All Interface Graph Screen and up to 12 interfaces per page. To add an interface to a page, it first must be added under <code>/lcd/interface</code> sub-menu.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>interfaces</strong> (interface names; Default:)</td>
+<td style="text-align: left;">Interfaces that are shown on the screen. Must have at least 1 interface.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="lcd-informative-screens">LCD Informative Screens</h2>
+<p><strong>Sub-menu:</strong> <code>/lcd/screen</code></p>
+<p>The Screens menu allows you to configure the display timing for each slide in the Informative Slideshow.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (*yes</td>
+<td style="text-align: left;">no*; Default: <strong>no</strong>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>timeout</strong> (<em>time interval: 1s..1m</em>; Default: <strong>10s</strong>)</td>
+<td style="text-align: left;">Duration that each informative slide is displayed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="lcd-pin-code">LCD PIN Code</h2>
+<p><strong>Sub-menu:</strong> <code>/lcd/pin</code></p>
+<p>The PIN code protects sensitive menus on the LCD screen. The PIN is requested when Read-Only mode is disabled and you attempt to add an IP address, reset, or reboot the router. The default PIN is <strong>1234</strong>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>pin-number</strong> (<em>number</em>; Default: <strong>1234</strong>)</td>
+<td style="text-align: left;">PIN protection code</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hide-pin-number</strong> (*yes</td>
+<td style="text-align: left;">no*; Default: <strong>no</strong>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="lcd-screensmodes">LCD screens/modes</h2>
+<p>Since v6.0, LCD has a menu structure. Menu screens consist of buttons that are used to navigate the menus. A scrollbar is shown on the right side of the screen if it does not fit on the actual display. The screen can be dragged up or down to access more options if they are available. At the top of each menu screen is a "Back" button that jumps to the previous screen.</p>
+<h3 id="startup">Startup</h3>
+<p>If the router has default configuration - user named "admin" with no password, then a warning on LCD will appear. This screen shows IPs assigned to the interfaces which could be used to connect to the router. Otherwise, the Main menu screen is displayed after booting up.</p>
+<h3 id="interfaces">Interfaces</h3>
+<p>The Interfaces menu displays all the Ethernet and Wireless interfaces. Bandwidth usage is shown similar to the All interface graph screen. From the Interfaces screen, you can choose a specific interface to look at. The following options are available:</p>
+<ul>
+<li>Info (only for physical interfaces) - menu which shows information about the interface.</li>
+<li>Registration Table (only for wireless) - menu which shows all the registered clients for the wireless interface and their respective signal strengths.</li>
+<li>Addresses - menu which lists all the addresses assigned to the interface.</li>
+<li>Stats - menu which allows you to jump to the selected interface in the "Stats" screen. You can directly choose to show Bandwidth or Packets.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Info</td>
+<td style="text-align: left;">Registration Table</td>
+<td style="text-align: left;">Addresses</td>
+<td style="text-align: left;">Stats selection</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stats">Stats</h3>
+<p>The Stats screen shows single interface graphs for RX and TX. Values are updated from right to left (newest to oldest). The Info that is shown: RX/TX rate and packets.</p>
+<p>The interface name is shown at the top right; it is trimmed if it's too long (last characters are cut off). The top right corner shows the time interval for the values. The following time values are available:</p>
+<ul>
+<li><strong>Min (Minute)</strong> - shows values for the last minute. Unit = second. Vertical line separates the first 30 seconds. Total values: 30 + 24.</li>
+<li><strong>Hour</strong> - shows values for the last hours. Unit = 5 minutes. Vertical lines separate 1 hour. Total values: 12 + 12 + 3.</li>
+<li><strong>Daily</strong> - shows values for the last days. Unit = hour. Vertical lines separate 1 day. Total values: 12 + 12 + 3.</li>
+<li><strong>Weekly</strong> - shows values for the last weeks. Unit = day. Vertical lines separate 1 week. Total values: 7 + 7 + 4.</li>
+</ul>
+<h2 id="motions">Motions</h2>
+<ul>
+<li>Tap - tapping the finger against the touch screen without moving it too much.</li>
+<li>If a tap lands in the top right corner of the screen (square box 1/4 of the screen height), info time interval is changed: Min -&gt; Hour -&gt; Daily -&gt; Weekly -&gt; Min...</li>
+<li>Otherwise a tap cycles through graph info: rate -&gt; packets -&gt; rate...</li>
+<li>Swipe/Drag - while holding the finger down, move in any direction. The changes should be highlighted during the drag.</li>
+<li>Up - Go to Main menu.</li>
+<li>Down - Select All Interface graph screen.</li>
+<li>Left - Next interface.</li>
+<li>Right - Previous interface.</li>
+</ul>
+<h3 id="all-interface-graph-screen_1">All Interface Graph Screen</h3>
+<p>The All interface graph screen shows the RX/TX bandwidth usage of all interfaces. The max values are calculated like this - for Ethernet interfaces it's the negotiated rate or set speed. For wireless interfaces it's calculated from used band, channel-width and chain count using the theoretical values. The goal of this screen is to see how values are related to each other for a single interface.</p>
+<h2 id="motions_1">Motions</h2>
+<ul>
+<li>Swipe/drag:</li>
+<li>Up - Back (to Stats screen).</li>
+<li>Left - Next page.</li>
+<li>Right - Previous page.</li>
+</ul>
+<h3 id="stat-slideshow">Stat Slideshow</h3>
+<p>The Stat Slideshow screen is similar to the "Stats" screen, but the interfaces are switched after they timeout. Settings for the slideshow are stored in the RouterOS submenu <code>/lcd/interface</code></p>
+<h3 id="informative-slideshow">Informative Slideshow</h3>
+<p>The Submenu <code>/lcd/screen</code> Informative Slideshow screen cycles through screens with various system information:</p>
+<ul>
+<li>Aggregate traffic.</li>
+<li>Aggregate packets.</li>
+<li>Resources.</li>
+<li>System.</li>
+<li>Health.</li>
+<li>Date &amp; time.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">System</td>
+<td style="text-align: left;">Resources</td>
+<td style="text-align: left;">Health</td>
+</tr>
+</tbody>
+</table>
+<h3 id="log">Log</h3>
+<p>The Log screen shows the 5 last log entries where log action=echo.</p>
+<h3 id="reboot-and-reset-configuration">Reboot and Reset Configuration</h3>
+<p>These screens are only available when Read-Only mode is disabled. To access any of the screens, the Pin number must be entered. If the Pin authentication is successful, the user must confirm the desired action by pressing the "Yes" button, or cancel by pressing "No".</p>
+<hr />
+<h1 id="leds">LEDs</h1>
+<blockquote>
+<p>RouterOS allows customizing LED behavior for wireless strength, interface traffic activity, and other status indicators across supported devices. Users can configure individual LEDs for specific functions like...</p>
+</blockquote>
+<h1 id="leds_1">LEDs</h1>
+<h2 id="summary_1">Summary</h2>
+<p><strong>Sub-menu:</strong> <code>/system/leds</code></p>
+<p>RouterOS allows configuring each LED's activity the way that the user wishes. It is possible to configure the LEDs to display wireless strength, blink the LEDs on interface traffic activity, and many other options.</p>
+<p>For example, the default led configuration on Groove</p>
+<pre><code class="language-ros">[admin@MikroTik] /system/leds&gt; print 
+Flags: X - disabled 
+# TYPE INTERFACE LEDS 
+0 wireless-signal-strength led1 
+led2 
+led3 
+led4 
+led5 
+1 interface-activity ether1 user-led 
+
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Not all boards have the necessary hardware capabilities to support this feature.</p>
+</div>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>RB Groove uses five LEDs for wireless strength and one for Ethernet activity monitoring.</p>
+</div>
+<h2 id="property-description">Property Description</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether an item is disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interface</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the interface which will be used for led status. Applicable only if <strong>type</strong> is interface specific.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>modem-signal-treshold</strong> (<em>integer [-113..-51]</em>; Default: )</td>
+<td style="text-align: left;">Applicable if a type is <strong>modem-signal</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>leds</strong> (<em>list of leds</em>; Default: )</td>
+<td style="text-align: left;">List of led names used for a status report. For example, wireless signal strength will require more than one led.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (<em>align-down | align-left | align-right | align-up | ap-cap | fan-fault | flash-access | interface-activity | interface-receive | interface-speed | interface-speed-1G | interface-speed-25G | interface-speed-100G | interface-status | interface-transmit | modem-signal | modem-technology | off | on | poe-fault | poe-out | wireless-signal-strength | wireless-status</em>; Default: )</td>
+<td style="text-align: left;">Type of the status:align-down - light the led if the w60g device needs to be aligned downwards for the best signal qualityalign-left - light the led if the w60g device needs to be aligned to the leftalign-right - light the led if the w60g device needs to be aligned to the rightalign-up - light the led if the w60g device needs to be aligned upwardsap-cap - blink on CAP initializing with CAPsMAN, steady on once connectedfan-fault - light the led when any of the device's controlled fans stop workingflash-access - blink the led on flash accessinterface-activity - blink the led on interface (traffic) activityinterface-receive - blink the led on interface received trafficinterface-speed - light the led when interface works in 10Gbit rateinterface-speed-1G - light the led when interface works in 1Gbit rateinterface-speed-25G - light the led when interface works in 25Gbit rateinterface-speed-100G - light the led when interface works in 100Gbit rateinterface-status - light the led on interface status changeinterface-transmit - blink the led on interface transmitted trafficmodem-signal - blink the led on 3G modem signal (either USB or miniPCIe)modem-technology - turns on LEDs in order of modem technology generation: GSM; 3G; LTE; single led turns on only when LTE is active.off - turn off the ledon - turn on the ledpoe-fault - light the led when PoE out budget is close to the maximum supported limitpoe-out - light the led when interface PoE out turns onwireless-signal-strength - light the leds displaying wireless signal (requires more than one led)wireless-status - light the led on wireless status change.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="led-settings">LED Settings</h2>
+<p>Global settings are stored in the LED Settings menu.</p>
+<p><strong>Sub-menu:</strong> <code>/system/leds/setting</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>all-leds-off</strong> (<em>after-1h | after-1min | immediate | never</em>; Default: <strong>never</strong>)</td>
+<td style="text-align: left;">Whether and when all LEDs of a router can be turned off</td>
+</tr>
+</tbody>
+</table>
+<p>The listed devices support turning off their LEDs (LED dark mode); however, some LEDs still cannot be turned off due to the device design factors.</p>
+<h3 id="indoor-devices"><strong>Indoor devices</strong></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">RouterBoard</th>
+<th style="text-align: left;">LED description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>CRS305-1G-4S+; CRS309-1G-8S+</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LED and Power LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB5009UG+S+IN; RB5009UPr+S+</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L009UiGS-RM; L009UiGS-2HaxD-IN</strong></td>
+<td style="text-align: left;">Turns off PWR, USR and Ether1 LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L41G-2axD; L41G-2axD&amp;FG621-EA (hAP ax lite series)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB760iGS (hEX S)</strong></td>
+<td style="text-align: left;">Turns off Power LED and SFP LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>E50UG</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet1 LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB924i-2nD-BT5&BG77; RB924iR-2nD-BT5&amp;BG77 (KNOT series)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB951Ui-2HnD</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Power LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB951Ui-2nD (hAP); RB952Ui-5ac2nD (hAP ac lite); RB952Ui-5ac2nD-TC (hAP ac lite TC)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Power LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB962UiGS-5HacT2HnT (hAP ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Port5 PoE LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBcAP2n; RBcAP2nD (cAP)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBcAPGi-5acD2nD (cAP ac); RBcAPGi-5acD2nD-XL (cAP XL ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>cAPGi-5HaxD2HaxD (cAP ax)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBD25G/RB25GR-5HPacQD2HPnD (Audience)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBD52G-5HacD2HnD-TC (hAP ac^2)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBD53iG-5HacD2HnD (hAP ac^3)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBD53G-5HacD2HnD-TC (Chateau series)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBwsAP5Hac2nD (wsAP ac lite)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>C52iG-5HaxD2HaxD-TC (hAP ax^2)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>C53UiG+5HPaxD2HPaxD (hAP ax^3)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>S53UG+5HaxD2HaxD-TC (Chateau ax series)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wireless-systems"><strong>Wireless Systems</strong></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">RouterBoard</th>
+<th style="text-align: left;">LED description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>CME22-2n-BG77 (CME Gateway)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CubeG-5ac60ay (Cube 60Pro ac); CubeG-5ac60ay-SA (CubeSA 60Pro ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CubeG-5ac60ad (Cube 60G ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB912R-2nD-LTm (ltAP mini / ltAP mini LTE kit)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB912UAG-6HPnD (BaseBox 6)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBD23UGS-5HPacD2HnD (NetMetal ac^2)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L11UG-5HaxD; L11UG-5HaxD-NB (NetBox 5 ax)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L22UGS-5HaxD2HaxD-15S (mANTBox ax 15s)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L23UGSR-5HaxD2HaxD; L23UGSR-5HaxD2HaxD-NM (NetMetal ax)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLDF-2nD (LDF 2); RBLDF-5nD (LDF 5); RBLHGR</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLDFG-5acD (LDF 5 ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLHG2nD (LHG 2); RBLHG2nD-XL (LHG XL 2)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLHG5nD (LHG 5); RBLHG5HPnD (LHG HP5); RBLHG5HPnD-XL (LHG XL HP5)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLHGG-5acD (LHG 5 ac); RBLHGG-5acD-XL (LHG XL 5 ac); RBLHGG-5HPacD2HPnD (LHG XL 52 ac); RBSXTsqG-5acD (SXTsq 5 ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LED</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLHGG-60ad (Wireless Wire Dish)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LHGGM&amp;EG18-EA (LHG LTE18 kit); ATLGM&amp;EG18-EA (ATL LTE18 kit)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBLtAP-2HnD (LtAP)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBSXTsq-60ad (SXTsq Lite60); RBCube-60ad (Cube Lite60)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBwAPG-60ad (Wireless Wire)</strong></td>
+<td style="text-align: left;">Turns off all LEDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBwAPGR-5HacD2HnD (wAP ac)</strong></td>
+<td style="text-align: left;">Turns off all LEDs except Ethernet LED</td>
+</tr>
+</tbody>
+</table>
+<h2 id="examples">Examples</h2>
+<h3 id="basic-example">Basic example</h3>
+<p>LED control via CLI commands for scripting purposes:</p>
+<pre><code class="language-ros">#add led entry with specific type &quot;on&quot; or &quot;off&quot; to leds menu
+/system/leds/add leds=led1 type=off
+#to control led
+/system/leds/set [find where leds=&quot;led1&quot;] type=on
+or
+/system/leds/set [find where leds=&quot;led1&quot;] type=off
+
+</code></pre>
+<p>Enable the User ACT LED to show current CAP status on an RB951</p>
+<pre><code class="language-ros">/system/leds
+add leds=user-led type=ap-cap
+</code></pre>
+<h3 id="modem-signal-strength-example">Modem Signal Strength example</h3>
+<p>The whole modem-signal strength range is [-113..-51] and the modem-signal-threshold increases the weakest signal limit to -91 so the signal range for LED indication is [-91..-51]. That range is divided into equal parts depending on the number of LEDs configured for modem-signal LED trigger. The first LED turns on when the signal is above -91 and the last LED turns on when the signal reaches -51.</p>
+<pre><code class="language-ros">/system/leds
+add interface=lte1 leds=led1,led2,led3,led4,led5 modem-signal-treshold=-91 type=modem-signal
+
+</code></pre>
+<h3 id="modem-access-technology-example">Modem Access Technology example</h3>
+<p>These LED trigger examples turn on LEDs in order of modem technology generation: GSM; 3G; LTE.</p>
+<ul>
+<li>1 LED: led1 turns on when LTE is active.</li>
+</ul>
+<pre><code class="language-ros">/system/leds/add interface=lte1 leds=led1 type=modem-technology
+</code></pre>
+<ul>
+<li>2 LEDs: led1 - 3G; led2 - LTE;</li>
+</ul>
+<pre><code class="language-ros">/system/leds
+add interface=lte1 leds=led1,led2 type=modem-technology
+
+</code></pre>
+<ul>
+<li>3 LEDs: led1 - GSM; led2 - 3G; led3 - LTE</li>
+</ul>
+<pre><code class="language-ros">/system/leds/add interface=lte1 leds=led1,led2,led3 type=modem-technology
+</code></pre>
+<hr />
+<h1 id="mtu-in-routeros">MTU in RouterOS</h1>
+<blockquote>
+<p>This page introduces Maximum Transmission Unit (MTU) configuration in MikroTik RouterOS, explaining its importance for network efficiency and compatibility. It covers different MTU types, including Layer-2/L3 MTU and...</p>
+</blockquote>
+<h1 id="mtu-in-routeros_1">MTU in RouterOS</h1>
+<h2 id="introduction_1">Introduction</h2>
+<p>The Maximum Transmission Unit (MTU) must be configured by the administrator to ensure that intended services and applications can be successfully deployed in the network. In other words, administrators are responsible for configuring MTU values such that packet sizes do not exceed the capabilities of network equipment.</p>
+<p>Originally, MTU was introduced due to high error rates and low communication speeds. Fragmentation of the data stream allows correction of corruption errors by resending only the corrupted fragments, rather than the entire stream. Additionally, on low-speed connections such as modems, transmitting a large fragment can take excessive time, making communication possible only with smaller fragments.</p>
+<p>In the present day, error rates are much lower and communication speeds are significantly higher. This provides the opportunity to increase MTU values. Increasing MTU reduces protocol overhead and decreases CPU utilization, primarily due to interrupt reduction. As a result, some non-standard frame sizes have emerged:</p>
+<ul>
+<li><strong>Giant</strong> or <strong>Jumbo</strong> frames — frames that exceed the standard (IEEE) Ethernet MTU.</li>
+<li><strong>Baby Giant</strong> or <strong>Baby Jumbo</strong> frames — frames that are slightly larger than the standard (IEEE) Ethernet MTU.</li>
+</ul>
+<p>It is now common for Ethernet interfaces to support physical MTU values above the standard, but this cannot be taken for granted. The capabilities of other network equipment must also be considered. For example, if two routers boards with Ethernet interfaces supporting physical MTU 1526 are connected through an Ethernet switch, the switch must also support forwarding these large Ethernet frames in order for the application to function properly.</p>
+<h2 id="maximum-transmission-unit">Maximum Transmission Unit</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Mikrotik RouterOS recognizes several types of MTU: IP/Layer-3/L3 MTUMPLS/Layer-2.5/L2.5 MTUMAC/Layer-2/L2 MTUFull frame MTU</td>
+</tr>
+</tbody>
+</table>
+<h3 id="full-frame-mtu">Full frame MTU</h3>
+<p>Full frame MTU represents the actual size of the frame that is transmitted by a particular interface. The Frame Checksum (FCS) is not included in this value, as it is removed by the Ethernet driver as soon as the frame reaches its destination.</p>
+<h3 id="maclayer-2l2-mtu">MAC/Layer-2/L2 MTU</h3>
+<p>L2MTU indicates the maximum size of the frame without the MAC header that can be sent by this interface.</p>
+<p>In RouterOS L2MTU values can be seen in the "/interface" menu. L2MTU support is added for all Routerboard-related Ethernet interfaces, VLANs, Bridge, VPLS, and wireless interfaces. Some of them support the configuration of the L2MTU value. All other Ethernet interfaces might indicate L2MTU only if the chipset is the same as Routerboard Ethernets.</p>
+<p>This will allow users to check if the desired setup is possible. Users will be able to utilize additional bytes for VLAN and MPLS tags, or simply increase interface MTU to get rid of some unnecessary fragmentation.</p>
+<p>This table shows the <em>max-l2mtu</em> supported by Mikrotik RouterBoards (available in the <code>/interface/print</code> menu as the value of the read-only "max-l2mtu" option):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Model name</strong></td>
+<td style="text-align: left;"><strong>MTU description</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB SXT series, RB LHG, RB LDF, PL6411-2nD, PL7411-2nD, RB711 series, wAP R-2nD, RB912R-2nD-LTm (LtAP mini), RB Metal series, RB SXT Lite series, RB Groove series, Cube Lite60, LHG Lite60</strong></td>
+<td style="text-align: left;">ether1:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB SXT G series, RB DynaDish, wAP ac, RB QRT series, RB711G series, RB911G, RB912UAG</strong></td>
+<td style="text-align: left;">ether1:4076</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB OmniTik series, RB750, RB750UP, RB751U-2HnD, RB951-2n</strong></td>
+<td style="text-align: left;">ether1:4076; ether2-ether5:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB OmniTik ac series, RB750GL, RB750Gr2</strong></td>
+<td style="text-align: left;">ether1-ether5:4074</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB mAP, RB mAP lite, RB cAP, RB wAP</strong></td>
+<td style="text-align: left;">ether1-ether2:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB750r2, RB750P-PBr2, RB750UPr2, RB941-2nD, RB951Ui/RB952Ui series</strong></td>
+<td style="text-align: left;">ether1-ether5:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB750Gr3</strong></td>
+<td style="text-align: left;">ether1-ether5:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB751G-2HnD, RB951G-2HnD</strong></td>
+<td style="text-align: left;">ether1-ether5:4074</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB962UiGS, RB960PGS</strong></td>
+<td style="text-align: left;">ether1-ether5:4074; sfp1:4076</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB LHGG series</strong></td>
+<td style="text-align: left;">ether1:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LHG XL 52 ac</strong></td>
+<td style="text-align: left;">ether1:9214; sfp1:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB1100Hx2, RB1100AHx2</strong></td>
+<td style="text-align: left;">ether1-ether10:9498; ether11:9500; ether12-ether13:9116</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB4011iGS+ series</strong></td>
+<td style="text-align: left;">ether1-ether10:9578; sfp-sfpplus1:9982</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR1009 series</strong></td>
+<td style="text-align: left;">ether1-ether4:10224; ether5-ether8:10226; sfp1:10226; sfp-sfpplus1:10226</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR1016 series</strong></td>
+<td style="text-align: left;">ether1-ether12:10226; sfp1-sfp12:10226; sfp-sfpplus1:10226</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR1036 series</strong></td>
+<td style="text-align: left;">ether1-ether12:10226; sfp1-sfp4:10226; sfp-sfpplus1-sfp-sfpplus2:10226</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR1072 series</strong></td>
+<td style="text-align: left;">ether1:9116; sfp-sfpplus1-sfp-sfpplus8:10226</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR2004-1G-12S+2XS</strong></td>
+<td style="text-align: left;">ether1:9586; sfp-sfpplus1-sfp-sfpplus12:9578; sfp28-1 - sfp28-2:9578</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR2004-16G-2S+</strong></td>
+<td style="text-align: left;">ether1-ether16:9582; sfp-sfpplus1-sfp-sfpplus2:9586</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR2116-12G-4S+</strong></td>
+<td style="text-align: left;">ether1-ether12:9570; ether13:9586; sfp-sfpplus1-sfp-sfpplus4:9570</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CCR2216-1G-12XS-2XQ</strong></td>
+<td style="text-align: left;">ether1:9586; sfp28-1 - sfp28-12:9570; qsfp28-1-1 - qsfp28-2-4:9570</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS109-8G-1S</strong></td>
+<td style="text-align: left;">ether1-ether8:4064; sfp1:4064</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS125-24G-1S</strong></td>
+<td style="text-align: left;">ether1-ether24:4064; sfp1:4064</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS112-8G-4S, CRS112-8P-4S</strong></td>
+<td style="text-align: left;">ether1-ether8:9204; sfp9-sfp12:9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS106-1C-5S</strong></td>
+<td style="text-align: left;">sfp1-sfp5:9204; combo1:9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS210-8G-2S+</strong></td>
+<td style="text-align: left;">ether1-ether8:9204; sfp-sfpplus1:9204; sfpplus2:9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS212-1G-10S-1S+</strong></td>
+<td style="text-align: left;">ether1:9204; sfp1-sfp10:9204; sfpplus1:9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS226-24G-2S+</strong></td>
+<td style="text-align: left;">ether1-ether24:9204; sfp-sfpplus1:9204; sfpplus2:9204</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS326-24G-2S+, CSS326-24G-2S+</strong></td>
+<td style="text-align: left;">ether1-ether24:10218; sfp-sfpplus1:10218; sfpplus2:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS317-1G-16S+</strong></td>
+<td style="text-align: left;">ether1:10218; sfp-sfpplus1-sfp-sfpplus16:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS328-24P-4S+</strong></td>
+<td style="text-align: left;">ether1-ether24:10218; sfp-sfpplus1-sfp-sfpplus4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS328-4C-20S-4S+</strong></td>
+<td style="text-align: left;">combo1-combo4:10218; sfp1-sfp20:10218; sfp-sfpplus1-sfp-sfpplus4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS305-1G-4S+</strong></td>
+<td style="text-align: left;">ether1:10218; sfp-sfpplus1-sfp-sfpplus4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS304-4XG</strong></td>
+<td style="text-align: left;">ether1-ether4:10218; ether5:9676</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS309-1G-8S+</strong></td>
+<td style="text-align: left;">ether1:10218; sfp-sfpplus1-sfp-sfpplus8:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netFiber 9/IN (CRS310-1G-5S-4S+)</strong></td>
+<td style="text-align: left;">sfp1-sfp5:10218; sfp-sfpplus1-sfp-sfpplus4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS310-8G+2S+IN</strong></td>
+<td style="text-align: left;">ether1-ether8:10218; sfp-sfpplus1-sfp-sfpplus2:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS312-4C+8XG</strong></td>
+<td style="text-align: left;">combo1-combo4:10218; ether1-ether8:10218; ether9:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netPower 15FR (CRS318-1Fi-15Fr-2S)</strong></td>
+<td style="text-align: left;">ether1-ether16:10218; sfp1-sfp2:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netPower 16P (CRS318-16P-2S+)</strong></td>
+<td style="text-align: left;">ether1-ether16:10218; sfp-sfpplus1-sfp-sfpplus2:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS326-4C+20G+2Q+</strong></td>
+<td style="text-align: left;">combo1-combo4:10218; ether1-ether20:10218; qsfpplus1-1-qsfpplus2-4:10218; ether21:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS326-24S+2Q+</strong></td>
+<td style="text-align: left;">sfp-sfpplus1-sfp-sfpplus24:10218; qsfpplus1-1-qsfpplus2-4:10218; ether1:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS354-48G-4S+2Q+, CRS354-48P-4S+2Q+</strong></td>
+<td style="text-align: left;">sfp-sfpplus1-sfp-sfpplus4:10218; qsfpplus1-1-qsfpplus2-4:10218; ether1-ether48:10218; ether49:2028</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS418-8P-8G-2S+RM</strong></td>
+<td style="text-align: left;">ether1-ether16:10218; ether17:9018; sfp-sfpplus1-sfp-sfpplus2: 10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS504-4XQ-IN</strong></td>
+<td style="text-align: left;">ether1:2028; qsfp28-1-1 - qsfp28-4-4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS510-8XS-2XQ-IN</strong></td>
+<td style="text-align: left;">ether1:2028; sfp28-1 - sfp28-8:10218; qsfp28-1-1 - qsfp28-2-4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS518-16XS-2XQ</strong></td>
+<td style="text-align: left;">ether1:2028; sfp28-1 - sfp28-16:10218; qsfp28-1-1 - qsfp28-2-4:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS812-8DS-2DQ-2DDQ-RM</strong></td>
+<td style="text-align: left;">ether1-ether2:9586; qsfp56-1-1 - qsfp56-2-4:9570; qsfp56-dd-1-1 - qsfp56-dd-2-8:9570; sfp56-1 - sfp56-8:9570</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CSS610-8G-2S+, CSS610-8P-2S+</strong></td>
+<td style="text-align: left;">ether1-ether8:10218; sfp-sfpplus1-sfp-sfpplus2:10218</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>D52G-5HacD2HnD (hAP ac²)</strong></td>
+<td style="text-align: left;">ether1-ether5:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>C52iG-5HaxD2HaxD (hAP ax[^2])</strong></td>
+<td style="text-align: left;">ether1-ether5:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>C53UiG+5HPaxD2HPaxD (hAP ax[^3])</strong></td>
+<td style="text-align: left;">ether1-ether5:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L41G-2axD (hAP ax lite)</strong></td>
+<td style="text-align: left;">ether1-ether4:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>cAP ac</strong></td>
+<td style="text-align: left;">ether1-ether2:9124</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPEN21</strong></td>
+<td style="text-align: left;">ether1-ether2:10222; sfp1: 10222</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>wAP60G, LHG60G</strong></td>
+<td style="text-align: left;">ether1:9124</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB260GS series, CSS106-5G-1S, CSS106-1G-4P-1S</strong></td>
+<td style="text-align: left;">ether1-ether5:9198; sfp1:9198</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBFTC11</strong></td>
+<td style="text-align: left;">ether1:4046; sfp1:4046</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBM33G</strong></td>
+<td style="text-align: left;">ether1-ether3:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RBM11G</strong></td>
+<td style="text-align: left;">ether1:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB760iGS</strong></td>
+<td style="text-align: left;">ether1-ether5:2026; sfp1:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>E50UG</strong></td>
+<td style="text-align: left;">ether1:2048; ether2-ether5:2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB411 series</strong></td>
+<td style="text-align: left;">ether1:1526</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB433 series, RB450, RB493 series</strong></td>
+<td style="text-align: left;">ether1:1526; ether2-ether3:1522</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB450Gx4</strong></td>
+<td style="text-align: left;">ether1-ether5:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB411GL</strong></td>
+<td style="text-align: left;">ether1:1520</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB433GL, RB435G, RB450G, RB493G</strong></td>
+<td style="text-align: left;">ether1-ether3:1520</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB800</strong></td>
+<td style="text-align: left;">ether1-ether2:9500; ether3:9116</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB850Gx2</strong></td>
+<td style="text-align: left;">ether1-ether5:1580</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB921UAGS, RB922UAGS</strong></td>
+<td style="text-align: left;">ether1:4076; sfp1:4076</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>D23UGS-5HPacD2HnD (NetMetal ac²)</strong></td>
+<td style="text-align: left;">ether1:9214; sfp1:9214</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L23UGSR-5HaxD2HaxD (NetMetal ax)</strong></td>
+<td style="text-align: left;">ether1:8158; sfp1:8158</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB953GS</strong></td>
+<td style="text-align: left;">ether1-ether2:4074; sfp1:4074; sfp2:4076</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB2011 series</strong></td>
+<td style="text-align: left;">ether1-ether5:4074; ether6-ether10:2028; sfp1:4074</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB3011 series</strong></td>
+<td style="text-align: left;">ether1-ether5:8156; ether6-ether10:8156; sfp1:8158</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB5009 series</strong></td>
+<td style="text-align: left;">ether1-ether8: 9796; sfp-sfpplus1: 9796</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L009 series</strong></td>
+<td style="text-align: left;">ether1: 8158; ether2-ether8: 8154; sfp1: 8154</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB44Ge</strong></td>
+<td style="text-align: left;">ether1-ether4:9116</td>
+</tr>
+</tbody>
+</table>
+<p>All wireless interfaces in RouterOS (including Nstreme2) support 2290 byte L2MTU.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>L2MTU configuration changes trigger all interface reloads (link down/link up) due to necessary internal processes.<br />
+It is recommended to configure L2MTU with caution by keeping in mind that it can cause short interruption to connected devices.</p>
+<p>A larger L2MTU also increases the memory each received frame reserves. On low-memory boards such as the hAP ac² and cAP ac, setting the L2MTU to 9000 or above on the interfaces can take tens of megabytes and end in an out-of-memory reboot. Size the L2MTU to the frames the network carries, and check free memory with <code>/system/resource/print</code> after the change on low-memory devices.</p>
+</div>
+<h3 id="mplslayer-25l25-mtu">MPLS/Layer-2.5/L2.5 MTU</h3>
+<p>The MPLS MTU is configured in the <code>/mpls/interface</code> menu and specifies the maximum packet size, including MPLS labels, that can be sent out through a particular interface.</p>
+<p>Ensure that the MPLS MTU value is smaller than or equal to the L2MTU. The MPLS MTU affects packets differently depending on the action the MPLS router is performing. It is strongly recommended that the same MPLS MTU value is configured on all routers forming the MPLS cloud, due to the effects MPLS MTU has on MPLS-switched packets. This requirement means that all interfaces participating in the MPLS cloud must be configured with the smallest MPLS MTU value among the participating interfaces; therefore, careful consideration must be taken when selecting the hardware to be used.</p>
+<h3 id="mpls-switching">MPLS Switching</h3>
+<p>When a packet that includes MPLS labels(s) exceeds the configured MPLS MTU, the router attempts to determine the protocol type carried inside the MPLS frame:</p>
+<ul>
+<li>
+<p><strong>IP packets</strong>: If the encapsulated packet is an IP packet, MPLS generates an ICMP "Need Fragmentation" error message. This behavior mirrors standard IP protocol handling. Note that this ICMP error is not routed directly back to the packet originator; instead, it is switched toward the end of the Label Switched Path (LSP), allowing the egress router to route it back to the source.</p>
+</li>
+<li>
+<p><strong>Non-IP packets</strong>: If the encapsulated packet is not an IP packet, MPLS simply discards it because the router cannot interpret the packet contents. This behavior is particularly important for MPLS applications such as VPLS, where frames passing through the MPLS network are not IP packets but rather encapsulated Ethernet frames. If the MPLS MTU configured on any interface along the LSP is smaller than the packet size prepared by the ingress router, the frames will be dropped silently.</p>
+</li>
+</ul>
+<h4 id="ip-ingress">IP ingress</h4>
+<p>When a router initially pushes a label onto an IP packet, and the resulting packet size including the MPLS label exceeds the MPLS MTU, the router behaves as if the interface MTU was exceeded. It will either fragment the packet into fragments that do not exceed the MPLS MTU when labels are attached (if the IP Don't Fragment bit is not set) or generate an ICMP Need Fragmentation error that is sent back to the originator.</p>
+<h4 id="vpls-ingress">VPLS ingress</h4>
+<p>When the router encapsulates an Ethernet frame for forwarding over a VPLS pseudowire, it checks whether the packet size, including the VPLS Control Word (4 bytes) and any necessary label (typically 2 labels, which adds 8 bytes), exceeds the MPLS MTU of the outgoing interface. If it does, VPLS fragments packets so that they honor the MPLS MTU of the outgoing interface. The packet is reassembled at the egress point of the VPLS pseudowire.</p>
+<h2 id="setup-examples">Setup Examples</h2>
+<p>In these examples, we will take a look at frames entering and leaving the router via Ethernet interfaces.</p>
+<h3 id="simple-routing">Simple Routing</h3>
+<p>The image shows the packet MTU size for simple routing, packet size is not modified.</p>
+<h3 id="routing-with-vlan-encap">Routing with VLAN Encap</h3>
+<p>Each VLAN tag is 4 bytes long. The VLAN tag is added by a router. L2-MTU is increased by 4 bytes.</p>
+<h3 id="simple-mpls-with-tags">Simple MPLS with Tags</h3>
+<p>When MPLS is used as a plain replacement for IP routing, only one label is attached to every packet, therefore packet size increases by 4 bytes. We have the situation with two MPLS labels. In order to be able to forward standard size (1500 bytes) IP packets without fragmentation, MPLS MTU must be set to at least 1508 for two MPLS labels.</p>
+<h3 id="vpls-tunnel">VPLS Tunnel</h3>
+<p>Two MPLS labels are present when a remote endpoint is not directly attached. One MPLS label is used to get to a remote endpoint; the second label is used to identify the VPLS tunnel.</p>
+<h2 id="advanced-setup-examples">Advanced Setup Examples</h2>
+<p>In this example, we will take a closer look at the required L2MTU of all Ethernet-like interfaces including Bridge, VLAN, and VPLS interfaces.</p>
+<p>In this setup we will have 3 routers:</p>
+<ul>
+<li>
+<p>Q-in-Q router - this router will receive a standard 1500 byte Ethernet frame and will add two VLAN tags to the packet. Then the packet will be sent out via an Ethernet network to the second router.</p>
+</li>
+<li>
+<p>VPLS router - this router will remove the outer VLAN tag and will bridge the packet with the remaining VLAN tag with the VPLS tunnel. The VPLS tunnel will take a packet through the MPLS network to the third router.</p>
+</li>
+<li>
+<p>MPLS Edge router - will remove VPLS and VLAN tags and bridge the packet to the client Ethernet network.</p>
+</li>
+</ul>
+<hr />
+<h1 id="peripherals">Peripherals</h1>
+<blockquote>
+<p>This article describes supported add-on peripherals for RouterBOARD hardware devices.</p>
+</blockquote>
+<h1 id="peripherals_1">Peripherals</h1>
+<p>This article describes supported add-on peripherals for RouterBOARD hardware devices.</p>
+<h2 id="cellular-modems">Cellular modems</h2>
+<p>RouterOS v7 supports the following cellular modems:</p>
+<ul>
+<li>MikroTik modems.</li>
+<li>Third-party modems supported by device class/type:</li>
+<li>MBIM class USB interface</li>
+<li>USB-CDC class USB interface</li>
+<li>RNDIS type USB interface</li>
+<li>Third-party modems with added support (see the modem table below).</li>
+</ul>
+<h2 id="please-note">Please note</h2>
+<ul>
+<li>Not all modems are listed in the supported modem table. Some modems may work even if not listed because modem manufacturers often re-use the same hardware IDs, and vice versa.</li>
+<li>Customized, localized, or locked units may have compatibility issues.</li>
+<li>Third-party modems may require configuration adjustments before they can be used with RouterOS.</li>
+<li>For mini-PCIe modems with a USB3.0 interface installed in a mini-PCIe slot with PCIe/USB2.0 support, the USB speed must be limited to USB2.0, or the mini-PCIe shared PCIe/USB3.0 pin must be isolated. See the picture below the table.</li>
+</ul>
+<h2 id="cellular-modems_1">Cellular modems</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">vendor-id</th>
+<th style="text-align: left;">device-id</th>
+<th style="text-align: left;">Tested RouterOS version</th>
+<th style="text-align: left;">Comments</th>
+<th style="text-align: left;">Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Alcatel IK40</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.41RC11</td>
+<td style="text-align: left;">LTE interface, Modem can be configured only through modem's configuration WEB page.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Alcatel IK41</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.48</td>
+<td style="text-align: left;">Config-less LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Android usb tethering interface</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.7</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">AnyData ADU-E630WH</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6</td>
+<td style="text-align: left;">( aka "USB Wireless HSDPA/UMTS 2.1GHz GSM/GPRS/EGPRS 900/17000MHz/CDMA 1x EVDO Rev.A")</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Anteniti 3372h-153</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7.12</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">BandRich C501</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v5.25 and v6.0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cinterion LTE Modem</td>
+<td style="text-align: left;">0x1e2d</td>
+<td style="text-align: left;">0x0061</td>
+<td style="text-align: left;">v7.14 and higher</td>
+<td style="text-align: left;">LTE interface, some settings are ignored. Not full SMS functionality.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">D-link DWM-157</td>
+<td style="text-align: left;">0x2001</td>
+<td style="text-align: left;">0x7d02</td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Works! Data Channel: 2, Info Channel: 3, Modem Init: AT+CFUN=1, vendor-id="0x2001" device-id="0x7d02" Some info from modem: &gt; H/W Ver.: B1, F/W Ver.: 2.0.1eu, revision: +CGMR: MOLY.WR8.W1231.DC.WG.MP.V3, 2013/04/09 02:08 Different HW revisions might not work with RouterOS</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">D-link DWM-222</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">See comments</td>
+<td style="text-align: left;">Multiple modem versions with the same marketing name exist: H/W ver: A1 - supported as config-less LTE interface from RoS v6.38Modem firmware version starting from "2.1.4EU".H/W ver: A3 - works as config-less LTE using modem firmware provided RNDIS interface (RouterOS v7 only)</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dell DW5821e</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.4beta4 and higher</td>
+<td style="text-align: left;">MBIM driver. Revision: T77W968.F1.0.0.5.2.VZ.013 044</td>
+<td style="text-align: left;">M.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dell DW5821e-eSIM</td>
+<td style="text-align: left;">0x413c</td>
+<td style="text-align: left;">0x81e0</td>
+<td style="text-align: left;">7.11 and higher</td>
+<td style="text-align: left;">MBIM driver. FW: T77W968.F1.0.0.5.2.GC.013. "at-chat" support added</td>
+<td style="text-align: left;">M.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">DELL T99W175</td>
+<td style="text-align: left;">0x05c6</td>
+<td style="text-align: left;">0x90d5</td>
+<td style="text-align: left;">7.16 and higher</td>
+<td style="text-align: left;">MBIM driver. FW: T99W175.F0.1.0.0.9.GC.004. "at-chat" support added</td>
+<td style="text-align: left;">M.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dell Wireless 5530 HSPA</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.1 and higher</td>
+<td style="text-align: left;">Data channel 0, Info channel 0, init: AT+CFUN=1 (needs to manually change profile by command AT*ENAP=1,1)</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ericsson F5521gw</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.x and higher</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fibocom FM150-AE/FM150-NA</td>
+<td style="text-align: left;">0x2cb7</td>
+<td style="text-align: left;">0x0111</td>
+<td style="text-align: left;">v7.1beta5</td>
+<td style="text-align: left;">MBIM driver. Revision: 89603.1000.00.01.01.03</td>
+<td style="text-align: left;">M.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fibocom NL-952-EAU</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.1beta5</td>
+<td style="text-align: left;">MBIM driver. Revision: 19600.7000.00.04.01.05</td>
+<td style="text-align: left;">M.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Marvell PXA1802 based modems</td>
+<td style="text-align: left;">0x1286</td>
+<td style="text-align: left;">0x4e31</td>
+<td style="text-align: left;">v7.2.2</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E153</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.31 and higher</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E171</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Works! ppp interface, vendorid=0x12d1 deviceid=0x140c</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei e3131</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx and higher</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E3372h, E5576h, E8372h</td>
+<td style="text-align: left;">0x12d1</td>
+<td style="text-align: left;">0x14db</td>
+<td style="text-align: left;">v6.8</td>
+<td style="text-align: left;">Config-less LTE interface for modems with vendor-id="0x12d1" device-id="0x14db"  Models with suffixes -320 and -608 will not work with RouterOS v6, please use v7 instead  Models with suffixes -325 work only with arm cpu</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E3276-150</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E3351</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.24 and higher</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E3531</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.24 or 6.40RC25</td>
+<td style="text-align: left;">There are different versions of this modem E3531-6 works from version 6.40RC25 as ppp, mbim is supported only from RouterOS V7</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei e398</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx and higher</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E5377</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.36.1</td>
+<td style="text-align: left;">MIFI unit. No serial support, but works with IP on LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei E5673s-609</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei K5160</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.37  v7.0beta6</td>
+<td style="text-align: left;">v6 and v7 - config-less LTE interface  v7 - by default will try to use the modem in MBIM mode</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei K5161</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.47</td>
+<td style="text-align: left;">Config-less LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei ME909s-120</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.28</td>
+<td style="text-align: left;">Recommended modem firmware version 11.617.24.00.00. To reduce LTE interface IP subnet mask to /32 configure modem with at-chat command: <code>/interface/lte/at-chat [find]</code> input="AT^CUSTFEATURE=3,1"</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei ME909u-521</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.11</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei MU609</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.11</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei MU709s-2</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.28</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Huawei MS2372h-517</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.12beta3</td>
+<td style="text-align: left;">ppp/serial interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Jaton MT421e</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.40RC32</td>
+<td style="text-align: left;">LTE interface with Ethernet emulation (no configuration possible), LTE supported bands 42/43</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Netgear Unite Explore 815S</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.41</td>
+<td style="text-align: left;">MIFI unit. No serial support, but works with IP on LTE interface.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Novatel USB730L</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.41RC6</td>
+<td style="text-align: left;">LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Olivetti Olicard 500</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.41RC11</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel EC20/EC21</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel BG77</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0700</td>
+<td style="text-align: left;">v6.47</td>
+<td style="text-align: left;">Serial/PPP interface, single AT/modem channel</td>
+<td style="text-align: left;">OEM module</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel BG95-M3</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.47</td>
+<td style="text-align: left;">Serial/PPP interface, single AT/modem channel  Will not work on wAP R ac boards.</td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel BG96</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.45</td>
+<td style="text-align: left;">Serial/PPP interface, 2x AT/modem channels</td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel EC25-EU</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0125</td>
+<td style="text-align: left;">v6.42</td>
+<td style="text-align: left;">ppp/LTE interface.  RouterOS v6  CDC-ECM mode - LTE interface receive address in modem's internal network.  RouterOS v7 MBIM mode -  LTE interface uses APN IP address.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel EG25-G</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0125</td>
+<td style="text-align: left;">6.48.3</td>
+<td style="text-align: left;">RouterOS v6  CDC-ECM mode - LTE interface receive address in modems internal network.  RouterOS v7 MBIM mode -  LTE interface uses APN IP address.  On some boards it may be required to disable SIM hot plug detection: <code>/interface/lte/set [find] modem-init="AT+QSIMDET=0,1"</code></td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel EM12-G</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0512</td>
+<td style="text-align: left;">v7.1beta5</td>
+<td style="text-align: left;">MBIM driver</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel EP06</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.42</td>
+<td style="text-align: left;">ppp/LTE interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel RG255C-GL</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.18</td>
+<td style="text-align: left;">Basic support with at-chat, minimum firmware revision: RG255CGLABR01A04M4G_A0.004.A0.004  Modem composition: <code>at+qcfg="usbnet",0</code></td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel RM500Q-GL</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0800</td>
+<td style="text-align: left;">v7.1beta6</td>
+<td style="text-align: left;">MBIM driver</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel RM500Q-AE</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0800</td>
+<td style="text-align: left;">v7.1beta6</td>
+<td style="text-align: left;">MBIM driver</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel RM502Q-AE</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0800</td>
+<td style="text-align: left;">v7.1beta5</td>
+<td style="text-align: left;">MBIM driver</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel RM510Q-GL</td>
+<td style="text-align: left;">0x2c7c</td>
+<td style="text-align: left;">0x0800</td>
+<td style="text-align: left;">7.9</td>
+<td style="text-align: left;">MBIM driver</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel UC15</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Works, ppp interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quectel UC20</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Works, ppp interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-4G</td>
+<td style="text-align: left;">0x2cd2</td>
+<td style="text-align: left;">0x0003</td>
+<td style="text-align: left;">v6.42</td>
+<td style="text-align: left;">LTE interface. Supports multiple APN passthrough.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-LTE6</td>
+<td style="text-align: left;">0x2cd2</td>
+<td style="text-align: left;">0x0004</td>
+<td style="text-align: left;">v6.39.2</td>
+<td style="text-align: left;">LTE interface. Supports multiple APN passthrough.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">R11e-LTE</td>
+<td style="text-align: left;">0x2cd2</td>
+<td style="text-align: left;">0x0001</td>
+<td style="text-align: left;">v6.39.2</td>
+<td style="text-align: left;">LTE interface. Supports multiple APN passthrough.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra Netgear AirCard 320U</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">6.41</td>
+<td style="text-align: left;">Customer tested the modem with firmware 03.05.23</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra wireless MC73xx</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx(ppp) v7.xx (LTE)</td>
+<td style="text-align: left;">Works! PPP interface. And starting with v7.xx it will support LTE interface with the modem switched to expose the MBIM interface. MC7304 tested with firmware SWI9X15C_05.05.67.00</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra Wireless MC7430</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx and higher</td>
+<td style="text-align: left;">Data channel 2, Info channel 2, Modem init: AT+CGATT=0, Dial-command: AT+CGATT=1;D*99#, also needs 3.0 pins isolated (PINS:23,25,27,31,33)</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra Wireless MC74xx</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.1</td>
+<td style="text-align: left;">Basic functionality support for modems with MBIM interface/USB composition</td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra Wireless MC7455</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.3beta37</td>
+<td style="text-align: left;">MBIM mode with extended support for USB compositions: 1009 - diag,modem,mbim100D - diag,nmea,modem,mbim</td>
+<td style="text-align: left;">mini-PCIe</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sierra Wireless MC7710/MC7700/MC7750</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v5.25, v6.0 and 6.40RC43</td>
+<td style="text-align: left;">If the modem uses firmware 3.5 it should be upgraded to 3.5.23.2 firmware release in order to work in RouterOS correctly again.</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">SIMcom SIM5360</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Works! Using PPP interface, vendor-id="0x05c6" device-id="0x9000"</td>
+<td style="text-align: left;">MiniPCI-e / USB w/ converter</td>
+</tr>
+<tr>
+<td style="text-align: left;">SIMcom SIM7100</td>
+<td style="text-align: left;">0x1e0e</td>
+<td style="text-align: left;">0x9001</td>
+<td style="text-align: left;">v6.xx(ppp) v7.xx (LTE)</td>
+<td style="text-align: left;">Works! PPP interface. And starting with v7.xx it will support LTE interface.</td>
+<td style="text-align: left;">MiniPCI-e / USB w/ converter</td>
+</tr>
+<tr>
+<td style="text-align: left;">SIMCom SIM8202G-M.2</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.11</td>
+<td style="text-align: left;">MBIM driver supported: AT+CUSBCFG=usbid,1e0e,901e</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">SXT LTE</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6</td>
+<td style="text-align: left;">LTE interface. Old version of SXT LTE</td>
+<td style="text-align: left;">Built-in</td>
+</tr>
+<tr>
+<td style="text-align: left;">Tele2.ru LTE-D402</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.47</td>
+<td style="text-align: left;">Config-less LTE interface</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Telecom NZ T-Stick ZTE MF-181</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.0rc13</td>
+<td style="text-align: left;">Data Channel=2, Info Channel=2, APN internet.telecom.co.nz, PHONE=*99#. Tested ok for both data and SMS on CCR1016-12G</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Telit FN980m</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.5</td>
+<td style="text-align: left;">AT#USBCFG=2</td>
+<td style="text-align: left;">m.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Telit LE910</td>
+<td style="text-align: left;">0x1bc7</td>
+<td style="text-align: left;">0x1201</td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">ppp interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Telit LE910C1</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.46</td>
+<td style="text-align: left;">Non-configurable from RouterOS</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Telit LM940</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.44</td>
+<td style="text-align: left;">LTE interface in some cases needs 3.0 pins isolated (PINS:23,25,27,29,31,33)</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Telit LM960</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.46</td>
+<td style="text-align: left;">LTE interface in some cases needs 3.0 pins isolated (PINS:23,25,27,29,31,33)</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">TPS (Turning Point Solution) GCT450</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.48</td>
+<td style="text-align: left;">Config-less LTE interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Vodafone (Huawei) K4203</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.xx</td>
+<td style="text-align: left;">Not supported in ROS v6, but as this modem supports MBIM driver support will be possible in ROS v7.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Vodafone K4201-Z</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.8</td>
+<td style="text-align: left;">Some settings are ignored. LTE interface.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Vodafone K4305</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.7</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Vodafone K5160</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.37</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Yota LU150</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v5.22 and v6.4</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Yota wifi modem</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.7</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Yota WLTUBA-107</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.0</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE 821D</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.x</td>
+<td style="text-align: left;">Set Info channel = 1, Data channel = 3, Dial command=ATDT</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE AC5730</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.x</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE ME3630-E</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.40RC26</td>
+<td style="text-align: left;">ppp and LTE interface</td>
+<td style="text-align: left;">MiniPCI-e</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF110</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.28 and higher</td>
+<td style="text-align: left;">Set info channel = 2, data channel = 2, Dial command=ATM1L3DT</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF823</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.8</td>
+<td style="text-align: left;">Some settings are ignored. For some devices it's needed to enter FACTORY mode to change operating state.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF825A</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.xx</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF827</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.8</td>
+<td style="text-align: left;">Some settings are ignored.</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF832S</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v7.10</td>
+<td style="text-align: left;">Config-less support, may require to set some settings using at-chat or modem init string</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF833U1</td>
+<td style="text-align: left;">0x19d2</td>
+<td style="text-align: left;">0x1405</td>
+<td style="text-align: left;">v7.20.6</td>
+<td style="text-align: left;">Config-less LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+<tr>
+<td style="text-align: left;">ZTE MF90</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">v6.44beta32 and higher</td>
+<td style="text-align: left;">LTE interface</td>
+<td style="text-align: left;">USB</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Not all modems are listed. Localized and locked units may have compatibility issues.</p>
+</div>
+<p>For some modems with USB3.0 support in some cases USB3.0 pins need to be isolated to ensure correct initialization:</p>
+<h2 id="sfp-modules">SFP modules</h2>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Brand</th>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Rate</th>
+<th style="text-align: left;">Connector/Cable type</th>
+<th style="text-align: left;">Wavelength</th>
+<th style="text-align: left;">Tested with</th>
+<th style="text-align: left;">Works / Doesn't</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S-85DLC05D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">*Check:  <a href="../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP/SFP+ compatibility reference table</a></td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S-31DLC20D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">*Check:  <a href="../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP/SFP+ compatibility reference table</a></td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S-35LC20D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">*Check:  <a href="../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP/SFP+ compatibility reference table</a></td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S-53LC20D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">*Check:  <a href="../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP/SFP+ compatibility reference table</a></td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S-RJ01</td>
+<td style="text-align: left;">1000/100/10</td>
+<td style="text-align: left;">RJ45, Cat5/Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">*Check:  <a href="../wired-connections/mikrotik-wired-interface-compatibility.mdx">SFP/SFP+ compatibility reference table</a></td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">Axiom</td>
+<td style="text-align: left;">AXG91632</td>
+<td style="text-align: left;">1000BASE-LX</td>
+<td style="text-align: left;">Dual LC</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">CRS125-24G-1S-RM</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Finisar</td>
+<td style="text-align: left;">FCLF-8521-3</td>
+<td style="text-align: left;">10/100/1000</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Finisar</td>
+<td style="text-align: left;">FCLF-8521-3-MD</td>
+<td style="text-align: left;">10/100/1000</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Finisar</td>
+<td style="text-align: left;">FTRJ8519P1BNL-B1</td>
+<td style="text-align: left;">10/100/1000 1.25 Gb/s 1000Base-SX Ethernet</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Finisar</td>
+<td style="text-align: left;">FTLF8519P2BNL</td>
+<td style="text-align: left;">10/100/1000 1.25 Gb/s 1000Base-SX Ethernet</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Finisar</td>
+<td style="text-align: left;">FTRJ1319P1BTL</td>
+<td style="text-align: left;">1.25Gb/s 1000Base-LX Ethernet</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">CCR1009-8G-1S-1S+ and CCR1009-7G-1C-1S+</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Unica</td>
+<td style="text-align: left;">SFP-1.25G-T</td>
+<td style="text-align: left;">1000M</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dell</td>
+<td style="text-align: left;">FTLX8571D3BCL</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Unica</td>
+<td style="text-align: left;">GP-3124-L2CD-C</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cisco</td>
+<td style="text-align: left;">GLC-T</td>
+<td style="text-align: left;">1.25G</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cisco</td>
+<td style="text-align: left;">GLC-SX-MM</td>
+<td style="text-align: left;">1000BASE-SX SFP transceiver module for MMF, 1.25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cisco</td>
+<td style="text-align: left;">SFP-GE-L</td>
+<td style="text-align: left;">1000BASE-LX/LH SFP transceiver module for SMF, 1.25G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1300nm</td>
+<td style="text-align: left;">Various MT hardware</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">6COM</td>
+<td style="text-align: left;">6C-SFP-T</td>
+<td style="text-align: left;">10/100/1000</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">6COM</td>
+<td style="text-align: left;">6C-WDM-0210BSD</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi SC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">6COM</td>
+<td style="text-align: left;">6C-WDM-0210ASD</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi SC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">6COM</td>
+<td style="text-align: left;">6C-SFP-0310D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">6COM</td>
+<td style="text-align: left;">6C-SFP-0301D</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ingellen</td>
+<td style="text-align: left;">INSP-T(10/100/1000)</td>
+<td style="text-align: left;">10/100/1000</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ingellen</td>
+<td style="text-align: left;">INSPL-53-BX</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">1550/1310</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ingellen</td>
+<td style="text-align: left;">INSPL-35-BX</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">1310/1550</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ingellen</td>
+<td style="text-align: left;">INSP-LX-SM</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ingellen</td>
+<td style="text-align: left;">INSP-SX-MM</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AXCEN</td>
+<td style="text-align: left;">AXGT-R1T4-05I1</td>
+<td style="text-align: left;">10/100/1000</td>
+<td style="text-align: left;">RJ45, Cat6</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AXCEN</td>
+<td style="text-align: left;">AXGD-37А4-0531</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AXCEN</td>
+<td style="text-align: left;">AXGD-16А4-0531</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AXCEN</td>
+<td style="text-align: left;">AXGD-1354-0531</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AXCEN</td>
+<td style="text-align: left;">AXGD-5854-0511</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">TP-Link</td>
+<td style="text-align: left;">TL-SM311LS</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">TP-Link</td>
+<td style="text-align: left;">TL-SM311LM</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">CCR1036 12G-4S</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPTIC</td>
+<td style="text-align: left;">OPTIC-SFP-3524S-02-SC</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi SC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">RB2011UAS-RM, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPTIC</td>
+<td style="text-align: left;">OPTIC-SFP-5324S-02-SC</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi SC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">RB2011UAS-RM, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPTIC</td>
+<td style="text-align: left;">OPTIC-SFP-S1203-L3302-LC</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">RB2011UAS-RM, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPTIC</td>
+<td style="text-align: left;">OPTIC-SFP-S1205-L3302-LC</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">RB2011UAS-RM, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">ROBOFiber</td>
+<td style="text-align: left;">SFP-7120-55</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1550nm</td>
+<td style="text-align: left;">CCR1036-12G-4S, RB2011</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">ROBOFiber</td>
+<td style="text-align: left;">SFP-7120-WA</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">Tx:1490nm/Rx:1550nm</td>
+<td style="text-align: left;">CCR, RB2011</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">ROBOFiber</td>
+<td style="text-align: left;">SFP-7120-WB</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1490nm</td>
+<td style="text-align: left;">CCR, RB2011</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Enguity</td>
+<td style="text-align: left;">SFP-3647603KM.b1310 XT</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1550nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Enguity</td>
+<td style="text-align: left;">SFP-3647603KM.b1550 XT</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1310nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Enguity</td>
+<td style="text-align: left;">SFP-3647610KM.b1490 XT</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1490nm/Rx:1550nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Enguity</td>
+<td style="text-align: left;">SFP-3647610KM.b1550 XT</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1550nm/Rx:1490nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AdvOptics MSA</td>
+<td style="text-align: left;">GLC-SX-MM</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, MM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1310nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">AdvOptics MSA</td>
+<td style="text-align: left;">GLC-ZX-SM</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1310nm</td>
+<td style="text-align: left;">CCR, RB2011, RB260GS</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Proline</td>
+<td style="text-align: left;">GLC-BX-D20-PRO</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1490nm/Rx:1310nm</td>
+<td style="text-align: left;">CRS125</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Proline</td>
+<td style="text-align: left;">GLC-BX-D40-PRO</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1490nm</td>
+<td style="text-align: left;">CRS125</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Foundry Networks</td>
+<td style="text-align: left;">E1MG-BXU-AC</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1310nm/Rx:1490nm</td>
+<td style="text-align: left;">RB3011UiAS, hAP ac</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Avago</td>
+<td style="text-align: left;">SFBR-5799APZ</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">CRS326, CRS112</td>
+<td style="text-align: left;">Works in 1Gbps mode!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Eltex</td>
+<td style="text-align: left;">NTU-SFP-100</td>
+<td style="text-align: left;">1,25G</td>
+<td style="text-align: left;">SC</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">RB4011iGS+</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<h2 id="sfp-modules_1">SFP+ modules</h2>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Brand</th>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Distance</th>
+<th style="text-align: left;">Rate</th>
+<th style="text-align: left;">Connector/Cable type</th>
+<th style="text-align: left;">Wavelength</th>
+<th style="text-align: left;">Tested with</th>
+<th style="text-align: left;">Works / Doesn't</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+85DLC03D</td>
+<td style="text-align: left;">300m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+31DLC10D</td>
+<td style="text-align: left;">10km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+23LC10D</td>
+<td style="text-align: left;">10km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1270nm/Rx:1330nm</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+32LC10D</td>
+<td style="text-align: left;">10km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1330nm/Rx:1270nm</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+DA0001</td>
+<td style="text-align: left;">1m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Twinax Copper</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+DA0003</td>
+<td style="text-align: left;">3m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Twinax Copper</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">All MikroTik products with SFP/SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">MikroTik</td>
+<td style="text-align: left;">S+RJ10</td>
+<td style="text-align: left;">various, depending on link rate. Check brochure for more details</td>
+<td style="text-align: left;">10G/5G/2.5G/1G/100M/10M</td>
+<td style="text-align: left;">RJ45 - Cat5E/Cat6/Cat7</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">All MikroTik products with SFP+ interfaces</td>
+<td style="text-align: left;">Natively supported</td>
+</tr>
+<tr>
+<td style="text-align: left;">Atop</td>
+<td style="text-align: left;">APSP55B30CDL40</td>
+<td style="text-align: left;">40km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1550nm</td>
+<td style="text-align: left;">CRS series, CCR series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Does NOT work!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cisco</td>
+<td style="text-align: left;">SFP-10G-LR</td>
+<td style="text-align: left;">10km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">RB2011LS-IN</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dell (Finisar)</td>
+<td style="text-align: left;">FTLX8571D3BCL</td>
+<td style="text-align: left;">300m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">Most of the SFP/SFP+ MikroTik products</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Juniper (Finisar)</td>
+<td style="text-align: left;">FTLX8571D3BCL-J1</td>
+<td style="text-align: left;">300m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">Most of the SFP/SFP+ MikroTik products</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Intel (Finisar)</td>
+<td style="text-align: left;">FTLX8571D3BCV-IT</td>
+<td style="text-align: left;">300m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">Most of the SFP/SFP+ MikroTik products</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">OEM (Juniper?)</td>
+<td style="text-align: left;">EX-SFP-10GE-SR-OEM</td>
+<td style="text-align: left;">300m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, MM</td>
+<td style="text-align: left;">850nm</td>
+<td style="text-align: left;">Most of the SFP/SFP+ MikroTik products</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fiberstore</td>
+<td style="text-align: left;">SFP-10G31-40</td>
+<td style="text-align: left;">40km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">CRS series, CCR series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fiberstore</td>
+<td style="text-align: left;">SFP-10G55-40</td>
+<td style="text-align: left;">40km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">Dual LC, SM</td>
+<td style="text-align: left;">1310nm</td>
+<td style="text-align: left;">CRS series, CCR series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fiberstore</td>
+<td style="text-align: left;">SFP-10G32-40</td>
+<td style="text-align: left;">40km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1330nm/Rx:1270nm</td>
+<td style="text-align: left;">CRS series, CCR series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Fiberstore</td>
+<td style="text-align: left;">SFP-10G23-40</td>
+<td style="text-align: left;">40km</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">BiDi LC, SM</td>
+<td style="text-align: left;">Tx:1270nm/Rx:1330nm</td>
+<td style="text-align: left;">CRS series, CCR series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works!</td>
+</tr>
+<tr>
+<td style="text-align: left;">Optech</td>
+<td style="text-align: left;">OPAK-TX1-00-C</td>
+<td style="text-align: left;">30m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">RJ45 - Cat 6a/7 Cable</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">CCR, CCR, CSS series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works, starting with v6.40rc20 RouterOS build.</td>
+</tr>
+<tr>
+<td style="text-align: left;">ProLabs</td>
+<td style="text-align: left;">SFP-10G-T-C</td>
+<td style="text-align: left;">30m</td>
+<td style="text-align: left;">10G</td>
+<td style="text-align: left;">RJ45 - Cat 6a/7 Cable</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">CCR, CCR, CSS series devices with SFP+ interfaces</td>
+<td style="text-align: left;">Works, starting with v6.40rc20 RouterOS build.</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<h2 id="u2-disks-for-rds">U.2 Disks for RDS</h2>
+<p>The RDS2216-2XG-4S+4XS-2XQ supports U.2 SSD drives of any capacity, with a physical height limitation of 7mm. While any drive meeting this physical requirement should be supported, the following models has been verified:</p>
+<ul>
+<li>Samsung PM9A3</li>
+<li>Samsung PM983</li>
+<li>Micron 7300 series</li>
+<li>Micron 7400 series</li>
+<li>WD DC SN640</li>
+<li>Transcend UTE210T</li>
+<li>Innodisk 4TG2-P</li>
+</ul>
+<hr />
+<h1 id="poe">PoE</h1>
+<blockquote>
+<p>This page documents PoE (Power over Ethernet) on MikroTik devices: supported standards and power classes, configuring and monitoring PoE out (PSE) and PoE in (PD) ports in RouterOS and SwOS, logging, warnings,...</p>
+</blockquote>
+<h1 id="poe_1">PoE</h1>
+<h2 id="summary_2">Summary</h2>
+<p>This page explains PoE (Power over Ethernet) on MikroTik devices: powering other devices with <strong>PoE out</strong> ports (the device acts as PSE, Power Sourcing Equipment) and, on some models, being powered with a <strong>PoE in</strong> port (the device acts as PD, Powered Device). MikroTik devices utilize an RJ45 mode B pinout for power delivery, with PoE supplied through pins 4 and 5 (+) and pins 7 and 8 (-).</p>
+<h2 id="mikrotik-supported-poe-standards">MikroTik supported PoE standards</h2>
+<p>MikroTik devices can support some or all of the following PoE standards - both for powering other devices (PoE out, the device acts as PSE) and, on some models, for being powered themselves (PoE in, the device acts as PD):</p>
+<ul>
+<li>
+<p><strong>Passive PoE up to 30 V</strong> - PoE without negotiation between the PSE (Power Sourcing Equipment) and the PD (Powered Device). A PoE out port delivers the same voltage that is supplied to the PSE itself. Applies to devices that support input voltage up to 30 V. (for example, <a href="https://mikrotik.com/product/RB750UPr2">hEX PoE lite</a>, <a href="https://mikrotik.com/product/RB3011UiAS-RM">RB3011UiAS-RM</a>, <a href="https://mikrotik.com/product/RB2011iL-IN">RB2011iL-IN</a>.)</p>
+</li>
+<li>
+<p><strong>Passive PoE up to 57 V</strong> - Works the same as low-voltage (up to 30 V) passive PoE, but can also deliver or accept higher voltage over the PoE ports. For PoE out, the output voltage depends on the power source connected to the PSE. It can also power af/at compatible PDs that accept power over pairs 4,5 (+) and 7,8 (-) and do not require PoE negotiation. (for example, <a href="https://mikrotik.com/product/cap_ac">cAP ac</a>, <a href="https://mikrotik.com/product/RB962UiGS-5HacT2HnT">hAP ac</a>, <a href="https://mikrotik.com/product/wsap_ac_lite">wsAP ac lite</a>.)</p>
+</li>
+<li>
+<p><strong>IEEE Standards 802.3af/at</strong> - Also known as PoE (802.3af, Type 1) and PoE+ (802.3at, Type 2), these IEEE standards ensure compatibility between vendors. PSEs that support these standards can power both Type 1 and Type 2 PDs, and PDs that support them can be powered from any compliant PSE. (for example, <a href="https://mikrotik.com/product/crs112_8p_4s_in">CRS112-8P-4S-IN</a>, <a href="https://mikrotik.com/product/crs328_24p_4s_rm">CRS328-24P-4S+RM</a>, <a href="https://mikrotik.com/product/crs354_48p_4s_2q_rm">CRS354-48P-4S+2Q+RM</a>.)</p>
+</li>
+<li>
+<p><strong>IEEE Standards 802.3bt</strong> - The 802.3bt standard, also known as PoE++, extends the earlier PoE standards and introduces "Type 3" (Classes 5-6) and "Type 4" (Classes 7-8). This standard uses all four pairs of wires in a Gigabit Ethernet cable to deliver power, hence the name 4PPoE/802.3bt ("4-pair Power over Ethernet"). Depending on the model, 802.3bt is used for PoE out, PoE in, or both. (for example, <a href="https://mikrotik.com/product/crs320_8p_8b_4s_rm">CRS320-8P-8B-4S+RM</a>)</p>
+</li>
+</ul>
+<p>Every PoE out implementation supports overload and short-circuit detection.</p>
+<h3 id="power-classes">Power classes</h3>
+<p>The 802.3 PoE standards define power classes which describe the maximum power a PSE provides to a PD:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Class</th>
+<th style="text-align: left;">Standard</th>
+<th style="text-align: left;">PSE output power</th>
+<th style="text-align: left;">PD available power</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">0-3</td>
+<td style="text-align: left;">802.3af (Type 1)</td>
+<td style="text-align: left;">15.4 W</td>
+<td style="text-align: left;">12.95 W</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">802.3at (Type 2)</td>
+<td style="text-align: left;">30 W</td>
+<td style="text-align: left;">25.5 W</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">802.3bt (Type 3)</td>
+<td style="text-align: left;">45 W</td>
+<td style="text-align: left;">40 W</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">802.3bt (Type 3)</td>
+<td style="text-align: left;">60 W</td>
+<td style="text-align: left;">51 W</td>
+</tr>
+<tr>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">802.3bt (Type 4)</td>
+<td style="text-align: left;">75 W</td>
+<td style="text-align: left;">62 W</td>
+</tr>
+<tr>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">802.3bt (Type 4)</td>
+<td style="text-align: left;">90 W</td>
+<td style="text-align: left;">71.3 W</td>
+</tr>
+</tbody>
+</table>
+<p>The class is used by the PSE and the PD to agree on how much power can be delivered: the PD signals its class, the PSE then allocates the corresponding power budget.</p>
+<p>You can tell which passive PoE standard a device supports from its specification page: a <strong><code>Low voltage PoE-Out current limit</code></strong> entry under the "PoE-OUT" section means the device supports <strong>Passive PoE up to 30 V</strong>, and an additional <strong><code>High voltage PoE-Out current limit</code></strong> entry means it also supports <strong>Passive PoE up to 57 V</strong>. The supported IEEE standards are listed directly on the specification page as <code>PoE out</code> (for example, 802.3af/at or 802.3bt).</p>
+<p>As described in the previous list, <strong>Passive PoE up to 57 V</strong> can also power 802.3af/at-compatible devices (PDs) that do not require PoE negotiation - for MikroTik PDs this works reliably. Third-party PDs, however, may classify themselves into a lower PoE class when no negotiation takes place and request less power than they could otherwise use - this can show up as reduced radio output power, disabled peripherals, and similar symptoms. Behavior varies between PDs.</p>
+<h2 id="configuration_1">Configuration</h2>
+<p>PoE configuration is supported on all MikroTik devices with PoE interfaces. It can be edited from the RouterOS and SwOS interfaces.</p>
+<h3 id="routeros">RouterOS</h3>
+<p><strong>Sub-menu:</strong> <code>/interface/ethernet/poe</code></p>
+<h4 id="usage">Usage</h4>
+<p>RouterOS provides an option to configure and monitor PoE over Winbox, Webfig, and CLI. Basic commands using the CLI are</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>print</strong> ()</td>
+<td style="text-align: left;">Prints PoE related settings.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>export</strong> ()</td>
+<td style="text-align: left;">PoE configuration is exported under the <code>/interface/ethernet</code> menu.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>monitor</strong> (<em>string| interface</em>)</td>
+<td style="text-align: left;">Monitors the PoE status of a specified port - <code>poe-out-status</code>, voltage, current and power on PoE out ports, negotiated power-related information on PoE in ports. All ports can be monitored with <code>/interface/ethernet/poe/monitor [find]</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle</strong> (<em>duration: 0..1m</em>; Default: <strong>5s</strong>)</td>
+<td style="text-align: left;">Disables PoE out power on a PoE out port for a specified period of time.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="swos">SwOS</h3>
+<p>SwOS interface provides basic PoE out configuration and monitoring options, see more details in the <a href="https://manual.mikrotik.com/docs/bridging-and-switching/swos/">SwOS manual</a>.</p>
+<h2 id="monitoring">Monitoring</h2>
+<p><strong>Sub-menu:</strong> <code>/interface/ethernet/poe/monitor</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>name</strong> ()</td>
+<td style="text-align: left;">Name of an interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port-type</strong> ()</td>
+<td style="text-align: left;">Shows whether the interface is capable of PoE out, PoE in, or both (<strong>poe-out</strong>, <strong>poe-in</strong>, <strong>poe-in/poe-out</strong>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out</strong> ()</td>
+<td style="text-align: left;">Shows PoE out state.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-voltage</strong> ()</td>
+<td style="text-align: left;">Shows PoE out voltage selection (<strong>auto</strong>, <strong>low</strong>, <strong>high</strong>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-status</strong> ()</td>
+<td style="text-align: left;">Shows the current PoE out status on the port (see the <a href="#poe-out-statuses">status list</a> below).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-voltage</strong> ()</td>
+<td style="text-align: left;">Displays the voltage which is applied to the PD.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-current</strong> ()</td>
+<td style="text-align: left;">Displays the port current (mA) drawn by the PD.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-power</strong> ()</td>
+<td style="text-align: left;">Displays PD power consumption.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-power-pair()</strong></td>
+<td style="text-align: left;">Displays on which power pairs the PSE delivers power to the PD: <strong>a</strong> - 1,2 (+) 3,6 (-); <strong>b</strong> - 4,5 (+) 7,8 (-); <strong>bt</strong> - all 4 pairs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-host-alive</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows if the monitored host is reachable (shown when the <a href="#power-cycle-settings">power-cycle-ping</a> feature is enabled). Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-after</strong> (<em>time</em>)</td>
+<td style="text-align: left;">Shows the time, after which the port will be power-cycled (shown when the <a href="#power-cycle-settings">power-cycle-ping</a> feature is enabled). Read-only.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="poe-out-statuses">PoE out statuses</h4>
+<ul>
+<li><strong>powered-on</strong> - Power is applied to the port, and PoE out is operating normally.</li>
+<li><strong>waiting-for-load</strong> - The PSE attempts to detect whether power can be applied to the port. For powering, there should be resistance in the range from 3kΩ to 26.5kΩ.</li>
+<li><strong>short-circuit</strong> - A short circuit is detected on the PoE out port; power is switched off, and only detection with low voltage takes place. This can also mean that PoE is not supported on the connected device.</li>
+<li><strong>overload</strong> - The PoE out current limit is exceeded, and power is switched off on the port. For port limits, see each model's specifications.</li>
+<li><strong>voltage-too-low</strong> - The PD cannot be powered with the voltage provided from the PSE (for example, Vmin =&gt;30V, but only 24V is provided).</li>
+<li><strong>voltage-too-high</strong> - The connected device is detected as a PoE in device, but the output voltage from the PSE is higher than the range supported by the PD.</li>
+<li><strong>current-too-low</strong> - The PD draws less current (below 10 mA) than a normal PoE out device should.</li>
+<li><strong>no-valid-PSU</strong> - No valid power supply unit is detected: the PSE does not have a sufficient or power-capable power source to provide PoE out on the port, so power is not applied. See <a href="#powering-requirements">Powering requirements</a> for the supported source combinations.</li>
+<li><strong>lldp-power-off</strong> - The board is powered with PoE in and the LLDP-approved power budget received from the upstream PSE is insufficient to power the board's own PoE out ports.</li>
+<li><strong>low-voltage-pd-detected</strong> - The connected PD supports only low voltage and cannot be powered from this PSE with the currently selected voltage. Power is not applied, to avoid damage to the PD. Power the PD from a low voltage PSE, or switch the port to low voltage (<code>poe-voltage=low</code>) on PSEs with switchable voltage modes.</li>
+<li><strong>voltage-on-poe-in</strong> - Voltage is detected on the PoE out port unexpectedly, which can occur in two cases:</li>
+<li><strong>External power source</strong> - another device is supplying power to the port (PoE in voltage).</li>
+<li><strong>Internal fault</strong> - the PoE out circuitry on the port may be damaged.</li>
+<li><strong>low-voltage-too-low</strong> - The low input voltage on the PSE is too low to power the PD; power is not applied.</li>
+<li><strong>disabled</strong> - All detection and power is turned off for this port (<code>poe-out=off</code>).</li>
+<li><strong>power_reset</strong> - The PSE controller is resetting the power, for example, during a PoE controller upgrade, or when executing the power cycle command or when pings fail (power-cycle-ping).</li>
+<li><strong>controller-init</strong> - PSE controller initialization.</li>
+<li><strong>controller-upgrade</strong> - The PSE controller is being upgraded.</li>
+<li><strong>controller-error</strong> - The PSE controller does not respond.</li>
+</ul>
+<h3 id="poe-in-ports">PoE in ports</h3>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>PoE in monitoring is available only on devices that support PoE in with LLDP. Older devices do not show PoE in ports in the monitor.</p>
+</div>
+<p>When monitoring a <strong>PoE in</strong> port (<code>port-type: poe-in</code>), the monitor shows information about the power the device receives with PoE, for example, on boards that support 802.3bt PoE in:</p>
+<pre><code class="language-ros">/interface/ethernet/poe/monitor ether1
+</code></pre>
+<pre><code>              name: ether1
+         port-type: poe-in
+</code></pre>
+<p>The monitor may also display a <code>power-limiting port</code> message. It means the PD (this device) is powered with limited power, because the power approved by LLDP negotiation is below the power requested by the PD.</p>
+<h3 id="snmp">SNMP</h3>
+<p>It is possible to monitor PoE out values using the SNMP protocol. <a href="../diagnostics-monitoring-and-troubleshooting/snmp.md">SNMP</a> must be enabled on the PSE.</p>
+<p>Available SNMP OIDs:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">OID</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.1</td>
+<td style="text-align: left;">interface ID</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.2</td>
+<td style="text-align: left;">interface name</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.3</td>
+<td style="text-align: left;">PoE out status (same values as shown by <a href="#monitoring">monitor</a> <code>poe-out-status</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.4</td>
+<td style="text-align: left;">voltage in dV (decivolt)</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.5</td>
+<td style="text-align: left;">current in mA</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.3.6.1.4.1.14988.1.1.15.1.1.6</td>
+<td style="text-align: left;">power usage in dW (deciwatt)</td>
+</tr>
+</tbody>
+</table>
+<p>SNMP values can be also requested from RouterOS, for example, <code>snmp-walk</code> will print current mA from all available PoE out ports:</p>
+<pre><code class="language-ros">/tool/snmp-walk address=10.155.149.252 oid=1.3.6.1.4.1.14988.1.1.15.1.1.5
+</code></pre>
+<p>To get a very specific OID value, use the <code>snmp-get</code> tool (displays current mA on ether3 interface):</p>
+<pre><code class="language-ros">/tool/snmp-get address=10.155.149.252 oid=1.3.6.1.4.1.14988.1.1.15.1.1.5.3
+</code></pre>
+<h2 id="logging-and-notifications">Logging and notifications</h2>
+<h3 id="logging">Logging</h3>
+<p>PoE events are <a href="../diagnostics-monitoring-and-troubleshooting/log/index.md">logged</a> by default. PoE out state changes use the <code>poe-out</code> topic, PoE in events (for example, LLDP power negotiation on boards that are powered with PoE) use the <code>poe-in</code> topic. Important events (for example, overload or short-circuit) are logged with the "warning" topic, informational state changes with the "info" topic, for example:</p>
+<pre><code>2026-10-08 11:42:45 poe-out,info ether16 detected poe-out status: on
+</code></pre>
+<p>To avoid unnecessary logging in cases when PD is not powered because of current-too-low, RouterOS will filter such events, and add one log per 512 current-too-low events.</p>
+<p>The <code>poe-out</code> and <code>poe-in</code> topics follow the standard <a href="../diagnostics-monitoring-and-troubleshooting/log/index.md">logging</a> mechanism - they can be excluded, filtered by severity or sent to a separate log target like any other topic.</p>
+<p>Detailed LLDP power negotiation messages use the "debug" topic, for example:</p>
+<pre><code>06:56:50 poe-out,debug ether4 LLDP TLV 25.0W request denied : hw-limit
+</code></pre>
+<p>Possible LLDP power request denial reasons:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>budget</strong></td>
+<td style="text-align: left;">Requested power exceeds the total PSE budget.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-limit</strong></td>
+<td style="text-align: left;">Requested power is more than hardware supports (PSU affects this).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>low-voltage</strong></td>
+<td style="text-align: left;">LLDP request made to a low-voltage port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>off</strong></td>
+<td style="text-align: left;">The port is shut down.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>class-limit</strong></td>
+<td style="text-align: left;">LLDP requires more than the class can provide.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>cmd-failed</strong></td>
+<td style="text-align: left;">RouterOS could not make a request to the controller.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="guicli-warnings">GUI/CLI warnings</h3>
+<p>Important PoE related problems are shown as warnings: in the interface list in Winbox / WebFig (under Interfaces), as flag comments in the CLI interface printout, as the port status in <a href="#monitoring">monitor</a>, and in the <a href="#logging-and-notifications">logs</a>.</p>
+<p>PoE out statuses that trigger a warning:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Status</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>overload</strong></td>
+<td style="text-align: left;">The PoE out current limit is exceeded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>short-circuit</strong></td>
+<td style="text-align: left;">Short-circuit detected on the port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>current-too-low</strong></td>
+<td style="text-align: left;">The connected PD draws less current than it should.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>voltage-on-poe-in</strong></td>
+<td style="text-align: left;">Unexpected voltage detected on the port (for example, another device is supplying power to it).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="poe-out">PoE out</h2>
+<h3 id="how-to-choose-your-poe-pse">How to choose your PoE PSE</h3>
+<p>This table can help you choose which PSE device is best suitable for your needs.</p>
+<p><WideTable></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Device name</th>
+<th style="text-align: left;">Software</th>
+<th style="text-align: left;">PoE out port count</th>
+<th style="text-align: left;">PoE type</th>
+<th style="text-align: left;">Power input</th>
+<th style="text-align: left;">Low voltage PoE out current limit, A</th>
+<th style="text-align: left;">High voltage PoE out current limit, A</th>
+<th style="text-align: left;">Max total output power, W</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>OmniTIK 5 PoE</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Passive</td>
+<td style="text-align: left;">PoE in only (11-30 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">60</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB260GSP</strong></td>
+<td style="text-align: left;">SwOS</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Passive</td>
+<td style="text-align: left;">DC jack / PoE in (11-30 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">60</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hEX PoE lite / PowerBox</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Passive</td>
+<td style="text-align: left;">DC jack / PoE in (8-30 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">60</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>OmniTIK 5 PoE ac</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">PoE in only (12-57 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.45</td>
+<td style="text-align: left;">102</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hEX PoE / PowerBox Pro</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">DC jack / PoE in (12-57 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.45</td>
+<td style="text-align: left;">102</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB5009UPr+S+</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">DC jack / 2-pin / PoE in (24-57 V)</td>
+<td style="text-align: left;">0.9</td>
+<td style="text-align: left;">0.44</td>
+<td style="text-align: left;">130</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netPower Lite 8P</strong></td>
+<td style="text-align: left;">SwOS</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">3× 2-pin terminal (24-57 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.64</td>
+<td style="text-align: left;">120</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS112-8P-4S-IN</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">2× DC jack (18-28 V / 48-57 V)</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.45</td>
+<td style="text-align: left;">150</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS418-8P-8G-2S+RM</strong></td>
+<td style="text-align: left;">RouterOS</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">AC (2 PSU slots)</td>
+<td style="text-align: left;">1.1</td>
+<td style="text-align: left;">0.56</td>
+<td style="text-align: left;">150</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CSS610-8P-2S+IN</strong></td>
+<td style="text-align: left;">SwOS</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">AC &amp; DC 48-57 V</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.625</td>
+<td style="text-align: left;">140</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS320-8P-8B-4S+RM</strong></td>
+<td style="text-align: left;">RouterOS / SwOS</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">Passive, af/at, bt</td>
+<td style="text-align: left;">AC (2 PSU slots)</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">0.56 (af/at) / 1.67 (bt)</td>
+<td style="text-align: left;">963</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netPower 16P</strong></td>
+<td style="text-align: left;">RouterOS / SwOS</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">2× DC jack (18-30 V / 48-57 V)</td>
+<td style="text-align: left;">1.1</td>
+<td style="text-align: left;">0.6</td>
+<td style="text-align: left;">160</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS328-24P-4S+RM</strong></td>
+<td style="text-align: left;">RouterOS / SwOS</td>
+<td style="text-align: left;">24</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">AC</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.45</td>
+<td style="text-align: left;">450</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CRS354-48P-4S+2Q+RM</strong></td>
+<td style="text-align: left;">RouterOS / SwOS</td>
+<td style="text-align: left;">48</td>
+<td style="text-align: left;">Passive, af/at</td>
+<td style="text-align: left;">AC</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.57</td>
+<td style="text-align: left;">700</td>
+</tr>
+</tbody>
+</table>
+<p></WideTable></p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>When powering other devices with PoE out, use a minimum input voltage of 18V.</p>
+</div>
+<h3 id="settings">Settings</h3>
+<h4 id="global-settings">Global Settings</h4>
+<p><strong>Sub-menu:</strong> <code>/interface/ethernet/poe/settings</code></p>
+<p>Some MikroTik PoE out devices support the global PoE settings</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ether1-poe-in-long-cable</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Set it to "yes" when the device itself is powered with PoE in through a long cable. It disables strict input current monitoring (short-circuit detection) so that a long cable is not incorrectly detected as a short-circuit. <strong>This is a potentially dangerous setting and should be used with caution.</strong> It can also affect PoE out behavior on a PSE which is powered using a DC connector</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>psuX-max-power</strong>  <strong>jack-max-power</strong>  <strong>2pin-max-power</strong></td>
+<td style="text-align: left;">Specifies the maximum power in watts that can be drawn from the given power source (PSU, DC jack or 2-pin terminal). Default: <strong>96W</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-in-max-power</strong></td>
+<td style="text-align: left;">Specifies the maximum power in watts that the PoE injector (for example, 802.3bt) can deliver, when the device (PSE) itself is powered with PoE in</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>routerboard-max-self-power</strong></td>
+<td style="text-align: left;">Specifies how much power the device reserves for itself for powering. Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>routerboard-max-total-power</strong></td>
+<td style="text-align: left;">Maximum power consumption of the board itself, without PoE out. It is used to calculate the PoE out budget on devices where the budget is determined by PSU power (PoE budget = PSU power − routerboard power). Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out-limit-power</strong></td>
+<td style="text-align: left;">Total PoE out budget limit. Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>psuX-poe-out-max-power</strong>  <strong>jack-poe-out-max-power</strong>  <strong>2pin-poe-out-max-power</strong>  <strong>poe-in-poe-out-max-power</strong></td>
+<td style="text-align: left;">PoE out limit in watts per power source (PSU, DC jack, 2-pin terminal or PoE in injector). Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>version</strong></td>
+<td style="text-align: left;">PoE controller (ATtiny) firmware version. Read-only.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="port-settings">Port Settings</h4>
+<p><strong>Sub-menu:</strong> <code>/interface/ethernet/poe</code></p>
+<p>PoE out can be configured per port in this menu. Each port can be controlled independently.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>name</strong> ()</td>
+<td style="text-align: left;">Name of an interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port-type</strong> ()</td>
+<td style="text-align: left;">Shows whether the port is capable of PoE out, PoE in, or both (poe-out, poe-in, poe-in/poe-out). Read-only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-out</strong> (<em>auto-on | forced-on | forced-on-a | forced-on-bt | off</em>; Default: <strong>auto-on</strong>)</td>
+<td style="text-align: left;">Specifies PoE out stateauto-on - the resistance on the port is checked first, and power is applied only if it is in the range from 3kΩ to 26.5kΩforced-on - resistance detection is disabled and power is always provided on pair B (alt)off - all detection and power is turned off for this portAdditional states on PSEs that support 802.3bt PoE out:forced-on-a - same as forced-on, but power is provided on pair A (main)forced-on-bt - same as forced-on, but power is provided on all 4 pairs (available only from the CLI, this state cannot be selected in Winbox/WebFig)<strong>Note:</strong> Short-circuit and overload protection is always on, independently of the selected PoE out state.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-priority</strong> (<em>integer: 0..99</em>; Default: <strong>10</strong>)</td>
+<td style="text-align: left;">poe-priority specifies the importance of PoE out ports, in cases when a total PoE out limit is reached, the interface with the lowest port priority will be powered off first. Highest priority is 0, the lowest priority is 99. If there are 2 or more ports with the same priority then the port with the smallest port number will have a higher priority. Every 6 seconds ports will be checked for a possibility to provide PoE out if it was turned off due to port priority.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>poe-voltage</strong> (<em>auto | low | high</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">A feature that allows to manually switch between two voltage outputs on PoE out ports. It will take effect only on PSEs with switchable voltage modes (<a href="https://mikrotik.com/product/crs112_8p_4s_in">CRS112-8P-4S-IN</a>, <a href="https://mikrotik.com/product/crs328_24p_4s_rm">CRS328-24P-4S+RM</a>, <a href="https://mikrotik.com/product/netpower_16p">netPower 16P</a>, <a href="https://mikrotik.com/product/crs354_48p_4s_2q_rm">CRS354-48P-4S+2Q+RM</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>Starting from RouterOS 7.15, the old <strong>poe-lldp-enabled</strong> port property was removed. LLDP power negotiation between a PSE and a PD is configured with the <a href="../cli-reference/ip/neighbor/discovery-settings">Neighbor Discovery</a> <code>lldp-poe-power</code> property.</p>
+<h4 id="power-cycle-settings">Power-cycle settings</h4>
+<p>RouterOS provides a possibility to monitor PD using a ping, and power-cycle a PoE out port when the host does not respond. The power-cycle-ping feature can be enabled under the <code>/interface/ethernet/poe</code> menu.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-ping-enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Enables ping watchdog, power-cycles port if a host does not respond to ICMP or MAC-Telnet packets.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-ping-address</strong> (<em>IPv4 | IPv6 | MAC</em>)</td>
+<td style="text-align: left;">An address which will be monitored. Since RouterOS 6.46beta16, an active route towards PD is required in case an IP address is configured, so make sure PSE can reach the PD. In case the MAC address is specified, PSE will send MAC-Telnet ping requests only from a specified ethernet interface. When configuring a <a href="../bridging-and-switching/index.md#bridge-vlan-filtering">bridge vlan-filtering</a> or some way of <a href="../bridging-and-switching/user-guides/basic-vlan-switching.md">VLAN switching</a>, it is recommended to use the IP address for monitoring your PD.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-ping-timeout</strong> (<em>time: 0..1h</em>; Default: <strong>5s</strong>)</td>
+<td style="text-align: left;">If the host does not respond for more than the timeout period of time, then PoE out port is switched off for 5s.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>power-cycle-interval</strong> (<em>time | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Periodically power-cycles the PoE out port (switches the power off for 5s and then on again) every specified interval. Not related to the power-cycle-ping feature.</td>
+</tr>
+</tbody>
+</table>
+<p>If the power-cycle-ping feature is enabled, <a href="#monitoring">monitoring</a> will also show the status of the monitored host and the time until the next power cycle.</p>
+<h3 id="leds_2">LEDs</h3>
+<p>Most devices indicate the PoE out state with one LED per port - the same LED can light up in different colors:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">LED</th>
+<th style="text-align: left;">PoE out state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Red</td>
+<td style="text-align: left;"><strong>Powered-on</strong> - red regardless of voltage on models without voltage selection; on models with voltage selection and on 802.3bt models, the PD is powered with high voltage (802.3af/at)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Green</td>
+<td style="text-align: left;"><strong>Powered-on</strong>, PD uses low voltage (models with selectable voltage output)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Purple</td>
+<td style="text-align: left;"><strong>Powered-on</strong>, PD is powered with all 4 pairs (802.3bt)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Blinking (any color)</td>
+<td style="text-align: left;"><strong>Short-circuit</strong> or <strong>overload</strong></td>
+</tr>
+</tbody>
+</table>
+<h4 id="model-specific-led-behavior">Model-specific LED behavior</h4>
+<ul>
+<li><a href="https://mikrotik.com/product/crs112_8p_4s_in">CRS112-8P-4S-IN</a>, <a href="https://mikrotik.com/product/netpower_16p">netPower 16P</a> - All PoE LEDs flashing: wrong voltage PSU plugged into one of the ports.</li>
+</ul>
+<h3 id="how-it-works">How it works</h3>
+<h4 id="poe-out-modes">PoE out Modes</h4>
+<ul>
+<li><strong>auto-on</strong> - the board checks the resistance on the connected port and applies power only if it is in the range from 3kΩ to 26.5kΩ:</li>
+<li>when power is applied, the PSE continuously checks for overload and short circuit;</li>
+<li>if the cable is unplugged, the port returns to the detection state and remains off until a suitable PD is detected again.</li>
+<li><strong>forced-on</strong> - resistance detection is disabled and power is applied even without a cable attached:</li>
+<li>power is applied on the pairs depending on the configured <code>poe-out</code> state (<code>forced-on</code>, <code>forced-on-a</code> or <code>forced-on-bt</code>);</li>
+<li>the PSE still continuously checks for overload and short circuit;</li>
+<li>after the cable is unplugged, power remains enabled on the port.</li>
+<li><strong>off</strong> - PoE out on the port is turned off, no detection takes place, and the interface behaves like a simple Ethernet port.</li>
+</ul>
+<h4 id="poe-out-limits">PoE out limits</h4>
+<p>The following PoE out characteristics differ between PSE models - check the specification page of the device:</p>
+<ul>
+<li><strong>Port limit</strong> - PoE out ports are limited by the maximum current which is supported at a particular voltage. The maximum current usually differs for low voltage devices (up to 30 V) and for high voltage devices.</li>
+<li><strong>Total limit</strong> - the PSE also has a total PoE out current limitation, which cannot be exceeded even if the individual port limit allows it. The total limit scope differs between models: on boards where the limit is per port group (for example, per 8-port section), power priorities also apply within that port group.</li>
+<li><strong>Polarity</strong> - most MikroTik PSEs use the same PoE out pin polarity, <a href="https://en.wikipedia.org/wiki/Power_over_Ethernet#Pinouts">Mode B</a> - 4,5 (+) and 7,8 (-). PSEs with 802.3bt capable ports use both polarities: 1,2 (+) and 3,6 (-) as Mode A, and 4,5 (+) and 7,8 (-) as Mode B.</li>
+</ul>
+<h4 id="safety">Safety</h4>
+<p>PSE has the following safety features:</p>
+<ul>
+<li><strong>Compatibility detection</strong> - in auto-on mode, the resistance on the port is checked first and power is applied only if it is within the allowed range of 3kΩ to 26.5kΩ. Non-standard PDs that are outside of this range are not powered.</li>
+<li><strong>Overload protection</strong> - while a PoE out port is powered on, it is constantly checked for overload. If an overload is detected, PoE out is turned off on the port to avoid damage to the PD or PSE, and powered on again after a few seconds to check if the situation has changed.</li>
+<li><strong>Short circuit detection</strong> - while power is applied on a PoE out port, the PSE continuously checks for a short circuit. If it is detected, power is turned off on that port to avoid additional damage to the PD and PSE, and the port continues to be checked until the environment returns to normal.</li>
+</ul>
+<h4 id="model-specific-features">Model-specific features</h4>
+<p>Some PSEs have independent 8-port sections. On such devices PoE out works independently of RouterOS: you can reboot or upgrade RouterOS and the powered devices will not lose power. An exception is a PoE controller firmware upgrade, during which the power is interrupted - such upgrades are always mentioned in the RouterOS changelog.</p>
+<p>The way the PoE budget is defined also differs between models: on some devices the budget limit is set for the whole board, on others it is set per 8-port section. In the same way, PoE out priorities work within the scope of the budget: on boards with a per-section budget, priorities are applied per section, on boards with a board-wide budget, they are applied globally.</p>
+<h2 id="poe-in">PoE in</h2>
+<p>MikroTik devices can also be powered over Ethernet themselves, acting as a PD (Powered Device). PoE in ports are managed in the same <code>/interface/ethernet/poe</code> menu and can be identified by <code>port-type: poe-in</code> in the monitor output.</p>
+<h3 id="configuration_2">Configuration</h3>
+<p>PoE in related options are a part of the <a href="#global-settings">Global Settings</a>, for example:</p>
+<ul>
+<li><strong>poe-in-max-power</strong> - informs the device about the maximum power of the PoE injector (for example, 802.3bt) powering it, so the PoE out budget can be calculated correctly;</li>
+<li><strong>ether1-poe-in-long-cable</strong> - disables strict input/output current monitoring when the device is powered over a long cable.</li>
+</ul>
+<h3 id="powering-requirements">Powering requirements</h3>
+<p>When powering a device with PoE in, the power source must match the device input. Check the specification page of the device for the supported PoE in voltage range and standards:</p>
+<ul>
+<li>The PSU or PoE injector output voltage must be within the device input voltage range (for example, 8-30 V or 12-57 V on passive PoE models). Too low a voltage can prevent the device from starting or cause restarts under load, and too high a voltage can damage the device.</li>
+<li>The power source must deliver enough power for the device itself and, if the device powers other equipment, for the PoE out budget as well - see <a href="#poe-out-limits">PoE out limits</a> and the <a href="#global-settings">settings</a> for how the budget is calculated.</li>
+<li>Passive PoE in on MikroTik devices uses Mode B polarity (pins 4,5 (+) and 7,8 (-)), except devices with 802.3bt PoE in, which accept power over all four pairs.</li>
+<li>Powering devices that support PoE out and 802.3bt (PoE++) PoE in with an 802.3af/at PSE or a passive 2-pair injector is not considered a valid power source: PoE out will not work and the monitor shows the <code>no-valid-PSU</code> status on the PoE out ports. Use an 802.3bt PSE or a 4-pair passive injector instead.</li>
+</ul>
+<p>When the device itself is powered with PoE and LLDP power negotiation is used (see <a href="../cli-reference/ip/neighbor/discovery-settings">Neighbor Discovery</a> <code>lldp-poe-power</code>), the device communicates its requested power to the upstream PSE, which approves power accordingly. If the approved power is below the requested power, the monitor displays the <code>power-limiting port</code> message (see <a href="#poe-in-ports">PoE in ports</a>) and some PoE out ports may not be powered.</p>
+<h2 id="examples_1">Examples</h2>
+<h3 id="poe-out_1">PoE out</h3>
+<h4 id="powering-non-standard-pds-forced-on">Powering non-standard PDs (forced-on)</h4>
+<p>PDs that do not present the required resistance (3kΩ to 26.5kΩ) are not powered in <code>auto-on</code> mode. Power them with <code>forced-on</code> instead:</p>
+<pre><code class="language-ros">/interface/ethernet/poe set ether5 poe-out=forced-on
+</code></pre>
+<p>On PSEs with 802.3bt, <code>forced-on-a</code> and <code>forced-on-bt</code> power the PD over pair A or all four pairs (CLI only, see <a href="#port-settings">Port Settings</a>). To save power and improve safety, disable PoE out on unused ports with <code>poe-out=off</code>.</p>
+<h4 id="port-priorities">Port priorities</h4>
+<p>PoE out priorities define which ports lose power first when the total PoE out limit is reached. The priority of <em>0</em> is the highest, <em>99</em> is the lowest:</p>
+<pre><code class="language-ros">/interface/ethernet/poe set ether2 poe-priority=10
+/interface/ethernet/poe set ether3 poe-priority=13
+/interface/ethernet/poe set ether4 poe-priority=11
+/interface/ethernet/poe set ether5 poe-priority=14
+</code></pre>
+<p>If the total limit is exceeded, the port with the lowest priority is disabled first (ether5, then ether3). Disabled ports are re-checked every few seconds and powered up again in the reverse order once the budget allows it.</p>
+<p>When several ports have the same priority, the port with the lowest port number is favored: with equal priorities on all ports, ether5 is disabled first, then ether4, then ether3.</p>
+<h4 id="scheduled-power-cycle">Scheduled power-cycle</h4>
+<p>Periodically power-cycle a PoE out port, for example, to reboot the connected device once a day, with <a href="#power-cycle-settings">power-cycle-interval</a>:</p>
+<pre><code class="language-ros">/interface/ethernet/poe set ether5 power-cycle-interval=1d
+</code></pre>
+<h4 id="power-cycle-watchdog-power-cycle-ping">Power-cycle watchdog (power-cycle-ping)</h4>
+<p>Monitor the connected PD and power-cycle the port when the host does not respond:</p>
+<pre><code class="language-ros">/interface/ethernet/poe set ether1 power-cycle-ping-enabled=yes power-cycle-ping-address=192.168.88.10 power-cycle-ping-timeout=30s
+</code></pre>
+<p>The PD on ether1 is monitored with ICMP pings. If the host at 192.168.88.10 does not respond for more than 30s, PoE out on the port is switched off for 5s.</p>
+<h4 id="monitoring-poe-out">Monitoring PoE out</h4>
+<pre><code class="language-ros">/interface/ethernet/poe/monitor ether9
+</code></pre>
+<pre><code>                name: ether9
+             poe-out: auto-on
+      poe-out-status: powered-on
+     poe-out-voltage: 54.2V
+     poe-out-current: 449mA
+       poe-out-power: 24.3W
+  poe-out-power-pair: b
+</code></pre>
+<h4 id="checking-the-power-limits">Checking the power limits</h4>
+<p>Review the PoE out budget and the read-only power limits of the device with the global settings:</p>
+<pre><code class="language-ros">/interface/ethernet/poe settings print
+</code></pre>
+<pre><code>               jack-max-power: 96W
+               2pin-max-power: 150W
+   routerboard-max-self-power: 20W
+  routerboard-max-total-power: 30W
+          poe-out-limit-power: 240W
+       jack-poe-out-max-power: 66W
+       2pin-poe-out-max-power: 120W
+</code></pre>
+<p>In this example, the board itself reserves 20 W and the total budget for PoE out is 240 W, 66 W of which is available when powered through the DC jack, or 120 W when powered through the 2-pin terminal.</p>
+<h3 id="poe-in_1">PoE in</h3>
+<p>When the device itself is powered with a PoE injector (for example, 802.3bt), declare the power of the injector with the <a href="#global-settings">poe-in-max-power</a> global setting so the PoE out budget is calculated correctly:</p>
+<pre><code class="language-ros">/interface/ethernet/poe settings set poe-in-max-power=144
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>If a PD does not power up or restarts unexpectedly when powered with PoE out, work through this checklist:</p>
+<ol>
+<li><strong>Check the port status first.</strong> Run <code>/interface/ethernet/poe/monitor</code> on the port - the value of <code>poe-out-status</code> usually points directly at the problem, for example <code>overload</code>, <code>short-circuit</code>, <code>voltage-too-low</code> or <code>no-valid-PSU</code>. See the full <a href="#poe-out-statuses">status list</a>.</li>
+<li><strong>Check the logs.</strong> PoE state changes are recorded with the <code>poe-out</code> topic, see <a href="#logging">Logging</a>.</li>
+<li><strong>Try a different cable.</strong> Use a short, good-quality patch cable directly at the PSE to rule out cabling problems.</li>
+<li><strong>Check the power supply of the PSE.</strong> Review the limits with <code>/interface/ethernet/poe settings print</code>:
+   - The PSU must cover the power consumption of the PSE itself, all powered PDs, and about 10% of headroom.
+   - Too low an input voltage can cause the <code>voltage-too-low</code> status on the PDs (for example, with a long DC cable or an oversized load on the PSU).
+   - On boards with 802.3bt PoE in, make sure the device is powered from a valid power source, otherwise the <code>no-valid-PSU</code> status occurs and PoE out stays off - see <a href="#powering-requirements">Powering requirements</a>.</li>
+<li><strong>Check PD compatibility against its datasheet:</strong>
+   - Check the specifications of the PSE and the PD together: a passive PoE in device (for example, with input up to 30 V) cannot be powered from a higher voltage source. On passive PSEs the PoE out voltage matches the PSE input voltage, so a PSE powered with a 48 V PSU also outputs 48 V on its PoE out ports - use a low voltage PSU or a PSE with selectable voltage output for low voltage PDs.
+   - The PD supported input voltage must match the PSE output voltage.
+   - Pin polarity differences (Mode A or reversed) between the PSE and the PD.</li>
+<li><strong>Try <code>forced-on</code></strong> for non-standard PDs, after verifying that the PD supports the PSE voltage and polarity (see <a href="#powering-non-standard-pds-forced-on">examples</a>).</li>
+<li><strong>Update RouterOS.</strong> PoE functionality receives regular fixes and updates, make sure you are running the latest <a href="https://mikrotik.com/download">RouterOS version</a>.</li>
+<li><strong>Isolate the PD.</strong> Power it from a matching passive PoE injector. If it works from the injector but not from the PSE port, the problem is the port or its configuration.</li>
+</ol>
+<p>If none of these steps solve the issue, collect the monitor output and logs, generate a <a href="../cli-reference/system/sup-output">supout.rif file</a>, and contact MikroTik support.</p>
+<hr />
+<h1 id="ports">Ports</h1>
+<blockquote>
+<p>This page documents MikroTik RouterOS port configuration options, covering serial and USB ports for initial setup, 3G modem connections, remote access via RFC 2217, and detailed port properties like baud rate, flow...</p>
+</blockquote>
+<h1 id="ports_1">Ports</h1>
+<h2 id="summary_3">Summary</h2>
+<p>The router provides multiple options for utilizing its ports. The most common use is the serial port, which is used for the initial RouterOS configuration after installation. By default, serial0 is used by the serial terminal.</p>
+<p>Serial and USB ports can also be used to:</p>
+<ul>
+<li>Connect 3G modems.</li>
+<li>Connect to another device through a serial cable.</li>
+<li>Access the device connected to a serial cable remotely.</li>
+</ul>
+<h2 id="general">General</h2>
+<p><strong>Sub-menu:</strong> <code>/port</code></p>
+<p>This menu displays all available serial and USB ports on the router and allows you to configure port parameters such as baud-rate, flow-control, and other settings.</p>
+<p>The following example shows the default port configuration on an LtAP device:</p>
+<pre><code class="language-ros">[admin@LtAP] &gt; /port/print                 
+Columns: DEVICE, NAME, CHANNELS, USED-BY, BAUD-RATE
+# DEVICE  NAME     CHANNELS  USED-BY                                     BAUD-RATE
+0         serial0         1  Serial Console(#0)                          auto     
+1         gps             1  GPS(#0)                                     115200   
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The port list is maintained automatically by RouterOS.</p>
+</div>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>baud-rate</strong> (<em>integer | auto</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Baud rate (speed) used by the port. If set to <strong>auto</strong>, then RouterOS tries to detect baud rate automatically.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>data-bits</strong> (<em>7 | 8</em>; Default: )</td>
+<td style="text-align: left;">The number of data bits in each character.7 - true ASCII8 - any data (matches the size of a byte)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>dtr</strong> (<em>on | off</em>; Default: )</td>
+<td style="text-align: left;">Whether to enable RS-232 DTR signal circuit used by flow control.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>flow-control</strong> (<em>hardware | none | xon-xoff</em>; Default: )</td>
+<td style="text-align: left;">Method of flow control to pause and resume the transmission of data.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>parity</strong> (<em>even | none | odd</em>; Default: )</td>
+<td style="text-align: left;">Error detection method. If enabled, an extra bit is sent to detect the communication errors. In most cases parity is set to <strong>none</strong> and errors are handled by the communication protocol.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rts</strong> (<em>on | off</em>; Default: )</td>
+<td style="text-align: left;">Whether to enable RS-232 RTS signal circuit used by flow control.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>stop-bits</strong> (<em>1 | 2</em>; Default: )</td>
+<td style="text-align: left;">Stop bits sent after each character. Electronic devices usually use 1 stop bit.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only-properties">Read-only properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channels</strong> (<em>integer</em>)</td>
+<td style="text-align: left;">Number of channels supported by the port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>inactive</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Shows current port state, <strong>inactive=yes</strong> - device to which the port was previously connected, but currently is not present</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>line-state</strong> ()</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>used-by</strong> (<em>string</em>)</td>
+<td style="text-align: left;">Shows who is currently using port and channel (#).  For example, by default <strong>Serial0</strong> is used by serial-console.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="remote-access">Remote Access</h2>
+<p><strong>Sub-menu:</strong> <code>/port/remote-access</code></p>
+<p>The remote access feature allows you to connect to a serial device that communicates via a COM port and is located behind the router. Using RFC 2217, RouterOS can transfer data to and from a serial device over a TCP connection.</p>
+<p>Enabling remote access on RouterOS is straightforward:</p>
+<pre><code class="language-ros">/port/remote-access/add port=serial0 protocol=rfc2217 tcp-port=9999
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>By default, serial0 is used by the serial terminal. The port must be released before it can be used by remote-access or other services.</p>
+</div>
+<h2 id="properties_1">Properties</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>allowed-addresses</strong> (<em>IP address range</em>; Default: <strong>0.0.0.0/0</strong>)</td>
+<td style="text-align: left;">Range of IP addresses allowed to access port remotely.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>integer [0..4294967295]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Port channel that will be used. If the port has only one channel then the channel number should always be <strong>0</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>local-address</strong> (<em>IP address</em>; Default: )</td>
+<td style="text-align: left;">IP address used as source address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>log-file</strong> (<em>string</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Name of the file, where communication will be logged. By default logging is disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of the port from the Port list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>protocol</strong> (<em>raw | rfc2217</em>; Default: <strong>rfc2217</strong>)</td>
+<td style="text-align: left;">RFC 2217 defines a protocol to transfer data from/to a serial device over TCP. If set to <strong>raw</strong>, then data is sent to serial as is.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tcp-port</strong> (<em>integer [0..65535]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">TCP port on which to listen for incoming connections.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-only-properties_1">Read-only properties</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>active</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Whether remote access is active and ready to accept a connection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>busy</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Whether the port is currently busy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>inactive</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>logging-active</strong> (<em>yes | no</em>)</td>
+<td style="text-align: left;">Whether logging to file is currently running</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>remote-address</strong> (<em>IP address</em>)</td>
+<td style="text-align: left;">IP address of the remote location that is currently connected.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

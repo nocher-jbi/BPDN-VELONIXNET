@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ip · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="ip-part-34">ip (part 3/4)</h1>
+<h1 id="profile">profile</h1>
+<blockquote>
+<p>The /ip/hotspot/profile menu lists the server profiles. A profile holds the settings that HotSpot servers share: the address and DNS name of the login page, the login methods, the HTML directory, and the RADIUS...</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotprofile">ip/hotspot/profile</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/profile</code> menu lists the server profiles. A profile holds the settings that HotSpot servers share: the address and DNS name of the login page, the login methods, the HTML directory, and the RADIUS settings. See the <a href="../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — The default profile. It cannot be removed.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the profile.</li>
+<li><strong>hotspot-address</strong> <code>ipAddr</code> — IP address of the HotSpot service, which is the address of the login page.</li>
+<li><strong>dns-name</strong> <code>string</code> — DNS name of the login page. The router resolves this name to the HotSpot address for the clients. Empty - the login page uses the IP address.</li>
+<li><strong>html-directory</strong> <code>file</code> — Directory with the HotSpot pages. Default: <code>hotspot</code>, or <code>flash/hotspot</code> on a router that has a <code>flash</code> folder in its file list.</li>
+<li><strong>html-directory-override</strong> <code>file</code> — Directory with your own HotSpot pages. If it is set and exists, it is used instead of <code>html-directory</code>. On a router that has a <code>flash</code> folder in its file list, keep the directory in <code>flash</code> and set the path with the folder, for example <code>flash/hs-custom</code>: files outside <code>flash</code> are lost on reboot.</li>
+<li><strong>install-hotspot-queue</strong> <code>bool</code> — Whether to create a dynamic simple queue for the HotSpot interface of each server with this profile. The queue uses the <code>hotspot-default</code> queue type. Default: <code>no</code>.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Rate limit in the form <code>rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate] [rx-burst-threshold[/tx-burst-threshold] [rx-burst-time[/tx-burst-time] [priority] [rx-rate-min[/tx-rate-min]]]]]</code>. <code>rx</code> is what the router receives from the user (upload), <code>tx</code> is what it sends to the user (download). For example, <code>512k/2M</code> limits upload to 512 kbps and download to 2 Mbps. The limit applies to all users of the servers with this profile together.</li>
+<li><strong>http-proxy</strong> <code>composite { address: ipAddr
+, port: num [0 .. 65535]
+ }</code> — Address and port of a proxy server for the HTTP requests of the clients. <code>0.0.0.0:0</code> - no proxy.</li>
+<li><strong>smtp-server</strong> <code>ipAddr</code> — Server to which the SMTP connections (TCP port 25) of the clients are redirected. <code>0.0.0.0</code> - no redirect.</li>
+<li><strong>login-by</strong> <code>ubit (mac, cookie, http-chap, https, http-pap, trial, mac-cookie)</code> — Login methods that the servers with this profile accept. Default: <code>cookie,http-chap</code>. - <code>http-chap</code> - user name and password on the login page; the password is sent as an MD5 hash with a challenge - <code>http-pap</code> - user name and password on the login page; the password is sent as plain text - <code>https</code> - user name and password on the login page over HTTPS; needs <code>ssl-certificate</code> - <code>cookie</code> - automatic login with a browser cookie from an earlier login - <code>mac</code> - automatic login when a user with the MAC address of the device as its name exists - <code>mac-cookie</code> - automatic login by the MAC address of a device that has logged in before - <code>trial</code> - login without an account for a limited time</li>
+<li><strong>mac-auth-mode</strong> <code>enum (mac-as-username | mac-as-username-and-password) { mac-as-username:0, mac-as-username-and-password:1 }</code> — What is sent for a <code>mac</code> login: <code>mac-as-username</code> - the MAC address as the user name, with <code>mac-auth-password</code> as the password; <code>mac-as-username-and-password</code> - the MAC address as both.</li>
+<li><strong>mac-auth-password</strong> <code>string</code> — Password for <code>mac</code> logins. Use it when the RADIUS server rejects users with an empty password.</li>
+<li><strong>http-cookie-lifetime</strong> <code>time</code> — Time for which the cookie of the <code>cookie</code> login method is valid. Default: <code>3d</code>.</li>
+<li><strong>ssl-certificate</strong> <code>enum (none) { none:0 }</code> — Certificate for the <code>https</code> login method. It has to be valid for the <code>dns-name</code> of the profile. Default: <code>none</code>.</li>
+<li><strong>split-user-domain</strong> <code>bool</code> — Whether to split a user name given as <code>user@domain</code> or <code>domain\user</code> into the user name and the domain. Default: <code>no</code>.</li>
+<li><strong>trial-uptime-limit</strong> <code>time</code> — Time for which a trial user has access. Default: <code>30m</code>.</li>
+<li><strong>trial-uptime-reset</strong> <code>time</code> — Time after which a device can use the trial again. Default: <code>1d</code>.</li>
+<li><strong>trial-user-profile</strong> <code>enum ()</code> — User profile from <code>/ip/hotspot/user/profile</code> for trial users. Default: <code>default</code>.</li>
+<li><strong>use-radius</strong> <code>bool</code> — Whether to authenticate users that are not in <code>/ip/hotspot/user</code> on a RADIUS server. The server is set in <code>/radius</code> with <code>service=hotspot</code>. Default: <code>no</code>.</li>
+<li><strong>radius-accounting</strong> <code>bool</code> — Whether to send accounting records for the sessions to the RADIUS server. Default: <code>yes</code>.</li>
+<li><strong>radius-interim-update</strong> <code>alt { symbolic-names: enum (received) { received:0 }
+, time-interval: time
+ }</code> — Interval of the accounting updates. <code>received</code> - the interval that the RADIUS server sends is used.</li>
+<li><strong>nas-port-type</strong> <code>enum (ethernet | cable | wireless-802.11) { ethernet:15, cable:17, wireless-802.11:19 }</code> — Value of the NAS-Port-Type attribute sent to the RADIUS server. Default: <code>wireless-802.11</code>.</li>
+<li><strong>radius-default-domain</strong> <code>string</code> — Domain for the RADIUS requests of this profile. Set the same value as <code>domain</code> of a server in <code>/radius</code> to use a separate RADIUS server for the profile.</li>
+<li><strong>radius-location-id</strong> <code>string</code> — Value of the WISPr-Location-ID attribute sent to the RADIUS server.</li>
+<li><strong>radius-location-name</strong> <code>string</code> — Value of the WISPr-Location-Name attribute sent to the RADIUS server.</li>
+<li><strong>radius-mac-format</strong> <code>enum (XX:XX:XX:XX:XX:XX | XXXX:XXXX:XXXX | XXXXXX:XXXXXX | XX-XX-XX-XX-XX-XX | XXXXXX-XXXXXX | XXXXXXXXXXXX | XX XX XX XX XX XX) { XX:XX:XX:XX:XX:XX:0, XXXX:XXXX:XXXX:1, XXXXXX:XXXXXX:2, XX-XX-XX-XX-XX-XX:3, XXXXXX-XXXXXX:4, XXXXXXXXXXXX:5, XX XX XX XX XX XX:6 }</code> — Format of the MAC address of the client in the RADIUS requests. Default: <code>XX:XX:XX:XX:XX:XX</code>.</li>
+</ul>
+<hr />
+<h1 id="reset-html">reset-html</h1>
+<blockquote>
+<p>The /ip/hotspot/reset-html command writes the default pages to the HTML directory of a HotSpot server. It takes the name of the server, for example /ip/hotspot/reset-html hotspot1. Changes to the default page files...</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotreset-html">ip/hotspot/reset-html</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>/ip/hotspot/reset-html</code> command writes the default pages to the HTML directory of a HotSpot server. It takes the name of the server, for example <code>/ip/hotspot/reset-html hotspot1</code>. Changes to the default page files in this directory are lost. See <a href="../../../authentication-authorization-accounting/hotspot-captive-portal/hotspot-customisation">HotSpot customisation</a>.</p>
+<hr />
+<h1 id="service-port">service-port</h1>
+<blockquote>
+<p>The /ip/hotspot/service-port menu lists the protocols for which the HotSpot has a helper, with their ports.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotservice-port">ip/hotspot/service-port</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/service-port</code> menu lists the protocols for which the HotSpot has a helper, with their ports.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The helper is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>ports</strong> <code>multi { port: num [1 .. 65535]
+ }</code> — Ports on which the helper handles connections.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the protocol, for example <code>ftp</code>.</li>
+</ul>
+<hr />
+<h1 id="setup">setup</h1>
+<blockquote>
+<p>The /ip/hotspot/setup command asks the questions below and creates a HotSpot server, its server profile, the first user, and, where they are missing, the IP address, the IP pool, the DHCP server, and the masquerade...</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotsetup">ip/hotspot/setup</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>/ip/hotspot/setup</code> command asks the questions below and creates a HotSpot server, its server profile, the first user, and, where they are missing, the IP address, the IP pool, the DHCP server, and the masquerade rule. See the <a href="../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>alt { interface1: iface_enum
+, interface2: iface_enum
+ }</code> — Question <code>hotspot interface</code>: the interface with the clients.</li>
+<li><strong>address</strong> <code>composite { address: ipAddr
+, netmask: num
+ }</code> — Question <code>local address of network</code>: the address of the router on the HotSpot interface, with the mask. The address that the interface already has is offered.</li>
+<li><strong>masq</strong> <code>bool</code> — Question <code>masquerade network</code>: <code>yes</code> adds a source NAT rule with <code>action=masquerade</code> for the HotSpot network.</li>
+<li><strong>pool</strong> <code>multi { range: composite { min: ipAddr
+, max: ipAddr
+ }
+ }</code> — Question <code>address pool of network</code>: the address range for the clients.</li>
+<li><strong>ssl-cert</strong> <code>enum (import-other-certificate | none) { import-other-certificate:0, none:0xffffffff }</code> — Question <code>select certificate</code>: the certificate for the <code>https</code> login method. <code>none</code> - HTTPS login is not used.</li>
+<li><strong>passphrase</strong> <code>string</code> — Passphrase of the private key, when a certificate is imported.</li>
+<li><strong>smtp-server</strong> <code>ipAddr</code> — Question <code>ip address of smtp server</code>: the server to which the SMTP connections of the clients are redirected. <code>0.0.0.0</code> - no redirect.</li>
+<li><strong>use-dnscache</strong> <code>bool</code> — Whether to use the DNS cache of the router.</li>
+<li><strong>dns-server</strong> <code>multi { address: ipAddr
+ }</code> — Question <code>dns servers</code>: the DNS servers of the router. The value is written to <code>/ip/dns</code>.</li>
+<li><strong>dns-name</strong> <code>string</code> — Question <code>dns name</code>: the DNS name of the login page. Empty - the IP address is used.</li>
+<li><strong>username</strong> <code>string</code> — Question <code>name of local hotspot user</code>: the name of the first user.</li>
+<li><strong>password</strong> <code>string</code> — Question <code>password for the user</code>: the password of the first user.</li>
+</ul>
+<hr />
+<h1 id="user">user</h1>
+<blockquote>
+<p>The /ip/hotspot/user menu lists the users that the HotSpot authenticates from the router itself, with their limits and counters. See the HotSpot guide.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotuser">ip/hotspot/user</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/user</code> menu lists the users that the HotSpot authenticates from the router itself, with their limits and counters. See the <a href="../../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — The default entry, <code>default-trial</code>. It holds the counters and limits of trial users.</li>
+<li><strong>X</strong> <code>disabled</code> — The user is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — The user is dynamic, for example a trial user.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>server</strong> <code>enum (all) { all:0 }</code> — HotSpot server on which the user can log in. Default: <code>all</code>.</li>
+<li><strong>name</strong> <code>string</code> — User name. For the <code>mac</code> login method, the MAC address of the device.</li>
+<li><strong>password</strong> <code>string</code> — Password of the user.</li>
+<li><strong>otp-secret</strong> <code>string</code> — Secret for the time-based one-time passwords of the user.</li>
+<li><strong>address</strong> <code>ipAddr</code> — IP address that the device of the user gets through the HotSpot address translation. The user can still log in from any address.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address from which the user can log in. <code>00:00:00:00:00:00</code> - any MAC address.</li>
+<li><strong>profile</strong> <code>enum</code> — User profile from <code>/ip/hotspot/user/profile</code>. Default: <code>default</code>.</li>
+<li><strong>routes</strong> <code>string</code> — Routes that are added while the user is logged in, in the form <code>dst-address gateway metric</code>, for example <code>192.168.1.0/24 192.168.0.1 1</code>.</li>
+<li><strong>email</strong> <code>string</code> — E-mail address of the user. Informational.</li>
+<li><strong>limit-uptime</strong> <code>time</code> — Total time for which the user can be logged in, over all sessions. When it is reached, the user is logged out and cannot log in. <code>0s</code> - no limit.</li>
+<li><strong>limit-bytes-in</strong> <code>num</code> — Number of bytes that the user can send, over all sessions. When it is reached, the user is logged out and cannot log in. <code>0</code> - no limit.</li>
+<li><strong>limit-bytes-out</strong> <code>num</code> — Number of bytes that the user can receive, over all sessions. When it is reached, the user is logged out and cannot log in. <code>0</code> - no limit.</li>
+<li><strong>limit-bytes-total</strong> <code>num</code> — Number of bytes that the user can send and receive together, over all sessions. When it is reached, the user is logged out and cannot log in. <code>0</code> - no limit.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>uptime</strong> <code>time</code> — Time for which the user has been logged in, over all sessions.</li>
+<li><strong>bytes-in</strong> <code>num</code> — Bytes received from the user, over all sessions.</li>
+<li><strong>bytes-out</strong> <code>num</code> — Bytes sent to the user, over all sessions.</li>
+<li><strong>packets-in</strong> <code>num</code> — Packets received from the user, over all sessions.</li>
+<li><strong>packets-out</strong> <code>num</code> — Packets sent to the user, over all sessions.</li>
+</ul>
+<hr />
+<h1 id="profile_1">profile</h1>
+<blockquote>
+<p>The /ip/hotspot/user/profile menu lists the user profiles. A profile holds the settings that users share: the rate limit, the timeouts, the number of devices, the address list, and the login and logout scripts. See...</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotuserprofile">ip/hotspot/user/profile</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/user/profile</code> menu lists the user profiles. A profile holds the settings that users share: the rate limit, the timeouts, the number of devices, the address list, and the login and logout scripts. See the <a href="../../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — The default profile. It cannot be removed.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the profile.</li>
+<li><strong>address-pool</strong> <code>enum (none) { none:0 }</code> — IP pool from which the users of the profile get their address through the HotSpot address translation. Default: <code>none</code>.</li>
+<li><strong>session-timeout</strong> <code>time</code> — Time after which a user is logged out. The user can log in again. <code>0s</code> - no limit.</li>
+<li><strong>idle-timeout</strong> <code>super { idle-timeout: alt { symbolic-names: enum (none) { none:0 }
+, time-interval: time
+ }
+ }</code> — Time without traffic from a logged-in user after which the user is logged out. Default: <code>none</code>.</li>
+<li><strong>keepalive-timeout</strong> <code>super { keepalive-timeout: alt { symbolic-names: enum (none) { none:0 }
+, time-interval: time
+ }
+ }</code> — Time for which the device of a logged-in user can be unreachable before the user is logged out. Default: <code>2m</code>.</li>
+<li><strong>status-autorefresh</strong> <code>alt { symbolic-names: enum (none) { none:0 }
+, time-interval: time
+ }</code> — Refresh interval of the status page. Default: <code>1m</code>.</li>
+<li><strong>shared-users</strong> <code>enum (unlimited) { unlimited:0 }</code> — Number of devices that can be logged in with the same user name at the same time. Default: <code>1</code>.</li>
+<li><strong>add-mac-cookie</strong> <code>bool</code> — Whether to create a MAC cookie for the users of the profile, for the <code>mac-cookie</code> login method. Default: <code>yes</code>.</li>
+<li><strong>mac-cookie-timeout</strong> <code>time</code> — Time for which a MAC cookie is valid. Default: <code>3d</code>.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Rate limit in the form <code>rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate] [rx-burst-threshold[/tx-burst-threshold] [rx-burst-time[/tx-burst-time] [priority] [rx-rate-min[/tx-rate-min]]]]]</code>. <code>rx</code> is what the router receives from the user (upload), <code>tx</code> is what it sends to the user (download). For example, <code>512k/2M</code> limits upload to 512 kbps and download to 2 Mbps. The router creates a dynamic simple queue with this limit for each logged-in user.</li>
+<li><strong>insert-queue-before</strong> <code>super { queue: enum (bottom | first) { bottom:0xffffffff, first:0 }
+ }</code> — Position of the dynamic simple queue of a user in the queue list: <code>first</code>, <code>bottom</code>, or the name of a queue before which it is placed.</li>
+<li><strong>parent-queue</strong> <code>super { queue: enum (none) { none:0 }
+ }</code> — Parent of the dynamic simple queue of a user. Default: <code>none</code>.</li>
+<li><strong>queue-type</strong> <code>super { queue: enum
+ }</code> — Queue type of the dynamic simple queue of a user.</li>
+<li><strong>address-list</strong> <code>multi { address-list: string
+ }</code> — Firewall address lists to which the address of each logged-in user is added.</li>
+<li><strong>incoming-filter</strong> <code>string</code> — Firewall filter chain for the packets from the users of the profile. Add a jump rule from the <code>hotspot</code> chain to this chain.</li>
+<li><strong>outgoing-filter</strong> <code>string</code> — Firewall filter chain for the packets to the users of the profile. Add a jump rule from the <code>hotspot</code> chain to this chain.</li>
+<li><strong>incoming-packet-mark</strong> <code>string</code> — Packet mark for the packets from the users of the profile.</li>
+<li><strong>outgoing-packet-mark</strong> <code>string</code> — Packet mark for the packets to the users of the profile.</li>
+<li><strong>on-login</strong> <code>alt { script: string
+ }</code> — Script that runs when a user of the profile logs in. It can use the variables <code>$user</code>, <code>$username</code>, <code>$address</code>, <code>$"mac-address"</code>, and <code>$interface</code>.</li>
+<li><strong>on-logout</strong> <code>alt { script: string
+ }</code> — Script that runs when a user of the profile logs out. In addition to the <code>on-login</code> variables it can use <code>$cause</code>, <code>$"uptime-secs"</code>, <code>$"bytes-in"</code>, <code>$"bytes-out"</code>, <code>$"bytes-total"</code>, <code>$"packets-in"</code>, <code>$"packets-out"</code>, and <code>$"packets-total"</code>.</li>
+<li><strong>transparent-proxy</strong> <code>bool</code> — Whether to send the HTTP requests of the logged-in users of the profile through the HotSpot proxy. Default: <code>no</code>.</li>
+<li><strong>open-status-page</strong> <code>enum (http-login | always)</code> — When to open the status page after login: <code>always</code> - also after a <code>mac</code> login; <code>http-login</code> - only after a login on the login page.</li>
+<li><strong>advertise</strong> <code>bool</code> — Whether to show advertisement pages to the users of the profile. Default: <code>no</code>.</li>
+<li><strong>advertise-url</strong> <code>multi { url: string
+ }</code> — URLs of the advertisement pages. After the last one, the list starts again.</li>
+<li><strong>advertise-interval</strong> <code>multi { time-interval: time
+ }</code> — Intervals between the advertisements. After the list ends, the last value is used.</li>
+<li><strong>advertise-timeout</strong> <code>alt { symbolic-names: enum (immediately | never) { immediately:0, never:0xffffffff }
+, time-interval: time
+ }</code> — Time to wait for the advertisement to be shown before the network access of the user is blocked: a time, <code>immediately</code>, or <code>never</code>.</li>
+</ul>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>The /ip/hotspot/user/reset-counters command sets the uptime, byte, and packet counters of the selected users to zero. A user who has reached limit-uptime or a byte limit can log in again after it.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotuserreset-counters">ip/hotspot/user/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>/ip/hotspot/user/reset-counters</code> command sets the uptime, byte, and packet counters of the selected users to zero. A user who has reached <code>limit-uptime</code> or a byte limit can log in again after it.</p>
+<hr />
+<h1 id="walled-garden">walled-garden</h1>
+<blockquote>
+<p>The /ip/hotspot/walled-garden menu lists the HTTP requests that devices can make before login. The rules of /ip/hotspot/walled-garden/ip are shown here as dynamic entries. See the HotSpot guide.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotwalled-garden">ip/hotspot/walled-garden</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/walled-garden</code> menu lists the HTTP requests that devices can make before login. The rules of <code>/ip/hotspot/walled-garden/ip</code> are shown here as dynamic entries. See the <a href="../../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The rule is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — The rule is dynamic.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>server</strong> <code>super { !
+, server: enum
+ }</code> — HotSpot server to which the rule applies.</li>
+<li><strong>src-address</strong> <code>super { !
+, range: ipRange
+ }</code> — IP address of the client.</li>
+<li><strong>method</strong> <code>super { !
+, method: enum (GET | HEAD | POST | PUT | CONNECT | OPTIONS | DELETE | TRACE)
+ }</code> — HTTP method of the request.</li>
+<li><strong>dst-host</strong> <code>super { !
+, host: string
+ }</code> — Host name of the web server. It must match the whole name. <code>*</code> stands for any number of characters, <code>?</code> for one character. A value that starts with <code>:</code> is a regular expression.</li>
+<li><strong>dst-port</strong> <code>super { !
+, ports: multi { ports: range [ .. 65535]
+ }
+ }</code> — TCP port of the request.</li>
+<li><strong>path</strong> <code>super { !
+, path: string
+ }</code> — Path of the request, the part after the host name. It is matched in the same way as <code>dst-host</code>.</li>
+<li><strong>action</strong> <code>enum (allow | deny)</code> — <code>allow</code> - the request passes without login. <code>deny</code> - the request needs a login.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>dst-address</strong> <code>super { !
+, range: ipRange
+ }</code> — IP address of the web server.</li>
+<li><strong>hits</strong> <code>num</code> — Number of requests that matched the rule.</li>
+</ul>
+<hr />
+<h1 id="ip">ip</h1>
+<blockquote>
+<p>The /ip/hotspot/walled-garden/ip menu lists the packets that devices can send before login, by address, protocol, and port. Each rule is added to the firewall as dynamic rules. See the HotSpot guide.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotwalled-gardenip">ip/hotspot/walled-garden/ip</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The <code>/ip/hotspot/walled-garden/ip</code> menu lists the packets that devices can send before login, by address, protocol, and port. Each rule is added to the firewall as dynamic rules. See the <a href="../../../../authentication-authorization-accounting/hotspot-captive-portal">HotSpot</a> guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The rule is disabled.</li>
+<li><strong>I</strong> <code>invalid</code> — The rule is invalid.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>server</strong> <code>super { !
+, server: enum
+ }</code> — HotSpot server to which the rule applies.</li>
+<li><strong>src-address</strong> <code>super { !
+, range: ipRange
+ }</code> — IP address of the client.</li>
+<li><strong>dst-address</strong> <code>super { !
+, range: ipRange
+ }</code> — Destination IP address.</li>
+<li><strong>dst-host</strong> <code>string</code> — Destination host name. The router adds a dynamic rule with the address that the name resolves to.</li>
+<li><strong>protocol</strong> <code>super { !
+, protocol: enum ()
+ }</code> — IP protocol.</li>
+<li><strong>dst-port</strong> <code>super { !
+, min: num [0 .. 65535]
+, [max] -num [0 .. 65535]
+ }</code> — Destination port or port range.</li>
+<li><strong>src-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Firewall address list with the client addresses.</li>
+<li><strong>dst-address-list</strong> <code>super { !
+, address-list: enum
+ }</code> — Firewall address list with the destination addresses.</li>
+<li><strong>action</strong> <code>enum (accept | drop | reject) { accept:0, drop:10, reject:11 }</code> — <code>accept</code> - the packet passes without login. <code>drop</code> - the packet is dropped. <code>reject</code> - the packet is dropped and an ICMP message is sent to the client.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all">reset-counters-all</h1>
+<blockquote>
+<p>The /ip/hotspot/walled-garden/reset-counters-all command sets the hits counter of all rules to zero.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotwalled-gardenreset-counters-all">ip/hotspot/walled-garden/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>/ip/hotspot/walled-garden/reset-counters-all</code> command sets the <code>hits</code> counter of all rules to zero.</p>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>The /ip/hotspot/walled-garden/reset-counters command sets the hits counter of the selected rules to zero.</p>
+</blockquote>
+<hr />
+<h2 id="iphotspotwalled-gardenreset-counters">ip/hotspot/walled-garden/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>The <code>/ip/hotspot/walled-garden/reset-counters</code> command sets the <code>hits</code> counter of the selected rules to zero.</p>
+<hr />
+<h1 id="active-peers">active-peers</h1>
+<blockquote>
+<p>This menu provides various statistics about remote peers that currently have established a phase 1 connection.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecactive-peers">ip/ipsec/active-peers</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>This menu provides various statistics about remote peers that currently have established a phase 1 connection.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>R</strong> <code>responder</code> — Whether the peer is a responder.</li>
+<li><strong>N</strong> <code>natt-peer</code> — Whether NAT traversal is used for the peer.</li>
+<li><strong>P</strong> <code>ppk</code> — Whether post-quantum preshared key is used.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>id</strong> <code>string</code> — Peer identifier.</li>
+<li><strong>local-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — Local IP address.</li>
+<li><strong>port</strong> <code>num</code> — Remote port.</li>
+<li><strong>remote-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — Remote IP address.</li>
+<li><strong>state</strong> <code>enum (spawning | starting | message-1-received | message-1-sent | message-2-received | message-2-sent | message-3-received | message-3-sent | message-4-received | established | expired | no-phase1 | eap | crypto | qkd) { spawning:0, starting:1, message-1-received:2, message-1-sent:3, message-2-received:4, message-2-sent:5, message-3-received:6, message-3-sent:7, message-4-received:8, established:9, expired:10, no-phase1:11 }</code> — Current IKE phase 1 state.</li>
+<li><strong>side</strong> <code>enum (initiator | responder)</code> — Whether the peer acts as a responder.</li>
+<li><strong>dynamic-address</strong> <code>alt { ip: ipAddr
+ }</code> — Dynamically assigned address.</li>
+<li><strong>uptime</strong> <code>time</code> — Connection uptime.</li>
+<li><strong>last-seen</strong> <code>time</code> — Time since the last received packet.</li>
+<li><strong>ph2-total</strong> <code>num</code> — Total number of phase 2 exchanges.</li>
+<li><strong>spii</strong> <code>string</code> — Initiator SPI value.</li>
+<li><strong>spir</strong> <code>string</code> — Responder SPI value.</li>
+<li><strong>rx-packets</strong> <code>num</code> — Number of received packets.</li>
+<li><strong>rx-bytes</strong> <code>num</code> — Number of received bytes.</li>
+<li><strong>tx-packets</strong> <code>num</code> — Number of transmitted packets.</li>
+<li><strong>tx-bytes</strong> <code>num</code> — Number of transmitted bytes.</li>
+</ul>
+<hr />
+<h1 id="kill-connections">kill-connections</h1>
+<blockquote>
+<p>Manually disconnects all remote peers.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecactive-peerskill-connections">ip/ipsec/active-peers/kill-connections</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Manually disconnects all remote peers.</p>
+<hr />
+<h1 id="identity">identity</h1>
+<blockquote>
+<p>Identities are configuration parameters that are specific to the remote peer. The main purpose of identity is to handle authentication and verify the peer's integrity.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecidentity">ip/ipsec/identity</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Identities are configuration parameters that are specific to the remote peer. The main purpose of identity is to handle authentication and verify the peer's integrity.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>D</strong> <code>dynamic</code> — Whether the item was created dynamically.</li>
+<li><strong>X</strong> <code>disabled</code> — Whether an item is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>peer</strong> <code>enum</code> — Peer name.</li>
+<li><strong>auth-method</strong> <code>enum (pre-shared-key | digital-signature | eap | eap-radius | pre-shared-key-xauth | rsa-key | rsa-signature-hybrid)</code> — Authentication method: - digital-signature - authenticate using a pair of RSA certificates; - eap - IKEv2 EAP authentication for the initiator (peer with a netmask of /32). Must be used together with eap-methods; - eap-radius - IKEv2 EAP RADIUS passthrough authentication for the responder (RFC 3579). A server certificate in this case is required. If a server certificate is not specified then only clients supporting EAP-only (RFC 5998) will be able to connect. Note that the EAP method should be compatible with EAP-only; - pre-shared-key - authenticate by a password (pre-shared secret) string shared between the peers (not recommended since an offline attack on the pre-shared key is possible); - rsa-key - authenticate using an RSA key imported in the keys menu. Only supported in IKEv1; - pre-shared-key-xauth - authenticate by a password (pre-shared secret) string shared between the peers + XAuth username and password. Only supported in IKEv1; - rsa-signature-hybrid - responder certificate authentication with initiator XAuth. Only supported in IKEv1.</li>
+<li><strong>eap-methods</strong> <code>multi { array-id, method: enum (eap-tls | eap-ttls | eap-peap | eap-mschapv2)
+ }</code> — All EAP methods require a whole certificate chain including intermediate and root CA certificates to be present in System/Certificates menu. Also, the username and password (if required by the authentication server) must be specified. Multiple EAP methods can be specified and are used in the specified order. Supported EAP methods: - eap-mschapv2; - eap-peap - also known as PEAPv0/EAP-MSCHAPv2; - eap-tls - requires additional client certificate specified under certificate parameter; - eap-ttls.</li>
+<li><strong>mode-config</strong> <code>enum (none)</code> — Name of the configuration parameters from mode-config menu. When the parameter is set mode-config is enabled.</li>
+<li><strong>notrack-chain</strong> <code>string</code> — Adds IP/Firewall/Raw rules matching IPsec policy to a specified chain. Use together with generate-policy.</li>
+<li><strong>my-id</strong> <code>alt { string: composite { type: enum (fqdn | user-fqdn | key-id)
+, data: string
+ }
+, address: composite { type: enum (address)
+, data: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+ }
+, other: enum (auto | dn)
+ }</code> — On the initiator, this controls what ID_i is sent to the responder. On the responder, this controls what ID_r is sent to the initiator. In IKEv2, the responder also expects this ID in received ID_r from the initiator. - auto - tries to use correct ID automatically: IP for pre-shared key, SAN (DN if not present) for certificate based connections; - address - IP address is used as ID; - dn - the binary Distinguished Encoding Rules (DER) encoding of an ASN.1 X.500 Distinguished Name; - fqdn - fully qualified domain name; - key-id - use the specified key ID for the identity; - user fqdn - specifies a fully-qualified username string, for example, "user@domain.com".</li>
+<li><strong>remote-id</strong> <code>alt { string: composite { type: enum (fqdn | user-fqdn | key-id)
+, data: string
+ }
+, address: composite { type: enum (address)
+, data: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+ }
+, auto: enum (auto | ignore | dn)
+ }</code> — This parameter controls what ID value to expect from the remote peer. Note that all types except for ignore will verify remote peer's ID with a received certificate. In case the peer sends the certificate name as its ID, it is checked against the certificate, else the ID is checked against Subject Alt. Name. - auto - accept all IDs; - address - IP address is used as ID; - dn - the binary Distinguished Encoding Rules (DER) encoding of an ASN.1 X.500 Distinguished Name; - fqdn - fully qualified domain name. Only supported in IKEv2; - user fqdn - a fully-qualified username string, for example, "user@domain.com". Only supported in IKEv2; - key-id - specific key ID for the identity. Only supported in IKEv2; - ignore - do not verify received ID with certificate (dangerous). * Wildcard key ID matching is not supported, for example, <code>remote-id="key-id:CN=*.domain.com"</code></li>
+<li><strong>match-by</strong> <code>enum (remote-id | certificate)</code> — Defines the logic used for peer's identity validation. - remote-id - verifies the peer's ID according to remote-id setting. - certificate verifies the peer's certificate with what is specified under remote-certificate setting.</li>
+<li><strong>key</strong> <code>enum ()</code> — Name of the private key from the keys menu. Applicable if RSA key authentication method (auth-method=rsa-key) is used.</li>
+<li><strong>remote-key</strong> <code>enum ()</code> — Name of the public key from the keys menu. Applicable if RSA key authentication method (auth-method=rsa-key) is used.</li>
+<li><strong>secret</strong> <code>string</code> — Secret string. If it starts with '0x', it is parsed as a hexadecimal value. Applicable if pre-shared key authentication method (<code>auth-method=pre-shared-key</code> or <code>auth-method=pre-shared-key-xauth</code>) is used.</li>
+<li><strong>certificate</strong> <code>multi { array-id, certificate: enum
+ }</code> — Local certificate. Applicable if digital signature authentication method (<code>auth-method=digital-signature</code>) or EAP (<code>auth-method=eap</code>) is used.</li>
+<li><strong>remote-certificate</strong> <code>enum (none) { none:-1 }</code> — Certificate for authenticating the remote side (validating packets; no private key required). If a remote-certificate is not specified then the received certificate from a remote peer is used and checked against the CA in the certificate menu. A proper CA must be imported in a certificate store. If remote-certificate and match-by=certificate are specified, only the specific client certificate will be matched. Applicable if digital signature authentication method (<code>auth-method=digital-signature</code>) is used.</li>
+<li><strong>username</strong> <code>string</code> — EAP or XAuth username.</li>
+<li><strong>password</strong> <code>string</code> — EAP or XAuth password.</li>
+<li><strong>generate-policy</strong> <code>enum (no | port-override | port-strict)</code> — Allow this peer to establish SA for non-existing policies. Such policies are created dynamically for the lifetime of SA. Automatic policies allow, for example, to create IPsec secured L2TP tunnels, or any other setup where remote peer's IP address is not known at the configuration time. - no - do not generate policies; - port-override - generate policies and force policy to use any port (old behavior); - port-strict - use ports from peer's proposal, which should match peer's policy.</li>
+<li><strong>policy-template-group</strong> <code>enum</code> — Policy template group to use for generated policies. If none of the templates match, Phase 2 SA will not be established.</li>
+</ul>
+<hr />
+<h1 id="installed-sa">installed-sa</h1>
+<blockquote>
+<p>This menu provides information about installed security associations including the keys.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecinstalled-sa">ip/ipsec/installed-sa</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>This menu provides information about installed security associations including the keys.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>S</strong> <code>seen-traffic</code> — Whether traffic has passed through the SA.</li>
+<li><strong>H</strong> <code>hw-aead</code> — Whether hardware AEAD acceleration is used.</li>
+<li><strong>A</strong> <code>AH</code> — Whether the SA uses AH protocol.</li>
+<li><strong>E</strong> <code>ESP</code> — Whether the SA uses ESP protocol.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>spi</strong> <code>num</code> — Security Parameter Index value.</li>
+<li><strong>state</strong> <code>enum (larval | mature | dying | dead) { larval:0, mature:1, dying:2, dead:3 }</code> — Current SA state.</li>
+<li><strong>auth-algorithm</strong> <code>enum (none | md5 | sha1 | sha256 | sha512) { none:0, md5:2, sha1:3, sha256:5, sha512:7 }</code> — Authentication algorithm.</li>
+<li><strong>enc-algorithm</strong> <code>enum (none | des | 3des | null | aes-cbc | aes-ctr | aes-gcm | blowfish | twofish | camellia | chacha20poly1305) { none:0, des:2, 3des:3, null:11, aes-cbc:12, aes-ctr:13, aes-gcm:20, blowfish:7, twofish:253, camellia:22, chacha20poly1305:254 }</code> — Encryption algorithm.</li>
+<li><strong>enc-key-size</strong> <code>num</code> — Encryption key size in bits.</li>
+<li><strong>auth-key</strong> <code>string</code> — Authentication key value.</li>
+<li><strong>enc-key</strong> <code>string</code> — Encryption key value.</li>
+<li><strong>addtime</strong> <code>date</code> — Time when the SA was added.</li>
+<li><strong>expires-in</strong> <code>time</code> — Time until the SA expires.</li>
+<li><strong>add-lifetime</strong> <code>composite { soft: time
+, hard: time
+ }</code> — Added lifetime for the SA in the format soft/hard: - soft - time period after which IKE will try to establish a new SA; - hard - time period after which the SA is deleted.</li>
+<li><strong>current-bytes</strong> <code>num</code> — Number of bytes processed by the SA.</li>
+<li><strong>current-packets</strong> <code>num</code> — Number of packets processed by the SA.</li>
+<li><strong>invalid-packets</strong> <code>num</code> — Number of invalid packets.</li>
+<li><strong>replay</strong> <code>num</code> — Replay window size.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>super { src-address: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+, [port] :num
+ }</code> — Source address and port.</li>
+<li><strong>dst-address</strong> <code>super { dst-address: alt { ipv6: ip6Addr
+, ip: ipAddr
+ }
+, [port] :num
+ }</code> — Destination address and port.</li>
+</ul>
+<hr />
+<h1 id="flush">flush</h1>
+<blockquote>
+<p>Manually removes all installed security associations.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecinstalled-saflush">ip/ipsec/installed-sa/flush</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Manually removes all installed security associations.</p>
+<hr />
+<h1 id="key">key</h1>
+<blockquote>
+<p>This menu lists all imported public and private keys that can be used for peer authentication. The menu has several commands to work with keys.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckey">ip/ipsec/key</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>This menu lists all imported public and private keys that can be used for peer authentication. The menu has several commands to work with keys.</p>
+<hr />
+<h1 id="psk">psk</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/ipsec/key/psk.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeypsk">ip/ipsec/key/psk</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>peer</strong> <code>enum</code> — Peer name to associate the PSK with.</li>
+<li><strong>id</strong> <code>string</code> — Peer identifier string.</li>
+<li><strong>key</strong> <code>string</code> — Pre-shared key value.</li>
+</ul>
+<hr />
+<h1 id="generate">generate</h1>
+<blockquote>
+<p>RouterOS command reference for /ip/ipsec/key/psk/generate.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeypskgenerate">ip/ipsec/key/psk/generate</h2>
+<p><strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>peer</strong> <code>enum</code> — Peer name to generate a PSK for.</li>
+<li><strong>size</strong> <code>num</code> — Key size in bytes.</li>
+<li><strong>count</strong> <code>num</code> — Number of keys to generate.</li>
+</ul>
+<hr />
+<h1 id="rsa">rsa</h1>
+<blockquote>
+<p>RouterOS directory reference for /ip/ipsec/key/rsa.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeyrsa">ip/ipsec/key/rsa</h2>
+<p><strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>P</strong> <code>private-key</code> — Whether the item contains a private key.</li>
+<li><strong>R</strong> <code>rsa</code> — Whether the item uses an RSA key.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Key name.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>key-size</strong> <code>num</code> — RSA key size in bits.</li>
+</ul>
+<hr />
+<h1 id="export-pub-key">export-pub-key</h1>
+<blockquote>
+<p>Export public key to file from one of the existing private keys.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeyrsaexport-pub-key">ip/ipsec/key/rsa/export-pub-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Export public key to file from one of the existing private keys.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>key</strong> <code>enum</code> — Name of the RSA key to export.</li>
+<li><strong>file-name</strong> <code>string</code> — Name of the file to export the public key to.</li>
+</ul>
+<hr />
+<h1 id="generate-key">generate-key</h1>
+<blockquote>
+<p>Generate a private key. Takes two parameters, name of the newly generated key and key size 1024,2048 and 4096.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeyrsagenerate-key">ip/ipsec/key/rsa/generate-key</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Generate a private key. Takes two parameters, name of the newly generated key and key size 1024,2048 and 4096.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name for the generated key.</li>
+<li><strong>key-size</strong> <code>alt { key-size: enum (2048 | 4096 | 8192) { 2048:2048, 4096:4096, 8192:8192 }
+ }</code> — RSA key size in bits.</li>
+</ul>
+<hr />
+<h1 id="import">import</h1>
+<blockquote>
+<p>Import key from file.</p>
+</blockquote>
+<hr />
+<h2 id="ipipseckeyrsaimport">ip/ipsec/key/rsa/import</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Import key from file.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file-name</strong> <code>file</code> — Name of the file to import the key from.</li>
+<li><strong>name</strong> <code>string</code> — Name for the imported key.</li>
+<li><strong>passphrase</strong> <code>string</code> — Passphrase for the key file.</li>
+</ul>
+<hr />
+<h1 id="mode-config">mode-config</h1>
+<blockquote>
+<p>ISAKMP and IKEv2 configuration attributes are configured in this menu.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecmode-config">ip/ipsec/mode-config</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>ISAKMP and IKEv2 configuration attributes are configured in this menu.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Not all IKE implementations support multiple split networks provided by the <code>split-include</code> option.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>If the RouterOS client is the initiator, it always sends the CISCO UNITY extension, and RouterOS supports only split-include from this extension.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Both attributes Cisco Unity Split DNS (attribute type 28675) and RFC8598 (attribute type 25) are supported, ROS responds to these attributes but only as a responder.</p>
+</div>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>You cannot use <code>system-dns</code> and <code>static-dns</code> at the same time; ROS can use only one DNS.</p>
+</div>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Whether the item is the default.</li>
+<li><strong>R</strong> <code>responder</code> — Whether the item acts as a responder.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Mode config entry name.</li>
+<li><strong>responder</strong> <code>bool</code> — Specifies whether the configuration will work as an initiator (client) or responder (server). The initiator will request mode-config parameters from the responder.</li>
+<li><strong>system-dns</strong> <code>bool</code> — When this option is enabled, DNS addresses will be taken from /ip/dns.</li>
+<li><strong>static-dns</strong> <code>object { address: alt { address4: ipAddr
+, address6: ip6Addr
+ }
+ }</code> — Manually specified DNS server IP addresses to be sent to the client.</li>
+<li><strong>address</strong> <code>ipAddr</code> — Address to assign to the peer.</li>
+<li><strong>address-pool</strong> <code>enum (none) { none:-1 }</code> — issue one address for peer from this pool</li>
+<li><strong>address-prefix-length</strong> <code>num</code> — issued address netmask</li>
+<li><strong>address6</strong> <code>ip6Prefix</code> — IPv6 address assigned to peer</li>
+<li><strong>address6-pool</strong> <code>enum (none) { none:-1 }</code> — issue one IPv6 address for peer from this pool</li>
+<li><strong>split-include</strong> <code>object { subnet: alt { subnet4: ipPrefix
+, subnet6: ip6Prefix
+ }
+ }</code> — List of subnets in CIDR format, which will be tunneled. Subnets will be sent to the peer using the CISCO UNITY extension. A remote peer will create specific dynamic policies.</li>
+<li><strong>split-dns</strong> <code>multi { array-id, dns: string
+ }</code> — List of DNS names that will be resolved using a system-dns=yes or static-dns= setting.</li>
+<li><strong>src-address-list</strong> <code>enum ()</code> — Specifying an address list will generate dynamic source NAT rules. This parameter is only available with responder=no. A roadWarrior client with NAT</li>
+<li><strong>connection-mark</strong> <code>enum ()</code> — conection-mark to be added to srcnat chain for initiator</li>
+<li><strong>use-responder-dns</strong> <code>enum (no | yes | exclusively)</code> — if the dns servers sent should be used by the initiator</li>
+</ul>
+<hr />
+<h1 id="peer">peer</h1>
+<blockquote>
+<p>Peer configuration settings are used to establish connections between IKE daemons. This connection is then used to negotiate keys and algorithms for SAs. Exchange mode is the only unique identifier between the peers,...</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecpeer">ip/ipsec/peer</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Peer configuration settings are used to establish connections between IKE daemons. This connection is then used to negotiate keys and algorithms for SAs. Exchange mode is the only unique identifier between the peers, meaning that multiple peer configurations can exist with the same remote-address as long as a different exchange-mode is used.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Whether an item is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — Whether the item was created dynamically.</li>
+<li><strong>R</strong> <code>responder</code> — Whether this peer will act as a responder only (listen to incoming requests) and not initiate a connection.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Peer name.</li>
+<li><strong>address</strong> <code>alt { prefix6: ip6Prefix
+, prefix4: ipPrefix
+, dns: string
+ }</code> — Remote address of the peer. If the remote peer's address matches this prefix, then the peer configuration is used in authentication and establishment of Phase 1. If several peer's addresses match several configuration entries, the most specific one (i.e. the one with the largest netmask) will be used.</li>
+<li><strong>local-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — Local address to use for the connection.</li>
+<li><strong>passive</strong> <code>bool</code> — Passive peer does not initiate the connection. The enabled passive mode also indicates that the peer is an xauth responder, and disabled passive mode - xauth initiator.</li>
+<li><strong>port</strong> <code>num</code> — Communication port used (when the router is an initiator) to connect to the remote peer when the remote peer uses a non-default port.</li>
+<li><strong>profile</strong> <code>enum</code> — IPsec profile to use.</li>
+<li><strong>exchange-mode</strong> <code>enum (main | aggressive | ike2)</code> — ISAKMP phase 1 exchange modes according to <a href="https://datatracker.ietf.org/doc/html/rfc2408#section-4.1">RFC 2408</a>. The <code>main</code> mode relaxes <a href="https://datatracker.ietf.org/doc/html/rfc2409#section-5.4">rfc2409 section 5.4</a>, to allow pre-shared-key authentication in the <code>main</code> mode. <code>ike2</code> mode enables Ikev2 <a href="https://datatracker.ietf.org/doc/html/rfc7296">RFC 7296</a>. Parameters that are ignored by IKEv2: <code>proposal-check</code>, <code>compatibility-options</code>, <code>lifebytes</code>, <code>dpd-maximum-failures</code>, <code>nat-traversal</code>.</li>
+<li><strong>send-initial-contact</strong> <code>bool</code> — Specifies whether to send an "initial contact" IKE packet or wait for the remote side, this packet should trigger the removal of old peer SAs for the current source address. Usually, in road warrior setups clients are initiators and this parameter should be set to no. Initial contact is not sent if modecfg or xauth is enabled for ikev1.</li>
+<li><strong>ppk-secret</strong> <code>string</code> — Static PPK secret with "static-ppk-secret" ID used when no one-time key/psk exist for this peer, ensure the key has 256 bits of entropy.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>current-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — Current remote address of the peer.</li>
+</ul>
+<hr />
+<h1 id="policy">policy</h1>
+<blockquote>
+<p>All packets are IPIP encapsulated in tunnel mode, and their new IP header's src-address and dst-address are set to sa-src-address and sa-dst-address values of this policy. If you do not use tunnel mode (i.e., you use...</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecpolicy">ip/ipsec/policy</h2>
+<p><strong>Type:</strong> Directory</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Policy order is important. It works similarly to firewall filters where policies are executed from top to bottom (priority parameter is removed).</p>
+<p>All packets are IPIP encapsulated in tunnel mode, and their new IP header's src-address and dst-address are set to sa-src-address and sa-dst-address values of this policy. If you do not use tunnel mode (i.e., you use transport mode), then only packets whose source and destination addresses are the same as sa-src-address and sa-dst-address can be processed by this policy. Transport mode can only work with packets that originate at and are destined for IPsec peers (hosts that established security associations). To encrypt traffic between networks (or a network and a host) you have to use tunnel mode.</p>
+</div>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>T</strong> <code>template</code> — Whether the item is a template to assign for dynamic peers.</li>
+<li><strong>B</strong> <code>backup</code> — Whether the item is included in the backup.</li>
+<li><strong>X</strong> <code>disabled</code> — Whether the item is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — Whether the item was created dynamically.</li>
+<li><strong>I</strong> <code>invalid</code> — Whether this policy is invalid - the possible cause is a duplicate policy with the same src-address and dst-address.</li>
+<li><strong>A</strong> <code>active</code> — Whether the item is currently active.</li>
+<li>***** <code>default</code> — Whether the item is the default.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>peer</strong> <code>multi { array-id, peer: enum
+ }</code> — Name of the peer on which the policy applies.c</li>
+<li><strong>tunnel</strong> <code>bool</code> — Whether to use tunnel mode.</li>
+<li><strong>group</strong> <code>enum</code> — Policy group name.</li>
+<li><strong>src-address</strong> <code>alt { prefix6: ip6Prefix
+, prefix4: ipPrefix
+ }</code> — Source address or network to be matched in packets. Applicable when tunnel mode (<code>tunnel=yes</code>) or template (<code>template=yes</code>) is used.</li>
+<li><strong>src-port</strong> <code>num</code> — Source port.</li>
+<li><strong>dst-address</strong> <code>alt { prefix6: ip6Prefix
+, prefix4: ipPrefix
+ }</code> — Destination address or network to be matched in packets. Applicable when tunnel mode (<code>tunnel=yes</code>) or template (<code>template=yes</code>) is used.</li>
+<li><strong>dst-port</strong> <code>num</code> — Destination port.</li>
+<li><strong>protocol</strong> <code>enum (all) { all:255 }</code> — IP protocol number or name.</li>
+<li><strong>action</strong> <code>enum (encrypt | discard | none) { encrypt:2, discard:0, none:1 }</code> — Action to take for matching traffic. - <code>none</code> - pass the packet unchanged. - <code>discard</code> - drop the packet. - <code>encrypt</code> - apply transformations specified in this policy and its SA.</li>
+<li><strong>level</strong> <code>enum (require | use | unique) { require:2, use:1, unique:3 }</code> — Specifies what to do if some of the SAs for this policy cannot be found: - <code>use</code> - skip this transform, do not drop the packet, and do not acquire SA from IKE daemon; - <code>require</code> - drop the packet and acquire SA; - <code>unique</code> - drop the packet and acquire a unique SA that is only used with this particular policy. It is used in setups where multiple clients can sit behind one public IP address (clients behind NAT).</li>
+<li><strong>ipsec-protocols</strong> <code>enum (ah | esp) { ah:1, esp:2 }</code> — Specifies what combination of Authentication Header and Encapsulating Security Payload protocols you want to apply to matched traffic.</li>
+<li><strong>sa-src-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — endpoint address</li>
+<li><strong>sa-dst-address</strong> <code>alt { ipv6: ip6Addr
+, ip: ipAddr
+ }</code> — endpoint address</li>
+<li><strong>proposal</strong> <code>enum</code> — Proposal template name.</li>
+<li><strong>template</strong> <code>bool</code> — Whether this policy is a template.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>active-interface</strong> <code>iface_enum</code> — The interface through which the SA is established.</li>
+<li><strong>ph2-count</strong> <code>num</code> — Number of phase 2 exchanges.</li>
+<li><strong>ph2-state</strong> <code>enum (spawning | starting | ready-to-send | getspi-sent | getspi-done | msg1-sent | ready-to-establish | commiting | adding-sa | established | expired | no-phase2) { spawning:0, starting:1, ready-to-send:2, getspi-sent:3, getspi-done:4, msg1-sent:5, ready-to-establish:6, commiting:7, adding-sa:8, established:9, expired:10, no-phase2:11 }</code> — Current phase 2 state.</li>
+</ul>
+<hr />
+<h1 id="group">group</h1>
+<blockquote>
+<p>This menu allows you to create additional policy groups used by policy templates.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecpolicygroup">ip/ipsec/policy/group</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>This menu allows you to create additional policy groups used by policy templates.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Whether the item is the default.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Group name.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface to which policies in this group apply.</li>
+</ul>
+<hr />
+<h1 id="profile_2">profile</h1>
+<blockquote>
+<p>Profiles define a set of parameters used for IKE negotiation during Phase 1. These parameters can be shared with other peer configurations.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecprofile">ip/ipsec/profile</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Profiles define a set of parameters used for IKE negotiation during Phase 1. These parameters can be shared with other peer configurations.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Whether the item is the default.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Profile name.</li>
+<li><strong>hash-algorithm</strong> <code>enum (md5 | sha1 | sha256 | sha384 | sha512)</code> — Hash algorithm.</li>
+<li><strong>prf-algorithm</strong> <code>enum (auto | sha1 | sha256 | sha384 | sha512)</code> — PRF algorithm (IKEv2 only).</li>
+<li><strong>enc-algorithm</strong> <code>ubit (aes-256, aes-192, aes-128, 3des, des)</code> — Encryption algorithm.</li>
+<li><strong>dh-group</strong> <code>ubit (x25519, ecp256, ecp384, ecp521, modp6144, modp4096, modp3072, modp2048, modp1536, modp1024, modp768)</code> — Diffie-Hellman group.</li>
+<li><strong>lifetime</strong> <code>time</code> — Phase 1 lifetime (IKEv1 only).</li>
+<li><strong>lifebytes</strong> <code>num</code> — Phase 1 lifetime in bytes (IKEv1 only). It is used only as an administrative value which is added to the proposal. Used in cases where the remote peer requires a specific lifebytes value to establish phase 1.</li>
+<li><strong>proposal-check</strong> <code>enum (obey | strict | claim | exact) { obey:1, strict:2, claim:3, exact:4 }</code> — Phase 2 lifetime check logic: - <code>claim</code> - take the shortest of proposed and configured lifetimes and notify the initiator about it. - <code>exact</code> - require lifetimes to be the same. - <code>obey</code> - accept whatever is sent by an initiator. - <code>strict</code> - if the proposed lifetime is longer than the default then reject the proposal otherwise accept a proposed lifetime.</li>
+<li><strong>nat-traversal</strong> <code>bool</code> — Use Linux NAT-T mechanism to solve IPsec incompatibility with NAT routers between IPsec peers. This can only be used with the ESP protocol (AH is not supported by design, as it signs the complete packet, including the IP header, which is changed by NAT, rendering the AH signature invalid). The method encapsulates IPsec ESP traffic into UDP streams in order to overcome some minor issues that make ESP incompatible with NAT.</li>
+<li><strong>ppk</strong> <code>enum (no | psk | qkd | psk-ike-initial)</code> — Post-quantum preshared key (IKEv2 only).</li>
+<li><strong>dpd-interval</strong> <code>alt { special: enum (disable-dpd) { disable-dpd:0 }
+, num: time [ .. 3600]
+ }</code> — Dead peer detection interval.</li>
+<li><strong>dpd-maximum-failures</strong> <code>num</code> — Maximum DPD failures before peer is considered dead (IKEv1 only).</li>
+</ul>
+<hr />
+<h1 id="proposal">proposal</h1>
+<blockquote>
+<p>Proposal information that will be sent by IKE daemons to establish SAs for certain policies.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecproposal">ip/ipsec/proposal</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Proposal information that will be sent by IKE daemons to establish SAs for certain policies.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Whether an item is disabled.</li>
+<li>***** <code>default</code> — Whether the item is the default.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Proposal name.</li>
+<li><strong>auth-algorithms</strong> <code>ubit (sha512, sha256, sha1, md5, null)</code> — Allowed authentication algorithms. MD5 uses a 128-bit key, SHA1 uses a 160-bit key.</li>
+<li><strong>enc-algorithms</strong> <code>ubit (chacha20poly1305, aes-256-cbc, aes-256-ctr, aes-256-gcm, camellia-256, aes-192-cbc, aes-192-ctr, aes-192-gcm, camellia-192, aes-128-cbc, aes-128-ctr, aes-128-gcm, camellia-128, 3des, blowfish, twofish, des, null)</code> — Allowed encryption algorithms.</li>
+<li><strong>lifetime</strong> <code>time</code> — Phase 2 lifetime.</li>
+<li><strong>pfs-group</strong> <code>enum (none | ecp256 | ecp384 | ecp521 | modp6144 | modp4096 | modp3072 | modp2048 | modp1536 | modp1024 | modp768) { none:0 }</code> — Perfect Forward Secrecy group.</li>
+</ul>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /ip/ipsec/settings.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecsettings">ip/ipsec/settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>xauth-use-radius</strong> <code>bool</code> — Whether to use Radius client for XAuth users or not. The property is only applicable to peers using the IKEv1 exchange mode.</li>
+<li><strong>accounting</strong> <code>bool</code> — WWhether to send RADIUS accounting requests to a RADIUS server. Applicable if EAP Radius (auth-method=eap-radius) or pre-shared key with XAuth authentication method (auth-method=pre-shared-key-xauth) is used.</li>
+<li><strong>interim-update</strong> <code>time</code> — The interval between each consecutive RADIUS accounting Interim update. Accounting must be enabled.</li>
+<li><strong>ddos-cookie-threshold</strong> <code>num</code> — DDOS cookie activation threshold.</li>
+</ul>
+<hr />
+<h1 id="statistics">statistics</h1>
+<blockquote>
+<p>This menu shows various IPsec statistics and errors.</p>
+</blockquote>
+<hr />
+<h2 id="ipipsecstatistics">ip/ipsec/statistics</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>This menu shows various IPsec statistics and errors.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>in-errors</strong> <code>num</code> — Number of input error events.</li>
+<li><strong>in-buffer-errors</strong> <code>num</code> — Number of input buffer errors.</li>
+<li><strong>in-header-errors</strong> <code>num</code> — Number of input header errors.</li>
+<li><strong>in-no-states</strong> <code>num</code> — Number of packets dropped due to no matching state.</li>
+<li><strong>in-state-protocol-errors</strong> <code>num</code> — Number of input state protocol errors.</li>
+<li><strong>in-state-mode-errors</strong> <code>num</code> — Number of input state mode errors.</li>
+<li><strong>in-state-sequence-errors</strong> <code>num</code> — Number of input state sequence errors.</li>
+<li><strong>in-state-expired</strong> <code>num</code> — Number of input packets with expired state.</li>
+<li><strong>in-state-mismatches</strong> <code>num</code> — Number of input state mismatches.</li>
+<li><strong>in-state-invalid</strong> <code>num</code> — Number of input packets with invalid state.</li>
+<li><strong>in-template-mismatches</strong> <code>num</code> — Number of input template mismatches.</li>
+<li><strong>in-no-policies</strong> <code>num</code> — Number of input packets with no matching policy.</li>
+<li><strong>in-policy-blocked</strong> <code>num</code> — Number of input packets blocked by policy.</li>
+<li><strong>in-policy-errors</strong> <code>num</code> — Number of input policy errors.</li>
+<li><strong>out-errors</strong> <code>num</code> — Number of output error events.</li>
+<li><strong>out-bundle-errors</strong> <code>num</code> — Number of output bundle errors.</li>
+<li><strong>out-bundle-check-errors</strong> <code>num</code> — Number of output bundle check errors.</li>
+<li><strong>out-no-states</strong> <code>num</code> — Number of output packets dropped due to no matching state.</li>
+<li><strong>out-state-protocol-errors</strong> <code>num</code> — Number of output state protocol errors.</li>
+<li><strong>out-state-mode-errors</strong> <code>num</code> — Number of output state mode errors.</li>
+<li><strong>out-state-sequence-errors</strong> <code>num</code> — Number of output state sequence errors.</li>
+<li><strong>out-state-expired</strong> <code>num</code> — Number of output packets with expired state.</li>
+<li><strong>out-policy-blocked</strong> <code>num</code> — Number of output packets blocked by policy.</li>
+<li><strong>out-policy-dead</strong> <code>num</code> — Number of output packets with dead policy.</li>
+<li><strong>out-policy-errors</strong> <code>num</code> — Number of output policy errors.</li>
+</ul>
+<hr />
+<h1 id="kid-control">kid-control</h1>
+<blockquote>
+<p>Profiles of Kid Control: the allowed time of each day and the rate limit for the devices of a child. See Kid Control.</p>
+</blockquote>
+<hr />
+<h2 id="ipkid-control">ip/kid-control</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Profiles of Kid Control: the allowed time of each day and the rate limit for the devices of a child. See <a href="../../../firewall-and-quality-of-service/kid-control">Kid Control</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The profile is disabled and does not restrict its devices.</li>
+<li><strong>P</strong> <code>paused</code> — The profile is paused: its devices are blocked.</li>
+<li><strong>B</strong> <code>blocked</code> — The devices of the profile are blocked now.</li>
+<li><strong>L</strong> <code>rate-limited</code> — The devices of the profile are rate-limited now.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the profile, usually the name of the child.</li>
+<li><strong>sun</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Sunday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 6h-21h.</li>
+<li><strong>mon</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Monday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 7h-21h.</li>
+<li><strong>tue</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Tuesday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 7h-21h.</li>
+<li><strong>wed</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Wednesday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 7h-21h.</li>
+<li><strong>thu</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Thursday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 7h-21h.</li>
+<li><strong>fri</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Friday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 7h-22h.</li>
+<li><strong>sat</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Saturday in which internet access is allowed, for example <code>8h-20h</code>. An empty value (<code>""</code>) allows no access on that day. Default: 6h-22h.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Data rate limit of each device of the profile during the allowed time, for example <code>3M</code>, or <code>2M/1M</code> for separate values. The router applies it with a dynamic simple queue. Default: empty (no limit).</li>
+<li><strong>tur-sun</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Sunday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-mon</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Monday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-tue</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Tuesday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-wed</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Wednesday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-thu</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Thursday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-fri</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Friday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+<li><strong>tur-sat</strong> <code>multi { time: composite { start: time [0 .. 86400]
+, end: time [0 .. 86400]
+ }
+ }</code> — Time of day on Saturday in which <code>rate-limit</code> does not apply (time unlimited rate). It does not allow access by itself: outside the allowed time of the day the devices stay blocked. Default: empty.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>pause-left</strong> <code>time</code></li>
+<li><strong>pause-till</strong> <code>date</code></li>
+</ul>
+<hr />
+<h1 id="device">device</h1>
+<blockquote>
+<p>Devices of Kid Control. A device is identified by its MAC address. The list also shows, as dynamic entries, the other devices that the router has seen. See Kid Control.</p>
+</blockquote>
+<hr />
+<h2 id="ipkid-controldevice">ip/kid-control/device</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Devices of Kid Control. A device is identified by its MAC address. The list also shows, as dynamic entries, the other devices that the router has seen. See <a href="../../../../firewall-and-quality-of-service/kid-control">Kid Control</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The device entry is disabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — The entry is dynamic: a device that the router has seen and that is not added to a profile.</li>
+<li><strong>B</strong> <code>blocked</code> — The device is blocked now.</li>
+<li><strong>L</strong> <code>limited</code> — The device is rate-limited now.</li>
+<li><strong>I</strong> <code>inactive</code> — inactive</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>all</strong> <code>switch</code></li>
+<li><strong>static</strong> <code>switch</code></li>
+<li><strong>dynamic</strong> <code>switch</code></li>
+<li><strong>name</strong> <code>string</code> — Name of the device.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address of the device. The router takes the IP address of the device from the ARP table.</li>
+<li><strong>user</strong> <code>enum () { :0xffffffff }</code> — Profile of <code>/ip/kid-control</code> that the device belongs to.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>ip-address</strong> <code>object { server: alt { ip: ipAddr
+, ipv6: ip6Addr
+ }
+ }</code> — IP address of the device, taken from the ARP table.</li>
+<li><strong>activity</strong> <code>string</code></li>
+<li><strong>rate-down</strong> <code>num</code> — Current download data rate of the device.</li>
+<li><strong>rate-up</strong> <code>num</code> — Current upload data rate of the device.</li>
+<li><strong>bytes-down</strong> <code>num</code> — Number of bytes that the device has downloaded since the counters were reset.</li>
+<li><strong>bytes-up</strong> <code>num</code> — Number of bytes that the device has uploaded since the counters were reset.</li>
+<li><strong>idle-time</strong> <code>time</code> — Time since the router last saw traffic of the device.</li>
+</ul>
+<hr />
+<h1 id="reset-counters_2">reset-counters</h1>
+<blockquote>
+<p>Sets the bytes-down and bytes-up counters of the selected devices back to zero. See Kid Control.</p>
+</blockquote>
+<hr />
+<h2 id="ipkid-controldevicereset-counters">ip/kid-control/device/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Sets the <code>bytes-down</code> and <code>bytes-up</code> counters of the selected devices back to zero. See <a href="../../../../firewall-and-quality-of-service/kid-control">Kid Control</a>.</p>
+<hr />
+<h1 id="pause">pause</h1>
+<blockquote>
+<p>Blocks all devices of a profile, whatever the schedule says. resume ends the pause. See Kid Control.</p>
+</blockquote>
+<hr />
+<h2 id="ipkid-controlpause">ip/kid-control/pause</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Blocks all devices of a profile, whatever the schedule says. <code>resume</code> ends the pause. See <a href="../../../firewall-and-quality-of-service/kid-control">Kid Control</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>duration</strong> <code>time</code></li>
+<li><strong>till</strong> <code>date</code></li>
+</ul>
+<hr />
+<h1 id="resume">resume</h1>
+<blockquote>
+<p>Ends the pause of a profile: its devices follow the schedule again. See Kid Control.</p>
+</blockquote>
+<hr />
+<h2 id="ipkid-controlresume">ip/kid-control/resume</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Ends the pause of a profile: its devices follow the schedule again. See <a href="../../../firewall-and-quality-of-service/kid-control">Kid Control</a>.</p>
+<hr />
+<h1 id="media">media</h1>
+<blockquote>
+<p>DLNA media servers. Each entry shares the media files of a disk folder with the players on one interface: it announces itself there with SSDP and serves the files over HTTP on TCP port 2828. Entries flagged D are...</p>
+</blockquote>
+<hr />
+<h2 id="ipmedia">ip/media</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Directory</p>
+<p>DLNA media servers. Each entry shares the media files of a disk folder with the players on one interface: it announces itself there with SSDP and serves the files over HTTP on TCP port 2828. Entries flagged <code>D</code> are created by disk media sharing (<code>media-sharing</code> in <code>/disk</code>, <code>auto-media-sharing</code> in <code>/disk/settings</code>). See <a href="../../../storage/dlna">DLNA Media Server</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Disabled: the server does not run.</li>
+<li><strong>D</strong> <code>dynamic</code> — Dynamic: created by disk media sharing for a disk or tmpfs folder (<code>media-sharing</code> in <code>/disk</code>, or <code>auto-media-sharing</code> in <code>/disk/settings</code>), named after the identity and the disk slot. A dynamic entry cannot be edited or removed (<code>failure: can't edit dynamic object</code>); turn off the disk's <code>media-sharing</code> instead.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>path</strong> <code>file</code> — Folder on a disk whose media files the server shares, for example <code>usb1/media</code>, or the root folder of a disk (<code>usb1</code>). Without <code>path</code>, the server shares the whole file list of the router. Its subfolders show as folders. Video, music and picture files with a lower-case extension are listed; other files, and files with upper-case extensions such as <code>.MP4</code>, are not. When the folder does not exist, <code>status</code> shows <code>Error, can't find directory</code>.</li>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface the server runs on. The server announces itself and serves requests only on this interface. The listeners accept connections on every interface, but a request for this server that arrives on another interface gets an HTTP 404 error; the firewall keeps the WAN out.</li>
+<li><strong>friendly-name</strong> <code>string</code> — Name players show for the server. Default: MikroTik Home Media Server.</li>
+<li><strong>allowed-ip</strong> <code>ipAddr</code> — The only IP address the server serves. Other devices get no content. One address only; a subnet is refused. <code>0.0.0.0</code> allows every device on the interface. Cannot be set together with <code>allowed-hostname</code>. Default: 0.0.0.0.</li>
+<li><strong>allowed-hostname</strong> <code>string</code> — Only the IP address of this host name, as known to the DHCP server of this router (the <code>host-name</code> of the lease), is allowed to access content. The match is exact and case-sensitive. Empty allows every device. Cannot be set together with <code>allowed-ip</code> (<code>failure: can't set both allowed IP and allowed hostname</code>).</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — - <code>Running</code> - The server runs and serves files. - <code>Error, can't find directory</code> - The folder in <code>path</code> does not exist.</li>
+</ul>
+<hr />
+<h1 id="settings_1">settings</h1>
+<blockquote>
+<p>Settings shared by all DLNA media servers in /ip/media. See DLNA Media Server.</p>
+</blockquote>
+<hr />
+<h2 id="ipmediasettings">ip/media/settings</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Settings Directory</p>
+<p>Settings shared by all DLNA media servers in <a href="."><code>/ip/media</code></a>. See <a href="../../../storage/dlna">DLNA Media Server</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>thumbnails</strong> <code>string</code> — Comma separated list of filenames (should end with .jpg). If name of a file in a directory matches any filename in the list, that file is treated as a thumbnail to any media file in that directory: it is no longer listed as a picture, and players show it as the cover picture of the other files. See <a href="../../../storage/dlna">DLNA Media Server</a>. Default: empty.</li>
+</ul>
+<hr />
+<h1 id="nat-pmp">nat-pmp</h1>
+<blockquote>
+<p>NAT Port Mapping Protocol (NAT-PMP, RFC 6886) service settings. While enabled, the service waits for mapping requests from the internal interfaces on UDP port 5351, shown as a dynamic natpmp entry in /ip/service....</p>
+</blockquote>
+<hr />
+<h2 id="ipnat-pmp">ip/nat-pmp</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>NAT Port Mapping Protocol (NAT-PMP, <a href="https://www.rfc-editor.org/rfc/rfc6886">RFC 6886</a>) service settings. While enabled, the service waits for mapping requests from the internal interfaces on UDP port 5351, shown as a dynamic <code>natpmp</code> entry in <code>/ip/service</code>. Configuration examples are on the <a href="../../../firewall-and-quality-of-service/nat-pmp">NAT-PMP guide page</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Enable the NAT-PMP service. Default: no.</li>
+</ul>
+<hr />
+<h1 id="interfaces">interfaces</h1>
+<blockquote>
+<p>Interface assignments for the NAT-PMP service: the interface that connects to the Internet (external) and the interfaces the NAT-PMP clients are connected to (internal). The list accepts only one external interface...</p>
+</blockquote>
+<hr />
+<h2 id="ipnat-pmpinterfaces">ip/nat-pmp/interfaces</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Interface assignments for the NAT-PMP service: the interface that connects to the Internet (<code>external</code>) and the interfaces the NAT-PMP clients are connected to (<code>internal</code>). The list accepts only one external interface (<code>only one external interface can be added to the list</code>). See the <a href="../../../firewall-and-quality-of-service/nat-pmp">NAT-PMP guide page</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The interface is not used by NAT-PMP. New entries are created enabled.</li>
+<li><strong>D</strong> <code>dynamic</code> — dynamic</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Name of the interface. On an <code>internal</code> interface, the service listens for client requests and sends external address announcements on the multicast group 224.0.0.1, UDP port 5350.</li>
+<li><strong>type</strong> <code>enum (external | internal)</code> — NAT-PMP interface role: - <code>external</code> - the interface facing the Internet. Only one external interface is allowed. - <code>internal</code> - the local interface the NAT-PMP clients are connected to.</li>
+<li><strong>forced-ip</strong> <code>super { forced-ip: ipAddr
+ }</code> — Report this address to clients as the router's external address instead of the interface address, for example when the external interface has several addresses.</li>
+</ul>
+<hr />
+<h1 id="neighbor">neighbor</h1>
+<blockquote>
+<p>The neighbor list shows all discovered neighbors in the Layer 2 broadcast domain, the interface each one is connected to, its IP and MAC addresses, and other related parameters. Neighbors found by MNDP, CDP and LLDP...</p>
+</blockquote>
+<hr />
+<h2 id="ipneighbor">ip/neighbor</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>The neighbor list shows all discovered neighbors in the Layer 2 broadcast domain, the interface each one is connected to, its IP and MAC addresses, and other related parameters. Neighbors found by MNDP, CDP and LLDP appear here together. For the full LLDP details of LLDP-discovered neighbors, use the <a href="./lldp"><code>/ip/neighbor/lldp</code></a> menu.</p>
+<p>The number of neighbor entries is limited to (total RAM in megabytes) * 16 per interface to avoid memory exhaustion.</p>
+<pre><code class="language-ros">[admin@MikroTik] /ip/neighbor/print 
+ # INTERFACE ADDRESS         MAC-ADDRESS       IDENTITY   VERSION    BOARD      
+ 0 ether13   192.168.33.2    00:0C:42:00:38:9F MikroTik   5.99       RB1100AHx2
+ 1 ether11   1.1.1.4         00:0C:42:40:94:25 test-host  5.8        RB1000   
+ 2 Local     10.0.11.203     00:02:B9:3E:AD:E0 c2611-r1   Cisco I...                    
+ 3 Local     10.0.11.47      00:0C:42:84:25:BA 11.47-750  5.7        RB750  
+ 4 Local     10.0.11.254     00:0C:42:70:04:83 tsys-sw1   5.8        RB750G    
+ 5 Local     10.0.11.202     00:17:5A:90:66:08 c7200      Cisco I...
+</code></pre>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>multi { interface: iface_enum
+ }</code> — Interface name to which the discovered device is connected. Shows both the master interface and the actual slave interface.</li>
+<li><strong>address</strong> <code>alt { address4: ipAddr
+, address6: ip6Addr
+ }</code> — The highest IP address configured on a discovered device.</li>
+<li><strong>address4</strong> <code>ipAddr</code> — IPv4 address configured on a discovered device.</li>
+<li><strong>address6</strong> <code>ip6Addr</code> — IPv6 address configured on a discovered device.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address of the remote device. Can be used to connect with mac-telnet.</li>
+<li><strong>identity</strong> <code>string</code> — Configured system identity of the discovered device.</li>
+<li><strong>platform</strong> <code>string</code> — Name of the platform, e.g. "MikroTik", "cisco".</li>
+<li><strong>version</strong> <code>string</code> — Version number of installed software on the remote device.</li>
+<li><strong>unpack</strong> <code>enum (none | simple | uncompress-headers | uncompress-all) { none:0x00, simple:0x01, uncompress-headers:0x03, uncompress-all:0x07 }</code> — The <a href="../../../system-information-and-utilities/ip-packing">IP packing</a> unpacking setting that the neighbor announces. A router packs toward the neighbor only when it announces unpacking. <code>simple</code>, <code>uncompress-headers</code> and <code>uncompress-all</code> correspond to the <code>unpacking</code> values <code>simple</code>, <code>compress-headers</code> and <code>compress-all</code>.</li>
+<li><strong>age</strong> <code>time</code> — Time interval since the last discovery packet was received.</li>
+<li><strong>uptime</strong> <code>time</code> — Uptime of the remote device. Shown only for devices with RouterOS installed.</li>
+<li><strong>software-id</strong> <code>string</code> — RouterOS software ID on the remote device. Applies only to devices with RouterOS installed.</li>
+<li><strong>board</strong> <code>string</code> — RouterBoard model. Displayed only for devices with RouterOS installed.</li>
+<li><strong>ipv6</strong> <code>bool</code> — Whether the device has IPv6 enabled.</li>
+<li><strong>interface-name</strong> <code>string</code> — Interface name on the neighbor device connected to the L2 broadcast domain. Applies to CDP.</li>
+<li><strong>system-description</strong> <code>string</code> — System description reported by the Link Layer Discovery Protocol (LLDP).</li>
+<li><strong>system-caps</strong> <code>ubit (other, repeater, bridge, wlan-ap, router, telephone, docsis-cable-device, station-only)</code> — System capabilities reported by LLDP.</li>
+<li><strong>system-caps-enabled</strong> <code>ubit (other, repeater, bridge, wlan-ap, router, telephone, docsis-cable-device, station-only)</code> — Enabled system capabilities reported by LLDP.</li>
+<li><strong>discovered-by</strong> <code>ubit (cdp, lldp, mndp)</code> — Discovery protocols through which the neighbor was discovered. A protocol is listed only while the neighbor still announces itself over it.</li>
+<li><strong>running</strong> <code>multi { array-id, cap: string
+ }</code> — List of features running on the neighbor device, such as CAPsMAN or CMR. Shown from the MNDP announcement, so it disappears when the neighbor stops announcing over MNDP.</li>
+</ul>
+<hr />
+<h1 id="discovery-settings">discovery-settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /ip/neighbor/discovery-settings.</p>
+</blockquote>
+<hr />
+<h2 id="ipneighbordiscovery-settings">ip/neighbor/discovery-settings</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>discover-interface-list</strong> <code>super { !
+, discover-interface-list: enum
+ }</code> — Interface list whose members the discovery protocol will run on. Default: static.</li>
+<li><strong>discover-interval</strong> <code>time</code> — Frequency at which neighbor discovery packets are transmitted. Also adjusts the TTL TLV value for CDP and LLDP packets using the formula: (discover-interval * 4) + 1. Range: 5s..9h6m8s. Default: 30s.</li>
+<li><strong>cdp-version</strong> <code>enum (auto | 1 | 2)</code> — CDP version to send. With <code>auto</code>, the router sends CDPv2 and adds CDPv1 whenever a neighbor reported CDPv1 or no neighbor reported CDPv2. Select <code>1</code> or <code>2</code> to send only that version. Default: auto.</li>
+<li><strong>lldp-med</strong> <code>bool</code> — Whether to advertise the LLDP-MED Media Capabilities TLV. Must be enabled when lldp-med-net-policy-vlan is used. Default: yes.</li>
+<li><strong>lldp-med-net-policy-vlan</strong> <code>alt { constant: enum (disabled)
+, vlan-id: num [ .. 4094]
+ }</code> — Advertised VLAN ID for LLDP-MED Network Policy TLV. Allows assigning a VLAN ID for LLDP-MED-capable devices such as VoIP phones. The TLV is only added to interfaces where LLDP-MED-capable devices are discovered and lldp-med is enabled. Other TLV values (Application Type, VLAN Type, L2 Priority, DSCP Priority) are predefined. CDP should be excluded using the protocol setting to avoid LLDP-MED misconfiguration. Default: disabled.</li>
+<li><strong>lldp-mac-phy-config</strong> <code>bool</code> — Whether to send MAC/PHY Configuration/Status TLV in LLDP, indicating interface capabilities, duplex status, bit rate, and auto-negotiation. Only applies to Ethernet interfaces. Automatically included when sending LLDP-MED. Default: no.</li>
+<li><strong>lldp-max-frame-size</strong> <code>bool</code> — Whether to send Maximum Frame Size TLV in LLDP, indicating the maximum frame size capability of the interface in bytes (l2mtu + 18). Only applies to Ethernet interfaces. Default: no.</li>
+<li><strong>lldp-vlan-info</strong> <code>bool</code> — Whether to send IEEE 802.1 Organizationally Specific TLVs in LLDP related to VLANs. When enabled, three TLVs are advertised: Port VLAN ID (bridge port pvid), Port And Protocol VLAN ID (not supported), and VLAN Name (up to 10 active VLANs from the bridge VLAN table). Relevant to interfaces on a vlan-filtering bridge. Default: no.</li>
+<li><strong>lldp-poe-power</strong> <code>bool</code> — Whether to transmit the IEEE 802.3 Organizationally Specific Power Via MDI TLV in LLDP messages. Replaces the PoE-out port poe-lldp-enabled setting. Relevant only for Ethernet interfaces with PoE-Out support. Default: yes.</li>
+<li><strong>lldp-poe-in-power</strong> <code>bool</code> — Whether to transmit PoE input power TLVs in LLDP messages.</li>
+<li><strong>lldp-dcbx</strong> <code>bool</code> — Whether to send Data Center Bridging Capabilities Exchange Protocol (DCBX) TLVs, communicating switch QoS settings and capabilities with neighboring devices using LLDP. Only applies to devices with a Marvell Prestera switch (e.g. CRS3xx). Includes ETS Configuration, Priority Assignment, Bandwidth Allocation, and TSA tables. Default: no.</li>
+<li><strong>protocol</strong> <code>ubit (cdp, lldp, mndp)</code> — List of discovery protocols to use. Default: cdp,lldp,mndp.</li>
+<li><strong>mode</strong> <code>enum (tx-and-rx | tx-only | rx-only)</code> — Neighbor discovery packet sending and receiving mode. Default: tx-and-rx.</li>
+<li><strong>dying-gasp</strong> <code>bool</code> — Whether to send a neighbor discovery packet with TTL=0 before a graceful reboot, shutdown, or upgrade. Not sent in case of power loss or kernel panic. On the receiving side, a TTL=0 packet immediately removes the corresponding neighbor entry. Default: no.</li>
+<li><strong>add-dns-entries</strong> <code>bool</code> — Whether to create dynamic DNS entries for discovered neighbors, using their identity as the domain name.</li>
+<li><strong>add-dns-entries-suffix</strong> <code>string</code> — Suffix added to dynamic DNS entries created for each neighbor.</li>
+</ul>
+<hr />
+<h1 id="lldp">lldp</h1>
+<blockquote>
+<p>This read-only menu lists neighbors discovered through Link Layer Discovery Protocol (LLDP) and shows the details of the LLDP type-length-values (TLVs) they sent. The field names follow the LLDP standard: chassis ID,...</p>
+</blockquote>
+<hr />
+<h2 id="ipneighborlldp">ip/neighbor/lldp</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>This read-only menu lists neighbors discovered through Link Layer Discovery Protocol (LLDP) and shows the details of the LLDP type-length-values (TLVs) they sent. The field names follow the LLDP standard: chassis ID, chassis ID subtype, port ID, port ID subtype, port description, system name, system description, time-to-live, and system capabilities.</p>
+<p>The aggregated <a href="./"><code>/ip/neighbor</code></a> menu lists neighbors found by any discovery protocol and shows the common summary fields. Use this menu when you need the full LLDP data for an LLDP neighbor.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The <code>lldpRemTable</code> SNMP table contains the same LLDP-discovered entries as this menu. Entries discovered exclusively by CDP or MNDP are excluded from the SNMP LLDP-MIB.</p>
+</div>
+<p>Example output:</p>
+<pre><code class="language-ros">[admin@Switch] &gt; /ip/neighbor/lldp/print
+Columns: INTERFACE, ADDRESS4, ADDRESS6, MAC-ADDRESS, LLDP-CHASSIS-ID, LLDP-PORT-ID, LLDP-PORT-DESCRIPTION, LLDP-SYSTEM-NAME, LLDP-SYSTEM-DESCRIPTION
+#  INTERFACE  ADDRESS4        ADDRESS6                   MAC-ADDRESS        LLDP-CHASSIS-ID    LLDP-PORT-ID  LLDP-PORT-DESCRIPTION  LLDP-SYSTEM-NAME  LLDP-SYSTEM-DESCRIPTION                                                     
+0  ether2     192.168.88.128  fe80::f61e:57ff:fe13:d794  F4:1E:57:13:D7:94  F4:1E:57:13:D7:94  ether1        ether1                 Tested_CRS812     MikroTik RouterOS 7.24rc1 (testing) 2026-07-01 13:53:30 CRS812-8DS-2DQ-2DDQ 
+   bridge1                                                                                                                                                                                                                        
+1  ether3     192.168.88.127  fe80::f61e:57ff:fe47:9255  F4:1E:57:47:92:55  F4:1E:57:47:92:55  ether1        ether1                 Tested_CRS520     MikroTik RouterOS 7.24rc1 (testing) 2026-07-01 13:53:30 CRS520-4XS-16XQ     
+   bridge1                                                                                                                                                                                                                        
+2  ether4     192.168.88.9    fe80::1afd:74ff:fe81:9a    18:FD:74:81:00:9A  18:FD:74:81:00:86  ether1        ether1                 Tester6           MikroTik RouterOS 7.24rc1 (testing) 2026-07-01 13:53:30 CCR2216-1G-12XS-2XQ 
+   bridge1                                                                                                                                                                                                                        
+3  ether5     192.168.88.132  fe80::d601:c3ff:fe43:c035  D4:01:C3:43:C0:35  D4:01:C3:43:C0:35  ether1        ether1                 Tested_L009       MikroTik RouterOS 7.24rc1 (testing) 2026-07-01 13:53:30 L009UiGS            
+   bridge1                                                                                                                                                                                                                        
+4  ether8     192.168.88.129  fe80::f61e:57ff:fec2:8a3d  F4:1E:57:C2:8A:3D  F4:1E:57:C2:8A:2B  ether17       ether17                Tested_CRS418     MikroTik RouterOS 7.24rc1 (testing) 2026-07-01 13:53:30 CRS418-8P-8G-2S+    
+   bridge1   
+</code></pre>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>multi { interface: iface_enum
+ }</code> — Interface on which the LLDP neighbor was discovered.</li>
+<li><strong>address</strong> <code>alt { address4: ipAddr
+, address6: ip6Addr
+ }</code> — IPv4 or IPv6 address of the LLDP neighbor.</li>
+<li><strong>address4</strong> <code>ipAddr</code> — IPv4 address of the LLDP neighbor.</li>
+<li><strong>address6</strong> <code>ip6Addr</code> — IPv6 address of the LLDP neighbor.</li>
+<li><strong>mac-address</strong> <code>macAddr</code> — MAC address of the LLDP neighbor.</li>
+<li><strong>lldp-chassis-id-subtype</strong> <code>enum (chassis-component | interface-alias | port-component | mac-address | network-address | interface-name | local) { chassis-component:1, interface-alias:2, port-component:3, mac-address:4, network-address:5, interface-name:6, local:7 }</code> — Subtype of the LLDP chassis ID.</li>
+<li><strong>lldp-chassis-id</strong> <code>string</code> — LLDP chassis ID of the neighbor.</li>
+<li><strong>lldp-port-id-subtype</strong> <code>enum (interface-alias | port-component | mac-address | network-address | interface-name | agent-circuit-id | local) { interface-alias:1, port-component:2, mac-address:3, network-address:4, interface-name:5, agent-circuit-id:6, local:7 }</code> — Subtype of the LLDP port ID.</li>
+<li><strong>lldp-port-id</strong> <code>string</code> — LLDP port ID of the neighbor.</li>
+<li><strong>lldp-port-description</strong> <code>string</code> — LLDP port description of the neighbor.</li>
+<li><strong>lldp-system-name</strong> <code>string</code> — LLDP system name of the neighbor (system identity).</li>
+<li><strong>lldp-system-description</strong> <code>string</code> — LLDP system description of the neighbor.</li>
+<li><strong>lldp-ttl</strong> <code>time</code> — LLDP time-to-live value for the neighbor entry.</li>
+<li><strong>lldp-system-caps</strong> <code>ubit (other, repeater, bridge, wlan-ap, router, telephone, docsis-cable-device, station-only)</code> — LLDP system capabilities of the neighbor.</li>
+<li><strong>lldp-system-caps-enabled</strong> <code>ubit (other, repeater, bridge, wlan-ap, router, telephone, docsis-cable-device, station-only)</code> — LLDP enabled system capabilities of the neighbor.</li>
+</ul>
+<hr />
+<h1 id="packing">packing</h1>
+<blockquote>
+<p>Packing rules aggregate the outgoing packets of an interface into larger packets, optionally with compression, and unpack them on the receiving side. Both routers need neighbor discovery on the interface. TCP...</p>
+</blockquote>
+<hr />
+<h2 id="ippacking">ip/packing</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Packing rules aggregate the outgoing packets of an interface into larger packets, optionally with compression, and unpack them on the receiving side. Both routers need neighbor discovery on the interface. TCP connections that the router opens over a packed link fail, see <a href="../../system-information-and-utilities/ip-packing">IP Packing</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — Packing rule is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>interface</strong> <code>iface_enum</code> — Interface on which to aggregate or compress outgoing packets and unpack incoming ones. The router packs only toward a neighbor that announces unpacking through neighbor discovery, so discovery must run on this interface on both routers. Both routers must be configured symmetrically.</li>
+<li><strong>packing</strong> <code>enum (none | simple | compress-headers | compress-all) { none:0x00, simple:0x01, compress-headers:0x03, compress-all:0x07 }</code> — Action to perform on outgoing packets: - <code>none</code> (default) - Send packets as they are. - <code>simple</code> - Aggregate packets only. - <code>compress-headers</code> - Aggregate packets and compress their headers; leave the payload unchanged. - <code>compress-all</code> - Aggregate packets and compress headers and payload.</li>
+<li><strong>unpacking</strong> <code>enum (none | simple | compress-headers | compress-all) { none:0x00, simple:0x01, compress-headers:0x03, compress-all:0x07 }</code> — Action to perform on incoming packets. The router announces this setting to its neighbors (the <code>unpack</code> field in <code>/ip/neighbor</code>): - <code>none</code> (default) - Do nothing with received packets. - <code>simple</code> - Unpack aggregated packets. - <code>compress-headers</code> - Unpack aggregated packets and decompress headers. - <code>compress-all</code> - Unpack aggregated packets and decompress headers and payload.</li>
+<li><strong>aggregated-size</strong> <code>num</code> — Size in bytes that packing tries to reach before it sends an aggregated packet. Packing waits to fill packets, so it adds delay on the link. Range: 20..16384. Default: 1500.</li>
+</ul>
+<hr />
+<h1 id="pool">pool</h1>
+<blockquote>
+<p>IP pools are used to define a range of IP addresses that can be used by various RouterOS utilities, for example, DHCP server, Point-to-Point servers and more. Separate lists for IPv4 and IPv6 are available. Whenever...</p>
+</blockquote>
+<hr />
+<h2 id="ippool">ip/pool</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>IP pools are used to define a range of IP addresses that can be used by various RouterOS utilities, for example, DHCP server, Point-to-Point servers and more. Separate lists for IPv4 and IPv6 are available. Whenever possible, the same IP address is given out to each client (OWNER/INFO pair).</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the pool.</li>
+<li><strong>ranges</strong> <code>multi { range: ipRange
+ }</code> — IP address list of non-overlapping IP address ranges in the form of: <code>from1-to1,from2-to2,...,fromN-toN</code>. For example, <code>10.0.0.1-10.0.0.27,10.0.0.32-10.0.0.47</code>.</li>
+<li><strong>next-pool</strong> <code>enum (none) { none:0 }</code> — When IP address acquisition is performed from a pool that has no free addresses, and the next-pool property is set, then an IP address will be acquired from the next pool.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>total</strong> <code>num</code></li>
+<li><strong>used</strong> <code>num</code></li>
+<li><strong>available</strong> <code>num</code></li>
+</ul>
+<hr />
+<h1 id="used">used</h1>
+<blockquote>
+<p>Menu lists all used IP addresses from IP pools.</p>
+</blockquote>
+<hr />
+<h2 id="ippoolused">ip/pool/used</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Menu lists all used IP addresses from IP pools.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>pool</strong> <code>enum</code> — Name of the IP pool.</li>
+<li><strong>address</strong> <code>ipAddr</code> — IP address that is assigned to a client from the pool.</li>
+<li><strong>owner</strong> <code>string</code> — Name of the service which acquired this IP address.</li>
+<li><strong>info</strong> <code>string</code> — Additional info, for example, for DHCP - MAC address from the leases menu and for PPP - connections username of a PPP type client.</li>
+</ul>
+<hr />
+<h1 id="proxy">proxy</h1>
+<blockquote>
+<p>Settings of the web proxy. The proxy forwards the requests of its clients, HTTP, HTTPS (CONNECT) and FTP, and of connections redirected to it with destination NAT, and it caches HTTP responses. Changing any setting...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxy">ip/proxy</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>Settings of the web proxy. The proxy forwards the requests of its clients, HTTP, HTTPS (<code>CONNECT</code>) and FTP, and of connections redirected to it with destination NAT, and it caches HTTP responses. Changing any setting in this menu clears the cache. For an overview and examples, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>bool</code> — Whether the web proxy runs. Default: no.</li>
+<li><strong>src-address</strong> <code>object { address: alt { address: ipAddr
+, address6: ip6Addr
+ }
+ }</code> — Source address of the connections the proxy opens to servers. It must be an address of the router; otherwise, and when it is not set, the router uses the source address chosen by routing. Default: <code>::</code> (not set).</li>
+<li><strong>port</strong> <code>multi { port: num [1 .. 65535]
+ }</code> — TCP port the proxy listens on, or several ports as a comma-separated list, for example <code>8080,3128</code>. The proxy listens on all IPv4 and IPv6 addresses of the router, so protect the port with firewall rules. To tell the ports apart in rules, use <code>local-port</code> in the access, cache and direct lists. Default: 8080.</li>
+<li><strong>anonymous</strong> <code>bool</code> — Whether the proxy tells the server about the client. - <code>no</code> (default) - Add <code>Via: 1.1 &lt;router address&gt; (Mikrotik HttpProxy)</code>, <code>X-Forwarded-For: &lt;client address&gt;</code> and <code>X-Proxy-ID</code> to the requests sent to servers. When a request arrives with <code>Via</code> and <code>X-Forwarded-For</code> already set, for example from another proxy, the proxy adds its entries to them. - <code>yes</code> - Send none of these headers.</li>
+<li><strong>parent-proxy</strong> <code>alt { host: ipAddr
+, host6: ip6Addr
+ }</code> — IPv4 or IPv6 address of another proxy that receives the requests, HTTPS (<code>CONNECT</code>) requests included, except those that <a href="direct/"><code>/ip/proxy/direct</code></a> sends directly to the server. The parent proxy is used only when <code>parent-proxy-port</code> is not 0. When the parent proxy cannot be reached, the client gets an error page; the router does not fall back to a direct connection. Default: <code>::</code> (none).</li>
+<li><strong>parent-proxy-port</strong> <code>num</code> — TCP port of the parent proxy. With 0, no parent proxy is used, even when <code>parent-proxy</code> is set. Default: 0.</li>
+<li><strong>cache-administrator</strong> <code>string</code> — Name or email address shown on the error pages of the proxy as a <code>mailto:</code> link, the <code>$(admin)</code> variable of the error page template (see <a href="reset-html"><code>reset-html</code></a>). Default: webmaster.</li>
+<li><strong>max-cache-size</strong> <code>alt { special: enum (none | unlimited) { none:0, unlimited:0xffffffff }
+, value: num
+ }</code> — Largest total size of the cache, in KiB. - <code>unlimited</code> (default) - No limit. A RAM cache can then use most of the router's free memory, so set a limit on a router that runs other services. - <code>none</code> - Do not cache. - A number - Limit in KiB.</li>
+<li><strong>max-cache-object-size</strong> <code>num</code> — Largest response the proxy stores in the cache, in KiB. Larger responses reach the client without being stored. Default: 2048KiB.</li>
+<li><strong>cache-on-disk</strong> <code>bool</code> — Where the proxy keeps the cache. - <code>no</code> (default) - In RAM. - <code>yes</code> - On the storage of the router, in the store named by <code>cache-path</code>, which <code>/file</code> shows with the type <code>web-proxy store</code>.</li>
+<li><strong>max-client-connections</strong> <code>num</code> — Largest number of client connections the proxy serves at the same time. Further requests wait until a connection is free. Default: 600.</li>
+<li><strong>max-server-connections</strong> <code>num</code> — Default: 600.</li>
+<li><strong>max-fresh-time</strong> <code>time</code> — Default: 3d.</li>
+<li><strong>serialize-connections</strong> <code>bool</code> — Default: no.</li>
+<li><strong>always-from-cache</strong> <code>bool</code> — Default: no.</li>
+<li><strong>cache-hit-dscp</strong> <code>num</code> — DSCP value, 0 to 63, the router sets on the packets of responses it serves from the cache. Use it to recognise cache hits in queues and firewall rules. Default: 4.</li>
+<li><strong>cache-path</strong> <code>string</code> — Name of the cache directory. With <code>cache-on-disk=yes</code>, the router creates it on its storage as a <code>web-proxy store</code>. A path, for example <code>usb1/web-proxy</code> on a disk, needs an existing directory; otherwise the router refuses it with <code>bad cache path</code>. It cannot be empty. Default: web-proxy.</li>
+</ul>
+<hr />
+<h1 id="access">access</h1>
+<blockquote>
+<p>Rules that allow, deny, redirect or change the requests of proxy clients, HTTP and HTTPS (CONNECT) requests alike. The proxy checks the rules from top to bottom, and the first matching rule decides. A request that...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyaccess">ip/proxy/access</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Rules that allow, deny, redirect or change the requests of proxy clients, HTTP and HTTPS (<code>CONNECT</code>) requests alike. The proxy checks the rules from top to bottom, and the first matching rule decides. A request that matches no rule is allowed. A rule without matchers matches every request. Prefix a matcher value with <code>!</code> to negate it, for example <code>src-address=!192.168.88.0/24</code>. For examples, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The rule is not used. New rules are created enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the client: an IPv4 address, range or prefix, or an IPv6 prefix.</li>
+<li><strong>dst-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the server the proxy connects to, which is the resolved address of the host name in the request. Same format as <code>src-address</code>.</li>
+<li><strong>dst-port</strong> <code>super { !
+, ports: multi { ports: range [ .. 65535]
+ }
+ }</code> — Port of the server, for HTTPS requests the port of the <code>CONNECT</code> tunnel. A port, a range or a comma-separated list, for example <code>dst-port=!443</code>.</li>
+<li><strong>local-port</strong> <code>super { !
+, port: num [0 .. 65535]
+ }</code> — Port of the proxy the request arrived on. Use it when <code>port</code> in <a href="../"><code>/ip/proxy</code></a> lists several ports.</li>
+<li><strong>dst-host</strong> <code>super { !
+, host: string
+ }</code> — Host name of the request, for HTTPS requests the host of the <code>CONNECT</code> tunnel. The value must match the whole name and is not case-sensitive, so <code>example.com</code> does not match <code>www.example.com</code>. - Wildcards: <code>*</code> matches any characters and <code>?</code> one character, for example <code>*.example.com</code>. - A value that starts with <code>:</code> is a regular expression, which can match any part of the name: <code>:mail</code> matches <code>mail.example.com</code>. Anchor it with <code>^</code> and <code>$</code>, for example <code>:^www</code>.</li>
+<li><strong>path</strong> <code>super { !
+, path: string
+ }</code> — Path of the requested URL, including the query string, for example <code>/music/a.mp3?x=1</code>. Wildcards and regular expressions work as in <code>dst-host</code>. - Wildcards must match the whole path including the query string, so <code>*.mp3</code> matches <code>/music/a.mp3</code> but not <code>/music/a.mp3?x=1</code>. - The path always starts with <code>/</code>, so the router refuses a value such as <code>music/*</code>, which could never match. - HTTPS requests have no path, so a rule with <code>path</code> never matches them.</li>
+<li><strong>method</strong> <code>super { !
+, method: enum (GET | HEAD | POST | PUT | CONNECT | OPTIONS | DELETE | TRACE)
+ }</code> — HTTP method of the request: <code>GET</code>, <code>HEAD</code>, <code>POST</code>, <code>PUT</code>, <code>CONNECT</code>, <code>OPTIONS</code>, <code>DELETE</code> or <code>TRACE</code>. Clients of the proxy request HTTPS pages with <code>CONNECT</code>. The methods are defined in <a href="https://www.rfc-editor.org/rfc/rfc9110#name-methods">RFC 9110</a>.</li>
+<li><strong>action</strong> <code>enum (allow | deny | redirect | url-append)</code> — What the proxy does with a matching request. - <code>allow</code> (default) - Pass the request on. - <code>deny</code> - Answer with an HTTP 403 error page. - <code>redirect</code> - Answer with HTTP 307 and the URL in <code>action-data</code> as the new location. - <code>url-append</code> - Add the text in <code>action-data</code> to the end of the requested URL, after the path and query string, and pass the request on.</li>
+<li><strong>action-data</strong> <code>string</code> — redirect URL/append URL. With <code>action=redirect</code>, the URL the client is sent to, for example <code>http://intranet.example.com/blocked.html</code>. With <code>action=url-append</code>, the text added to the end of the requested URL, as it is, without a separator.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>hits</strong> <code>num</code> — Number of requests the rule matched. Reset it with <a href="reset-counters"><code>reset-counters</code></a> or <a href="reset-counters-all"><code>reset-counters-all</code></a>.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_1">reset-counters-all</h1>
+<blockquote>
+<p>Resets the hits counter of all rules in /ip/proxy/access. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyaccessreset-counters-all">ip/proxy/access/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of all rules in <a href="../access/"><code>/ip/proxy/access</code></a>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="reset-counters_3">reset-counters</h1>
+<blockquote>
+<p>Resets the hits counter of the given rules in /ip/proxy/access, for example /ip/proxy/access/reset-counters [find comment=test]. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyaccessreset-counters">ip/proxy/access/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of the given rules in <a href="../access/"><code>/ip/proxy/access</code></a>, for example <code>/ip/proxy/access/reset-counters [find comment=test]</code>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="cache">cache</h1>
+<blockquote>
+<p>Rules that decide which responses the proxy stores in its cache. The proxy checks the rules from top to bottom, and the first matching rule decides. A request that matches no rule is cached when its response can be...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxycache">ip/proxy/cache</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Rules that decide which responses the proxy stores in its cache. The proxy checks the rules from top to bottom, and the first matching rule decides. A request that matches no rule is cached when its response can be cached. The matchers work as in <a href="../access/"><code>/ip/proxy/access</code></a>. Prefix a matcher value with <code>!</code> to negate it, for example <code>src-address=!192.168.88.0/24</code>. For an overview of caching, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — disabled. The rule is not used. New rules are created enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the client: an IPv4 address, range or prefix, or an IPv6 prefix.</li>
+<li><strong>dst-address</strong> <code>super { !
+, range: alt { ip4: ipRange
+, ip6: ip6Prefix
+ }
+ }</code> — Address of the server the proxy connects to, which is the resolved address of the host name in the request. Same format as <code>src-address</code>.</li>
+<li><strong>dst-port</strong> <code>super { !
+, ports: multi { ports: range [ .. 65535]
+ }
+ }</code> — Port of the server, for HTTPS requests the port of the <code>CONNECT</code> tunnel. A port, a range or a comma-separated list, for example <code>dst-port=!443</code>.</li>
+<li><strong>local-port</strong> <code>super { !
+, port: num [0 .. 65535]
+ }</code> — Port of the proxy the request arrived on. Use it when <code>port</code> in <a href="../"><code>/ip/proxy</code></a> lists several ports.</li>
+<li><strong>dst-host</strong> <code>super { !
+, host: string
+ }</code> — Host name of the request, for HTTPS requests the host of the <code>CONNECT</code> tunnel. The value must match the whole name and is not case-sensitive, so <code>example.com</code> does not match <code>www.example.com</code>. - Wildcards: <code>*</code> matches any characters and <code>?</code> one character, for example <code>*.example.com</code>. - A value that starts with <code>:</code> is a regular expression, which can match any part of the name: <code>:mail</code> matches <code>mail.example.com</code>. Anchor it with <code>^</code> and <code>$</code>, for example <code>:^www</code>.</li>
+<li><strong>path</strong> <code>super { !
+, path: string
+ }</code> — Path of the requested URL, including the query string, for example <code>/music/a.mp3?x=1</code>. Wildcards and regular expressions work as in <code>dst-host</code>. - Wildcards must match the whole path including the query string, so <code>*.mp3</code> matches <code>/music/a.mp3</code> but not <code>/music/a.mp3?x=1</code>. - The path always starts with <code>/</code>, so the router refuses a value such as <code>music/*</code>, which could never match. - HTTPS requests have no path, so a rule with <code>path</code> never matches them.</li>
+<li><strong>method</strong> <code>super { !
+, method: enum (GET | HEAD | POST | PUT | CONNECT | OPTIONS | DELETE | TRACE)
+ }</code> — HTTP method of the request: <code>GET</code>, <code>HEAD</code>, <code>POST</code>, <code>PUT</code>, <code>CONNECT</code>, <code>OPTIONS</code>, <code>DELETE</code> or <code>TRACE</code>. Clients of the proxy request HTTPS pages with <code>CONNECT</code>. The methods are defined in <a href="https://www.rfc-editor.org/rfc/rfc9110#name-methods">RFC 9110</a>.</li>
+<li><strong>action</strong> <code>enum (allow | deny)</code> — What the proxy does with the response to a matching request. - <code>allow</code> (default) - Store the response when it can be cached. - <code>deny</code> - Do not store the response. <a href="../inserts"><code>/ip/proxy/inserts</code></a> and <a href="../lookups"><code>/ip/proxy/lookups</code></a> count such requests as <code>denied</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>hits</strong> <code>num</code> — Number of requests the rule matched. Reset it with <a href="reset-counters"><code>reset-counters</code></a> or <a href="reset-counters-all"><code>reset-counters-all</code></a>.</li>
+</ul>
+<hr />
+<h1 id="reset-counters-all_2">reset-counters-all</h1>
+<blockquote>
+<p>Resets the hits counter of all rules in /ip/proxy/cache. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxycachereset-counters-all">ip/proxy/cache/reset-counters-all</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of all rules in <a href="../cache/"><code>/ip/proxy/cache</code></a>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="reset-counters_4">reset-counters</h1>
+<blockquote>
+<p>Resets the hits counter of the given rules in /ip/proxy/cache, for example /ip/proxy/cache/reset-counters [find comment=test]. For an overview, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxycachereset-counters">ip/proxy/cache/reset-counters</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Resets the <code>hits</code> counter of the given rules in <a href="../cache/"><code>/ip/proxy/cache</code></a>, for example <code>/ip/proxy/cache/reset-counters [find comment=test]</code>. For an overview, see <a href="../../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="cache-contents">cache-contents</h1>
+<blockquote>
+<p>Objects in the cache of the web proxy. Remove an entry to make the proxy fetch the object from the server on the next request. To empty the whole cache, use clear-cache. For an overview of caching, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxycache-contents">ip/proxy/cache-contents</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Objects in the cache of the web proxy. Remove an entry to make the proxy fetch the object from the server on the next request. To empty the whole cache, use <a href="clear-cache"><code>clear-cache</code></a>. For an overview of caching, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>uri</strong> <code>string</code> — URL of the object.</li>
+<li><strong>file-size</strong> <code>num</code> — Size of the object, in KiB.</li>
+<li><strong>last-modified</strong> <code>date</code> — Date the proxy stored the object. It is not the <code>Last-Modified</code> header of the response.</li>
+<li><strong>last-modified-time</strong> <code>date</code> — Time the proxy stored the object.</li>
+<li><strong>last-accessed</strong> <code>date</code></li>
+<li><strong>last-accessed-time</strong> <code>date</code></li>
+</ul>
+<hr />
+<h1 id="clear-cache">clear-cache</h1>
+<blockquote>
+<p>Deletes all objects from the cache of the web proxy. Changing any setting in /ip/proxy also clears the cache. For an overview of caching, see Web Proxy.</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyclear-cache">ip/proxy/clear-cache</h2>
+<p><strong>Type:</strong> Command</p>
+<p>Deletes all objects from the cache of the web proxy. Changing any setting in <a href="../proxy/"><code>/ip/proxy</code></a> also clears the cache. For an overview of caching, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<hr />
+<h1 id="connections">connections</h1>
+<blockquote>
+<p>Open connections of the web proxy. Each connection from a client and each connection to a server is a row. The proxy keeps connections to servers open after a response and uses them for later requests. For an...</p>
+</blockquote>
+<hr />
+<h2 id="ipproxyconnections">ip/proxy/connections</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Open connections of the web proxy. Each connection from a client and each connection to a server is a row. The proxy keeps connections to servers open after a response and uses them for later requests. For an overview, see <a href="../../../network-management/proxy/web-proxy">Web Proxy</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>S</strong> <code>server</code> — server. A connection from the proxy to a server.</li>
+<li><strong>C</strong> <code>client</code> — client. A connection from a client to the proxy.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>src-address</strong> <code>alt { ip4: ipAddr
+, ip6: ip6Addr
+ }</code> — Address of the client whose request the connection serves.</li>
+<li><strong>dst-address</strong> <code>alt { ip4: ipAddr
+, ip6: ip6Addr
+ }</code> — Address of the server.</li>
+<li><strong>last-protocol</strong> <code>enum (HTTP/1.0 | HTTP/1.1 | FTP) { HTTP/1.0:1, HTTP/1.1:2, FTP:3 }</code> — Protocol of the last request on the connection: <code>HTTP/1.0</code>, <code>HTTP/1.1</code> or <code>FTP</code>.</li>
+<li><strong>state</strong> <code>enum (rx-header | resolving | connecting | waiting | rx-body | tx-header | tx-body | idle) { rx-header:0, resolving:1, connecting:2, waiting:3, rx-body:4, tx-header:5, tx-body:6, idle:7 }</code> — State of the connection, for example: - <code>waiting</code> - A client connection waits for the response from the server. - <code>rx-header</code> - A server connection receives the header of the response. - <code>idle</code> - A server connection is open and has no request.</li>
+<li><strong>tx-bytes</strong> <code>num</code> — Bytes the router sent on the connection.</li>
+<li><strong>rx-bytes</strong> <code>num</code> — Bytes the router received on the connection.</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

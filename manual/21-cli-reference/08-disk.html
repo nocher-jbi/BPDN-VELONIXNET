@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>disk · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="disk">disk</h1>
+<h1 id="disk_1">disk</h1>
+<blockquote>
+<p>RouterOS directory reference for /disk.</p>
+</blockquote>
+<hr />
+<h2 id="disk_2">disk</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The device is disabled and is not used.</li>
+<li><strong>A</strong> <code>acquired</code> — acquired</li>
+<li><strong>E</strong> <code>empty</code> — The slot is empty, with no disk present. After <code>eject</code>, the slot stays empty until the disk is rescanned with <code>scan</code> or replugged.</li>
+<li><strong>B</strong> <code>block-device</code> — The device is a block device, that is, it can be used as storage: formatted or used in a RAID array. Devices without this flag only describe the disk layout.</li>
+<li><strong>M</strong> <code>mounted</code> — The device is mounted and its files appear in <code>/file</code>.</li>
+<li><strong>F</strong> <code>formatting</code> — The device is currently being formatted.</li>
+<li><strong>S</strong> <code>swap-enabled</code> — Swap is enabled on the device (<code>swap=yes</code>); the device is used as swap space, for example by containers.</li>
+<li><strong>f</strong> <code>raid-member-failed</code> — A member of the RAID array is in failed state.</li>
+<li><strong>r</strong> <code>raid-member</code> — The device is a member of a RAID array.</li>
+<li><strong>c</strong> <code>encrypted</code> — The device is encrypted, for example with <code>type=crypted</code> (dm-crypt).</li>
+<li><strong>g</strong> <code>guid-partition-table</code> — The device has a GUID partition table (GPT).</li>
+<li><strong>p</strong> <code>partition</code> — The device is a partition of a disk.</li>
+<li><strong>t</strong> <code>nvme-tcp-export</code> — The device is exported as an NVMe-over-TCP target.</li>
+<li><strong>i</strong> <code>iscsi-export</code> — The device is exported as an iSCSI target.</li>
+<li><strong>s</strong> <code>smb-sharing</code> — The device is shared through the built-in SMB server.</li>
+<li><strong>n</strong> <code>nfs-sharing</code> — The device is shared with the NFS server.</li>
+<li><strong>m</strong> <code>media-sharing</code> — The device is shared through the DLNA media server.</li>
+<li><strong>L</strong> <code>self-encrypted-and-locked</code> — self-encrypted-and-locked</li>
+<li><strong>O</strong> <code>self-encryption-enabled</code> — TCG-Opal self-encryption is active on the drive.</li>
+<li><strong>o</strong> <code>self-encryption-supported</code> — The drive supports TCG-Opal self-encryption, but it is not enabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (raid | nvme-tcp | iscsi | nfs | smb | partition | tmpfs | ramdisk | crypted | sshfs | file | hardware)</code> — Type of the item: - <code>hardware</code> - a physical disk attached to the router, for example in a USB, SATA or NVMe slot. - <code>partition</code> - a partition on a hardware disk (see <code>parent</code>). - <code>file</code> - a file mounted as a block device (loop), for example a swap file or a mounted <code>.iso</code> / <code>.squashfs</code> image. - <code>tmpfs</code> - a folder in RAM, see <a href="../../storage/tmpfs">Tmpfs</a>. - <code>ramdisk</code> - part of RAM used as a block device, see <a href="../../storage/ramdisk">Ramdisk</a> (storage package). - <code>raid</code> - a RAID array built from several disks, see <a href="../../storage/raid/">RAID</a> (storage package). - <code>crypted</code> - a dm-crypt encrypted block device, see <a href="../../storage/encrypted-storage">Encrypted storage</a> (storage package). - <code>nvme-tcp</code> - a disk mounted over NVMe over TCP, see <a href="../../storage/nvme-over-tcp">NVMe over TCP</a> (storage package). - <code>iscsi</code> - an iSCSI target mounted as a disk, see <a href="../../storage/iscsi">iSCSI</a> (storage package). - <code>nfs</code> - an NFS share mounted as a disk, see <a href="../../storage/nfs">NFS</a> (storage package). - <code>smb</code> - an SMB share mounted as a disk, see <a href="../../storage/smb">SMB</a> (storage package). - <code>sshfs</code> - a remote folder mounted over SSH.</li>
+<li><strong>slot</strong> <code>string</code> — Name of the disk item, normally based on where the device is physically connected, for example <code>nvme1</code> or <code>usb1</code>. The name is assigned automatically and can be set manually. Other commands and <code>parent</code> refer to the disk by this name.</li>
+<li><strong>parent</strong> <code>enum ()</code> — Parent device of the item. On a <code>type=partition</code> item it selects the hardware disk the partition is created on, for example <code>add type=partition parent=nvme9 ...</code>; on <code>type=crypted</code> it is the drive or partition that is encrypted.</li>
+<li><strong>mount-point-template</strong> <code>string</code> — Template of the mount point, the folder under which the file system appears in <code>/file</code>. The following variables are replaced: - <code>[slot]</code> (default) - the slot name. - <code>[model]</code> - the device model. - <code>[serial]</code> - the device serial number. - <code>[fw-version]</code> - the device firmware version. - <code>[fs-label]</code> - the file system label. - <code>[fs-uuid]</code> - the file system UUID. - <code>[fs]</code> - the file system type. Variables can be combined, for example <code>[model]-[fs]</code>. An empty template is rejected, and <code>unset mount-point-template</code> restores the default <code>[slot]</code>. The default for newly added disks is set by <code>default-mount-point-template</code> in <a href="settings"><code>settings</code></a>. See <a href="../../hardware/disks/">Disks</a>.</li>
+<li><strong>mount-filesystem</strong> <code>bool</code> — Whether the device's file system is mounted, so its files are available in <code>/file</code>. <code>mount-filesystem=no</code> unmounts the file system, which is required before <code>/disk check</code> or <code>/disk repair</code>. Default: yes.</li>
+<li><strong>mount-read-only</strong> <code>bool</code> — Whether the mounted file system is read-only. Default: no.</li>
+<li><strong>compress</strong> <code>bool</code> — Whether the device's file system is mounted with compression. Only supported on <code>btrfs</code> file systems; RouterOS reports <code>compression only available for btrfs</code> when it is set on other file systems. Default: no.</li>
+<li><strong>partition-number</strong> <code>num</code> — Number of the partition on the parent disk, for example <code>partition-number=1</code> for the first partition.</li>
+<li><strong>partition-offset</strong> <code>num</code> — Start offset of the partition on the disk, in bytes. Use it to adjust where the partition begins.</li>
+<li><strong>partition-size</strong> <code>num</code> — Size of the partition in bytes. When it is not set, the partition takes the remaining space on the disk. See <a href="../../hardware/disks/">Disks</a>.</li>
+<li><strong>raid-type</strong> <code>enum (0 | 1 | 4 | 5 | 6 | linear) { 0:0, 1:1, 4:4, 5:5, 6:6 }</code> — RAID level of the array: - <code>0</code> - striping: data is spread evenly over all disks, no fault tolerance, best performance. - <code>1</code> - mirroring: the same data is written to all disks, best fault tolerance. - <code>4</code> - block-level striping with parity stored on a dedicated disk. - <code>5</code> - block-level striping with distributed parity, survives one disk failure. - <code>6</code> - block-level striping with double parity, survives two disk failures. - <code>linear</code> - the disks are joined into one large disk without redundancy. See <a href="../../storage/raid/">RAID</a>.</li>
+<li><strong>raid-device-count</strong> <code>num</code> — Number of devices (disks) in the RAID array, set when the array is created.</li>
+<li><strong>raid-max-component-size</strong> <code>num</code> — Maximum size of an individual device in the RAID array.</li>
+<li><strong>raid-chunk-size</strong> <code>enum (64K | 128K | 256K | 512K | 1M | 2M | 4M) { 64K:64, 128K:128, 256K:256, 512K:512, 1M:1024, 2M:2048, 4M:4096 }</code> — Size of the chunks (stripes) written across the disks of the array, for example <code>1M</code>.</li>
+<li><strong>raid-master</strong> <code>enum (none)</code> — RAID block device a disk belongs to. Set it together with <code>raid-role</code> on the member disks to add them to an array created with <code>add type=raid ...</code>. On the RAID item itself it is <code>none</code>.</li>
+<li><strong>raid-role</strong> <code>num</code> — Position of the disk within the RAID array, set with <code>raid-master</code>, starting from 0, or <code>spare</code> to mark the disk as a hot spare.</li>
+<li><strong>raid-member-failed</strong> <code>bool</code> — Marks a drive as failed in the RAID array. Used when a non-failed drive needs to be replaced.</li>
+<li><strong>nvme-tcp-export</strong> <code>bool</code> — Whether the device is exported as an NVMe-over-TCP target, so other devices can mount it. Default: no. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-server-port</strong> <code>num</code> — Port on which the NVMe-over-TCP server accepts connections from initiators. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-server-nqn</strong> <code>string</code> — NVMe Qualified Name (NQN) of the exported device, used by initiators to connect. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-server-allow-host-name</strong> <code>string</code> — Hostnames allowed to connect to the NVMe-over-TCP server, for host-based access control. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-server-password</strong> <code>string</code> — Password the NVMe-over-TCP server requires from initiators. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-address</strong> <code>ipAddr</code> — IP address of the NVMe-over-TCP target (host) to mount, on the <code>nvme-tcp</code> client. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-nqn</strong> <code>string</code> — NVMe Qualified Name (NQN) of the target on the server to mount, on the <code>nvme-tcp</code> client. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-host-name</strong> <code>string</code> — Hostname the <code>nvme-tcp</code> initiator (client) identifies itself with; used for identification and authentication on the server. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-password</strong> <code>string</code> — Password used to authenticate the NVMe-over-TCP connection to the server. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>nvme-tcp-port</strong> <code>num</code> — Port the NVMe-over-TCP target listens on for connections from initiators. Default: 4420. See <a href="../../storage/nvme-over-tcp">NVMe over TCP</a>.</li>
+<li><strong>iscsi-export</strong> <code>bool</code> — Whether the device is exported as an iSCSI target. Default: no. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>iscsi-server-port</strong> <code>num</code> — Port the iSCSI server listens on. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>iscsi-server-iqn</strong> <code>string</code> — iSCSI Qualified Name (IQN) of the iSCSI server, by default <code>iqn.2000-02.com.mikrotik:&lt;slot&gt;</code>. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>iscsi-port</strong> <code>num</code> — Port the iSCSI target listens on for connections from initiators. Default: 3260. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>iscsi-address</strong> <code>ipAddr</code> — IP address of the iSCSI target (host) to mount, on the <code>iscsi</code> client. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>iscsi-iqn</strong> <code>string</code> — iSCSI Qualified Name (IQN) of the target to mount, on the <code>iscsi</code> client. See <a href="../../storage/iscsi">iSCSI</a>.</li>
+<li><strong>nfs-sharing</strong> <code>bool</code> — Whether the device is shared with NFS, so network clients can mount it. Default: no. See <a href="../../storage/nfs">NFS</a>.</li>
+<li><strong>nfs-address</strong> <code>ipAddr</code> — IP address of the NFS server to mount, on the <code>nfs</code> client. See <a href="../../storage/nfs">NFS</a>.</li>
+<li><strong>nfs-share</strong> <code>string</code> — Folder to mount on the NFS server, on the <code>nfs</code> client. See <a href="../../storage/nfs">NFS</a>.</li>
+<li><strong>smb-sharing</strong> <code>bool</code> — Whether the device is shared through the built-in SMB server (<code>/ip/smb</code>) when it is mounted. With <code>auto-smb-sharing=yes</code> in <a href="settings"><code>settings</code></a> it is enabled automatically. Default: no.</li>
+<li><strong>smb-server-user</strong> <code>enum ()</code> — SMB user of the auto-created share of this disk; the default for new disks is taken from <code>auto-smb-user</code> in <a href="settings"><code>settings</code></a>.</li>
+<li><strong>smb-server-password</strong> <code>string</code> — Password of the SMB user of the auto-created share.</li>
+<li><strong>smb-server-encryption</strong> <code>bool</code> — Whether connections to the SMB share of this disk must be encrypted.</li>
+<li><strong>smb-address</strong> <code>ipAddr</code> — IP address of the SMB server to mount, on the <code>smb</code> client. See <a href="../../storage/smb">SMB</a>.</li>
+<li><strong>smb-share</strong> <code>string</code> — Name of the share to mount on the server, on the <code>smb</code> client. See <a href="../../storage/smb">SMB</a>.</li>
+<li><strong>smb-user</strong> <code>string</code> — SMB user to authenticate with, on the <code>smb</code> client. See <a href="../../storage/smb">SMB</a>.</li>
+<li><strong>smb-password</strong> <code>string</code> — Password of the SMB user, on the <code>smb</code> client.</li>
+<li><strong>smb-encryption</strong> <code>bool</code> — Whether the connection to the remote SMB share is encrypted, on the <code>smb</code> client.</li>
+<li><strong>media-sharing</strong> <code>bool</code> — Whether the device is shared through the DLNA media server (<code>/ip/media</code>) when it is mounted. With <code>auto-media-sharing=yes</code> in <a href="settings"><code>settings</code></a> it is enabled automatically. Default: no.</li>
+<li><strong>media-interface</strong> <code>iface_enum { none }</code> — Interface the DLNA media server uses for the share of this disk, set together with <code>media-sharing=yes</code>.</li>
+<li><strong>tmpfs-max-size</strong> <code>num</code> — Maximum size of a <code>tmpfs</code> folder, in decimal units (<code>100M</code> is 100 000 000 bytes). The folder uses RAM only for the files stored in it. When the size is not set (it reads <code>0</code>), the folder can grow to about half of the RAM. RouterOS adds up the maximum sizes of all tmpfs folders, counting a folder without <code>tmpfs-max-size</code> as half of the RAM, and refuses a new size when the total is more than the router can provide (<code>too much memory requested for tmpfs/ramdisk</code>). The size in <code>print</code> is rounded up to whole 4 KiB memory pages. A new value applies at once, also to a mounted folder. The contents of a <code>tmpfs</code> are lost on reboot or power loss. See <a href="../../storage/tmpfs">Tmpfs</a>. Default: not set.</li>
+<li><strong>ramdisk-size</strong> <code>num</code> — Size of the RAM block device created with <code>type=ramdisk</code>, rounded up to a multiple of 16 KiB. The RAM is not reserved when the ramdisk is added. A reboot or power loss clears it: the ramdisk stays, but empty and without a file system, so format it again. Needs the <code>rose-storage</code> package. See <a href="../../storage/ramdisk">Ramdisk</a>.</li>
+<li><strong>crypted-backend</strong> <code>enum (none)</code> — The drive or partition to encrypt with <code>type=crypted</code>. See <a href="../../storage/encrypted-storage">Encrypted storage</a>.</li>
+<li><strong>encryption-key</strong> <code>string</code> — The key used to decrypt the <code>crypted</code> device. See <a href="../../storage/encrypted-storage">Encrypted storage</a>.</li>
+<li><strong>self-encryption-password</strong> <code>string</code> — Password that enables TCG-Opal self-encryption on a supported (SED) drive; unsetting it disables self-encryption. See <a href="../../storage/self-encrypting-drives">Self-encrypting drives</a>.</li>
+<li><strong>sshfs-address</strong> <code>string</code> — Address (IP address or hostname) of the SSH server to mount, for <code>type=sshfs</code>. See <a href="../../storage/sshfs">SSHFS</a>.</li>
+<li><strong>sshfs-port</strong> <code>num</code> — Port of the SSH server to connect to, for <code>type=sshfs</code> (default: 22). See <a href="../../storage/sshfs">SSHFS</a>.</li>
+<li><strong>sshfs-user</strong> <code>string</code> — User to log in to the remote SSH server with, for <code>type=sshfs</code>. See <a href="../../storage/sshfs">SSHFS</a>.</li>
+<li><strong>sshfs-password</strong> <code>string</code> — Password of the remote SSH user, for <code>type=sshfs</code>. See <a href="../../storage/sshfs">SSHFS</a>.</li>
+<li><strong>sshfs-path</strong> <code>string</code> — Path on the remote SSH server to mount, for <code>type=sshfs</code>. See <a href="../../storage/sshfs">SSHFS</a>.</li>
+<li><strong>swap</strong> <code>bool</code> — Use the device as swap space. Swap is used only by containers, and its usable size is limited to 10 times the device's RAM. It applies to a whole disk or partition, or to a file with <code>type=file</code>. See <a href="../../hardware/disks/">Disks</a>.</li>
+<li><strong>file-path</strong> <code>file</code> — Path and name of the file mounted as a block device with <code>type=file</code>, for example a swap file (<code>swap=yes</code>) or a mounted <code>.iso</code> / <code>.squashfs</code> image. Removing the disk item does not delete the file. See <a href="../../hardware/disks/">Disks</a>.</li>
+<li><strong>file-size</strong> <code>num</code> — Size of the file, for example <code>file-size=1G</code>, when creating a <code>type=file</code> device.</li>
+<li><strong>file-offset</strong> <code>num</code> — Offset in the file at which the block device starts, for example <code>file-offset=0</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>slot-default</strong> <code>string</code> — Default slot name of the device, shown when no custom <code>slot</code> name is set.</li>
+<li><strong>fs-label</strong> <code>string</code> — Label of the file system. Formatting sets it automatically to <code>&lt;slot&gt;-fs</code>, unless a <code>label</code> is given to <code>/disk format</code>.</li>
+<li><strong>fs-uuid</strong> <code>string</code> — UUID of the file system, for example <code>58470fe2-...</code>.</li>
+<li><strong>fs</strong> <code>enum (fat32 | ext4 | btrfs | xfs | nfs | smb | wipe | wipe-quick | tmpfs | exfat | ntfs | sshfs | squashfs | iso | discard | discard-secure | -)</code> — File system of the device: <code>ext4</code>, <code>btrfs</code>, <code>xfs</code>, <code>fat32</code>, <code>exfat</code> and <code>ntfs</code> for local file systems, <code>tmpfs</code> for RAM folders, <code>nfs</code>, <code>smb</code> and <code>sshfs</code> for network mounts, and <code>iso</code> / <code>squashfs</code> for mounted images. <code>-</code> means the device has no recognised file system. The values <code>wipe</code>, <code>wipe-quick</code>, <code>discard</code> and <code>discard-secure</code> correspond to the file systems of <code>/disk format</code>.</li>
+<li><strong>model</strong> <code>string</code> — Model name of the device, for example <code>TS1TUTE210T</code>.</li>
+<li><strong>serial</strong> <code>string</code> — Serial number of the device.</li>
+<li><strong>fw-version</strong> <code>string</code> — Firmware version of the device.</li>
+<li><strong>size</strong> <code>num</code> — Total size of the device in bytes.</li>
+<li><strong>free</strong> <code>num</code> — Free space on the mounted file system in bytes.</li>
+<li><strong>total-inodes</strong> <code>num</code> — Total number of inodes of the file system.</li>
+<li><strong>free-inodes</strong> <code>num</code> — Number of free inodes of the file system.</li>
+<li><strong>use</strong> <code>num</code> — Used space of the file system in percent, for example <code>4%</code>.</li>
+<li><strong>mount-point</strong> <code>string</code> — Mount point of the file system, the folder under which it appears in <code>/file</code>, driven by <code>mount-point-template</code>.</li>
+<li><strong>sector-size</strong> <code>num</code> — Sector size of the device, for example 512 bytes.</li>
+<li><strong>interface</strong> <code>string</code> — Interface the device is connected to, for example <code>PCIe 2x8 GT/s</code> or <code>USB 2.00 480Mbps</code>.</li>
+<li><strong>interface-speed</strong> <code>num</code> — Speed of the interface the device is connected to, for example <code>15.7Gbps</code>.</li>
+<li><strong>raid-member-state</strong> <code>string</code> — State of the disk as a member of its RAID array, for example <code>0:in_sync</code>; when the disk is not part of an assembled array, the details of the RAID superblock found on it are shown instead.</li>
+<li><strong>state</strong> <code>string</code> — State of a RAID array, for example <code>clean</code>.</li>
+<li><strong>last-seen</strong> <code>string</code> — Model and serial number of the disk that last occupied this slot, shown after the disk was ejected or removed, for example <code>TS1TUTE210T J398770033</code>.</li>
+<li><strong>raid-uuid</strong> <code>string</code> — UUID of the RAID array.</li>
+<li><strong>nvme-tcp-server-secret</strong> <code>string</code> — Secret the NVMe-over-TCP server uses to authenticate connections from initiators.</li>
+<li><strong>nvme-tcp-secret</strong> <code>string</code> — Secret used to authenticate the connection to the NVMe-over-TCP server.</li>
+<li><strong>sshfs-local-user</strong> <code>string</code> — Local RouterOS user the SSHFS mount runs under, for example <code>admin</code>. Read-only.</li>
+<li><strong>io-ops</strong> <code>num</code> — Total number of I/O operations on the device, as shown by <a href="monitor-traffic"><code>monitor-traffic</code></a>.</li>
+<li><strong>io-errors</strong> <code>num</code> — Total number of I/O errors on the device.</li>
+<li><strong>read-ops</strong> <code>num</code> — Total number of read operations.</li>
+<li><strong>read-ops-per-second</strong> <code>num</code> — Number of read operations per second.</li>
+<li><strong>read-bytes</strong> <code>num</code> — Total number of bytes read.</li>
+<li><strong>read-rate</strong> <code>num</code> — Rate of reads, for example in bytes per second.</li>
+<li><strong>read-merges</strong> <code>num</code> — Number of adjacent read operations merged.</li>
+<li><strong>read-time</strong> <code>time</code> — Time spent on read operations.</li>
+<li><strong>write-ops</strong> <code>num</code> — Total number of write operations.</li>
+<li><strong>write-ops-per-second</strong> <code>num</code> — Number of write operations per second.</li>
+<li><strong>write-bytes</strong> <code>num</code> — Total number of bytes written.</li>
+<li><strong>write-rate</strong> <code>num</code> — Rate of writes, for example in bytes per second.</li>
+<li><strong>write-merges</strong> <code>num</code> — Number of adjacent write operations merged.</li>
+<li><strong>write-time</strong> <code>time</code> — Time spent on write operations.</li>
+<li><strong>in-flight-ops</strong> <code>num</code> — Number of I/O operations currently in flight.</li>
+<li><strong>active-time</strong> <code>time</code> — Time the device was busy handling requests.</li>
+<li><strong>wait-time</strong> <code>time</code> — Time requests spent waiting in the queue.</li>
+<li><strong>discard-ops</strong> <code>num</code> — Total number of discard (trim) operations.</li>
+<li><strong>discard-bytes</strong> <code>num</code> — Total number of bytes discarded.</li>
+<li><strong>discard-merges</strong> <code>num</code> — Number of adjacent discard operations merged.</li>
+<li><strong>discard-time</strong> <code>time</code> — Time spent on discard operations.</li>
+<li><strong>flush-ops</strong> <code>num</code> — Total number of flush operations.</li>
+<li><strong>flush-time</strong> <code>time</code> — Time spent on flush operations.</li>
+<li><strong>temperature</strong> <code>num</code> — Temperature of the drive in Celsius, reported by S.M.A.R.T. (storage package). See the <a href="../../hardware/disks/smart">S.M.A.R.T. info</a> guide and <a href="smart-info"><code>smart-info</code></a>.</li>
+<li><strong>temperatures</strong> <code>multi { array-id, slot: num
+ }</code> — Temperatures of the drive's sensors in Celsius, one entry per sensor slot.</li>
+<li><strong>critical-warning</strong> <code>ubit (spare-space, temperature, reliability-degraded, read-only, volatile-backup-failed)</code> — Bitmask of critical warnings the drive reports: <code>spare-space</code> (available spare is below <code>available-spare-threshold</code>), <code>temperature</code> (temperature out of range), <code>reliability-degraded</code>, <code>read-only</code> (the device entered read-only mode) and <code>volatile-backup-failed</code>.</li>
+<li><strong>available-spare</strong> <code>num</code> — Remaining spare blocks of the drive in percent, for example 100%. Below <code>available-spare-threshold</code> the drive reports a warning.</li>
+<li><strong>available-spare-threshold</strong> <code>num</code> — Threshold in percent below which the available spare space of the drive is reported as a warning.</li>
+<li><strong>percentage-used</strong> <code>num</code> — Estimated percentage of the drive's life used, based on how many spare blocks have been consumed.</li>
+<li><strong>host-read-bytes</strong> <code>num</code> — Total number of bytes read by the host from the drive.</li>
+<li><strong>host-write-bytes</strong> <code>num</code> — Total number of bytes written by the host to the drive.</li>
+<li><strong>host-read-cmds</strong> <code>num</code> — Total number of read commands the host sent to the drive.</li>
+<li><strong>host-write-cmds</strong> <code>num</code> — Total number of write commands the host sent to the drive.</li>
+<li><strong>controller-busy-time</strong> <code>time</code> — Total time the drive controller was busy with commands.</li>
+<li><strong>power-cycles</strong> <code>num</code> — Number of power cycles of the drive.</li>
+<li><strong>power-on-time</strong> <code>time</code> — Total time the drive was powered on.</li>
+<li><strong>unsafe-shutdowns</strong> <code>num</code> — Number of unsafe (unexpected) shutdowns of the drive.</li>
+<li><strong>unrecovered-integrity-errors</strong> <code>num</code> — Number of unrecovered media and data integrity errors of the drive.</li>
+<li><strong>warning-temperature</strong> <code>num</code> — Temperature in Celsius at which the drive starts reporting a warning.</li>
+<li><strong>warning-temperature-time</strong> <code>time</code> — Time the drive spent above <code>warning-temperature</code>.</li>
+<li><strong>critical-temperature</strong> <code>num</code> — Temperature in Celsius at which the drive reports a critical condition.</li>
+<li><strong>critical-temperature-time</strong> <code>time</code> — Time the drive spent above <code>critical-temperature</code>.</li>
+</ul>
+<hr />
+<h1 id="blink">blink</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/blink.</p>
+</blockquote>
+<hr />
+<h2 id="diskblink">disk/blink</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>slots</strong> <code>multi { array-id, slot: enum
+ }</code> — Disks whose LED should blink, if device supports it.</li>
+</ul>
+<hr />
+<h1 id="btrfs">btrfs</h1>
+<blockquote>
+<p>RouterOS directory reference for /disk/btrfs.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfs">disk/btrfs</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Directory</p>
+<hr />
+<h1 id="filesystem">filesystem</h1>
+<blockquote>
+<p>RouterOS directory reference for /disk/btrfs/filesystem.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystem">disk/btrfs/filesystem</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>I</strong> <code>missing-devs</code> — One or more devices of the file system are missing, so the file system is degraded.</li>
+<li><strong>b</strong> <code>balancing</code> — A balance operation is running on the file system.</li>
+<li><strong>r</strong> <code>replacing</code> — A device replace operation is running on the file system.</li>
+<li><strong>s</strong> <code>scrubbing</code> — A scrub operation is running on the file system.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>label</strong> <code>string</code> — Label of the Btrfs file system, used to address the file system in the btrfs menus, for example <code>btrfsdisk</code>.</li>
+<li><strong>default-subvolume</strong> <code>enum</code> — Subvolume that is presented as the root folder of the file system in <code>/file</code>. <code>&lt;FS_ROOT&gt;</code> (default) is the root of the Btrfs file system itself.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>uuid</strong> <code>string</code> — UUID of the Btrfs file system.</li>
+<li><strong>total-devs</strong> <code>num</code> — Number of devices in the file system.</li>
+<li><strong>dev-ids</strong> <code>multi { array-id, devid: num
+ }</code> — Numeric device IDs of the devices in the file system; needed by <a href="replace-device"><code>replace-device</code></a> when a device is missing.</li>
+<li><strong>devs</strong> <code>multi { array-id, dev: enum
+ }</code> — Disk slots of the devices in the file system, for example <code>nvme8,nvme9</code>.</li>
+<li><strong>spaces</strong> <code>multi { array-id, space: string
+ }</code> — Space allocation of the file system, per device and per storage profile (<code>data</code>, <code>system</code>, <code>meta</code>, <code>global-reserve</code>), for example <code>data,raid1:1.07GB nvme8:1.07GB nvme9:1.07GB, used:1%</code>.</li>
+<li><strong>balance-status</strong> <code>string</code> — Status of the balance operation, for example <code>done</code>, or an error message such as <code>BTRFS_IOC_BALANCE_V2 failed: ...</code>.</li>
+<li><strong>replace-status</strong> <code>string</code> — Status of the replace or device removal operation, for example <code>done</code>, or an error message such as <code>BTRFS_IOC_DEV_REPLACE failed: File exists</code> or <code>BTRFS_IOC_RM_DEV_V2 failed: Resource temporarily unavailable</code>.</li>
+<li><strong>scrub-status</strong> <code>string</code> — Status of the scrub operation, for example <code>done</code>.</li>
+<li><strong>write-errors</strong> <code>multi { snapshot: num
+ }</code> — Write error counters, one value per device in the file system. Reset with <a href="reset-counters"><code>reset-counters</code></a>.</li>
+<li><strong>read-errors</strong> <code>multi { snapshot: num
+ }</code> — Read error counters, one value per device.</li>
+<li><strong>flush-errors</strong> <code>multi { snapshot: num
+ }</code> — Flush error counters, one value per device.</li>
+<li><strong>corruption-errors</strong> <code>multi { snapshot: num
+ }</code> — Data corruption error counters, one value per device.</li>
+<li><strong>generation-errors</strong> <code>multi { snapshot: num
+ }</code> — Generation mismatch error counters, one value per device.</li>
+</ul>
+<hr />
+<h1 id="add-device">add-device</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/add-device.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemadd-device">disk/btrfs/filesystem/add-device</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>device</strong> <code>enum</code> — Disk slot to add to the Btrfs file system, for example <code>nvme9</code>. After adding a device, run <a href="balance-start"><code>balance-start</code></a> with the desired profiles (for example <code>data-profile=raid1</code>) to actually use it for storage redundancy; otherwise the device is only listed under <code>devs</code>.</li>
+</ul>
+<hr />
+<h1 id="balance-cancel">balance-cancel</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/balance-cancel.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystembalance-cancel">disk/btrfs/filesystem/balance-cancel</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="balance-start">balance-start</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/balance-start.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystembalance-start">disk/btrfs/filesystem/balance-start</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>data-profile</strong> <code>enum (single | dup | raid0 | raid1 | raid1c3 | raid1c4 | raid10)</code> — Profile to convert the <code>data</code> chunks to: <code>single</code> stores chunks once (only sensible with a single device), <code>dup</code> stores them twice on the same device, the <code>raid*</code> profiles spread them across multiple devices. Change the profiles after <a href="add-device"><code>add-device</code></a> to turn a single-disk file system into a Btrfs RAID, for example <code>data-profile=raid1</code>.</li>
+<li><strong>metadata-profile</strong> <code>enum (single | dup | raid0 | raid1 | raid1c3 | raid1c4 | raid10)</code> — Profile to convert the <code>meta</code> (metadata) chunks to. Metadata is small compared to data, so <code>dup</code> (default for a single device) or <code>raid1</code> are the common choices.</li>
+<li><strong>system-profile</strong> <code>enum (single | dup | raid0 | raid1 | raid1c3 | raid1c4 | raid10)</code> — Profile to convert the <code>system</code> chunks to; keep it the same as <code>metadata-profile</code>.</li>
+<li><strong>data-usage</strong> <code>range</code> — Only relocate data chunks that are at most this percentage full, for example <code>data-usage=50</code> skips chunks that are more than half full. Balancing is faster but incomplete with a lower value.</li>
+<li><strong>metadata-usage</strong> <code>range</code> — Only relocate metadata chunks that are at most this percentage full.</li>
+<li><strong>system-usage</strong> <code>range</code> — Only relocate system chunks that are at most this percentage full.</li>
+</ul>
+<hr />
+<h1 id="remove-device">remove-device</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/remove-device.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemremove-device">disk/btrfs/filesystem/remove-device</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>device</strong> <code>enum</code> — Disk slot of the device to remove from the file system, for example <code>nvme9</code>. The data on the device is first migrated to the remaining devices; removal fails if the current profiles cannot be kept with fewer devices (for example <code>data,raid1</code> cannot be kept when the device count drops below two).</li>
+<li><strong>device-id</strong> <code>num</code> — Numeric device ID of the device to remove (see <code>dev-ids</code> in <a href="../filesystem"><code>filesystem</code></a>); needed when the device is missing and has no slot anymore.</li>
+</ul>
+<hr />
+<h1 id="replace-cancel">replace-cancel</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/replace-cancel.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemreplace-cancel">disk/btrfs/filesystem/replace-cancel</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="replace-device">replace-device</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/replace-device.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemreplace-device">disk/btrfs/filesystem/replace-device</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>device-to-remove</strong> <code>enum</code> — Disk slot of the device to replace in the Btrfs file system.</li>
+<li><strong>device-to-remove-id</strong> <code>num</code> — Numeric device ID of the device to replace; use this instead of <code>device-to-remove</code> when the device is missing from the system (the <code>I - MISSING-DEVS</code> flag), as the slot is then no longer available.</li>
+<li><strong>device-to-add</strong> <code>enum</code> — Disk slot of the new device that takes over the data of the removed device.</li>
+</ul>
+<hr />
+<h1 id="reset-counters">reset-counters</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/reset-counters.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemreset-counters">disk/btrfs/filesystem/reset-counters</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="scrub-cancel">scrub-cancel</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/scrub-cancel.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemscrub-cancel">disk/btrfs/filesystem/scrub-cancel</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="scrub-start">scrub-start</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/btrfs/filesystem/scrub-start.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfsfilesystemscrub-start">disk/btrfs/filesystem/scrub-start</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="subvolume">subvolume</h1>
+<blockquote>
+<p>RouterOS directory reference for /disk/btrfs/subvolume.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfssubvolume">disk/btrfs/subvolume</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Directory</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — The entry is the root subvolume of the file system, shown as <code>&lt;FS_ROOT&gt;</code>; it is created automatically with the file system.</li>
+<li><strong>S</strong> <code>snapshot</code> — The subvolume is a snapshot, created with the <code>parent</code> argument.</li>
+<li><strong>r</strong> <code>read-only</code> — The subvolume is read-only.</li>
+<li><strong>D</strong> <code>dead</code> — The subvolume is dead, for example it is being removed.</li>
+<li><strong>M</strong> <code>mounted</code> — The subvolume is mounted (<code>mount=yes</code>) under its <code>mountpoint</code>.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>fs</strong> <code>enum</code> — Label of the Btrfs file system the subvolume belongs to, as shown in <a href="filesystem/"><code>filesystem</code></a>.</li>
+<li><strong>parent</strong> <code>enum</code> — Subvolume the new subvolume is created from. With <code>parent</code>, the new subvolume becomes a snapshot of the parent and shares its content at the time of creation. See <a href="../../../storage/btrfs/snapshots">Btrfs subvolumes and snapshots</a>.</li>
+<li><strong>name</strong> <code>string</code> — Name of the subvolume. A path-like name, for example <code>Snapshots/backup-10</code>, places the subvolume inside another subvolume; <code>top-level</code> then shows the containing subvolume.</li>
+<li><strong>read-only</strong> <code>bool</code> — Whether the subvolume is read-only (<code>r - READ-ONLY</code> flag). Default: no.</li>
+<li><strong>mount</strong> <code>bool</code> — Whether the subvolume is mounted under its <code>mountpoint</code> (<code>M - MOUNTED</code> flag). Default: no.</li>
+<li><strong>mountpoint</strong> <code>string</code> — Mount point the subvolume is mounted under, relative to the file system mount point. Defaults to the name of the subvolume.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>top-level</strong> <code>enum</code> — Top-level subvolume the subvolume is located in, for example <code>Snapshots</code>; <code>&lt;FS_ROOT&gt;</code> when the subvolume sits directly under the file system root.</li>
+<li><strong>fullname</strong> <code>string</code> — Full path of the subvolume within the file system, for example <code>Snapshots/backup-10</code>.</li>
+<li><strong>uuid</strong> <code>string</code> — UUID of the subvolume.</li>
+<li><strong>received-uuid</strong> <code>string</code> — UUID of the subvolume on the sender when the subvolume was received with a Btrfs <a href="transfer"><code>transfer</code></a>; empty for locally created subvolumes.</li>
+<li><strong>creation-time</strong> <code>date</code> — Date and time the subvolume was created.</li>
+<li><strong>subvolume-id</strong> <code>num</code> — Btrfs ID number of the subvolume.</li>
+<li><strong>generation</strong> <code>num</code> — Btrfs transaction generation of the subvolume.</li>
+<li><strong>dead</strong> <code>bool</code> — Whether the subvolume is dead (<code>D - DEAD</code> flag).</li>
+<li><strong>snapshot</strong> <code>bool</code> — Whether the subvolume is a snapshot (<code>S - SNAPSHOT</code> flag).</li>
+<li><strong>send-trans-id</strong> <code>num</code> — Btrfs transaction ID of the last send the subvolume was part of.</li>
+<li><strong>send-time</strong> <code>date</code> — Time the subvolume was last sent with a Btrfs transfer.</li>
+<li><strong>recv-trans-id</strong> <code>num</code> — Btrfs transaction ID of the receive that created the subvolume.</li>
+<li><strong>recv-time</strong> <code>date</code> — Time the subvolume was received with a Btrfs transfer.</li>
+<li><strong>snapshots</strong> <code>multi { array-id, snapshot: enum
+ }</code> — Snapshots that were created from this subvolume.</li>
+<li><strong>path</strong> <code>string</code> — Path the subvolume was received into by a Btrfs <a href="transfer"><code>transfer</code></a> (<code>file=</code> on the receiver); empty for locally created subvolumes.</li>
+</ul>
+<hr />
+<h1 id="transfer">transfer</h1>
+<blockquote>
+<p>RouterOS directory reference for /disk/btrfs/transfer.</p>
+</blockquote>
+<hr />
+<h2 id="diskbtrfstransfer">disk/btrfs/transfer</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>type</strong> <code>enum (receive | send)</code> — Direction of the Btrfs transfer: - <code>receive</code> - receive a Btrfs send stream at <code>file</code>, for example the destination side of a snapshot backup between two RouterOS devices. - <code>send</code> - send subvolumes (snapshots) of the file system <code>fs</code> to a remote RouterOS device over SSH. Transfers use the SSH user key authentication of <code>/user/ssh-keys</code>. See <a href="../../../storage/btrfs/snapshots">Btrfs subvolumes and snapshots</a> for a working send/receive example.</li>
+<li><strong>fs</strong> <code>enum</code> — Label of the Btrfs file system the transfer operates on, as shown in <a href="filesystem/"><code>filesystem</code></a>.</li>
+<li><strong>send-parent</strong> <code>enum</code> — Snapshot of a previous successful send to base an incremental <code>send</code> on; only the changes since that snapshot are transferred.</li>
+<li><strong>send-subvolumes</strong> <code>multi { array-id, subvolume: enum
+ }</code> — Snapshots to send, for a <code>send</code> transfer. Snapshot names (not paths), as shown under <a href="subvolume"><code>subvolume</code></a>.</li>
+<li><strong>file</strong> <code>file</code> — Destination (or source) path of the transfer, for example the mount path <code>BackupBtrfsDisk/Snapshots</code> where received snapshots are stored.</li>
+<li><strong>ssh-address</strong> <code>string</code> — Address of the remote RouterOS device for a <code>send</code> transfer.</li>
+<li><strong>ssh-receive-mount</strong> <code>string</code> — Mount path on the remote device under which the snapshots are received, for example <code>BackupBtrfsDisk/Snapshots</code>.</li>
+<li><strong>ssh-port</strong> <code>num</code> — SSH port of the remote device. Default: 22.</li>
+<li><strong>ssh-user</strong> <code>string</code> — SSH user to authenticate with on the remote device; the SSH key of the local user must be imported for <code>ssh-user</code> on the remote device.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>bytes</strong> <code>num</code> — Number of bytes transferred so far.</li>
+<li><strong>status</strong> <code>string</code> — Status of the transfer, for example <code>done</code>, or an error message.</li>
+</ul>
+<hr />
+<h1 id="check">check</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/check.</p>
+</blockquote>
+<hr />
+<h2 id="diskcheck">disk/check</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>output</strong> <code>string</code> — The check tool output: for ext4, the <code>e2fsck</code> passes and a summary line with file and block usage.</li>
+</ul>
+<hr />
+<h1 id="copy">copy</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/copy.</p>
+</blockquote>
+<hr />
+<h2 id="diskcopy">disk/copy</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>src</strong> <code>enum</code> — Source disk, partition or file.</li>
+<li><strong>dst</strong> <code>enum</code> — Destination disk, partition or file. It must be at least as large as the copied data.</li>
+<li><strong>src-offset</strong> <code>num</code> — Byte offset in the source where the copy starts. Default: 0.</li>
+<li><strong>dst-offset</strong> <code>num</code> — Byte offset in the destination where the data is written. Default: 0.</li>
+<li><strong>size</strong> <code>num</code> — Number of bytes to copy. Without it, the whole source is copied.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>string</code> — Progress of the copy: <code>&lt;bytes copied&gt; / &lt;total bytes&gt; (&lt;percent&gt;%)</code>.</li>
+</ul>
+<hr />
+<h1 id="eject">eject</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/eject.</p>
+</blockquote>
+<hr />
+<h2 id="diskeject">disk/eject</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="format">format</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/format.</p>
+</blockquote>
+<hr />
+<h2 id="diskformat">disk/format</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file-system</strong> <code>enum (fat32 | ext4 | btrfs | xfs | wipe | wipe-quick | exfat | discard | discard-secure)</code> — What filesystem to format the disk. - <code>ext4</code> - Format with ext4; the default for most use cases. - <code>fat32</code> - Format with FAT32, readable by almost any device. - <code>exfat</code> - Format with exFAT, for large files on memory cards and USB drives. - <code>btrfs</code> - Format with Btrfs (data checksums, snapshots, RAID); needs the <a href="../../storage/">Storage</a> package. - <code>xfs</code> - Format with XFS; needs the <a href="../../storage/">Storage</a> package. - <code>discard</code> - Discard all blocks of the disk (the equivalent of <code>blkdiscard</code>) without writing a file system. - <code>discard-secure</code> - Same, but with a secure discard that also erases the underlying data. - <code>wipe</code> - Overwrite all data on the disk so it cannot be recovered. - <code>wipe-quick</code> - Remove the file system without overwriting the data; fast, but data can be recovered with tools.</li>
+<li><strong>label</strong> <code>string</code> — File system label. Default: <code>&lt;slot&gt;-fs</code>.</li>
+<li><strong>mbr-partition-table</strong> <code>bool</code> — Write an MBR partition table to the disk as part of the format. Without it the disk receives no partition table; use <code>add type=partition</code> afterwards to create partitions, which are stored in a GUID partition table. Default: no.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>output</strong> <code>string</code> — Progress of the format: the <code>mkfs</code> command line and its output, a progress percentage or byte counter, and a final <code>format done</code> line.</li>
+</ul>
+<hr />
+<h1 id="monitor-traffic">monitor-traffic</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/monitor-traffic.</p>
+</blockquote>
+<hr />
+<h2 id="diskmonitor-traffic">disk/monitor-traffic</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>io-ops</strong> <code>num</code> — Total number of I/O operations since the last <code>reset-counters</code>.</li>
+<li><strong>io-errors</strong> <code>num</code> — Total number of I/O errors.</li>
+<li><strong>slot</strong> <code>string</code> — The disk that is being monitored.</li>
+<li><strong>read-ops</strong> <code>num</code> — Total number of read operations.</li>
+<li><strong>read-ops-per-second</strong> <code>num</code> — Read operations per second.</li>
+<li><strong>read-bytes</strong> <code>num</code> — Total bytes read.</li>
+<li><strong>read-rate</strong> <code>num</code> — Current read speed.</li>
+<li><strong>read-merges</strong> <code>num</code> — Total number of merged read operations (adjacent requests the driver combined).</li>
+<li><strong>read-time</strong> <code>time</code> — Total time spent reading.</li>
+<li><strong>write-ops</strong> <code>num</code> — Total number of write operations.</li>
+<li><strong>write-ops-per-second</strong> <code>num</code> — Write operations per second.</li>
+<li><strong>write-bytes</strong> <code>num</code> — Total bytes written.</li>
+<li><strong>write-rate</strong> <code>num</code> — Current write speed.</li>
+<li><strong>write-merges</strong> <code>num</code> — Total number of merged write operations.</li>
+<li><strong>write-time</strong> <code>time</code> — Total time spent writing.</li>
+<li><strong>in-flight-ops</strong> <code>num</code> — Operations currently queued on the disk.</li>
+<li><strong>active-time</strong> <code>time</code> — Total time the disk was busy with requests.</li>
+<li><strong>wait-time</strong> <code>time</code> — Total time requests waited in the queue before being processed.</li>
+<li><strong>discard-ops</strong> <code>num</code> — Total number of discard (TRIM) operations.</li>
+<li><strong>discard-bytes</strong> <code>num</code> — Total bytes discarded.</li>
+<li><strong>discard-merges</strong> <code>num</code> — Total number of merged discard operations.</li>
+<li><strong>discard-time</strong> <code>time</code> — Total time spent discarding.</li>
+<li><strong>flush-ops</strong> <code>num</code> — Total number of flush operations.</li>
+<li><strong>flush-time</strong> <code>time</code> — Total time spent flushing.</li>
+</ul>
+<hr />
+<h1 id="nvme-discover">nvme-discover</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/nvme-discover.</p>
+</blockquote>
+<hr />
+<h2 id="disknvme-discover">disk/nvme-discover</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>ipAddr</code> — IP address of the NVMe over TCP controller.</li>
+<li><strong>port</strong> <code>num</code> — TCP port of the controller's discovery service. Default: 4420.</li>
+<li><strong>host-name</strong> <code>string</code> — Host NQN this router presents to the controller, used for identification and host-based access control.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>nqn</strong> <code>string</code> — NVMe Qualified Name of a subsystem the controller exposes.</li>
+</ul>
+<hr />
+<h1 id="raid-scrub-cancel">raid-scrub-cancel</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/raid-scrub-cancel.</p>
+</blockquote>
+<hr />
+<h2 id="diskraid-scrub-cancel">disk/raid-scrub-cancel</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="raid-scrub">raid-scrub</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/raid-scrub.</p>
+</blockquote>
+<hr />
+<h2 id="diskraid-scrub">disk/raid-scrub</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="repair">repair</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/repair.</p>
+</blockquote>
+<hr />
+<h2 id="diskrepair">disk/repair</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>output</strong> <code>string</code> — The repair tool output, ending in a summary line such as <code>...: clean, 12/61056 files, 139612/244140 blocks</code>.</li>
+</ul>
+<hr />
+<h1 id="reset-counters_1">reset-counters</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/reset-counters.</p>
+</blockquote>
+<hr />
+<h2 id="diskreset-counters">disk/reset-counters</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="scan">scan</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/scan.</p>
+</blockquote>
+<hr />
+<h2 id="diskscan">disk/scan</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="settings">settings</h1>
+<blockquote>
+<p>RouterOS settings reference for /disk/settings.</p>
+</blockquote>
+<hr />
+<h2 id="disksettings">disk/settings</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Settings Directory</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>default-mount-point-template</strong> <code>string</code> — Mount point template that new disks and partitions get in place of their own <code>mount-point-template</code> when they are added. The template variables are the same as on a disk item (<code>[slot]</code>, <code>[model]</code>, <code>[serial]</code>, <code>[fw-version]</code>, <code>[fs-label]</code>, <code>[fs-uuid]</code>, <code>[fs]</code>). Default: [slot].</li>
+<li><strong>auto-smb-sharing</strong> <code>bool</code> — Whether a new disk or partition automatically gets an SMB share (see the SMB page). New items created by a later format get the share as well, and so do new <code>tmpfs</code> folders. The default configuration of some routers, for example the hAP ax², sets it to <code>yes</code>, so new disks and folders are shared on the LAN. Default: no.</li>
+<li><strong>auto-smb-user</strong> <code>enum</code> — Default user of the automatic SMB share created by <code>auto-smb-sharing=yes</code>. Default: guest.</li>
+<li><strong>auto-media-sharing</strong> <code>bool</code> — Whether a new disk or partition, including a new <code>tmpfs</code> folder, is automatically added to the DLNA media server (<code>/ip/media</code>). The default configuration of some routers, for example the hAP ax², sets it to <code>yes</code>. Default: no.</li>
+<li><strong>auto-media-interface</strong> <code>iface_enum { none }</code> — Interface used in the dynamic <code>/ip/media</code> entry created for a new disk when <code>auto-media-sharing=yes</code>. The default configuration of some routers, for example the hAP ax², sets it to <code>bridge</code>. Default: none.</li>
+</ul>
+<hr />
+<h1 id="smart-info">smart-info</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/smart-info.</p>
+</blockquote>
+<hr />
+<h2 id="disksmart-info">disk/smart-info</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Syscap:</strong> storage
+<strong>Type:</strong> Command</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>output</strong> <code>string</code> — The full smartctl output for the disk.</li>
+</ul>
+<hr />
+<h1 id="test">test</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/test.</p>
+</blockquote>
+<hr />
+<h2 id="disktest">disk/test</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>N</strong> <code>initializing</code> — The test is initializing (preparing, clearing the caches) and has not started reading or writing yet.</li>
+<li><strong>R</strong> <code>running</code> — The test is running.</li>
+<li><strong>F</strong> <code>failed</code> — The test failed.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>disk</strong> <code>multi { array-id, disk: enum
+ }</code> — Disk or partition to test.</li>
+<li><strong>block-size</strong> <code>num</code> — Size of one read or write block. Default: 64 KiB.</li>
+<li><strong>thread-count</strong> <code>num</code> — Number of parallel test threads. Default: 1.</li>
+<li><strong>direction</strong> <code>enum (read | write)</code> — What the test does with the data. - <code>read</code> (default) - Read the disk; does not change its content. - <code>write</code> - Write to the disk; destroys all data on it.</li>
+<li><strong>type</strong> <code>enum (device | filesystem)</code> — Test target: <code>device</code> reads or writes the raw block device, <code>filesystem</code> goes through the mounted file system. Default: device.</li>
+<li><strong>pattern</strong> <code>enum (sequential | random)</code> — Access pattern. - <code>sequential</code> (default) - Read or write consecutive blocks. - <code>random</code> - Read or write blocks at random positions.</li>
+<li><strong>entries-to-show</strong> <code>num</code> — How many of the most recent result rows to keep and show.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>seq</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Sequence number of the result row; the <code>TOT</code> row aggregates all threads.</li>
+<li><strong>rate</strong> <code>num</code> — Current throughput of this row.</li>
+<li><strong>iops</strong> <code>num</code> — Input/output operations per second.</li>
+<li><strong>bytes</strong> <code>num</code> — Bytes transferred for this row so far.</li>
+<li><strong>disk</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — The tested disk.</li>
+<li><strong>thread</strong> <code>enum (TOT) { TOT:0xffffffff }</code> — Thread this row belongs to; <code>TOT</code> aggregates all threads.</li>
+<li><strong>type</strong> <code>enum (device | filesystem)</code> — Test type as given when the test was started.</li>
+<li><strong>pattern</strong> <code>enum (sequential | random)</code> — Access pattern as given when the test was started.</li>
+<li><strong>dir</strong> <code>enum (read | write)</code> — Direction (<code>read</code> or <code>write</code>) as given when the test was started.</li>
+<li><strong>bsize</strong> <code>num</code> — Block size as given when the test was started.</li>
+<li><strong>state</strong> <code>string</code> — State of a running test, for example <code>clear caches</code> while it prepares and <code>run</code> while it works.</li>
+</ul>
+<hr />
+<h1 id="trim">trim</h1>
+<blockquote>
+<p>RouterOS command reference for /disk/trim.</p>
+</blockquote>
+<hr />
+<h2 id="disktrim">disk/trim</h2>
+<p><strong>Conditions:</strong> !smips
+<strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

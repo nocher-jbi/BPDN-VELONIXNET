@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firewall · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Firewall and Quality of Service</p>
+      <h1 id="firewall-part-22">Firewall (part 2/2)</h1>
+<h1 id="packet-flow-in-routeros">Packet Flow in RouterOS</h1>
+<blockquote>
+<p>The order in which RouterOS facilities process a packet: bridging, routing, MPLS, the firewall chains, NAT, queues, IPsec, VRF, FastPath and FastTrack, with the packet flow diagrams.</p>
+</blockquote>
+<h1 id="packet-flow-in-routeros_1">Packet Flow in RouterOS</h1>
+<p>A packet passes through several RouterOS facilities on its way through the router: bridging, routing, MPLS, the firewall, queues and others. This page shows the order in which these facilities process a packet. Use it when a configuration combines several facilities, for example packet marks with queues, or NAT with policy routing.</p>
+<p>The packet flow diagram has these parts:</p>
+<ul>
+<li>The overall diagram.</li>
+<li>The detailed diagram of bridging, routing and MPLS.</li>
+<li>The facilities in each chain: prerouting, input, forward, output and postrouting.</li>
+<li>The chains that VRF traffic passes.</li>
+<li>The hardware offload and FastPath choices.</li>
+</ul>
+<h2 id="overall-packet-flow">Overall packet flow</h2>
+<p><em>[gambar: Overall packet flow diagram: physical and logical interfaces, the bridging, MPLS and routing areas, and the local processes of the router]**[gambar: Overall packet flow diagram: physical and logical interfaces, the bridging, MPLS and routing areas, and the local processes of the router]</em></p>
+<p>The middle of the diagram has four areas: bridging, MPLS, routing, and the processes of the router itself. Each of the first three areas has an input, a forward and an output path. The letters mark the points where a packet enters and leaves an area. The detailed diagram uses the same letters.</p>
+<p>The boxes outside the areas:</p>
+<ul>
+<li><strong>Physical in-interface</strong> - the point where the router receives a packet.</li>
+<li><strong>Logical in-interface</strong> - the point where a packet enters again after decapsulation, for example a packet that arrived in a tunnel.</li>
+<li><strong>Local in</strong> - the last point of a packet that is for the router itself.</li>
+<li><strong>Local out</strong> - the first point of a packet that the router itself sends.</li>
+<li><strong>Logical out-interface</strong> - the last point of a packet before encapsulation, for example into a tunnel.</li>
+<li><strong>Interface HTB (Hierarchical Token Bucket)</strong> - the interface queue.</li>
+<li><strong>Physical out-interface</strong> - the last point of a packet before the router sends it.</li>
+<li><strong>Switch chip</strong> - a packet that the switch chip forwards in hardware does not reach the CPU and does not pass any other box of the diagram.</li>
+</ul>
+<p>A packet that the router routes takes this path:</p>
+<ol>
+<li>The router receives the packet on the physical in-interface.</li>
+<li>The in-interface is not a bridge port and the packet has no MPLS label. It is an IP packet, so it enters the routing area at <strong>I</strong>.</li>
+<li>The packet takes the forward path of the routing area and leaves it at <strong>L</strong>.</li>
+<li>The packet needs no MPLS label, the out-interface is not a bridge port, and no encapsulation is needed. The packet passes the interface queue and leaves through the physical out-interface.</li>
+</ol>
+<p>A packet for the router itself, for example a ping, takes this path:</p>
+<ol>
+<li>The packet enters the routing area at <strong>I</strong> and takes the input path to <strong>J</strong>.</li>
+<li>The packet needs no decapsulation, so it goes to local in, and the router processes it.</li>
+<li>The reply starts at local out. It is an IP packet, so it enters the routing area at <strong>K</strong>.</li>
+<li>The reply takes the output path, leaves the routing area at <strong>L</strong>, and goes to the physical out-interface.</li>
+</ol>
+<h2 id="bridging-routing-and-mpls">Bridging, routing and MPLS</h2>
+<p><em>[gambar: Detailed diagram of the bridging, routing and MPLS areas with the firewall chains, the bridge chains, the IPsec steps and the MPLS label operations]**[gambar: Detailed diagram of the bridging, routing and MPLS areas with the firewall chains, the bridge chains, the IPsec steps and the MPLS label operations]</em></p>
+<p>The grey boxes with double side lines are the chains of the IP firewall. The other boxes:</p>
+<ul>
+<li><strong>Routing decision</strong> - the router looks for a route to the destination address of the packet. If no route matches, the router discards the packet.</li>
+<li><strong>MPLS decision</strong> - the router decides what to do with the packet from the MPLS forwarding table.</li>
+<li><strong>Bridging decision</strong> - the bridge looks for the destination MAC address of the packet in the host table. If it finds the address, it sends the packet to that port. If not, it floods the packet: it sends one copy out of every other bridge port. One copy also reaches the bridge input chain, because the bridge interface itself is one of the destinations. When <code>vlan-filtering=yes</code> is set, the bridge drops the packets that the <code>/interface/bridge/vlan</code> table does not allow at this stage.</li>
+<li><strong>Use-ip-firewall</strong> - whether <code>use-ip-firewall</code> is enabled in the bridge settings.</li>
+<li><strong>IPsec policy</strong> - whether the packet matches an IPsec policy.</li>
+</ul>
+<h3 id="chains">Chains</h3>
+<p>The firewall processes a packet in these chains:</p>
+<ul>
+<li><strong>Prerouting</strong> - packets that arrive on an interface, before the routing decision. The <em>raw</em>, <em>mangle</em> and <em>nat</em> tables have rules here. The <em>nat</em> rules of this point are in <code>chain=dstnat</code>.</li>
+<li><strong>Input</strong> - packets for the router itself. The <em>mangle</em>, <em>filter</em> and <em>nat</em> tables have this chain.</li>
+<li><strong>Forward</strong> - packets that the router routes. The <em>mangle</em> and <em>filter</em> tables have this chain.</li>
+<li><strong>Output</strong> - packets that the router itself sends. The <em>raw</em>, <em>mangle</em>, <em>nat</em> and <em>filter</em> tables have this chain.</li>
+<li><strong>Postrouting</strong> - packets that leave the router, after the routing decision. The <em>mangle</em> and <em>nat</em> tables have rules here. The <em>nat</em> rules of this point are in <code>chain=srcnat</code>.</li>
+</ul>
+<p>Each chain contains several facilities. The diagram shows their order:</p>
+<p><em>[gambar: Diagram of the facilities in the prerouting, routing decision, input, forward, output and postrouting stages, in processing order]**[gambar: Diagram of the facilities in the prerouting, routing decision, input, forward, output and postrouting stages, in processing order]</em></p>
+<ul>
+<li><strong>Hotspot-in</strong> - lets the Hotspot capture traffic that connection tracking would otherwise discard. This way the Hotspot can serve clients whose network settings are wrong.</li>
+<li><strong>RAW prerouting</strong>, <strong>RAW output</strong> - the <a href="./firewall/raw">RAW</a> table chains.</li>
+<li><strong>Connection tracking</strong> - connection tracking processes the packet.</li>
+<li><strong>Mangle prerouting</strong>, <strong>Mangle input</strong>, <strong>Mangle forward</strong>, <strong>Mangle output</strong>, <strong>Mangle postrouting</strong> - the mangle chains.</li>
+<li><strong>Dst-NAT</strong> - the <code>dstnat</code> chain of the NAT table.</li>
+<li><strong>Dst-NAT (NAT output)</strong> - the <code>output</code> chain of the NAT table. Rules of the <code>dstnat</code> chain do not process the packets that the router itself sends; rules of the <code>output</code> chain do.</li>
+<li><strong>Filter input</strong>, <strong>Filter forward</strong>, <strong>Filter output</strong> - the filter chains.</li>
+<li><strong>Src-NAT</strong> - the <code>srcnat</code> chain of the NAT table.</li>
+<li><strong>Src-NAT (NAT input)</strong> - the <code>input</code> chain of the NAT table.</li>
+<li><strong>Traffic Flow</strong> - the packet is counted for <a href="../diagnostics-monitoring-and-troubleshooting/traffic-flow">Traffic Flow</a>. A packet that the firewall drops in the RAW or filter rules before this point is not counted.</li>
+<li><strong>HTB global</strong> - the queue tree with <code>parent=global</code>.</li>
+<li><strong>Simple queues</strong> - the simple queues.</li>
+<li><strong>TTL</strong> - the place where the Time To Live (TTL) of a routed packet is reduced by 1. If the TTL becomes 0, the router discards the packet. The TTL of a bridged packet is not reduced.</li>
+<li><strong>Routing adjustment</strong> - a new route lookup for a packet that the router itself sends, after a mangle rule of the output chain set a routing mark or a NAT rule of the output chain changed the destination address. The rules of the output chain see the out-interface of the first lookup. The postrouting rules see the new out-interface.</li>
+<li><strong>Hotspot-out</strong> - undoes the changes of hotspot-in for the packets that go back to the client.</li>
+</ul>
+<p>The routing decision goes through the policy rules in the order that <code>policy-rules</code> in <code>/routing/settings</code> sets. The diagram shows the default order: the routing mark set by mangle rules, the VRF lookup, the VRF unreachable rule, the local table, the routing rules of <code>/routing/rule</code>, and the main table.</p>
+<h2 id="flow-of-a-routed-packet">Flow of a routed packet</h2>
+<h3 id="forward">Forward</h3>
+<p>A packet that the router routes from one interface to another passes these steps:</p>
+<ol>
+<li>Prerouting:</li>
+<li>Hotspot-in.</li>
+<li>RAW prerouting chain.</li>
+<li>Connection tracking.</li>
+<li>Mangle prerouting chain.</li>
+<li>NAT <code>dstnat</code> chain.</li>
+<li>Routing decision.</li>
+<li>Forward:</li>
+<li>The TTL is reduced by 1.</li>
+<li>Mangle forward chain.</li>
+<li>Filter forward chain.</li>
+<li>Traffic Flow.</li>
+<li>Postrouting:</li>
+<li>Mangle postrouting chain.</li>
+<li>NAT <code>srcnat</code> chain.</li>
+<li>Hotspot-out.</li>
+<li>Queue tree (HTB global).</li>
+<li>Simple queues.</li>
+<li>The router matches the packet against the IPsec policies.</li>
+</ol>
+<h3 id="input">Input</h3>
+<p>A packet for the router itself passes these steps:</p>
+<ol>
+<li>Prerouting, with the same steps as for a forwarded packet.</li>
+<li>Routing decision.</li>
+<li>Input:</li>
+<li>Mangle input chain.</li>
+<li>Filter input chain.</li>
+<li>Traffic Flow.</li>
+<li>NAT <code>input</code> chain.</li>
+<li>Queue tree (HTB global).</li>
+<li>Simple queues.</li>
+<li>The router matches the packet against the IPsec policies.</li>
+</ol>
+<h3 id="output">Output</h3>
+<p>A packet that the router itself sends passes these steps:</p>
+<ol>
+<li>Routing decision.</li>
+<li>Output:</li>
+<li>Bridge decision.</li>
+<li>RAW output chain.</li>
+<li>Connection tracking.</li>
+<li>Mangle output chain.</li>
+<li>NAT <code>output</code> chain.</li>
+<li>Filter output chain.</li>
+<li>Traffic Flow.</li>
+<li>Routing adjustment.</li>
+<li>Postrouting, with the same steps as for a forwarded packet.</li>
+<li>The router matches the packet against the IPsec policies.</li>
+</ol>
+<h2 id="flow-of-a-bridged-packet">Flow of a bridged packet</h2>
+<p>This section describes the general bridging process. Some configurations, for example VLAN filtering, horizon, STP, DHCP snooping or IGMP snooping, process some packets differently. See the <a href="../bridging-and-switching/">bridging manual</a> for details.</p>
+<p>The steps refer to the bridging part of the detailed diagram.</p>
+<h3 id="bridge-forward">Bridge forward</h3>
+<p>The bridge forwards a packet from one bridge port to another:</p>
+<ol>
+<li>The packet enters the bridging area at <strong>A</strong> and passes the bridge NAT <code>dstnat</code> chain. Rules of this chain can change the destination MAC address and the priority, and can accept, drop or mark the packet.</li>
+<li>The bridging decision. A flooded packet (broadcast, multicast or unknown unicast) is copied for every bridge port, and each copy continues in the bridge forward chain.</li>
+<li>The bridge filter <code>forward</code> chain. Rules of this chain can change the priority, and can accept, drop or mark the packet.</li>
+<li>The bridge NAT <code>srcnat</code> chain. Rules of this chain can change the source MAC address and the priority, and can accept, drop or mark the packet.</li>
+<li>The packet leaves the bridging area at <strong>D</strong>.</li>
+</ol>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>When bridge <code>vlan-filtering</code> is enabled, the bridge can add a VLAN header to a received untagged packet at the bridging decision. From that point, the <code>mac-protocol=vlan</code> and <code>vlan-encap</code> matchers match the packet. This happens if the outgoing port has <code>frame-types</code> set to <code>admit-all</code> or <code>admit-only-untagged-and-priority-tagged</code>.</p>
+<p>The bridge can remove the VLAN header of a tagged packet at the bridging decision. From that point, the <code>mac-protocol=vlan</code> and <code>vlan-encap</code> matchers do not match the packet. This happens if the VLAN ID of the packet matches the untagged VLAN membership of the outgoing port.</p>
+</div>
+<h3 id="bridge-input">Bridge input</h3>
+<p>A packet goes to the bridge interface itself, for example to a DHCP server on the bridge, or to be routed:</p>
+<ol>
+<li>The packet enters at <strong>A</strong> and passes the bridge NAT <code>dstnat</code> chain.</li>
+<li>The bridging decision. A packet whose destination MAC address is the MAC address of the bridge goes to the bridge input chain. A flooded packet also reaches the bridge input chain.</li>
+<li>The bridge filter <code>input</code> chain.</li>
+<li>The packet leaves the bridging area at <strong>B</strong>.</li>
+</ol>
+<h3 id="bridge-output">Bridge output</h3>
+<p>A packet from the router leaves through one or more bridge ports, for example a reply of a DHCP server on the bridge:</p>
+<ol>
+<li>The packet enters the bridging area at <strong>C</strong>.</li>
+<li>The bridging decision. A flooded packet is copied for every bridge port.</li>
+<li>The bridge filter <code>output</code> chain.</li>
+<li>The bridge NAT <code>srcnat</code> chain.</li>
+<li>The packet leaves the bridging area at <strong>D</strong>.</li>
+</ol>
+<h3 id="forward-with-the-ip-firewall-enabled">Forward with the IP firewall enabled</h3>
+<p>With <code>use-ip-firewall</code> enabled in the bridge settings, bridged packets also pass the IP firewall chains. This makes it possible to use the IP firewall and simple queues on bridged traffic. The extra processing uses more CPU.</p>
+<p>A bridged packet passes these steps:</p>
+<ol>
+<li>Bridge NAT <code>dstnat</code> chain.</li>
+<li>Prerouting.</li>
+<li>Bridging decision.</li>
+<li>Bridge filter <code>forward</code> chain.</li>
+<li>Forward.</li>
+<li>Bridge NAT <code>srcnat</code> chain.</li>
+<li>Postrouting.</li>
+</ol>
+<p>Two more cases apply with <code>use-ip-firewall</code> enabled:</p>
+<ul>
+<li>A packet that arrives on a bridge port and is for the router, or is routed, passes prerouting one time, in the bridging area. The routing area does not process prerouting again.</li>
+<li>A packet that the router sends or routes out through a bridge passes postrouting one time, in the routing area. In the bridging area, it passes the bridge output chain and the bridge NAT <code>srcnat</code> chain.</li>
+</ul>
+<h2 id="flow-of-hardware-offloaded-packet">Flow of Hardware Offloaded Packet</h2>
+<p>On the previous topic, we solely discussed software bridging that requires the main CPU processing to forward packets through the correct bridge port. Most of the MikroTik devices are equipped with dedicated switching hardware, the so-called switch chip or switch ASIC. This allows us to offload some of the bridging functions, like packet forwarding between bridge ports or packet filtering, to this specialized hardware chip without consuming any CPU resources. In RouterOS, we have named this function Bridge Hardware (HW) Offloading. Different MikroTik devices might have different switch chips and each chip has a different set of features available, so make sure to visit this article to get more details - <a href="../bridging-and-switching/index.md#bridge-hardware-offloading">Bridge Hardware Offloading</a>.</p>
+<p><em>[gambar: Overall packet flow diagram with the path of a hardware offloaded packet: from the physical in-interface through the switching decision directly to the physical out-interface]</em></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Interface HTB will not work correctly when the out-interface is hardware offloaded and the bridge Fast Path is not active.</p>
+</div>
+<p><em>[gambar: Switch diagram: a packet from the physical in-interface goes to the switching decision if the in-interface is hardware offloaded, and from there to the physical out-interface or to the switch-cpu port. A packet from the switch-cpu port goes to the switching decision if the out-interface is hardware offloaded]</em></p>
+<ul>
+<li><strong>Switching decision</strong> - widely depends on the switch model. This block controls all the switching-related tasks, like host learning, packet forwarding, filtering, VLAN tagging/untagging, etc. Certain switch configurations can alter the packet flow.</li>
+<li><strong>switch-cpu port</strong> - a special purpose switch port for communication between the main CPU and other switch ports. Note that the switch-cpu port does not show up anywhere on RouterOS except for the switch menu. None of the software-related configurations (e.g. interface-list) can be applied to this port. Packets that reach the CPU are automatically associated with the physical in-interface.</li>
+</ul>
+<p>The hardware offloading, however, does not restrict a device to only hardware limited features; rather, it is possible to take advantage of the hardware and software processing at the same time. This does require a profound understanding of how packets travel through the switch chip and when exactly they are passed to the main CPU.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Switch features found in the <code>/interface/ethernet/switch</code> menu and its sub-menus, like ACL rules, mirroring, ingress/egress rate limiters, QoS, and L3HW (except inter-VLAN routing) may not rely on bridge hardware offloading. Therefore, they can <strong>potentially</strong> be applied to interfaces not configured within a hardware-offloaded bridge.</p>
+</div>
+<h3 id="switch-forward">Switch Forward</h3>
+<p>We will further discuss a packet flow when bridge hardware offloading is enabled and a packet is forwarded between two switched ports on a single switch chip. This is the most common and also the simplest example:</p>
+<ol>
+<li>The switch checks whether the in-interface is a hardware offloaded interface.</li>
+<li>The switch runs a packet through the switch host table to make a forwarding decision. If the switch finds a match for the destination MAC address, the packet is sent out through the physical interface. A packet that ends up being flooded (e.g. broadcast, multicast, unknown unicast traffic) gets multiplied and sent out to every hardware offloaded switch port.</li>
+</ol>
+<p><em>[gambar: Switch diagram with the switch forward path: physical in-interface, hardware offload check, switching decision, physical out-interface]</em></p>
+<h3 id="switch-to-cpu-input">Switch to CPU Input</h3>
+<p>This process takes place when a packet is received on a physical interface and it is destined for the switch-cpu port for further software processing. There are two paths to the switch-cpu. One is where hardware offloading and switching are not even used (e.g. a standalone interface for routing or a bridged interface but with deliberately disabled HW offloading), so the packet is simply passed further for software processing. Another path is taken when hardware offloading is active on the in-interface. This will cause the packet to pass through the switching decision and there are various reasons why the switch might forward the packet to the switch-cpu port:</p>
+<ul>
+<li>A packet's destination MAC address matches a local MAC address, e.g. when a packet is destined to a local bridge interface.</li>
+<li>A packet might get flooded to all switch ports including the switch-cpu port, e.g. when broadcast, multicast, or unknown unicast traffic is received.</li>
+<li>A switch might have learned that some hosts can only be reached through the CPU (switch-cpu port learning is discussed in the next section), e.g. when a bridge contains HW and non-HW offloaded interfaces, such as wireless, EoIP, and even Ethernet interfaces.</li>
+<li>A packet is intentionally copied to the switch-cpu, e.g. for a packet inspection.</li>
+<li>A packet is triggered by the switch configuration and should be processed in software, e.g. DHCP or IGMP snooping.</li>
+</ul>
+<p>See the packet walkthrough when an in-interface is hardware offloaded:</p>
+<ol>
+<li>The switch checks whether the in-interface is a hardware offloaded interface.</li>
+<li>Runs a packet through the switch host table to make a forwarding decision. In case any of the above-mentioned points are true, the packet gets forwarded to the switch-cpu port.</li>
+<li>The packet exits through the switch-cpu port and it will be further processed by the RouterOS packet flow.</li>
+</ol>
+<p><em>[gambar: Switch diagram with the path to the CPU: physical in-interface, hardware offload check, switching decision, switch-cpu port]</em></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Any received packet that was flooded by the switch chip will not get flooded again by the software bridge to the same HW offloaded switch group. This prevents the formation of duplicate packets.</p>
+</div>
+<h3 id="cpu-output-to-switch">CPU Output to Switch</h3>
+<p>This process takes place when a packet exits the RouterOS software processing and is received on the switch-cpu port. Again, there are two paths the packet can take. One path is where hardware offloading and switching are not even used (e.g. a standalone interface for routing or a bridged interface but with deliberately disabled HW offloading), so the packet is simply sent out through the physical out-interface. Another path is taken when hardware offloading is active on the out-interface. This will cause the packet to pass through the switching decision. Just like any other switch port, the switch will learn the source MAC addresses from packets that are received on the switch-cpu port. This does come in handy when a bridge contains HW and non-HW offloaded interfaces, so the switch can learn which frames should be forwarded to the CPU. See the packet walkthrough when an out-interface is hardware offloaded:</p>
+<ol>
+<li>A packet that exits the RouterOS software processing is received on the switch-cpu port.</li>
+<li>The switch checks whether the out-interface is a hardware offloaded interface.</li>
+<li>The switch runs a packet through the switch host table to make a forwarding decision. If the switch finds a match for the destination MAC address, the packet is sent out through the physical interface. A packet that ends up being flooded (e.g. broadcast, multicast, unknown unicast traffic) gets multiplied and sent out to every hardware offloaded switch port.</li>
+</ol>
+<p><em>[gambar: Switch diagram with the path from the CPU: switch-cpu port, hardware offload check of the out-interface, switching decision, physical out-interface]</em></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>A software bridge that sends a flooded packet through HW offloaded interfaces will only send a single packet copy per HW offloaded switch group rather than per HW offloaded interface. The actual flooding will be done by the switch chip; this prevents the formation of duplicate packets.</p>
+</div>
+<h2 id="flow-of-an-mpls-packet">Flow of an MPLS packet</h2>
+<p>The steps refer to the MPLS part of the detailed diagram:</p>
+<ul>
+<li><strong>Push label</strong> - the router adds a label to a packet. A packet that the router itself sends passes the output and postrouting chains before the label is added.</li>
+<li><strong>Switch label</strong> - the router forwards a packet by its label. The IP firewall does not process such a packet: it does not pass the prerouting, forward and postrouting chains.</li>
+<li><strong>Pop label</strong> - the router removes the label. If the router before the last one removed the label (penultimate hop popping), the last router receives a packet without a label and processes it as an IP packet.</li>
+</ul>
+<h2 id="mpls-ip-vpn">MPLS IP VPN</h2>
+<p>In VPNv4 setups a packet arriving at the PE router that needs to be forwarded to the CE router is not a typical "forward".</p>
+<p>If incoming label and destination are bound to the VRF Then after MPLS label is popped and:</p>
+<ul>
+<li>The Destination address is local to the router, then the packet is moved to LOCAL_IN.</li>
+<li>The Destination address is in the CE network, then the packet is moved to LOCAL_OUT.</li>
+</ul>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Forwarded packets from MPLS cloud to the CE network will not show up in forward.</p>
+</div>
+<p>For example, traffic from src:111.15.0.1 to dst:111.13.0.1</p>
+<pre><code class="language-text">[admin@CCR2004_2XS] /mpls/forwarding-table&gt; print 
+Flags: L - LDP, P - VPN
+Columns: LABEL, VRF, PREFIX, NEXTHOPS
+#   LABEL  VRF      PREFIX         NEXTHOPS                                                                                                           
+0 P    17  myVrf    111.13.0.0/24  
+4 L    20  main     203.0.113.2    { label=impl-null; nh=111.11.0.1; interface=sfp-sfpplus1 }
+[admin@CCR2004_2XS] /mpls/forwarding-table&gt;                                                           
+...
+
+[admin@CCR2004_2XS] /ip/route&gt; print detail 
+Flags: D - dynamic; X - disabled, I - inactive, A - active; c - connect, s - static, r - rip, b - bgp, o - ospf, i - is-is, d - dhcp, v - vpn, m - modem, y - bgp-mpls-vpn; 
+H - hw-offloaded; + - ecmp 
+
+   DAc   dst-address=111.11.0.0/24 routing-table=main gateway=sfp-sfpplus1 immediate-gw=sfp-sfpplus1 distance=0 scope=10 suppress-hw-offload=no 
+         local-address=111.11.0.2%sfp-sfpplus1 
+   DAc   dst-address=203.0.113.1/32 routing-table=main gateway=lo immediate-gw=lo distance=0 scope=10 suppress-hw-offload=no local-address=203.0.113.1%lo 
+   DAo   dst-address=203.0.113.2/32 routing-table=main gateway=111.11.0.1%sfp-sfpplus1 immediate-gw=111.11.0.1%sfp-sfpplus1 distance=110 scope=20 target-scope=10 
+         suppress-hw-offload=no 
+   DAc   dst-address=111.13.0.0/24 routing-table=myVrf gateway=sfp-sfpplus2@myVrf immediate-gw=sfp-sfpplus2 distance=0 scope=10 suppress-hw-offload=no 
+         local-address=111.13.0.2%sfp-sfpplus2@myVrf 
+   DAy   dst-address=111.15.0.0/24 routing-table=myVrf gateway=203.0.113.2 immediate-gw=111.11.0.1%sfp-sfpplus1 distance=200 scope=40 target-scope=30 suppress-hw-offload=no [admin@CCR2004_2XS] /ip/route&gt;              
+</code></pre>
+<p>The packet will be seen in the output and postrouting chains, because now it is a locally originated packet with source MAC address equal to vrfInterface:</p>
+<pre><code class="language-text">08:10:55 firewall,info output: in:(unknown 0) out:sfp-sfpplus2, connection-state:established src-mac f2:b5:e9:17:18:3b, proto ICMP (type 8, code 0), 111.15.0.1-&gt;111.13.0.1, len 56
+08:10:55 firewall,info postrouting: in:myVrf out:sfp-sfpplus2, connection-state:established src-mac f2:b5:e9:17:18:3b, proto ICMP (type 8, code 0), 111.15.0.1-&gt;111.13.0.1, len 56
+</code></pre>
+<p>On the other hand, packets routed in the direction CE→PE will be seen in the "forward" as any other routed IP traffic before being sent to the MPLS:</p>
+<pre><code class="language-text"> 08:10:55 firewall,info prerouting: in:sfp-sfpplus2 out:(unknown 0), connection-state:established src-mac dc:2c:6e:46:f8:93, proto ICMP (type 0, code 0), 111.13.0.1-&gt;111.15.0.1, len 56
+ 08:10:55 firewall,info forward: in:sfp-sfpplus2 out:sfp-sfpplus1, connection-state:established src-mac dc:2c:6e:46:f8:93, proto ICMP (type 0, code 0), 111.13.0.1-&gt;111.15.0.1, len 56
+ 08:10:55 firewall,info postrouting: in:sfp-sfpplus2 out:sfp-sfpplus1, connection-state:established src-mac dc:2c:6e:46:f8:93, proto ICMP (type 0, code 0), 111.13.0.1-&gt;111.15.0.1, len 56
+
+</code></pre>
+<p>But there can be an exception. If the destination IP of the reply packet is local to the router and connection tracking is performing NAT translation then connection tracking will "force" the packet to move through the firewall prerouting/forward/postrouting chains.</p>
+<h2 id="logical-interfaces">Logical interfaces</h2>
+<p>A tunnel packet passes the firewall two times: as the encapsulated packet and as the packet inside the tunnel.</p>
+<p>For example, the router receives a GRE packet that carries a packet for another network:</p>
+<ol>
+<li>The GRE packet is a packet for the router itself. It passes prerouting and input, and reaches <strong>J</strong>.</li>
+<li>The packet needs decapsulation. The router removes the GRE header.</li>
+<li>The inner packet enters at the logical in-interface, with the GRE interface as its in-interface. It passes prerouting, forward and postrouting.</li>
+</ol>
+<p>In the other direction, the inner packet passes forward and postrouting with the GRE interface as its out-interface. After encapsulation, the GRE packet passes output and postrouting as a packet that the router itself sends.</p>
+<p>A firewall that drops everything else must accept both the tunnel packets and the packets inside the tunnel.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>The VLAN header that a bridge with <code>vlan-filtering</code> enabled adds or removes is not related to logical interfaces. See the bridging section of this page.</p>
+</div>
+<h2 id="ipsec-policies">IPsec policies</h2>
+<p>IPsec has no logical interface. The router matches packets against the IPsec policies.</p>
+<p>Encryption:</p>
+<ol>
+<li>The plain packet passes the firewall like any other packet: forward and postrouting, or output and postrouting if the router itself sends it.</li>
+<li>After postrouting, the router matches the packet against the IPsec policies. If a policy matches, the router encrypts the packet.</li>
+<li>The encrypted packet passes output and postrouting as a packet that the router itself sends.</li>
+</ol>
+<p>Decryption:</p>
+<ol>
+<li>The encrypted packet is a packet for the router itself. It passes prerouting and input.</li>
+<li>The router matches the packet against the IPsec policies and decrypts it.</li>
+<li>The decrypted packet passes prerouting again, and then input or forward.</li>
+</ol>
+<p>A firewall that drops everything else must accept both the encrypted and the plain packets. To match the plain packets, use the <code>ipsec-policy</code> matcher. For example, <code>ipsec-policy=in,ipsec</code> in the forward chain matches the packets that the router decrypted. The prerouting and input chains do not accept <code>ipsec-policy=out</code>.</p>
+<h2 id="vrf">VRF</h2>
+<p><em>[gambar: Diagram of the chains that a packet received on a VRF port and a packet sent by the router into a VRF pass, with the in-interface or out-interface of each pass]**[gambar: Diagram of the chains that a packet received on a VRF port and a packet sent by the router into a VRF pass, with the in-interface or out-interface of each pass]</em></p>
+<p>Traffic of an interface that belongs to a VRF passes some chains two times:</p>
+<ul>
+<li><strong>Received on a VRF port</strong> - the packet passes prerouting with the port as its in-interface: the RAW and mangle prerouting chains and the NAT <code>dstnat</code> chain. Then it passes the RAW and mangle prerouting chains again, with the VRF interface as its in-interface. The input and forward chains see the VRF interface as the in-interface.</li>
+<li><strong>Sent by the router into a VRF</strong> - the packet passes output and postrouting with the VRF interface as its out-interface. Then it passes the RAW, mangle and filter output chains and the mangle postrouting chain again, with the port as its out-interface. The NAT chains process the packet only in the first pass.</li>
+<li><strong>Routed into a VRF</strong> - the packet passes postrouting one time, with the port as its out-interface.</li>
+</ul>
+<h2 id="fast-path">Fast Path</h2>
+<p>From what we learned so far, it is quite obvious that such packet processing takes a lot of CPU resources. FastPath speeds things up. It skips processing in the Linux kernel, basically trading some RouterOS functionality for performance. For FastPath to work, interface driver support and specific configuration conditions are required.</p>
+<h3 id="how-fast-path-works">How Fast Path Works</h3>
+<p>FastPath is an interface driver extension that allows a driver to talk directly to specific RouterOS facilities and skip all others.</p>
+<p><em>[gambar: Diagram of the hardware offload, FastPath and slow path choices between the physical in-interface and the physical out-interface]**[gambar: Diagram of the hardware offload, FastPath and slow path choices between the physical in-interface and the physical out-interface]</em></p>
+<p>The packet can be forwarded by a fast path handler only if at least the source interface supports a fast path. For complete fast-forwarding, destination interface support is also required.</p>
+<p>Currently, RouterOS has the following FastPath handlers:</p>
+<ul>
+<li>IP traffic processing</li>
+<li>FastTrack</li>
+<li>Traffic Generator</li>
+<li>MPLS</li>
+<li>Bridge</li>
+</ul>
+<p>FastPath handler is used if the following conditions are met:</p>
+<ul>
+<li>Firewall rules are not configured.</li>
+<li>Simple queue or queue trees with <em>parent=global</em> are not configured.</li>
+<li>Mesh or metarouter interface is not configured.</li>
+<li>Sniffer or torch is not running.</li>
+<li>Connection tracking is not active.</li>
+<li>VRFs are not configured (<code>/ip/vrf</code> is empty).</li>
+<li>A hotspot is not used (<code>/ip/hotspot</code> has no interfaces).</li>
+<li>IPSec policies are not configured.</li>
+<li><code>/tool/mac-scan</code> is not actively used.</li>
+<li><code>/tool/ip-scan</code> is not actively used.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Packets will travel the FastPath way if FastTrack is used no matter whether the above conditions are met.</p>
+</div>
+<p>FastPath caches IPv4 and IPv6 routes by destination address, not by L4 ports or inner headers. Therefore the ECMP <code>l4</code> and <code>l3-inner</code> policies do not provide per-flow distribution for FastPath-cached traffic.</p>
+<p>Traffic Generator automatically uses FastPath if the interface supports this feature.</p>
+<p>Currently, MPLS fast-path applies to MPLS switched traffic (frames that enter the router as MPLS and must leave the router as MPLS) and VPLS endpoints that do VPLS encap/decap. Other MPLS ingress and egress will operate as before.</p>
+<p>A Bridge handler is used if the following conditions are met:</p>
+<ul>
+<li>There are no bridge Calea, filter, NAT rules.</li>
+<li><em>use-ip-firewall</em> is disabled.</li>
+<li>No mesh, MetaRouter interface configuration.</li>
+<li>sniffer, torch, and traffic generator are not running.</li>
+<li>bridge dhcp-snooping is disabled.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>FastPath on the vlan-filtering bridge does NOT support priority-tagged packets (packets with VLAN header but VLAN ID = 0). Those packets are redirected via a slow path.</p>
+</div>
+<p>Interfaces that support FastPath:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">RouterBoard</th>
+<th style="text-align: left;">Interfaces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>RB6xx series</strong></td>
+<td style="text-align: left;">ether1,2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB800</strong></td>
+<td style="text-align: left;">ether1,2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RB1100 series</strong></td>
+<td style="text-align: left;">ether1-11</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>All devices</strong></td>
+<td style="text-align: left;">Ethernet interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">wireless interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">bridge interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">VLAN, VRRP interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">bonding interfaces (RX only)</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">PPPoE, L2TP interfaces</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">EoIP, GRE, IPIP, VXLAN interfaces.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">VPLS</td>
+</tr>
+</tbody>
+</table>
+<p>EoIP, Gre, IPIP, VXLAN and L2TP interfaces have a per-interface setting <em>allow-fast-path.</em> Allowing a fast path on these interfaces has a side effect of bypassing firewall, connection tracking, simple queues, queue tree with parent=global, IPsec, hotspot universal client, vrf assignment for encapsulated packets that go through a fast-path. Also, packet fragments cannot be received in FastPath.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Whether FastPath is being used can be verified with <code>/interface/print stats-detail</code></p>
+</div>
+<p>The only interface queue that guarantees FastPath is only-hardware-queue. If you need an interface queue other than hardware then the packet will not go fully FastPath, but there is not a big impact on performance, as "interface queue" is the last step in the packet flow.</p>
+<p>The packet may go Half-FastPath by switching from FastPath to SlowPath, but not the other way around. So, for example, if the receiving interface has FastPath support, but the out interface does not, then the router will process the packet by FastPath handlers as far as it can and then proceed with SlowPath. If the receiving interface does not support FastPath but the out interface does, the packet will be processed by SlowPath all the way through the router.</p>
+<p><em>[gambar: A packet can switch from FastPath to SlowPath, but not from SlowPath to FastPath]</em></p>
+<h2 id="fasttrack">FastTrack</h2>
+<p>Fasttrack can be decoded as Fast Path + Connection Tracking. It allows marking connections as "fast-tracked", marking packets that belong to a fast-tracked connection will be sent the fast-path way. The connection table entry for such a connection now will have a fast-tracked flag.</p>
+<p><em>[gambar: Diagram of the routing forward FastPath: connection tracking checks whether the connection is FastTracked, and a FastTracked packet takes the FastPath]</em></p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>FastTrack packets bypass firewall, connection tracking, simple queues, queue tree with parent=global, ip traffic-flow, IPSec, hotspot universal client, VRF assignment, so it is up to the administrator to make sure FastTrack does not interfere with other configuration!</p>
+</div>
+<p>To mark a connection as fast-tracked, the firewall filter and mangle have the action <code>fasttrack-connection</code>. Currently, only TCP and UDP connections can be fast-tracked and to maintain connection tracking entries, some random packets will still be sent to a slow path. This must be taken into consideration when designing firewalls with "fasttrack" enabled.</p>
+<p>The FastTrack handler also supports source and destination NAT, so special exceptions for NATed connections are not required.</p>
+<div class="adm adm-danger">
+<p><strong>DANGER</strong></p>
+<p>Traffic that belongs to a fast-tracked connection travels in FastPath, which means that it will not be visible by other router L3 facilities (firewall, queues, IPsec, VRF assignment, etc). Fasttrack lookups route before routing marks have been set, so it works only with the main routing table.</p>
+</div>
+<p>The easiest way to start using this feature on home routers is to enable "fasttrack" for all <em>established, related</em> connections:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=fasttrack-connection \
+    connection-state=established,related comment=&quot;fasttrack&quot;
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;accept established,related,untracked&quot;
+</code></pre>
+<p>Notice that the first rule marks established/related connections as fast-tracked, the second rule is still required to accept packets belonging to those connections. The reason for this is that, as was mentioned earlier, some random packets from fast-tracked connections are still sent through the slow pathway and only UDP and TCP are fast-tracked, but we still want to accept packets for other protocols.</p>
+<p><em>[gambar: WinBox Filter Rules list with the dynamic rule "special dummy rule to show fasttrack counters" above the fasttrack-connection rule and the accept rule]**[gambar: WinBox Mangle list with three dynamic dummy rules for fasttrack counters, in the prerouting, forward and postrouting chains]</em></p>
+<p>After adding the "FastTrack" rule, a special dummy rule appeared at the top of the list. This is not an actual rule, it is for visual information showing that some of the traffic is traveling FastPath and will not reach other firewall rules.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>FastTrack can process packets only in the main routing table so it is the system administrator's duty to not FastTrack connections that are going through a non-main routing table (thus connections that are processed with mangle action=mark-routing rules). Otherwise packets might be misrouted through the main routing table.</p>
+</div>
+<p>The dummy rules appear when the router has fast-tracked connections.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The connection is FastTracked until a connection is closed, timed out or the router is rebooted.</p>
+</div>
+<h3 id="exclude-a-host-from-fasttrack">Exclude a host from FastTrack</h3>
+<p>This example excludes the host 192.168.88.111 from FastTrack. The first two rules accept the packets from and to the host, so that its traffic does not reach the <code>fasttrack-connection</code> rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=accept \
+    connection-state=established,related \
+    src-address=192.168.88.111 comment=&quot;Not FastTracked&quot;
+add chain=forward action=accept \
+    connection-state=established,related \
+    dst-address=192.168.88.111 comment=&quot;Not FastTracked&quot;
+add chain=forward action=fasttrack-connection \
+    connection-state=established,related comment=&quot;FastTrack&quot;
+add chain=forward action=accept \
+    connection-state=established,related \
+    comment=&quot;Accept established, related&quot;
+</code></pre>
+<p>The exclusion rules must be placed before the <code>fasttrack-connection</code> rule; the order is important. A router with the default configuration, or with the rules of the previous example, already has the FastTrack rule and the accept rule. On such a router, add only the two exclusion rules and place them before the FastTrack rule, on the default configuration with <code>place-before=[find comment="defconf: fasttrack"]</code>. A connection that is already fast-tracked stays fast-tracked until it is closed.</p>
+<p>Check the result in the connection table. A fast-tracked connection has the <code>F</code> flag. The connection of the excluded host does not have it:</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; /ip/firewall/connection/print where dst-port=2000 and protocol=tcp
+Flags: S - SEEN-REPLY; A - ASSURED; C - CONFIRMED; F - FASTTRACK
+Columns: PROTOCOL, SRC-ADDRESS, SRC-PORT, DST-ADDRESS, DST-PORT, TCP-STATE, 
+         TIMEOUT
+#      PRO  SRC-ADDRESS     SRC-PORT  DST-ADDRESS  DST-  TCP-STATE    TIMEOUT
+0 SAC  tcp  192.168.88.111     46484  10.2.0.13    2000  established  4m59s  
+1 SACF tcp  192.168.88.102     54824  10.2.0.12    2000  established  4m59s  
+</code></pre>
+<h3 id="requirements">Requirements</h3>
+<p>FastTrack is active if the following conditions are met:</p>
+<ul>
+<li>No mesh, metarouter interface configuration.</li>
+<li>Sniffer, torch, and traffic generator are not running.</li>
+<li><code>/tool/mac-scan</code> is not actively used.</li>
+<li><code>/tool/ip-scan</code> is not actively used.</li>
+<li>FastPath is enabled in <code>/ip/settings</code> (<code>allow-fast-path</code>).</li>
+<li>Bridge FastPath is enabled if a connection is going over the bridge interface.</li>
+</ul>
+<h2 id="packet-flow-for-the-visually-impaired">Packet flow for the visually impaired</h2>
+<p>The following document in DOCX format describes the diagram in a way optimized for visually impaired people. The descriptions are by Apex CoVantage care of Benetech. They are not being updated.</p>
+<ul>
+<li><a href="https://box.mikrotik.com/f/673207754e4d40638fae/?dl=1">Packet flow, optimized document.</a></li>
+</ul>
+<hr />
+<h1 id="connection-tracking">Connection tracking</h1>
+<blockquote>
+<p>Connection tracking records the connections that pass through or end at the router. It is the basis of the stateful firewall and NAT: view the connection list, use connection states in firewall rules, adjust the...</p>
+</blockquote>
+<h1 id="connection-tracking_1">Connection tracking</h1>
+<p>Connection tracking records the logical connections that pass through the router or end at it, and relates each packet to its connection. The stateful firewall and NAT are built on it:</p>
+<ul>
+<li>Firewall rules can match the state of the connection that a packet belongs to, also for protocols that have no connections of their own, such as UDP and ICMP.</li>
+<li>NAT translates all packets of a connection in the same way.</li>
+</ul>
+<p>With the default settings, connection tracking starts when the router has a filter, mangle or NAT rule, so a router with the default configuration tracks connections. You do not have to enable it.</p>
+<h2 id="view-the-connections">View the connections</h2>
+<p>The tracked IPv4 connections are in the <code>/ip/firewall/connection</code> menu:</p>
+<pre><code class="language-ros">/ip/firewall/connection/print where src-address=192.168.88.10
+</code></pre>
+<pre><code class="language-text">Flags: S - SEEN-REPLY; A - ASSURED; C - CONFIRMED; s - SRCNAT
+Columns: PROTOCOL, SRC-ADDRESS, SRC-PORT, DST-ADDRESS, DST-PORT, TCP-STATE, 
+         TIMEOUT, ORIG-RATE
+#      PROT  SRC-ADDRESS    SRC-P  DST-ADDRESS      DST-  TCP-STATE  TIM  ORIG
+0   C  udp   192.168.88.10   5678  255.255.255.255  5678             27s  0bps
+1 S Cs icmp  192.168.88.10         10.2.0.2                          9s   0bps
+2 S Cs udp   192.168.88.10  51769  10.2.0.2           53             28s  0bps
+3 SACs tcp   192.168.88.10  53812  10.2.0.2           80  time-wait  7s   0bps
+</code></pre>
+<p>Each entry is one connection. The command lists the connections that the host 192.168.88.10 has opened. A connection that another host opens to it, for example through a port forward, has the address of the host in <code>reply-src-address</code>.</p>
+<ul>
+<li>The <code>S</code> flag shows that the destination has replied.</li>
+<li>The <code>A</code> (assured) flag is set on a TCP connection after the handshake, and on a UDP connection that has become a stream.</li>
+<li>The <code>C</code> (confirmed) flag shows that the first packet of the connection has left the router.</li>
+<li>The <code>s</code> and <code>d</code> flags show that the router applies source or destination NAT to the connection.</li>
+<li>The <code>E</code> (expected) flag marks a connection that a connection helper created for a related connection, and the <code>h</code> (uses-helper) flag marks a connection that a helper handles. The <code>D</code> (dying) flag marks an entry that is being removed. The <code>F</code> (fasttrack) flag is described under <a href="#fasttrack">FastTrack</a>.</li>
+<li><code>TCP-STATE</code> is the state of a TCP connection, for example <code>established</code>, or <code>time-wait</code> for a connection that is closed.</li>
+<li><code>TIMEOUT</code> is the time after which the router removes the entry if it sees no more packets of the connection.</li>
+</ul>
+<p>The console shortens the column names to fit the width of the terminal. The first entry in this output is a broadcast packet that the host has sent.</p>
+<p>To see all properties of a connection, use <code>print detail</code>. It shows the packet and byte counters of both directions, and the addresses of the reply packets. In this output, <code>reply-dst-address</code> is the address of the router, because the router applies source NAT to the connection:</p>
+<pre><code class="language-ros">/ip/firewall/connection/print detail where dst-port=53
+</code></pre>
+<pre><code class="language-text">Flags: S - SEEN-REPLY; C - CONFIRMED; s - SRCNAT
+2 SCs protocol=udp src-address=192.168.88.10 src-port=51769
+      dst-address=10.2.0.2 dst-port=53 reply-src-address=10.2.0.2
+      reply-src-port=53 reply-dst-address=10.2.0.1 reply-dst-port=51769
+      timeout=28s orig-packets=1 orig-bytes=54 orig-fasttrack-packets=0
+      orig-fasttrack-bytes=0 repl-packets=1 repl-bytes=70
+      repl-fasttrack-packets=0 repl-fasttrack-bytes=0 orig-rate=0bps
+      repl-rate=0bps
+</code></pre>
+<p>To count the connections, use <code>/ip/firewall/connection/print count-only</code>.</p>
+<p>The IPv6 connections are in the <code>/ipv6/firewall/connection</code> menu, with the same properties:</p>
+<pre><code class="language-ros">/ipv6/firewall/connection/print
+</code></pre>
+<p>All flags and properties are described in the CLI reference of <a href="../cli-reference/ip/firewall/connection"><code>/ip/firewall/connection</code></a> and <a href="../cli-reference/ipv6/firewall/connection"><code>/ipv6/firewall/connection</code></a>.</p>
+<h2 id="remove-connections">Remove connections</h2>
+<p>To remove connections from the list, use <code>remove</code> with <code>find</code>. This command removes the connections that the host 192.168.88.10 has opened:</p>
+<pre><code class="language-ros">/ip/firewall/connection/remove [find src-address=192.168.88.10]
+</code></pre>
+<p><code>/ip/firewall/connection/remove [find]</code> removes all connections.</p>
+<p>Removing a connection does not stop its traffic. When the next packet of the connection arrives, the router adds a new entry for it at once, with packet and byte counters that start again from zero. To stop a connection, first add a firewall rule that drops its packets, then remove the connection.</p>
+<h2 id="connection-states">Connection states</h2>
+<p>When a packet arrives, connection tracking looks for its connection in the connection list and gives the packet one of these states. Firewall rules match the state with the <code>connection-state</code> property.</p>
+<ul>
+<li><strong>new</strong> - the packet starts a connection, or belongs to a connection that has seen packets in one direction only. For TCP, the packet that starts a connection is a packet with the SYN flag. For protocols without connections, such as UDP, a packet is new when the connection list has no entry for it.</li>
+<li><strong>established</strong> - the packet belongs to a connection in the connection list that has seen packets in both directions.</li>
+<li><strong>related</strong> - the packet does not belong to a connection in the list, but is related to one. Examples are ICMP error packets, such as "port unreachable", and the data connection of an FTP session.</li>
+<li><strong>invalid</strong> - the packet does not belong to a connection and cannot start one, for example a TCP reply to a connection that the router has not seen. Drop such packets, unless the router has asymmetric routing.</li>
+<li><strong>untracked</strong> - the packet was excluded from connection tracking with a <a href="./firewall/raw">RAW</a> rule that has <code>action=notrack</code>.</li>
+</ul>
+<p>With these states, the firewall accepts the packets of connections that are already allowed, drops invalid packets, and applies the detailed rules only to the packets that start a connection. This also reduces the load on the CPU:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;accept established,related,untracked&quot;
+add chain=input action=drop connection-state=invalid \
+    comment=&quot;drop invalid&quot;
+</code></pre>
+<p>A router with the default configuration already has these two rules in the <code>input</code> chain and in the <code>forward</code> chain: do not add them again. In a firewall that you build yourself, place them before the other rules of the chain, because the order of the rules matters.</p>
+<p>To see how many packets the firewall drops as invalid, print the counters of the drop rules:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print stats where connection-state~&quot;invalid&quot;
+</code></pre>
+<pre><code class="language-text">Columns: CHAIN, ACTION, BYTES, PACKETS
+# CHAIN    ACTION  BYTES  PACKETS
+;;; defconf: drop invalid
+0 input    drop       60        1
+;;; defconf: drop invalid
+1 forward  drop        0        0
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Do not use these rules on a router with asymmetric routing, where the packets of one connection take different paths in the two directions. The router sees only a part of each connection, considers the packets invalid, and drops them.</p>
+</div>
+<h3 id="tcp-connections-that-start-in-the-middle">TCP connections that start in the middle</h3>
+<p>The <code>loose-tcp-tracking</code> setting controls what happens to a packet from the middle of a TCP connection that matches no entry of the connection list, for example after the entry was removed:</p>
+<ul>
+<li>With <code>loose-tcp-tracking=yes</code>, the default, the router creates an entry from such a packet and the connection continues.</li>
+<li>With <code>loose-tcp-tracking=no</code>, such a packet is invalid, and the "drop invalid" rules drop it.</li>
+</ul>
+<p>A packet that starts a new TCP connection is still a SYN in both modes: a SYN-ACK that arrives without a SYN is invalid with <code>loose-tcp-tracking=yes</code> as well.</p>
+<pre><code class="language-ros">/ip/firewall/connection/tracking/set loose-tcp-tracking=no
+</code></pre>
+<h2 id="how-long-a-connection-stays-in-the-list">How long a connection stays in the list</h2>
+<p>Each entry has a timeout that depends on the protocol and the state of the connection. When the timeout reaches zero, the router removes the entry. The values are set in the <code>/ip/firewall/connection/tracking</code> menu:</p>
+<ul>
+<li><strong>TCP</strong> - an established connection that is idle stays for <code>tcp-established-timeout</code>, one day by default. While sent data is not yet acknowledged, the entry has the shorter <code>tcp-unacked-timeout</code>. A connection that is opening or closing has a timeout of a few seconds, set by the timeout of its TCP state, for example <code>tcp-syn-sent-timeout</code> and <code>tcp-time-wait-timeout</code>.</li>
+<li><strong>UDP</strong> - an entry stays for <code>udp-timeout</code>. A single request and its reply do not change that. When packets keep flowing in both directions, the entry gets the <code>A</code> (assured) flag and stays for the longer <code>udp-stream-timeout</code>.</li>
+<li><strong>ICMP</strong> - an entry stays for <code>icmp-timeout</code>.</li>
+<li><strong>Other protocols</strong> - a protocol that connection tracking has no own timeout for, for example IPIP, uses <code>generic-timeout</code>.</li>
+</ul>
+<p>For example, to keep the entry of a device that sends a UDP request only once in a while, such as a VoIP phone that registers with its server, for one minute:</p>
+<pre><code class="language-ros">/ip/firewall/connection/tracking/set udp-timeout=1m
+</code></pre>
+<p>To remove idle TCP connections after two hours:</p>
+<pre><code class="language-ros">/ip/firewall/connection/tracking/set tcp-established-timeout=2h
+</code></pre>
+<p>A changed value applies to new connections, and to an existing connection from its next packet.</p>
+<h2 id="connection-tracking-settings">Connection tracking settings</h2>
+<p>The settings and the state of connection tracking are in the <code>/ip/firewall/connection/tracking</code> menu:</p>
+<pre><code class="language-ros">/ip/firewall/connection/tracking/print
+</code></pre>
+<pre><code class="language-text">                   enabled: auto  
+               active-ipv4: yes   
+               active-ipv6: no    
+      tcp-syn-sent-timeout: 5s    
+  tcp-syn-received-timeout: 5s    
+   tcp-established-timeout: 1d    
+      tcp-fin-wait-timeout: 10s   
+    tcp-close-wait-timeout: 10s   
+      tcp-last-ack-timeout: 10s   
+     tcp-time-wait-timeout: 10s   
+         tcp-close-timeout: 10s   
+   tcp-max-retrans-timeout: 5m    
+       tcp-unacked-timeout: 5m    
+        loose-tcp-tracking: yes   
+      liberal-tcp-tracking: no    
+               udp-timeout: 30s   
+        udp-stream-timeout: 3m    
+              icmp-timeout: 10s   
+           generic-timeout: 10m   
+               max-entries: 100352
+             total-entries: 2     
+         total-ip4-entries: 2     
+         total-ip6-entries: 0     
+</code></pre>
+<p>The <code>enabled</code> setting has three values:</p>
+<ul>
+<li><code>auto</code>, the default - connection tracking is off until the router has an enabled filter, mangle or NAT rule, separately for IPv4 and IPv6. RAW rules alone do not start it. When the last such rule is removed, connection tracking stops again. <code>active-ipv4</code> and <code>active-ipv6</code> show whether it works at the moment. In this output, the router has IPv4 firewall rules and no IPv6 firewall rules.</li>
+<li><code>yes</code> - connection tracking works for IPv4 and IPv6, also without firewall rules. Use it to see the connection list on a router that has no firewall rules:</li>
+</ul>
+<p><code>ros
+  /ip/firewall/connection/tracking/set enabled=yes</code></p>
+<ul>
+<li><code>no</code> - connection tracking is off.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>With <code>enabled=no</code>, the router keeps no connection list, and the firewall features that need connection tracking stop working. Firewall rules that use them get the <code>I</code> flag and match no packets. This includes the masquerade rule and the rules of the default configuration that accept established connections and drop new connections from the internet. The router then forwards packets without NAT and without these checks: hosts behind the router lose their NAT, and the firewall no longer protects them.</p>
+</div>
+<p><code>max-entries</code> is the number of connections that the list can hold. It depends on the amount of RAM. The router does not reserve the memory for all entries when it starts: the list grows when needed while free RAM is available, up to 1048576 entries. <code>total-entries</code> is the number of connections in the list now.</p>
+<p>All settings are described in the CLI reference of <a href="../cli-reference/ip/firewall/connection/tracking"><code>/ip/firewall/connection/tracking</code></a>.</p>
+<h2 id="features-that-need-connection-tracking">Features that need connection tracking</h2>
+<p>These firewall features work only while connection tracking is active:</p>
+<ul>
+<li>NAT.</li>
+<li>The matchers <code>connection-state</code>, <code>connection-nat-state</code>, <code>connection-mark</code>, <code>connection-type</code>, <code>connection-bytes</code>, <code>connection-limit</code>, <code>connection-rate</code> and <code>layer7-protocol</code>.</li>
+<li>The actions <code>mark-connection</code> and <code>tarpit</code>.</li>
+</ul>
+<h2 id="fasttrack_1">FastTrack</h2>
+<p>IPv4 FastTrack forwards the packets of a connection on a fast path that bypasses most of the packet processing of the router. It works for TCP and UDP connections that a firewall rule with <code>action=fasttrack-connection</code> has selected. FastTrack supports source NAT, destination NAT, or both.</p>
+<p>The default configuration FastTracks the established and related connections that the router forwards, with a pair of rules like this:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=forward action=fasttrack-connection \
+    connection-state=established,related comment=&quot;fasttrack&quot;
+add chain=forward action=accept \
+    connection-state=established,related,untracked \
+    comment=&quot;accept established,related,untracked&quot;
+</code></pre>
+<p>The <code>fasttrack-connection</code> action selects the connection for FastTrack and passes the packet on to the next rule. Not all packets of a FastTracked connection take the fast path, so an <code>accept</code> rule for established and related packets follows the rule. Without it, the packets that do not take the fast path reach the remaining rules of the chain.</p>
+<p>Packets that take the fast path bypass:</p>
+<ul>
+<li>The firewall.</li>
+<li>Connection tracking.</li>
+<li>Simple queues.</li>
+<li>Queue trees with <code>parent=global</code>.</li>
+<li>IPsec.</li>
+<li>The HotSpot universal client.</li>
+<li>VRF assignment.</li>
+</ul>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The router does not apply queues, except queue trees that are attached to an interface, and firewall filter and mangle rules to FastTracked traffic. Make sure that FastTrack does not interfere with the rest of the configuration: exclude the traffic that needs these features from the <code>fasttrack-connection</code> rule. FastTrack works only with the main routing table, so also exclude the connections that use another routing table. The <a href="./packet-flow-in-routeros">Packet flow</a> page has an example that excludes one host. A connection is FastTracked while a <code>fasttrack-connection</code> rule selects it. When you remove or disable that rule, the packets of the connections that are already open take the normal path again.</p>
+</div>
+<p>To check whether the firewall has a FastTrack rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter/print where action=fasttrack-connection
+</code></pre>
+<p>To see which connections are FastTracked, print the connections with the <code>F</code> flag. Add an address to see the connections of one host, for example <code>where fasttrack and src-address=192.168.88.10</code>:</p>
+<pre><code class="language-ros">/ip/firewall/connection/print where fasttrack
+</code></pre>
+<pre><code class="language-text">Flags: S - SEEN-REPLY; A - ASSURED; C - CONFIRMED; F - FASTTRACK; s - SRCNAT
+Columns: PROTOCOL, SRC-ADDRESS, SRC-PORT, DST-ADDRESS, DST-PORT, TCP-STATE, 
+         TIMEOUT
+#       PRO  SRC-ADDRESS    SRC-PORT  DST-ADDRESS  DST-  TCP-STATE    TIMEOUT
+5 SACFs tcp  192.168.88.10     51638  10.2.0.2     2000  established  4m59s  
+</code></pre>
+<p>When the router has FastTracked connections, the filter, mangle and RAW tables show a dynamic rule with the comment "special dummy rule to show fasttrack counters". It is not a rule that processes packets: its counters show how much traffic takes the fast path. The mangle table has one such rule in each of the <code>prerouting</code>, <code>forward</code> and <code>postrouting</code> chains.</p>
+<p>The <code>ipv4-fasttrack-active</code>, <code>ipv4-fasttrack-packets</code> and <code>ipv4-fasttrack-bytes</code> values of <code>/ip/settings</code> show the same for the whole router.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<p>IPv4 FastTrack is active when all of these conditions are met:</p>
+<ul>
+<li>The packet sniffer, Torch, IP scan and MAC scan are not running. They turn FastTrack off while they run and the router turns it back on when they stop.</li>
+<li>FastPath is allowed in <code>/ip/settings</code>.</li>
+<li>Bridge FastPath is enabled, if the connection passes through a bridge interface.</li>
+</ul>
+<p>FastPath and FastTrack can both be enabled, but only one of them is active at a time.</p>
+<p>The <a href="./packet-flow-in-routeros">Packet flow</a> page shows where FastTrack sits in the packet flow.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L2TP · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Virtual Private Networks</p>
+      <h1 id="l2tp">L2TP</h1>
+<h1 id="l2tp_1">L2TP</h1>
+<blockquote>
+<p>L2TP in RouterOS: set up an L2TP server and client, protect the tunnel with IPsec, open the firewall for it, carry large packets and bridge Ethernet over the PPP link, use L2TPv3, and connect two sites at layer 2...</p>
+</blockquote>
+<h1 id="l2tp_2">L2TP</h1>
+<p>The Layer Two Tunneling Protocol (L2TP, <a href="https://tools.ietf.org/html/rfc2661">RFC 2661</a>) carries a PPP link over an IP network. RouterOS uses it in two ways:</p>
+<ul>
+<li>An L2TP server gives remote users and remote routers a PPP connection into the network. The users and their settings are in the PPP user database or on a RADIUS server: see <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</li>
+<li>L2TP Ether connects two sites at layer 2: it carries Ethernet frames with L2TPv3 (<a href="https://tools.ietf.org/html/rfc3931">RFC 3931</a>).</li>
+</ul>
+<p>L2TP runs over IPv4 and IPv6. It uses UDP port 1701 for both the control and the data packets, so it passes most firewalls and NAT.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>L2TP does not encrypt the traffic. Use it with IPsec when the tunnel crosses a network that you do not trust.</p>
+</div>
+<p><em>[gambar: An L2TP client connects to an L2TP server over the internet]</em></p>
+<h2 id="set-up-a-server-and-a-client">Set up a server and a client</h2>
+<p>On the server, add a pool, a profile and a user, and enable the L2TP server. The router gets the address 10.0.0.1 inside the tunnels:</p>
+<pre><code class="language-ros">/ip/pool/add name=vpn-pool ranges=10.0.0.10-10.0.0.100
+/ppp/profile/add name=vpn local-address=10.0.0.1 \
+    remote-address=vpn-pool
+/ppp/secret/add name=alice password=Example-pass-1 profile=vpn \
+    service=l2tp
+/interface/l2tp-server/server/set enabled=yes default-profile=vpn
+</code></pre>
+<p>On the client, a RouterOS router in this example, add an L2TP client with the address of the server:</p>
+<pre><code class="language-ros">/interface/l2tp-client/add name=l2tp-office connect-to=203.0.113.1 \
+    user=alice password=Example-pass-1 disabled=no
+</code></pre>
+<p>The client shows the state and the addresses of the link:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /interface/l2tp-client/monitor l2tp-office once
+               status: connected           
+               uptime: 10s                 
+             encoding:                     
+                  mtu: 1450                
+                  mru: 1450                
+        local-address: 10.0.0.100          
+       remote-address: 10.0.0.1            
+   local-ipv6-address: fe80::978e:f47e:0:5 
+  remote-ipv6-address: fe80::2562:b1b9:f0:0
+</code></pre>
+<p>The server adds a dynamic interface for the user and lists the user in <code>/ppp/active</code>:</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/l2tp-server/print detail
+Flags: D - DYNAMIC; R - RUNNING
+0 DR name=&quot;&lt;l2tp-alice&gt;&quot; user=&quot;alice&quot; mtu=1450 mru=1450
+     client-address=&quot;203.0.113.2&quot; uptime=10s encoding=&quot;&quot;
+</code></pre>
+<ul>
+<li>An empty <code>encoding</code> means that the link is not encrypted.</li>
+<li>To send the traffic for the office network through the tunnel, add a route on the client with the client interface as the gateway, or set <code>add-default-route=yes</code> to send all traffic through it.</li>
+<li>The client and the server both use UDP port 1701. With <code>random-source-port=yes</code> the client uses a random source port.</li>
+</ul>
+<h2 id="protect-the-tunnel-with-ipsec">Protect the tunnel with IPsec</h2>
+<p>With <code>use-ipsec</code>, the server and the client add the IPsec configuration for the tunnel themselves. Both sides need the same <code>ipsec-secret</code>:</p>
+<pre><code class="language-ros">/interface/l2tp-server/server/set use-ipsec=required \
+    ipsec-secret=Example-ipsec-secret-1
+</code></pre>
+<pre><code class="language-ros">/interface/l2tp-client/set l2tp-office use-ipsec=yes \
+    ipsec-secret=Example-ipsec-secret-1
+</code></pre>
+<ul>
+<li><code>use-ipsec=yes</code> on the server accepts clients with and without IPsec. <code>use-ipsec=required</code> refuses a client without IPsec, and the log of the server has <code>L2TP connection rejected no IPsec encryption while it was required</code>.</li>
+<li>The server adds a dynamic IPsec peer <code>l2tp-in-server</code> and, for each client, a dynamic policy for UDP port 1701 in transport mode. The client adds a dynamic peer and policy with the name of its interface.</li>
+<li>Several clients behind the same NAT address cannot use L2TP with IPsec at the same time in this mode.</li>
+<li>Microsoft Windows uses L2TP with IPsec by default.</li>
+<li>Take care if the router also has static IPsec peers: the dynamic peer of the L2TP server listens for all addresses.</li>
+</ul>
+<p>When IPsec protects the link, <code>encoding</code> shows the algorithms:</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/l2tp-server/print detail
+Flags: D - DYNAMIC; R - RUNNING
+0 DR name=&quot;&lt;l2tp-alice&gt;&quot; user=&quot;alice&quot; mtu=1450 mru=1450
+     client-address=&quot;203.0.113.2&quot; uptime=25s encoding=&quot;cbc(aes) + hmac(sha1)&quot;
+</code></pre>
+<h2 id="allow-l2tp-in-the-firewall">Allow L2TP in the firewall</h2>
+<p>The default firewall drops connections that come from the internet. For L2TP with IPsec, accept IKE, IPsec ESP, and UDP port 1701 only when IPsec protects it. Put the rules before the default drop rule:</p>
+<pre><code class="language-ros">/ip/firewall/filter
+add chain=input action=accept protocol=udp dst-port=500,4500 \
+    in-interface-list=WAN comment=&quot;accept IKE&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept protocol=ipsec-esp \
+    in-interface-list=WAN comment=&quot;accept IPsec ESP&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+add chain=input action=accept protocol=udp dst-port=1701 \
+    ipsec-policy=in,ipsec in-interface-list=WAN \
+    comment=&quot;accept L2TP over IPsec&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<p>All three rules are needed: the client connects only when the last one is in place. UDP port 4500 is used when there is NAT between the client and the server.</p>
+<p>For L2TP without IPsec, one rule accepts UDP port 1701, without <code>ipsec-policy</code>.</p>
+<p>A connected user can reach the devices of the LAN, but not the services of the router. <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> shows how to limit what the users reach.</p>
+<h2 id="connect-a-branch-office">Connect a branch office</h2>
+<p>An L2TP client on a branch router connects the branch network to the office. The tunnel is a routed link, so each side needs a route to the network of the other side. In this example the office LAN is 192.168.88.0/24 and the branch LAN is 192.168.2.0/24.</p>
+<p>On the office router, give the branch a fixed address and a route to its LAN in the user entry. The router adds the route when the branch connects:</p>
+<pre><code class="language-ros">/ppp/secret/add name=branch1 password=Example-pass-2 profile=vpn \
+    service=l2tp remote-address=10.0.0.5 \
+    routes=&quot;192.168.2.0/24 10.0.0.5 1&quot;
+</code></pre>
+<p>On the branch router, add the client and a route to the office LAN through it:</p>
+<pre><code class="language-ros">/interface/l2tp-client/add name=l2tp-office connect-to=203.0.113.1 \
+    user=branch1 password=Example-pass-2 use-ipsec=yes \
+    ipsec-secret=Example-ipsec-secret-1 disabled=no
+/ip/route/add dst-address=192.168.88.0/24 gateway=l2tp-office
+</code></pre>
+<ul>
+<li>The two LANs must use different networks.</li>
+<li>For a tunnel between two routers with static addresses, <a href="../ipsec/site-to-site">IPsec</a> or <a href="../wireguard">WireGuard</a> needs no PPP users.</li>
+</ul>
+<h2 id="send-large-packets-and-bridge-ethernet">Send large packets and bridge Ethernet</h2>
+<p>The MTU of an L2TP link is 1450 bytes by default, so a 1500-byte packet that must not be fragmented does not pass. Multilink PPP splits such packets and joins them on the other side. Set <code>mrru</code> on the server and on the client:</p>
+<pre><code class="language-ros">/interface/l2tp-server/server/set mrru=1600
+</code></pre>
+<pre><code class="language-ros">/interface/l2tp-client/set l2tp-office mrru=1600
+</code></pre>
+<p>A PPP link can also carry Ethernet frames, with the Bridge Control Protocol (BCP). Name a bridge in the PPP profile on both sides, and the router adds the link to the bridge as a dynamic port when the user connects:</p>
+<pre><code class="language-ros">/ppp/profile/set vpn bridge=bridge
+</code></pre>
+<ul>
+<li>Set <code>mrru</code> as well, so that full-size Ethernet frames pass.</li>
+<li>A PPP link has no MAC address. The bridge needs an Ethernet-like port or a MAC address that you set (<code>admin-mac</code>).</li>
+<li>To connect two sites at layer 2 only, L2TP Ether is simpler.</li>
+</ul>
+<h2 id="use-l2tpv3">Use L2TPv3</h2>
+<p>The client uses L2TP version 2 by default. <code>l2tp-proto-version</code> selects version 3 over UDP (<code>l2tpv3-udp</code>) or directly over IP (<code>l2tpv3-ip</code>, IP protocol 115). Version 3 needs a circuit ID on the client:</p>
+<pre><code class="language-ros">/interface/l2tp-client/set l2tp-office \
+    l2tp-proto-version=l2tpv3-udp l2tpv3-circuit-id=office
+</code></pre>
+<p>The server accepts both versions by default. <code>accept-proto-version</code> of the server limits it to one, and <code>accept-pseudowire-type</code> limits it to PPP sessions (<code>ppp</code>) or to Ethernet sessions (<code>ether</code>).</p>
+<h2 id="connect-two-sites-at-layer-2-with-l2tp-ether">Connect two sites at layer 2 with L2TP Ether</h2>
+<p>An L2TP Ether tunnel carries Ethernet frames between two routers. One router connects to the other:</p>
+<ul>
+<li>The active side has an <code>/interface/l2tp-ether</code> entry with the address of the other router in <code>connect-to</code>.</li>
+<li>The passive side has the L2TP server enabled.</li>
+</ul>
+<p>On the passive side, enable the server and add an interface for the tunnel. <code>connect-to=0.0.0.0</code> makes it wait for the connection, and <code>circuit-id</code> names the tunnel:</p>
+<pre><code class="language-ros">/interface/l2tp-server/server/set enabled=yes
+/interface/l2tp-ether/add name=l2tp-site1 connect-to=0.0.0.0 \
+    circuit-id=site1
+</code></pre>
+<p>On the active side, use the same circuit ID:</p>
+<pre><code class="language-ros">/interface/l2tp-ether/add name=l2tp-ether1 connect-to=203.0.113.1 \
+    circuit-id=site1
+</code></pre>
+<p>Add the interface to the LAN bridge on each side (<code>l2tp-ether1</code> on the active side), and the two networks are one layer 2 network. Both sides then share one network: use one DHCP server and different addresses for the two routers.</p>
+<pre><code class="language-ros">/interface/bridge/port/add bridge=bridge interface=l2tp-site1
+</code></pre>
+<p><code>monitor</code> shows the state of the tunnel:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /interface/l2tp-ether/monitor l2tp-ether1 once
+           status: link up    
+       circuit-id: site1      
+    cookie-length: 0          
+    header-format: L2TPv3 UDP 
+      l2-sublayer: no         
+   remote-sess-id: 33         
+    local-sess-id: 125        
+  control-conn-id: 104        
+     peer-address: 203.0.113.1
+           uptime: 17s        
+</code></pre>
+<ul>
+<li>The MTU of the interface is 1450 bytes. Check that the bridge and the devices behind it can work with this MTU.</li>
+<li><code>l2tp-proto-version=l2tpv3-ip</code> on the active side carries the tunnel directly over IP and not over UDP.</li>
+<li><code>use-ipsec</code> and <code>ipsec-secret</code> protect the tunnel in the same way as for an L2TP client, and the firewall rules for L2TP with IPsec apply. On the passive side, these settings and the cookie and digest settings are in <code>/interface/l2tp-server/server</code>, not in the interface.</li>
+<li>A static tunnel without a control connection is also possible: <code>unmanaged-mode</code> with the tunnel IDs, session IDs and cookies set by hand. See the <a href="../../cli-reference/interface/l2tp-ether/">CLI reference</a>.</li>
+</ul>
+<h3 id="dynamic-interfaces-on-the-passive-side">Dynamic interfaces on the passive side</h3>
+<p>When the active side has no circuit ID, the passive side does not need an interface: the server adds a dynamic one for each tunnel.</p>
+<pre><code class="language-ros">[admin@Server] &gt; /interface/l2tp-ether/print detail
+Flags: D - DYNAMIC; R - RUNNING
+0 DR name=&quot;&lt;l2eth-23&gt;&quot; mtu=auto actual-mtu=1450 connect-to=0.0.0.0
+     mac-address=FE:36:0B:1B:B5:5E use-ipsec=no allow-fast-path=no
+     l2tp-proto-version=l2tpv3-udp circuit-id=&quot;&lt;l2eth-23&gt;&quot; cookie-length=0
+     digest-hash=md5 use-l2-specific-sublayer=no
+</code></pre>
+<p>A dynamic interface gets a new name with each connection. To use it in a bridge, set <code>l2tpv3-ether-interface-list</code> of the server: the server adds each dynamic interface to this interface list, and a bridge port can be an interface list.</p>
+<pre><code class="language-ros">/interface/list/add name=l2tp-ether-ports
+/interface/l2tp-server/server/set \
+    l2tpv3-ether-interface-list=l2tp-ether-ports
+/interface/bridge/port/add bridge=bridge interface=l2tp-ether-ports
+</code></pre>
+<h3 id="troubleshoot-l2tp-ether">Troubleshoot L2TP Ether</h3>
+<p>Log the <code>l2tp</code> topic on the passive side to see why a tunnel does not come up:</p>
+<pre><code class="language-ros">/system/logging/add topics=l2tp,debug action=memory
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">What you see</th>
+<th style="text-align: left;">What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">The active side shows <code>status: link down</code>. The log of the passive side has <code>has reached maximum session count, disconnecting</code>, and the server answers with CDN and <code>Result-Code=4</code>.</td>
+<td style="text-align: left;">The server found no interface for the session. If the active side has a <code>circuit-id</code>, the passive side needs an <code>l2tp-ether</code> interface with <code>connect-to=0.0.0.0</code> and the same <code>circuit-id</code>. Also check <code>max-sessions</code> of the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The tunnel does not come up at all.</td>
+<td style="text-align: left;"><code>accept-proto-version</code> of the server must allow <code>l2tpv3</code>, and <code>accept-pseudowire-type</code> must allow <code>ether</code>. In a firewall, accept UDP port 1701, or IP protocol 115 for <code>l2tpv3-ip</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">The tunnel does not come up after a change of <code>digest-hash</code>.</td>
+<td style="text-align: left;">With <code>digest-hash=none</code> on one side and a hash on the other, the tunnel stays down. Use the same value on the active side and in <code>l2tpv3-digest-hash</code> of the server.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../../cli-reference/interface/l2tp-server/server"><code>/interface/l2tp-server/server</code></a>, <a href="../../cli-reference/interface/l2tp-server/"><code>/interface/l2tp-server</code></a>, <a href="../../cli-reference/interface/l2tp-client/"><code>/interface/l2tp-client</code></a>, <a href="../../cli-reference/interface/l2tp-ether/"><code>/interface/l2tp-ether</code></a></li>
+<li><a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a></li>
+<li><a href="../ipsec/">IPsec</a></li>
+<li><a href="lac-and-lns-setup-with-cisco-as-lac">LAC and LNS setup with Cisco as LAC</a></li>
+</ul>
+<hr />
+<h1 id="lac-and-lns-setup-with-cisco-as-lac">LAC and LNS setup with Cisco as LAC</h1>
+<blockquote>
+<p>This page explains how to configure a MikroTik RouterOS device as an L2TP Network Server (LNS) to establish VPDN connections with a Cisco router acting as an LAC. It includes basic configuration examples for PPPoE...</p>
+</blockquote>
+<h1 id="lac-and-lns-setup-with-cisco-as-lac_1">LAC and LNS setup with Cisco as LAC</h1>
+<p>LAC/LNS setup, otherwise known as Virtual Private DialUp Network (VPDN), allows long-distance point-to-point connection between remote dial-up users and private networks.</p>
+<p>A Dial-up client uses PPPOE to connect to a L2TP access concentrator (LAC), LAC determines that the session should be forwarded through an IP network to the L2TP Network Server (LNS), creates L2TP tunnel and forwards PPP frames to the server where the client is authenticated and the session is established (see diagram below).</p>
+<p>At the time of writing this article RouterOS cannot be used in the LAC role. For this reason, the article will demonstrate how to set up a very basic network with RouterOS as an LNS and a Cisco router as a LAC.</p>
+<h2 id="configuration">Configuration</h2>
+<p>We will be using a simple configuration to demonstrate the very basics of VPDN setup. Let's assume that LAC will forward to the LNS clients with FQDN name containing the <a href="https://mt.lv">mt.lv</a> domain.</p>
+<h3 id="client">Client</h3>
+<p>For the sake of simplicity let's assume that the client is a RouterOS router:</p>
+<pre><code class="language-ros">/interface/pppoe-client/add interface=ether1 user=good_worker@mt.lv password=strongpass
+</code></pre>
+<h3 id="lac">LAC</h3>
+<p>Let's assume that the client is connected to the GigabitEthernet1 port and the IP address of the LNS server is 10.155.101.231</p>
+<pre><code class="language-text">aaa new-model
+!
+aaa authentication ppp default local
+!
+vpdn enable
+vpdn aaa attribute nas-ip-address vpdn-nas
+vpdn search-order domain dnis 
+!
+vpdn-group LAC
+ request-dialin
+  protocol l2tp
+  domain mt.lv
+ initiate-to ip 10.155.101.231
+ source-ip 10.155.101.216
+ local name LAC
+ l2tp tunnel password 0 tunnelpass
+!
+bba-group pppoe MAIN-BBA
+ virtual-template 1
+!
+interface GigabitEthernet1
+ pppoe enable group MAIN-BBA
+!
+interface Virtual-Template1
+ description pppoe MAIN-BBA
+ no ip address
+ no peer default ip address
+ ppp mtu adaptive
+ ppp authentication chap
+!
+
+</code></pre>
+<p>Note that this setup does not authenticate the client either locally or via RADIUS, does not actually check the domain name, does not control L2 access for the sake of simplicity. If you want to use those features, refer to Cisco configuration manuals.</p>
+<h3 id="lns">LNS</h3>
+<p>On the LNS we need to enable L2TP server and set up a method to authenticate the L2TP connection from the LAC.</p>
+<pre><code class="language-ros">/interface/l2tp-server/server
+set enabled=yes
+/ppp/l2tp-secret
+add address=10.155.101.216/32 secret=tunnelpass
+</code></pre>
+<p>Now the actual user authentication. In this case we will be using a local authentication method for the sake of simplicity.</p>
+<pre><code class="language-ros">/ip/pool
+add name=pool0 ranges=192.168.99.2-192.168.99.99
+/ppp/profile
+set default local-address=192.168.99.1 remote-address=pool0
+/ppp/secret
+add name=good_worker@mt.lv password=strongpass
+</code></pre>
+<h2 id="status-check">Status Check</h2>
+<p>On the LNS you can see all successfully connected clients by checking l2tp server interfaces or checking active ppp connections:</p>
+<pre><code class="language-text">[admin@CHR_v6_bgp] /interface/l2tp-server&gt; print
+Flags: X - disabled, D - dynamic, R - running
+# NAME USER MTU CLIENT-ADDRESS UPTIME ENCODING
+0 DR &lt;l2tp-... good_worker@mt.lv 1450 10.155.101.216 6h13m49s
+
+[admin@CHR_v6_bgp] /ppp/active&gt; print
+Flags: R - radius
+# NAME SERVICE CALLER-ID ADDRESS UPTIME ENCODING
+0 good_worker@mt.lv l2tp 10.155.101.216 192.168.99.2 6h15m57s 
+
+</code></pre>
+<p>On the LAC we can also see active client sessions and an active L2TP tunnel between LAC and LNS:</p>
+<pre><code class="language-text">csrLAC#show vpdn
+
+L2TP Tunnel and Session Information Total tunnels 1 sessions 1
+
+LocTunID RemTunID Remote Name State Remote Address Sessn L2TP Class/
+Count VPDN Group
+26090 11 CHR_v6_bgp est 10.155.101.231 1 LAC
+
+LocID RemID TunID Username, Intf/ State Last Chg Uniq ID
+Vcid, Circuit
+18521 16 26090 good_worker@mt.lv, Gi1 est 06:17:07 571
+
+</code></pre>
+<h2 id="session-establishment">Session Establishment</h2>
+<p>Let's look closely at how client sessions get authenticated and established over the LAC.</p>
+<ul>
+<li>Client initiates PPPoE call.</li>
+<li>LAC and Client begin LCP negotiation.</li>
+<li>After CHAP has been negotiated, LAC sends CHAP challenge.</li>
+<li>Client sends CHAP response.</li>
+<li>LAC checks whether client session should be forwarded to the LNS based on received domain name. The check can be done locally or using a RADIUS server. Client also can be authenticated here before forwarding session.</li>
+<li>LAC brings up an L2TP tunnel.</li>
+<li>LNS checks if the LAC is allowed to open a tunnel and run the authentication process. The Tunnel is up and ready to forward VPDN sessions.</li>
+<li>LAC forwards LCP options negotiated with the client, username and password to the LNS.</li>
+<li>LNS authenticates the client locally or using RADIUS and sends a CHAP Success or CHAP Failure message.</li>
+<li>IP Control Protocol (IPCP) phase is performed, IP addresses and routes are installed. At this point the session is considered established.</li>
+</ul>
+<hr />
+<h1 id="openvpn">OpenVPN</h1>
+<blockquote>
+<p>OpenVPN in RouterOS: set up an OpenVPN server with a certificate, connect a RouterOS client, choose the cipher and the transport, require client certificates, push routes, export and import .ovpn files, open the...</p>
+</blockquote>
+<h1 id="openvpn_1">OpenVPN</h1>
+<p>OpenVPN is a VPN protocol that uses TLS. Clients exist for Linux, Windows, macOS and other systems, which makes it a common choice for remote access from computers and phones. RouterOS has its own implementation of an OpenVPN server and client.</p>
+<ul>
+<li>A tunnel carries routed IP traffic (<code>mode=ip</code>, known as <code>tun</code>) or Ethernet frames (<code>mode=ethernet</code>, known as <code>tap</code>).</li>
+<li>It runs over TCP or UDP, on port 1194 by default, with IPv4 and IPv6.</li>
+<li>The users and their settings are in the PPP user database or on a RADIUS server: see <a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a>.</li>
+</ul>
+<p><em>[gambar: Two remote clients connect to the office router and reach a host and a network behind it]</em></p>
+<h2 id="limitations">Limitations</h2>
+<p>RouterOS does not support all features of OpenVPN, and not all unsupported features are listed here. The most important ones:</p>
+<ul>
+<li>LZO compression. Compression is deprecated in OpenVPN and not recommended: tunnels with compression are open to the VORACLE attack.</li>
+<li>Cipher negotiation (NCP). The cipher must be set in the <code>.ovpn</code> file of a client that connects to a RouterOS server. The file that RouterOS exports has it.</li>
+<li><code>tls-auth</code>, <code>tls-crypt</code> and <code>tls-crypt v2</code> work only in the RouterOS client, and only when the configuration is imported from a <code>.ovpn</code> file.</li>
+</ul>
+<p>A password can have up to 1000 characters.</p>
+<h2 id="set-up-a-server">Set up a server</h2>
+<p>The server needs a certificate. <a href="../authentication-authorization-accounting/certificates">Certificates</a> explains how to create and sign one. In this example the certificate has the name <code>ovpn-server</code> and contains the address of the router, 203.0.113.1.</p>
+<p>Add a pool, a profile and a user, and then the server:</p>
+<pre><code class="language-ros">/ip/pool/add name=vpn-pool ranges=10.0.0.10-10.0.0.100
+/ppp/profile/add name=vpn local-address=10.0.0.1 \
+    remote-address=vpn-pool
+/ppp/secret/add name=alice password=Example-pass-1 profile=vpn \
+    service=ovpn
+/interface/ovpn-server/server/add name=ovpn-server1 \
+    certificate=ovpn-server default-profile=vpn protocol=udp \
+    auth=sha256 cipher=aes256-gcm disabled=no
+</code></pre>
+<ul>
+<li>A new server allows only the ciphers <code>blowfish128</code> and <code>aes128-cbc</code>, and a RouterOS client uses <code>blowfish128</code> with <code>sha1</code> by default. These are old algorithms: set <code>cipher</code> and <code>auth</code> as in the example.</li>
+<li>A new server uses TCP. UDP has less overhead and is the usual choice.</li>
+<li>The certificates have dates. Set the <a href="../system-information-and-utilities/clock">clock</a> of the server and of the clients correctly, for example with NTP, or the certificate check fails.</li>
+</ul>
+<h2 id="connect-a-routeros-client">Connect a RouterOS client</h2>
+<p>Add a client with the same protocol, cipher and authentication as the server:</p>
+<pre><code class="language-ros">/interface/ovpn-client/add name=ovpn-office connect-to=203.0.113.1 \
+    protocol=udp auth=sha256 cipher=aes256-gcm \
+    user=alice password=Example-pass-1 disabled=no
+</code></pre>
+<p><code>/interface/ovpn-client/monitor ovpn-office once</code> shows <code>status: connected</code> and the algorithms in <code>encoding</code>, here <code>AES-256-GCM/SHA256</code>. The server adds a dynamic interface <code>&lt;ovpn-alice&gt;</code> for the user, and <code>/ppp/active</code> lists the user with the service <code>ovpn</code>.</p>
+<ul>
+<li>When the cipher or the authentication of the client is not allowed on the server, the client shows <code>terminating... - peer disconnected</code>.</li>
+<li>With a GCM cipher, <code>auth=null</code> also works, because the cipher authenticates the packets itself.</li>
+<li>To reach the networks behind the server, add routes on the client with the client interface as the gateway, or let the server push them.</li>
+</ul>
+<h2 id="check-the-server-certificate-and-require-client-certificates">Check the server certificate and require client certificates</h2>
+<p>Without more settings, the client does not check the certificate of the server. To check it, import the certificate authority (CA) that signed it on the client as a trusted certificate and set:</p>
+<pre><code class="language-ros">/interface/ovpn-client/set ovpn-office verify-server-certificate=yes
+</code></pre>
+<p>The client then also checks that the address or name in <code>connect-to</code> is in the certificate.</p>
+<p>The server can ask each client for a certificate. The client certificate must be signed by a CA that the server trusts:</p>
+<pre><code class="language-ros">/interface/ovpn-server/server/set [find name=ovpn-server1] \
+    require-client-certificate=yes
+</code></pre>
+<pre><code class="language-ros">/interface/ovpn-client/set ovpn-office certificate=ovpn-client
+</code></pre>
+<p>A client without a certificate is then refused with <code>TLS error: ssl: unknown certificate</code>.</p>
+<h2 id="push-routes-to-the-clients">Push routes to the clients</h2>
+<p>The server can send routes to the clients, so that they do not need static routes. Each route is <code>network netmask gateway</code>, and several routes are separated with commas:</p>
+<pre><code class="language-ros">/interface/ovpn-server/server/set [find name=ovpn-server1] \
+    push-routes=&quot;192.168.88.0 255.255.255.0 10.0.0.1&quot;
+</code></pre>
+<p>The client adds the route when it connects:</p>
+<pre><code class="language-ros">[admin@Client] &gt; /ip/route/print where gateway~&quot;ovpn|10.0.0.1&quot;
+Flags: D - DYNAMIC; A - ACTIVE; c - CONNECT, v - VPN
+Columns: DST-ADDRESS, GATEWAY, ROUTING-TABLE, DISTANCE
+    DST-ADDRESS      GATEWAY      ROUTING-TABLE  DISTANCE
+DAc 10.0.0.0/24      ovpn-office  main                  0
+DAv 192.168.88.0/24  10.0.0.1     main                  1
+</code></pre>
+<ul>
+<li><code>push-routes</code> can have up to 1400 characters or 37 routes. <code>push-routes-ipv6</code> has the IPv6 routes, for example <code>push-routes-ipv6="fdaa::/64,2001:db8::/32"</code>.</li>
+<li><code>redirect-gateway=def1</code> sends all traffic of the clients through the tunnel. The client adds the routes 0.0.0.0/1 and 128.0.0.0/1, which take precedence over its default route.</li>
+<li><code>route-nopull=yes</code> on a RouterOS client ignores the routes of the server.</li>
+</ul>
+<h2 id="export-a-configuration-file-for-other-clients">Export a configuration file for other clients</h2>
+<p><code>export-client-configuration</code> writes a <code>.ovpn</code> file that OpenVPN clients on computers and phones can import. It needs the CA certificate, a client certificate and its key as files, and the server must have <code>require-client-certificate=yes</code>. In this example <code>vpn-ca</code> is the CA that signed the server certificate and <code>ovpn-client</code> is a client certificate that this CA signed; make one client certificate for each user. Export the client certificate with its key first:</p>
+<pre><code class="language-ros">/certificate/export-certificate ovpn-client file-name=client1 \
+    export-passphrase=Example-key-pass-1
+/certificate/export-certificate vpn-ca file-name=vpn-ca
+/interface/ovpn-server/server/export-client-configuration \
+    server=ovpn-server1 server-address=203.0.113.1 \
+    ca-certificate=vpn-ca.crt client-certificate=client1.crt \
+    client-cert-key=client1.key
+</code></pre>
+<p>The command writes a file with a name such as <code>client1795166484.ovpn</code>. It has the address, the port, the protocol and the cipher of the server, and the three certificates. The users also need their user name and password: the file asks for them (<code>auth-user-pass</code>). Copy the file from the <a href="../system-information-and-utilities/files">files</a> of the router.</p>
+<p>The file has the private key of the client. Send it to the user in a safe way, and give the passphrase of the key in another way.</p>
+<p>Two more example files, for a client and for an OpenVPN server on another system: <a href="pathname:///assets/291241994_client-1.ovpn">client-1.ovpn</a>, <a href="pathname:///assets/291241995_server-1.conf">server-1.conf</a>.</p>
+<h2 id="import-a-configuration-file-on-a-routeros-client">Import a configuration file on a RouterOS client</h2>
+<p>A RouterOS client can be made from a <code>.ovpn</code> file. Copy the file to the router and import it with the user name, the password and the passphrase of the key:</p>
+<pre><code class="language-ros">/interface/ovpn-client/import-ovpn-configuration \
+    file-name=office.ovpn ovpn-user=alice \
+    ovpn-password=Example-pass-1 key-passphrase=Example-key-pass-1
+</code></pre>
+<ul>
+<li>The command adds a disabled client interface with a name such as <code>ovpn-import1795166676</code>, and imports the certificates of the file. Check the settings and enable the interface.</li>
+<li>Import the file on a router that does not have its certificates yet. <code>skip-cert-import=yes</code> imports the settings without the certificates.</li>
+<li>A RouterOS client always sends a user name and a password. A server that authenticates with certificates only ignores them.</li>
+</ul>
+<h3 id="tls-authentication-keys">TLS authentication keys</h3>
+<p><code>tls-auth</code> and <code>tls-crypt</code> add a shared key that protects the TLS handshake. The RouterOS client supports them only through the import of a <code>.ovpn</code> file that has the key:</p>
+<pre><code class="language-text">key-direction 1
+&lt;tls-auth&gt;
+#
+# 2048 bit OpenVPN static key
+#
+-----BEGIN OpenVPN Static key V1-----
+-----END OpenVPN Static key V1-----
+&lt;/tls-auth&gt;
+</code></pre>
+<p>For <code>tls-crypt</code> and <code>tls-crypt v2</code>, the other system needs <code>auth SHA256</code> and no <code>key-direction</code> in the server configuration, and <code>auth SHA256</code> with <code>key-direction 1</code> in the client configuration.</p>
+<h2 id="carry-ethernet-frames">Carry Ethernet frames</h2>
+<p>With <code>mode=ethernet</code> on the server and on the client, the tunnel carries Ethernet frames. The client gets an address with the netmask set in <code>netmask</code> of the server (24 by default).</p>
+<h2 id="allow-openvpn-in-the-firewall">Allow OpenVPN in the firewall</h2>
+<p>The default firewall drops connections that come from the internet. Accept the port of the server before the default drop rule, with the protocol that the server uses:</p>
+<pre><code class="language-ros">/ip/firewall/filter/add chain=input action=accept protocol=udp \
+    dst-port=1194 in-interface-list=WAN comment=&quot;accept OpenVPN&quot; \
+    place-before=[find comment=&quot;defconf: drop all not coming from LAN&quot;]
+</code></pre>
+<h2 id="use-a-vrf">Use a VRF</h2>
+<p><code>vrf</code> of a server sets the VRF in which it listens for connections. The default is <code>main</code>.</p>
+<pre><code class="language-ros">/interface/ovpn-server/server/set [find name=ovpn-server1] vrf=vrf1
+</code></pre>
+<h2 id="troubleshoot">Troubleshoot</h2>
+<p><code>monitor</code> on the client shows the reason of a failed connection in <code>status</code>, and the log has the same text under the topic <code>ovpn</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Status of the client</th>
+<th style="text-align: left;">What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>disconnected</code>, or it stays at <code>link established</code></td>
+<td style="text-align: left;">The server is not reached. Check the address, the port, that the client and the server use the same <code>protocol</code>, and the firewall of the server. With <code>verify-server-certificate=yes</code>, also check that the address in <code>connect-to</code> is in the certificate of the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>terminating... - peer disconnected</code></td>
+<td style="text-align: left;">The cipher or the authentication of the client is not allowed on the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TLS error: ssl: no trusted CA certificate found</code></td>
+<td style="text-align: left;"><code>verify-server-certificate=yes</code> is set and the CA of the server is not a trusted certificate on the client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TLS error: ssl: unknown certificate</code></td>
+<td style="text-align: left;">The server requires a client certificate and the client has none.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-more_1">Read more</h2>
+<ul>
+<li><a href="../cli-reference/interface/ovpn-server/server/"><code>/interface/ovpn-server/server</code></a>, <a href="../cli-reference/interface/ovpn-server/"><code>/interface/ovpn-server</code></a>, <a href="../cli-reference/interface/ovpn-client/"><code>/interface/ovpn-client</code></a></li>
+<li><a href="../authentication-authorization-accounting/ppp-aaa">PPP AAA</a></li>
+<li><a href="../authentication-authorization-accounting/certificates">Certificates</a></li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

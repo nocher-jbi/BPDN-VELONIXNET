@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>container · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="container">container</h1>
+<h1 id="container_1">container</h1>
+<blockquote>
+<p>Containers run Linux container images (OCI) on the router. The container package must be installed and the container feature enabled in device-mode. See Container.</p>
+</blockquote>
+<hr />
+<h2 id="container_2">container</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Directory</p>
+<p>Containers run Linux container images (OCI) on the router. The <code>container</code> package must be installed and the container feature enabled in device-mode. See <a href="../../containers/">Container</a>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>S</strong> <code>stopped</code> — The container is stopped.</li>
+<li><strong>N</strong> <code>starting</code> — The container is starting.</li>
+<li><strong>R</strong> <code>running</code> — The container is running.</li>
+<li><strong>T</strong> <code>stopping</code> — The container is stopping.</li>
+<li><strong>E</strong> <code>downloading/extracting</code> — The image is being downloaded and extracted.</li>
+<li><strong>D</strong> <code>deleting</code> — The container is being deleted.</li>
+<li><strong>F</strong> <code>download/extract failed</code> — Downloading or extracting the image failed.</li>
+<li><strong>C</strong> <code>starting-with-healthcheck</code> — The container is starting and its healthcheck has not passed yet.</li>
+<li><strong>H</strong> <code>healthy</code> — The healthcheck passes.</li>
+<li><strong>U</strong> <code>unhealthy</code> — The healthcheck fails.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>file</code> — Image archive to create the container from, for example from <code>podman save</code> or <code>/container/save</code>.</li>
+<li><strong>remote-image</strong> <code>string</code> — Image to download from the registry, for example <code>pihole/pihole</code> or <code>nginx:alpine</code>. The registry is set in <code>/container/config</code>.</li>
+<li><strong>ignore-remote-image-change</strong> <code>bool</code></li>
+<li><strong>check-certificate</strong> <code>bool</code> — Verifies the registry's HTTPS certificate when the image is downloaded. Default: <code>yes</code>.</li>
+<li><strong>name</strong> <code>string</code> — Name of the container.</li>
+<li><strong>privileged</strong> <code>bool</code></li>
+<li><strong>interface</strong> <code>multi { interface: iface_enum
+ }</code> — veth interface of the container (see <a href="../interface/veth">veth</a>).</li>
+<li><strong>env</strong> <code>object { key-and-value-element: super { !
+, key-and-value: composite { key: string
+, value: string
+ }
+ }
+ }</code> — Environment variables set directly on the container, for example <code>env=FOO=1,BAR=2</code>.</li>
+<li><strong>envlists</strong> <code>multi { envlist: enum
+ }</code> — Lists of environment variables from <code>/container/envs</code> to use in the container.</li>
+<li><strong>labels</strong> <code>object { key-and-value: composite { key: string
+, value: string
+ }
+ }</code></li>
+<li><strong>entrypoint</strong> <code>multi { cmd: string
+ }</code> — Executable that runs when the container starts, replacing the image's entrypoint. Example: <code>/bin/sh</code>.</li>
+<li><strong>cmd</strong> <code>multi { cmd: string
+ }</code> — Arguments for the entrypoint, or the command to run, replacing the image's default command. A list: when it has several items, separated by commas, each item is passed as one argument, spaces included (<code>cmd="-c,print('hello world')"</code> passes two arguments). A single item is split into arguments at spaces, and single quotes keep words together (<code>cmd="-c 'b c'"</code> passes <code>-c</code> and <code>b c</code>). Double quotes inside the value also separate items, so the text between them stays one argument, spaces included; to pass arguments with spaces, use commas.</li>
+<li><strong>shell</strong> <code>multi { cmd: string
+ }</code> — Shell used to run commands in the container, replacing the image's default shell.</li>
+<li><strong>stop-signal</strong> <code>enum (1-SIGHUP | 2-SIGINT | 3-SIGQUIT | 4-SIGILL | 5-SIGTRAP | 6-SIGABTR | 7-SIGBUS | 8-SIGFPE | 9-SIGKILL | 10-SIGUSR1 | 11-SIGSEGV | 12-SIGUSR2 | 13-SIGPIPE | 14-SIGALRM | 15-SIGTERM | 16-SIGSTKFLT | 17-SIGCHLD | 18-SIGCONT | 19-SIGSTOP | 20-SIGTSTP | 21-SIGTTIN | 22-SIGTTOU | 23-SIGURG | 24-SIGXCPU | 25-SIGXFSZ | 26-SIGVTALRM | 27-SIGPROF | 28-SIGWINCH | 29-SIGIO | 30-SIGPWR | 31-SIGSYS) { 1-SIGHUP:1, 2-SIGINT:2, 3-SIGQUIT:3, 4-SIGILL:4, 5-SIGTRAP:5, 6-SIGABTR:6, 7-SIGBUS:7, 8-SIGFPE:8, 9-SIGKILL:9, 10-SIGUSR1:10, 11-SIGSEGV:11, 12-SIGUSR2:12, 13-SIGPIPE:13, 14-SIGALRM:14, 15-SIGTERM:15, 16-SIGSTKFLT:16, 17-SIGCHLD:17, 18-SIGCONT:18, 19-SIGSTOP:19, 20-SIGTSTP:20, 21-SIGTTIN:21, 22-SIGTTOU:22, 23-SIGURG:23, 24-SIGXCPU:24, 25-SIGXFSZ:25, 26-SIGVTALRM:26, 27-SIGPROF:27, 28-SIGWINCH:28, 29-SIGIO:29, 30-SIGPWR:30, 31-SIGSYS:31 }</code> — Linux signal sent to stop the container. Without it, the image's default stop signal is used (<code>default-stop-signal</code>).</li>
+<li><strong>stop-time</strong> <code>time</code> — Time limit for the container to stop gracefully before the stop signal is sent. Default: <code>10s</code>.</li>
+<li><strong>root-dir</strong> <code>file</code> — Directory where the container's files are stored. Use an attached disk rather than the built-in storage.</li>
+<li><strong>layer-dir</strong> <code>file</code> — Directory for image layers that can be shared between containers.</li>
+<li><strong>mount</strong> <code>object { src-dst-mode: composite { src: file
+, dst-mode: composite { dst: string
+, mode: enum (rw | ro | rw,noexec | ro,noexec)
+ }
+ }
+ }</code> — Mount defined directly on the container, as source on the router and destination in the container.</li>
+<li><strong>tmpfs</strong> <code>object { dst-size-mode: composite { dst: string
+, size-mode: composite { size: num
+, mode: string
+ }
+ }
+ }</code> — Temporary file system mount points in the container. Format: <code>size@dir</code>, for example <code>64M@/tmp</code>.</li>
+<li><strong>mountlists</strong> <code>multi { mountlist: enum
+ }</code> — Lists of mounts from <code>/container/mounts</code> to use in the container.</li>
+<li><strong>shm-size</strong> <code>num</code> — Size of the <code>/dev/shm</code> shared memory file system in the container. Default: <code>64MiB</code>.</li>
+<li><strong>dns</strong> <code>multi { dns-server-ip: address (flags=46)
+ }</code> — DNS servers for the container. Without it, the container uses the router's DNS servers (<code>default-dns</code>).</li>
+<li><strong>default-dns</strong> <code>multi { dns-server-ip: address (flags=46)
+ }</code> — DNS servers taken from the router's <code>/ip/dns</code> configuration.</li>
+<li><strong>hostname</strong> <code>string</code> — Host name of the container.</li>
+<li><strong>domain-name</strong> <code>string</code> — Domain name of the container.</li>
+<li><strong>workdir</strong> <code>string</code> — Working directory for the entrypoint and command.</li>
+<li><strong>logging</strong> <code>bool</code> — Writes the container's output to the RouterOS log (topic <code>container</code>). Default: <code>no</code>.</li>
+<li><strong>start-on-boot</strong> <code>bool</code> — Starts the container when the router starts. Default: <code>no</code>.</li>
+<li><strong>stop-on-unhealthy</strong> <code>bool</code> — If set to <code>yes</code>, the container is stopped when the healthcheck status becomes unhealthy. Default: <code>no</code>.</li>
+<li><strong>restart-policy</strong> <code>enum (no | on-failure | always)</code> — When the router restarts the container: - <code>no</code> (default) - never. - <code>on-failure</code> - when it exits with a non-zero code. - <code>always</code> - always restart.</li>
+<li><strong>restart-max-count</strong> <code>num</code> — Maximum number of restart attempts within <code>restart-interval</code>. Default: <code>0</code>.</li>
+<li><strong>restart-interval</strong> <code>time</code> — Time frame for <code>restart-max-count</code>. Default: <code>0s</code>.</li>
+<li><strong>user</strong> <code>string</code> — User and group the container process runs as, for example <code>0:0</code>.</li>
+<li><strong>cpu-list</strong> <code>multi { cpu: enum
+ }</code> — CPU cores the container may run on.</li>
+<li><strong>memory-high</strong> <code>num</code> — Soft memory limit in bytes: above it, the container's processes are throttled and put under memory reclaim pressure. If both this and the global value are set, the lower one applies. Default: <code>unlimited</code>.</li>
+<li><strong>memory-max</strong> <code>num</code> — Hard memory limit in bytes. A container that exceeds it is killed; <code>/container/print</code> then shows the comment <code>killed due to out of memory</code>. Values below 1 MB are refused. If both this and the global value in <code>/container/config</code> are set, the lower one applies. Default: <code>unlimited</code>.</li>
+<li><strong>swap-max</strong> <code>num</code> — Maximum swap space in bytes for the container. Requires swap on the router (see <a href="../../hardware/disks/">Swap space</a>). Default: <code>unlimited</code>.</li>
+<li><strong>devices</strong> <code>object { dst-size-mode: composite { device: enum
+, container-dev-name: string
+ }
+ }</code> — Router devices passed through to the container, for example <code>devices=serial0:""</code>.</li>
+<li><strong>hosts</strong> <code>object { host-entry: composite { host-name: string
+, host-addr: address (flags=46)
+ }
+ }</code> — Host name to address entries for the container. Format: <code>host=ip</code>.</li>
+<li><strong>healthcheck-cmd</strong> <code>multi { healthcheck-cmd: string
+ }</code> — Command that checks the container's application; exit code 0 means healthy. Without it, the image's healthcheck is used (<code>default-healthcheck-cmd</code>).</li>
+<li><strong>healthcheck-interval</strong> <code>time</code> — Time between healthchecks. Image default or <code>30s</code>.</li>
+<li><strong>healthcheck-timeout</strong> <code>time</code> — A check that takes longer counts as failed. Image default or <code>30s</code>.</li>
+<li><strong>healthcheck-start-period</strong> <code>time</code> — Time after the start during which failed checks are not counted. Image default or <code>0s</code>.</li>
+<li><strong>healthcheck-start-interval</strong> <code>time</code> — Time between checks during the start period. Image default or <code>5s</code>.</li>
+<li><strong>healthcheck-retries</strong> <code>num</code> — Failed checks in a row before the container is unhealthy. Image default or <code>3</code>.</li>
+<li><strong>healthcheck-status</strong> <code>string</code> — Result of the last healthcheck and the command's output, for example <code>good, output:</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>tag</strong> <code>string</code> — Full image reference, for example <code>registry-1.docker.io/library/nginx:alpine</code>.</li>
+<li><strong>os</strong> <code>string</code> — Operating system of the image.</li>
+<li><strong>arch</strong> <code>string</code> — Architecture of the image, for example <code>amd64</code>.</li>
+<li><strong>env-current</strong> <code>object { key-and-value: composite { key: string
+, value: string
+ }
+ }</code> — Environment variables of the running container: from the image, <code>env</code> and <code>envlists</code>.</li>
+<li><strong>image-labels</strong> <code>object { key-and-value: composite { key: string
+, value: string
+ }
+ }</code></li>
+<li><strong>default-entrypoint</strong> <code>string</code> — Entrypoint defined in the image.</li>
+<li><strong>default-cmd</strong> <code>string</code> — Command defined in the image.</li>
+<li><strong>default-shell</strong> <code>string</code> — Shell defined in the image, for example <code>/bin/sh -c</code>.</li>
+<li><strong>default-stop-signal</strong> <code>enum (1-SIGHUP | 2-SIGINT | 3-SIGQUIT | 4-SIGILL | 5-SIGTRAP | 6-SIGABTR | 7-SIGBUS | 8-SIGFPE | 9-SIGKILL | 10-SIGUSR1 | 11-SIGSEGV | 12-SIGUSR2 | 13-SIGPIPE | 14-SIGALRM | 15-SIGTERM | 16-SIGSTKFLT | 17-SIGCHLD | 18-SIGCONT | 19-SIGSTOP | 20-SIGTSTP | 21-SIGTTIN | 22-SIGTTOU | 23-SIGURG | 24-SIGXCPU | 25-SIGXFSZ | 26-SIGVTALRM | 27-SIGPROF | 28-SIGWINCH | 29-SIGIO | 30-SIGPWR | 31-SIGSYS) { 1-SIGHUP:1, 2-SIGINT:2, 3-SIGQUIT:3, 4-SIGILL:4, 5-SIGTRAP:5, 6-SIGABTR:6, 7-SIGBUS:7, 8-SIGFPE:8, 9-SIGKILL:9, 10-SIGUSR1:10, 11-SIGSEGV:11, 12-SIGUSR2:12, 13-SIGPIPE:13, 14-SIGALRM:14, 15-SIGTERM:15, 16-SIGSTKFLT:16, 17-SIGCHLD:17, 18-SIGCONT:18, 19-SIGSTOP:19, 20-SIGTSTP:20, 21-SIGTTIN:21, 22-SIGTTOU:22, 23-SIGURG:23, 24-SIGXCPU:24, 25-SIGXFSZ:25, 26-SIGVTALRM:26, 27-SIGPROF:27, 28-SIGWINCH:28, 29-SIGIO:29, 30-SIGPWR:30, 31-SIGSYS:31 }</code> — Stop signal defined in the image.</li>
+<li><strong>default-workdir</strong> <code>string</code> — Working directory defined in the image.</li>
+<li><strong>restart-count</strong> <code>num</code> — Number of restarts done by <code>restart-policy</code>.</li>
+<li><strong>default-user</strong> <code>string</code> — User defined in the image.</li>
+<li><strong>memory-current</strong> <code>num</code> — Memory the container uses now.</li>
+<li><strong>swap-current</strong> <code>num</code> — Swap the container uses now.</li>
+<li><strong>cpu-usage</strong> <code>num</code> — CPU usage of the container.</li>
+<li><strong>container-size</strong> <code>num</code> — Size of the container's files.</li>
+<li><strong>data-size</strong> <code>num</code> — Size of the container's data.</li>
+<li><strong>image-id</strong> <code>string</code> — Identifier of the image.</li>
+<li><strong>config-json</strong> <code>string</code></li>
+<li><strong>layers</strong> <code>multi { layer: enum
+ }</code> — Image layers used by the container (see <code>/container/layers</code>).</li>
+<li><strong>default-healthcheck-cmd</strong> <code>multi { default-healthcheck-cmd: string
+ }</code> — Healthcheck command defined in the image.</li>
+<li><strong>default-healthcheck-interval</strong> <code>time</code> — Healthcheck interval defined in the image, or <code>30s</code>.</li>
+<li><strong>default-healthcheck-timeout</strong> <code>time</code> — Healthcheck timeout defined in the image, or <code>30s</code>.</li>
+<li><strong>default-healthcheck-start-period</strong> <code>time</code> — Healthcheck start period defined in the image, or <code>0s</code>.</li>
+<li><strong>default-healthcheck-start-interval</strong> <code>time</code> — Healthcheck start interval defined in the image, or <code>5s</code>.</li>
+<li><strong>default-healthcheck-retries</strong> <code>num</code> — Healthcheck retries defined in the image, or <code>3</code>.</li>
+<li><strong>check-update-result</strong> <code>enum (none | checking | up-to-date | update-available)</code></li>
+</ul>
+<hr />
+<h1 id="check-update">check-update</h1>
+<blockquote>
+<p>RouterOS command reference for /container/check-update.</p>
+</blockquote>
+<hr />
+<h2 id="containercheck-update">container/check-update</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>check-certificate</strong> <code>bool</code></li>
+</ul>
+<hr />
+<h1 id="config">config</h1>
+<blockquote>
+<p>Settings for all containers: registry, download directory and global memory limits.</p>
+</blockquote>
+<hr />
+<h2 id="containerconfig">container/config</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Settings Directory</p>
+<p>Settings for all containers: registry, download directory and global memory limits.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>registry-url</strong> <code>string</code> — Registry to download images from, for example <code>https://registry-1.docker.io</code>. When empty, the registry in <code>assumed-registry-url</code> is used.</li>
+<li><strong>username</strong> <code>string</code> — User name for the registry.</li>
+<li><strong>password</strong> <code>string</code> — Password for the registry. It is a <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">sensitive</a> value.</li>
+<li><strong>layer-dir</strong> <code>file</code> — Directory for image layers that containers can share.</li>
+<li><strong>tmpdir</strong> <code>file</code> — Directory where downloaded images are extracted. Use an attached disk.</li>
+<li><strong>memory-high</strong> <code>num</code> — Global soft memory limit for each container. If a container has its own value, the lower one applies. Default: <code>unlimited</code>.</li>
+<li><strong>memory-max</strong> <code>num</code> — Global hard memory limit for each container. If a container has its own value, the lower one applies. Values below 1 MB are refused. Default: <code>unlimited</code>.</li>
+<li><strong>swap-max</strong> <code>num</code> — Global swap limit for each container. If a container has its own value, the lower one applies. Requires swap on the router. Default: <code>unlimited</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>assumed-registry-url</strong> <code>string</code> — Registry used when <code>registry-url</code> is empty: <code>docker.io</code>.</li>
+<li><strong>memory-current</strong> <code>num</code> — Memory all containers use now.</li>
+<li><strong>swap-current</strong> <code>num</code> — Swap all containers use now.</li>
+</ul>
+<hr />
+<h1 id="envs">envs</h1>
+<blockquote>
+<p>Lists of environment variables. A container uses them with envlists.</p>
+</blockquote>
+<hr />
+<h2 id="containerenvs">container/envs</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Directory</p>
+<p>Lists of environment variables. A container uses them with <code>envlists</code>.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The entry is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>list</strong> <code>enum</code> — Name of the list.</li>
+<li><strong>key</strong> <code>string</code> — Name of the variable.</li>
+<li><strong>value</strong> <code>string</code> — Value of the variable.</li>
+</ul>
+<hr />
+<h1 id="kill">kill</h1>
+<blockquote>
+<p>RouterOS command reference for /container/kill.</p>
+</blockquote>
+<hr />
+<h2 id="containerkill">container/kill</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>signal</strong> <code>enum (1-SIGHUP | 2-SIGINT | 3-SIGQUIT | 4-SIGILL | 5-SIGTRAP | 6-SIGABTR | 7-SIGBUS | 8-SIGFPE | 9-SIGKILL | 10-SIGUSR1 | 11-SIGSEGV | 12-SIGUSR2 | 13-SIGPIPE | 14-SIGALRM | 15-SIGTERM | 16-SIGSTKFLT | 17-SIGCHLD | 18-SIGCONT | 19-SIGSTOP | 20-SIGTSTP | 21-SIGTTIN | 22-SIGTTOU | 23-SIGURG | 24-SIGXCPU | 25-SIGXFSZ | 26-SIGVTALRM | 27-SIGPROF | 28-SIGWINCH | 29-SIGIO | 30-SIGPWR | 31-SIGSYS) { 1-SIGHUP:1, 2-SIGINT:2, 3-SIGQUIT:3, 4-SIGILL:4, 5-SIGTRAP:5, 6-SIGABTR:6, 7-SIGBUS:7, 8-SIGFPE:8, 9-SIGKILL:9, 10-SIGUSR1:10, 11-SIGSEGV:11, 12-SIGUSR2:12, 13-SIGPIPE:13, 14-SIGALRM:14, 15-SIGTERM:15, 16-SIGSTKFLT:16, 17-SIGCHLD:17, 18-SIGCONT:18, 19-SIGSTOP:19, 20-SIGTSTP:20, 21-SIGTTIN:21, 22-SIGTTOU:22, 23-SIGURG:23, 24-SIGXCPU:24, 25-SIGXFSZ:25, 26-SIGVTALRM:26, 27-SIGPROF:27, 28-SIGWINCH:28, 29-SIGIO:29, 30-SIGPWR:30, 31-SIGSYS:31 }</code></li>
+</ul>
+<hr />
+<h1 id="layers">layers</h1>
+<blockquote>
+<p>RouterOS directory reference for /container/layers.</p>
+</blockquote>
+<hr />
+<h2 id="containerlayers">container/layers</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code></li>
+<li><strong>layer-dir</strong> <code>string</code></li>
+<li><strong>size</strong> <code>alt { size: num
+, size-state: enum (unavailable | pending | done)
+ }</code></li>
+<li><strong>type</strong> <code>enum (layer | root-dir)</code></li>
+<li><strong>containers</strong> <code>multi { container: enum
+ }</code></li>
+</ul>
+<hr />
+<h1 id="log">log</h1>
+<blockquote>
+<p>RouterOS directory reference for /container/log.</p>
+</blockquote>
+<hr />
+<h2 id="containerlog">container/log</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Directory</p>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>time</strong> <code>date</code> — Time of the entry.</li>
+<li><strong>container</strong> <code>enum</code> — Container that wrote the entry.</li>
+<li><strong>message</strong> <code>string</code> — Text of the entry.</li>
+</ul>
+<hr />
+<h1 id="mounts">mounts</h1>
+<blockquote>
+<p>Lists of mounts: a directory on the router mounted into containers. A container uses them with mountlists. If the source directory does not exist, it is created and filled with the content of the destination in the...</p>
+</blockquote>
+<hr />
+<h2 id="containermounts">container/mounts</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Directory</p>
+<p>Lists of mounts: a directory on the router mounted into containers. A container uses them with <code>mountlists</code>. If the source directory does not exist, it is created and filled with the content of the destination in the image.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The entry is disabled.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>list</strong> <code>enum</code> — Name of the list.</li>
+<li><strong>src</strong> <code>file</code> — Directory on the router, for example <code>disk1/volumes/pihole/pihole</code>.</li>
+<li><strong>dst</strong> <code>string</code> — Directory in the container, for example <code>/etc/pihole</code>.</li>
+<li><strong>mode</strong> <code>enum (rw | ro | rw,noexec | ro,noexec)</code></li>
+</ul>
+<hr />
+<h1 id="repull">repull</h1>
+<blockquote>
+<p>RouterOS command reference for /container/repull.</p>
+</blockquote>
+<hr />
+<h2 id="containerrepull">container/repull</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>file</code></li>
+<li><strong>remote-image</strong> <code>string</code></li>
+</ul>
+<hr />
+<h1 id="restart">restart</h1>
+<blockquote>
+<p>RouterOS command reference for /container/restart.</p>
+</blockquote>
+<hr />
+<h2 id="containerrestart">container/restart</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="save">save</h1>
+<blockquote>
+<p>Saves a container as an OCI image archive. The command returns at once and the archive is written in the background; wait until the file stops growing before you copy it. See Saving a container.</p>
+</blockquote>
+<hr />
+<h2 id="containersave">container/save</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<p>Saves a container as an OCI image archive. The command returns at once and the archive is written in the background; wait until the file stops growing before you copy it. See <a href="../../containers/#saving-a-container">Saving a container</a>.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>file</strong> <code>file</code> — Archive to write, for example <code>disk1/nginx.tar</code>.</li>
+<li><strong>commit</strong> <code>switch</code> — Adds the root directory content as a layer and the container's settings (entrypoint, cmd, environment) to the image configuration, so other container engines see the changes.</li>
+<li><strong>name</strong> <code>string</code> — Image name to save the archive as.</li>
+</ul>
+<hr />
+<h1 id="start">start</h1>
+<blockquote>
+<p>RouterOS command reference for /container/start.</p>
+</blockquote>
+<hr />
+<h2 id="containerstart">container/start</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="stop">stop</h1>
+<blockquote>
+<p>RouterOS command reference for /container/stop.</p>
+</blockquote>
+<hr />
+<h2 id="containerstop">container/stop</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<hr />
+<h1 id="update">update</h1>
+<blockquote>
+<p>RouterOS command reference for /container/update.</p>
+</blockquote>
+<hr />
+<h2 id="containerupdate">container/update</h2>
+<p><strong>Package:</strong> container
+<strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

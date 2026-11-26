@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tr069-client · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="tr069-client">tr069-client</h1>
+<h1 id="tr069-client_1">tr069-client</h1>
+<blockquote>
+<p>Settings of the TR-069 (CWMP) client, which connects the router to an Auto Configuration Server (ACS). The menu is available when the tr069-client package is installed. See TR-069 for setup and the RPCs the router...</p>
+</blockquote>
+<hr />
+<h2 id="tr069-client_2">tr069-client</h2>
+<p><strong>Package:</strong> tr069-client
+<strong>Type:</strong> Settings Directory</p>
+<p>Settings of the TR-069 (CWMP) client, which connects the router to an Auto Configuration Server (ACS). The menu is available when the <code>tr069-client</code> package is installed. See <a href="../../management-tools/tr-069">TR-069</a> for setup and the RPCs the router supports.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>enabled</strong> <code>enum (yes | no)</code> — Enables the CWMP client. When enabled with an <code>acs-url</code>, the client starts a session with the ACS. Default: <code>no</code>.</li>
+<li><strong>acs-url</strong> <code>string</code> — URL of the ACS, <code>http://</code> or <code>https://</code>, for example <code>https://acs.example.com:7547/</code>. For HTTPS with <code>check-certificate=yes</code>, the certificate store must contain the CA certificate that signed the ACS certificate. Changing the URL makes the next Inform carry the <code>0 BOOTSTRAP</code> event, so the new ACS treats the router as a new device. Maps to <code>Device.ManagementServer.URL</code>.</li>
+<li><strong>username</strong> <code>string</code> — Username the router sends to the ACS for HTTP authentication. Over HTTP the router sends the credentials after the ACS asks for them (HTTP 401); over HTTPS it sends them with the first request.</li>
+<li><strong>password</strong> <code>string</code> — Password the router sends to the ACS for HTTP authentication. It is a sensitive value: <code>/export</code> leaves it out unless <code>show-sensitive</code> is given. Changing it does not start a session; the next scheduled or retried session uses it.</li>
+<li><strong>periodic-inform-enabled</strong> <code>bool</code> — Starts a session with the ACS every <code>periodic-inform-interval</code>. The Inform of such a session carries the <code>2 PERIODIC</code> event. Maps to <code>Device.ManagementServer.PeriodicInformEnable</code>. Default: <code>yes</code>.</li>
+<li><strong>periodic-inform-interval</strong> <code>time</code> — Interval between periodic sessions, counted from the end of the last successful session. The ACS can change it through <code>Device.ManagementServer.PeriodicInformInterval</code> (in seconds). Minimum <code>1s</code>. Default: <code>1d</code>.</li>
+<li><strong>connection-request-username</strong> <code>string</code> — Username the ACS must use for Connection Requests, the HTTP requests with which the ACS asks the router to start a session. The router accepts only HTTP Digest authentication. Set a username and password: with both empty, the router accepts a Digest request with empty credentials.</li>
+<li><strong>connection-request-password</strong> <code>string</code> — Password the ACS must use for Connection Requests (HTTP Digest authentication).</li>
+<li><strong>connection-request-port</strong> <code>num</code> — TCP port on which the router listens for Connection Requests. The router reports the full URL, <code>http://&lt;address&gt;:&lt;port&gt;/&lt;random path&gt;</code>, to the ACS as <code>Device.ManagementServer.ConnectionRequestURL</code> in every Inform. The firewall must accept connections to this port from the ACS; the client adds no firewall rule. Default: <code>7547</code>.</li>
+<li><strong>provisioning-code</strong> <code>string</code> — Free-form code that the router sends to the ACS in every Inform as <code>Device.DeviceInfo.ProvisioningCode</code>. An ACS can use it to group devices, for example by service plan or region.</li>
+<li><strong>client-certificate</strong> <code>enum (none)</code> — Certificate (with its private key) from the certificate store that the router presents in the TLS handshake when the ACS asks for a client certificate. Default: <code>none</code>.</li>
+<li><strong>check-certificate</strong> <code>enum (yes | no)</code> — Verifies the HTTPS certificate of the ACS: it must be signed by a CA in the certificate store, and its name must match the host in <code>acs-url</code>. With <code>no</code>, the router connects to any HTTPS server at that URL and sends it the <code>username</code> and <code>password</code>. Default: <code>yes</code>.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>status</strong> <code>enum (disabled | initializing | error | waiting-url | running)</code> — State of the client: - <code>disabled</code> - <code>enabled=no</code>. - <code>waiting-url</code> - enabled, but <code>acs-url</code> is empty. - <code>running</code> - enabled with an ACS URL. The status stays <code>running</code> while sessions fail; check <code>last-session-error</code> and <code>retry-count</code>. - <code>initializing</code>, <code>error</code> - other states the client reports.</li>
+<li><strong>last-session-error</strong> <code>string</code> — Reason the last session failed, for example <code>Connection refused</code>, <code>resolving error</code>, <code>Network unreachable</code>, <code>HTTP error code: 500</code>, <code>HTTP authentication error. Wrong username/password.</code> or an <code>SSL:</code> certificate error. Empty after a successful session.</li>
+<li><strong>retry-count</strong> <code>num</code> — Number of failed sessions in a row. The client retries with a growing delay (seconds at first, then minutes) and sends the count to the ACS in the Inform <code>RetryCount</code>. Resets to 0 after a successful session, when the client is disabled, and after a reboot.</li>
+</ul>
+<hr />
+<h1 id="reset-tr069-config">reset-tr069-config</h1>
+<blockquote>
+<p>Resets the tr069-client configuration and state to defaults without changing the rest of the RouterOS configuration. It is meant for a client that no longer responds or is stuck, so that it can be restored without...</p>
+</blockquote>
+<hr />
+<h2 id="tr069-clientreset-tr069-config">tr069-client/reset-tr069-config</h2>
+<p><strong>Package:</strong> tr069-client
+<strong>Type:</strong> Command</p>
+<p>Resets the tr069-client configuration and state to defaults without changing the rest of the RouterOS configuration. It is meant for a client that no longer responds or is stuck, so that it can be restored without reinstalling RouterOS.</p>
+<hr />
+<h1 id="undo">undo</h1>
+<blockquote>
+<p>RouterOS command reference for /undo.</p>
+</blockquote>
+<hr />
+<h2 id="undo_1">undo</h2>
+<p><strong>Type:</strong> Command</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

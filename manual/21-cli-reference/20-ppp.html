@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ppp · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">CLI Reference</p>
+      <h1 id="ppp">ppp</h1>
+<h1 id="aaa">aaa</h1>
+<blockquote>
+<p>RADIUS authentication and accounting for PPP users. See PPP AAA and RADIUS for the full guides.</p>
+</blockquote>
+<hr />
+<h2 id="pppaaa">ppp/aaa</h2>
+<p><strong>Type:</strong> Settings Directory</p>
+<p>RADIUS authentication and accounting for PPP users. See <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> and <a href="../../authentication-authorization-accounting/radius">RADIUS</a> for the full guides.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>use-radius</strong> <code>bool</code> — Whether the router asks a RADIUS server about users that have no secret on the router. A <a href="../radius/"><code>/radius</code></a> entry with <code>service=ppp</code> must exist. Default: no.</li>
+<li><strong>accounting</strong> <code>bool</code> — Whether the router sends RADIUS accounting requests for PPP sessions. Default: yes.</li>
+<li><strong>use-circuit-id-in-nas-port-id</strong> <code>bool</code></li>
+<li><strong>interim-update</strong> <code>time</code> — Interval of the Interim-Update accounting requests. Default: 0s, none are sent unless the server sets an interval for the session.</li>
+<li><strong>enable-ipv6-accounting</strong> <code>bool</code> — Whether IPv6 traffic is reported separately in the accounting requests. By default the counters have layer 2, IPv4 and IPv6 traffic together. The user needs a prefix from the PPP service and a rate limit, because the counters of the dynamic queue are used. It does not work for prefixes that the dynamic DHCPv6 server delegates (<code>dhcpv6-pd-pool</code>), because DHCP assigns them, not PPP. Default: no.</li>
+</ul>
+<hr />
+<h1 id="active">active</h1>
+<blockquote>
+<p>Connected PPP users. Remove an entry to disconnect the user. See PPP AAA for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="pppactive">ppp/active</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Connected PPP users. Remove an entry to disconnect the user. See <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>R</strong> <code>radius</code> — A RADIUS server authenticated the user.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — User name given at the login.</li>
+<li><strong>service</strong> <code>enum (any | async | pptp | pppoe | l2tp | ovpn | sstp) { any:0, async:1, pptp:2, pppoe:3, l2tp:5, ovpn:6, sstp:7 }</code> — PPP server the user is connected to.</li>
+<li><strong>caller-id</strong> <code>string</code> — Address the user connected from: an IP address for L2TP and PPTP, a MAC address for PPPoE.</li>
+<li><strong>address</strong> <code>ipAddr</code> — Address the user got from the router.</li>
+<li><strong>uptime</strong> <code>time</code> — Time since the user connected.</li>
+<li><strong>encoding</strong> <code>string</code> — Encryption and compression of the link, for example <code>MPPE128 stateless</code>.</li>
+<li><strong>session-id</strong> <code>num</code> — ID of the session.</li>
+<li><strong>limit-bytes-in</strong> <code>num</code> — Number of bytes the user can upload in this session. 0 means no limit.</li>
+<li><strong>limit-bytes-out</strong> <code>num</code> — Number of bytes the user can download in this session. 0 means no limit.</li>
+</ul>
+<hr />
+<h1 id="l2tp-secret">l2tp-secret</h1>
+<blockquote>
+<p>Secrets of L2TP tunnels, by client address. See PPP AAA for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="pppl2tp-secret">ppp/l2tp-secret</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>Secrets of L2TP tunnels, by client address. See <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> for the full guide.</p>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>address</strong> <code>alt { address: ipPrefix
+, ipv6-address: ip6Prefix
+ }</code> — Address or network of the L2TP clients that must use the secret.</li>
+<li><strong>secret</strong> <code>string</code> — Secret of the L2TP tunnel. A client from <code>address</code> that does not use it cannot connect.</li>
+</ul>
+<hr />
+<h1 id="profile">profile</h1>
+<blockquote>
+<p>PPP profiles: settings shared by the users in /ppp/secret and by the PPP servers and clients that use the profile. See PPP AAA for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="pppprofile">ppp/profile</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>PPP profiles: settings shared by the users in <a href="secret"><code>/ppp/secret</code></a> and by the PPP servers and clients that use the profile. See <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li>***** <code>default</code> — Built-in profile (<code>default</code> or <code>default-encryption</code>). It cannot be removed.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the profile.</li>
+<li><strong>local-address</strong> <code>alt { pool: enum
+, address: ipAddr
+ }</code> — Address of the router inside the tunnel, or the name of an <a href="../ip/pool/">IP pool</a> that gives it.</li>
+<li><strong>remote-address</strong> <code>alt { pool: enum
+, address: ipAddr
+ }</code> — Address of the user inside the tunnel, or the name of an <a href="../ip/pool/">IP pool</a> that gives it. An address in the secret takes precedence.</li>
+<li><strong>remote-ipv6-prefix-pool</strong> <code>enum ()</code> — <a href="../ipv6/pool/">IPv6 pool</a> that gives each user a prefix. The router advertises the prefix on the interface of the user and adds a route to it. Default: none.</li>
+<li><strong>remote-ipv6-prefix-reuse</strong> <code>bool</code> — With a <code>remote-ipv6-prefix-pool</code> that holds a single /64 prefix, the prefix can be given to one PPP client only. With <code>yes</code>, the same prefix is given to all clients of the profile. Default: no.</li>
+<li><strong>dhcpv6-pd-pool</strong> <code>enum ()</code> — <a href="../ipv6/pool/">IPv6 pool</a> for prefix delegation. When a user connects, the router adds a dynamic DHCPv6 server on the interface of the user that delegates a prefix from this pool.</li>
+<li><strong>dhcpv6-use-radius</strong> <code>bool</code> — Value of <code>use-radius</code> of the dynamic DHCPv6 server. Default: no.</li>
+<li><strong>dhcpv6-lease-time</strong> <code>time</code> — Lease time of the dynamic DHCPv6 server. Default: 1d.</li>
+<li><strong>bridge</strong> <code>iface_enum</code> — Bridge to which the interface of the user is added as a port. Both ends of the tunnel must bridge the PPP interface; see <a href="../../bridging-and-switching/">Bridging and switching</a>.</li>
+<li><strong>bridge-port-priority</strong> <code>num</code> — Priority of the dynamic bridge port, used by STP and RSTP to select the root port, and by MSTP to select the root port between regions. Has no effect when the bridge has <code>protocol-mode=none</code>. Range: 0..240.</li>
+<li><strong>bridge-path-cost</strong> <code>num</code> — Path cost of the dynamic bridge port, used by STP and RSTP to select the best path, and by MSTP to select the best path between regions. Has no effect when the bridge has <code>protocol-mode=none</code>. Range: 1..200000000.</li>
+<li><strong>bridge-horizon</strong> <code>num</code> — Split-horizon value of the dynamic bridge port. Ports with the same value do not forward frames to each other, which prevents bridging loops and isolates traffic. Range: 0..429496729.</li>
+<li><strong>bridge-learning</strong> <code>enum (default | no | yes) { default:0xffffffff, no:0, yes:1 }</code> — MAC learning on the dynamic bridge port. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>yes</code> if this is that profile. - <code>no</code> - MAC learning is off. - <code>yes</code> - MAC learning is on.</li>
+<li><strong>bridge-port-vid</strong> <code>num</code> — PVID of the dynamic bridge port. Has an effect only with <code>vlan-filtering=yes</code> on the bridge. Range: 1..4094. Default: 1.</li>
+<li><strong>bridge-port-trusted</strong> <code>bool</code> — Whether the dynamic bridge port is trusted for DHCP snooping. Default: no.</li>
+<li><strong>session-timeout</strong> <code>time</code> — Maximum time a session can stay connected. When it ends, the router disconnects the user. Default: not set, no limit.</li>
+<li><strong>idle-timeout</strong> <code>time</code> — Time without traffic after which the router disconnects the user. Default: not set.</li>
+<li><strong>use-ipv6</strong> <code>enum (default | no | yes | required) { default:0xffffffff, no:0, yes:1, required:2 }</code> — Whether IPv6 is negotiated on the link. - <code>yes</code> (default) - IPv6 is allowed. - <code>no</code> - IPv6 is off. - <code>required</code> - The link is refused without IPv6. - <code>default</code> - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile.</li>
+<li><strong>use-mpls</strong> <code>enum (default | no | yes | required) { default:0xffffffff, no:0, yes:1, required:2 }</code> — Whether MPLS is allowed over the link. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - MPLS is off. - <code>yes</code> - MPLS is allowed. - <code>required</code> - The link is refused without MPLS.</li>
+<li><strong>use-compression</strong> <code>enum (default | no | yes) { default:0xffffffff, no:0, yes:1 }</code> — Whether data compression is used. Has no effect on OpenVPN tunnels. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - Off. - <code>yes</code> - On.</li>
+<li><strong>use-encryption</strong> <code>enum (default | no | yes | required) { default:0xffffffff, no:0, yes:1, required:2 }</code> — Whether data encryption (MPPE) is used. Has no effect on OpenVPN and SSTP tunnels. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - No encryption. - <code>yes</code> - Encryption is used when the other side supports it. - <code>required</code> - The link is refused without encryption.</li>
+<li><strong>only-one</strong> <code>enum (default | no | yes) { default:0xffffffff, no:0, yes:1 }</code> — Whether a user can have only one session at a time, on all PPP servers together. Also applies to users that a RADIUS server authenticates. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - A user can connect several times with the same name. - <code>yes</code> - A second connection of the user is refused while the first one is active.</li>
+<li><strong>change-tcp-mss</strong> <code>enum (default | no | yes) { default:0xffffffff, no:0, yes:1 }</code> — Whether the router adjusts the MSS of TCP connections to the MTU of the link (IPv4 only). - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - Off. - <code>yes</code> - On.</li>
+<li><strong>use-upnp</strong> <code>enum (default | no | yes) { default:0xffffffff, no:0, yes:1 }</code> — Whether UPnP is allowed on the interface of the user. - <code>default</code> (default) - Takes the value from the default profile of the PPP server; <code>no</code> if this is that profile. - <code>no</code> - Off. - <code>yes</code> - On.</li>
+<li><strong>rate-limit</strong> <code>string</code> — Rate limit of each user of the profile, applied as a dynamic simple queue when the user connects: <code>rx-rate[/tx-rate] [rx-burst-rate[/tx-burst-rate] [rx-burst-threshold[/tx-burst-threshold] [rx-burst-time[/tx-burst-time] [priority [rx-rate-min[/tx-rate-min]]]]]]</code>. The rates are from the point of view of the router: <code>rx</code> is the upload of the user and <code>tx</code> the download. Rates are in bits per second, with an optional <code>k</code> or <code>M</code>. See <a href="../../authentication-authorization-accounting/radius">RADIUS</a> for the details of the format.</li>
+<li><strong>insert-queue-before</strong> <code>enum (bottom | first) { bottom:0xffffffff, first:0 }</code> — Place of the dynamic queue in the simple queue list: <code>bottom</code>, <code>first</code>, or the name of a queue to put it before.</li>
+<li><strong>parent-queue</strong> <code>enum (none) { none:0 }</code> — Simple queue that becomes the parent of the dynamic queues of the users. Default: none.</li>
+<li><strong>queue-type</strong> <code>composite { upload-queue: enum
+, download-queue: enum
+ }</code> — Queue types of the dynamic queue, as <code>upload/download</code>: the first is for the traffic received from the user, the second for the traffic sent to the user. Both must be given.</li>
+<li><strong>incoming-filter</strong> <code>enum</code> — Firewall filter chain for the packets that come from the user. The router adds a dynamic rule to the chain <code>ppp</code> that jumps to this chain. The chain <code>ppp</code> is reached only when a rule of another chain jumps to it.</li>
+<li><strong>outgoing-filter</strong> <code>enum</code> — Firewall filter chain for the packets that go to the user. The router adds a dynamic rule to the chain <code>ppp</code> that jumps to this chain. The chain <code>ppp</code> is reached only when a rule of another chain jumps to it.</li>
+<li><strong>address-list</strong> <code>multi { address-list: enum
+ }</code> — Firewall address list to which the address of the user is added while the user is connected. On a PPP client, the address the client received.</li>
+<li><strong>interface-list</strong> <code>enum</code> — Interface list to which the interface of the user is added while the user is connected.</li>
+<li><strong>dns-server</strong> <code>multi { address: ipAddr
+ }</code> — One or two IP addresses of DNS servers that the router gives to the PPP clients in the IPCP negotiation (RFC 1877). A client gets them only if it asks for them; a RouterOS client does with <code>use-peer-dns=yes</code>.</li>
+<li><strong>wins-server</strong> <code>multi { address: ipAddr
+ }</code> — IP address of the WINS server that is offered to Windows clients.</li>
+<li><strong>on-up</strong> <code>alt { script: string
+ }</code> — Script that runs when a user connects. It can read the variables <code>user</code>, <code>local-address</code>, <code>remote-address</code>, <code>caller-id</code>, <code>called-id</code> and <code>interface</code>. <code>interface</code> has the ID of the interface, not its name.</li>
+<li><strong>on-down</strong> <code>alt { script: string
+ }</code> — Script that runs when a user disconnects. It has the same variables as <code>on-up</code>.</li>
+</ul>
+<hr />
+<h1 id="secret">secret</h1>
+<blockquote>
+<p>PPP users of the router. All PPP servers use this list. See PPP AAA for the full guide.</p>
+</blockquote>
+<hr />
+<h2 id="pppsecret">ppp/secret</h2>
+<p><strong>Type:</strong> Directory</p>
+<p>PPP users of the router. All PPP servers use this list. See <a href="../../authentication-authorization-accounting/ppp-aaa">PPP AAA</a> for the full guide.</p>
+<p><em>Flag / Name / Description</em></p>
+<ul>
+<li><strong>X</strong> <code>disabled</code> — The secret is disabled and cannot be used to log in.</li>
+</ul>
+<p><em>Argument / Type / Description</em></p>
+<ul>
+<li><strong>name</strong> <code>string</code> — Name of the user.</li>
+<li><strong>service</strong> <code>enum (any | async | pptp | pppoe | l2tp | ovpn | sstp) { any:0, async:1, pptp:2, pppoe:3, l2tp:5, ovpn:6, sstp:7 }</code> — PPP server that the user can log in to: <code>async</code>, <code>pptp</code>, <code>pppoe</code>, <code>l2tp</code>, <code>ovpn</code> or <code>sstp</code>. A login to another server is refused. Default: any.</li>
+<li><strong>caller-id</strong> <code>string</code> — Address the user must connect from. For L2TP and PPTP it is the IP address of the client, for PPPoE the MAC address in capital letters. A login from another address is refused. Default: empty, any address.</li>
+<li><strong>password</strong> <code>string</code> — Password of the user. This is a <a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters">sensitive</a> parameter.</li>
+<li><strong>profile</strong> <code>enum</code> — <a href="profile">Profile</a> of the user. Default: default.</li>
+<li><strong>local-address</strong> <code>super { address: ipAddr
+ }</code> — Address of the router inside the tunnel for this user. Takes precedence over the profile.</li>
+<li><strong>remote-address</strong> <code>super { remote-address: ipAddr
+ }</code> — Address of the user inside the tunnel. Takes precedence over the address or the pool of the profile.</li>
+<li><strong>routes</strong> <code>string</code> — Routes that the router adds while the user is connected, as <code>dst-address gateway metric</code>, for example <code>192.168.50.0/24 10.0.0.5 1</code>. Other forms are not accepted. Several routes are separated with commas. Ignored for OpenVPN.</li>
+<li><strong>ipv6-routes</strong> <code>string</code> — IPv6 networks that the router routes to the interface of the user while the user is connected, for example <code>2001:db8:99::/64</code>.</li>
+<li><strong>remote-ipv6-prefix</strong> <code>super { remote-prefix: ip6Prefix
+ }</code> — IPv6 prefix of the user. The router adds it to the <a href="../ipv6/nd/prefix">ND prefix list</a> of the interface of the user, so the client can configure an address with stateless address autoconfiguration.</li>
+<li><strong>limit-bytes-in</strong> <code>num</code> — Number of bytes the user can upload in one session. When it is reached, the router disconnects the user. Default: 0, no limit.</li>
+<li><strong>limit-bytes-out</strong> <code>num</code> — Number of bytes the user can download in one session. When it is reached, the router disconnects the user. Default: 0, no limit.</li>
+</ul>
+<p><em>Read-only Argument / Type / Description</em></p>
+<ul>
+<li><strong>last-logged-out</strong> <code>date</code> — Time of the last disconnect of the user.</li>
+<li><strong>last-caller-id</strong> <code>string</code> — Address the user connected from the last time.</li>
+<li><strong>last-disconnect-reason</strong> <code>enum (peer-request | hung-up | idle-timeout | session-timeout | reset | reboot | port-error | nas-error | nas-request) { peer-request:1, hung-up:2, idle-timeout:4, session-timeout:5, reset:6, reboot:7, port-error:8, nas-error:9, nas-request:10 }</code> — Reason of the last disconnect, for example <code>peer-request</code> (the client disconnected), <code>session-timeout</code>, or <code>nas-request</code> (the session was removed on the router).</li>
+</ul>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

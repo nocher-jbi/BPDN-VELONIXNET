@@ -1,0 +1,1770 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>802.11 a/b/g/n / CAPsMAN · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Wireless</p>
+      <h1 id="80211-abgn-capsman">802.11 a/b/g/n / CAPsMAN</h1>
+<h1 id="capsman">CAPsMAN</h1>
+<blockquote>
+<p>This page documents CAPsMAN (Centralized Access Point Management) in RouterOS, covering configuration of wireless controller settings including AAA authentication, RADIUS server integration, access lists for client...</p>
+</blockquote>
+<h1 id="capsman_1">CAPsMAN</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This is the legacy CAPsMAN (<code>/caps-man</code>), used by devices running the <code>wireless</code> package (<code>/interface/wireless</code>). For devices running the <code>wifi-qcom</code> or <code>wifi-qcom-ac</code> packages (the <code>/interface/wifi</code> menu), see <a href="../../wifi/capsman.md">WiFi CAPsMAN</a> instead. The two are separate: a WiFi CAP can only join a WiFi CAPsMAN, and a legacy CAP can only join a legacy CAPsMAN.</p>
+</div>
+<p>This section covers CAPsMAN wireless controller documentation. Use it to configure centralized access point management for supported RouterOS wireless devices.</p>
+<h2 id="capsman-aaa">CAPsMAN AAA</h2>
+<p>Settings to configure CAPsMAN AAA functionality are found in the <code>/caps-man/aaa</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>mac-format</strong> (<em>string</em>; Default: <strong>XX:XX:XX:XX:XX:XX</strong>)</td>
+<td style="text-align: left;">Controls how the MAC address of the client is encoded by Access Point in the User-Name attribute of the MAC authentication and MAC accounting RADIUS requests.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-mode</strong> (<em>as-username | as-username-and-password</em>; Default: <strong>as-username</strong>)</td>
+<td style="text-align: left;">By default, the Access Point uses an empty password, when sending Access-Request during MAC authentication. When this property is set to as-username-and-password, Access Point will use the same value for the User-Password attribute as for the User-Name attribute.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mac-caching</strong> (<em>disabled | time-interval</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">If this value is set to a time interval, the Access Point will cache RADIUS MAC authentication responses for a specified time, and will not contact the RADIUS server if a matching cache entry already exists. The value disabled will disable the cache. The Access Point will always contact the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interim-update</strong> (<em>disabled | time-interval</em>; Default: <strong>disabled</strong>)</td>
+<td style="text-align: left;">When RADIUS accounting is used, the Access Point periodically sends accounting information updates to the RADIUS server. This property specifies the default update interval that can be overridden by the RADIUS server using the <a href="#capsman-aaa">Acct-Interim-Interval</a> attribute.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>called-format</strong> (<em>mac | mac:ssid | ssid</em>; Default: <strong>mac:ssid</strong>)</td>
+<td style="text-align: left;">Format of how the "called-id" identifier will be passed to RADIUS. When configuring radius server clients, you can specify "called-id" in order to separate multiple entries.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example">Example</h3>
+<p>Assuming that the rest of the settings are already configured and only the "Security" part has been left.</p>
+<h4 id="radius-authentication-with-one-server">Radius authentication with one server</h4>
+<ol>
+<li>
+<p>Create CAPsMAN security configuration.</p>
+</li>
+<li>
+<p>Configure Radius server client.</p>
+</li>
+<li>
+<p>Assign the configuration to your master profile (or directly to CAP itself).</p>
+</li>
+</ol>
+<pre><code class="language-ros">/caps-man/security/add authentication-types=wpa2-eap eap-methods=passthrough encryption=aes-ccm group-encryption=aes-ccm name=radius
+/radius/add address=x.x.x.x secret=SecretUserPass service=wireless
+/caps-man/configuration/set security=radius
+</code></pre>
+<h4 id="radius-authentication-with-different-radius-servers-for-each-ssid">Radius authentication with different radius servers for each SSID</h4>
+<ol>
+<li>
+<p>Create CAPsMAN security configuration.</p>
+</li>
+<li>
+<p>Configure AAA settings.</p>
+</li>
+<li>
+<p>Configure Radius server clients.</p>
+</li>
+<li>
+<p>Assign the configuration to your master profile (or directly to CAP itself).</p>
+</li>
+</ol>
+<pre><code class="language-ros">/caps-man/security/add authentication-types=wpa2-eap eap-methods=passthrough encryption=aes-ccm group-encryption=aes-ccm name=radius 
+/caps-man/aaa/set called-format=ssid 
+/radius/add address=x.x.x.x secret=SecretUserPass service=wireless called-id=SSID1 
+/radius/add address=y.y.y.y secret=SecretUserPass service=wireless called-id=SSID2 
+/caps-man/configuration/set security=radius
+</code></pre>
+<p>Now everyone connecting to CAPs with ssid=<strong>SSID1</strong> will have their radius authentication requests sent to <strong>x.x.x.x</strong> and everyone connecting to CAPs with ssid=<strong>SSID2</strong> will have their radius authentication requests sent to <strong>y.y.y.y</strong></p>
+<h2 id="capsman-access-list">CAPsMAN Access-list</h2>
+<p>Access list on CAPsMAN is an ordered list of rules that are used to allow/deny clients to connect to any CAP under CAPsMAN control. When a client attempts to connect to a CAP that is controlled by CAPsMAN, CAP forwards that request to CAPsMAN. As a part of the registration process, CAPsMAN consults an access list to determine if a client should be allowed to connect. The default behavior of the access list is to allow a connection.</p>
+<p>Access list rules are processed one by one until a matching rule is found. Then the action in the matching rule is executed. If the action specifies that the client should be accepted, the client is accepted, potentially overriding its default connection parameters with ones specified in the access-list rule.</p>
+<p>An access list is configured in the <code>/caps-man/access-list</code> menu. There are the following parameters for access-list rules:</p>
+<ul>
+<li>Client matching parameters:</li>
+<li>address - MAC address of the client.</li>
+<li>mask - MAC address mask to apply when comparing client address.</li>
+<li>interface - optional interface to compare with an interface to which the client actually connects.</li>
+<li>time - a time of day and days when rule matches.</li>
+<li>signal-range - range in which client signal must fit for a rule to match.</li>
+<li>allow-signal-out-of-range - an option that permits the client's signal to be out of the range always or for some time interval.</li>
+<li>Action parameter - specifies an action to take when client matches:</li>
+<li>accept - accept the client.</li>
+<li>reject - reject the client.</li>
+<li>query-radius - query RADIUS server if a particular client is allowed to connect.</li>
+<li>Connection parameters:</li>
+<li>ap-tx-limit - tx speed limit in the direction to the client.</li>
+<li>client-tx-limit - tx speed limit in the direction to the AP (applies to RouterOS clients only).</li>
+<li>client-to-client-forwarding - specifies whether to allow forwarding data received from this client to other clients connected to the same interface.</li>
+<li>private-passphrase - <em><a href="../../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em> PSK passphrase to use for this client if some PSK authentication algorithm is used.</li>
+<li>radius-accounting - specifies if RADIUS traffic accounting should be used if RADIUS authentication gets done for this client.</li>
+<li>vlan-mode - VLAN tagging mode specifies if traffic coming from a client should get tagged (and untagged when going to a client).</li>
+<li>vlan-id - VLAN ID to use if doing VLAN tagging.</li>
+</ul>
+<h2 id="capsman-channel">CAPsMAN channel</h2>
+<p>Channel group settings allow for the configuration of lists of radio channel related settings, such as radio band, frequency, Tx Power, extension channel, and width.</p>
+<p>Channel group settings are configured in the Channels profile menu <code>/caps-man/channels</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>2ghz-b | 2ghz-b/g | 2ghz-b/g/n | 2ghz-onlyg | 2ghz-onlyn | 5ghz-a | 5ghz-a/n | 5ghz-onlyn</em>; Default: )</td>
+<td style="text-align: left;">Define operational radio frequency band and mode taken from the hardware capability of the wireless card</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Channel Group profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extension-channel</strong> (<em>Ce | Ceee | eC | eCee | eeCe | eeeC | disabled</em>; Default: )</td>
+<td style="text-align: left;">Extension channel configuration. (E.g. Ce = extension channel is above the Control channel, eC = extension channel is below the Control channel)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel frequency value in MHz on which the AP will operate.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">A descriptive name for the Channel Group Profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-power</strong> (<em>integer [-30..40]</em>; Default: )</td>
+<td style="text-align: left;">TX Power for the CAP interface (for the whole interface not for individual chains) in dBm. It is not possible to set higher than allowed by country regulations or interface. By default, the max allowed by country or interface is used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>width</strong> (; Default: )</td>
+<td style="text-align: left;">Sets the Channel Width in MHz. (E.g. 20, 40)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>save-selected</strong> (; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Saves the selected channel for the CAP Radio - will select this channel after the CAP reconnects to CAPsMAN and use it till the channel Re-optimize is done for this CAP.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="capsman-configuration">CAPsMAN configuration</h2>
+<p>Configuration profiles permit pre-defined 'top-level' master settings to be applied to CAP radios being provisioned.</p>
+<p>Configuration Profiles are configured in the <code>/caps-man/configuration</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">User defined list taken from Channel names (<code>/caps-man/channels</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.band</strong> (<em>2ghz-b | 2ghz-b/g | 2ghz-b/g/n | 2ghz-onlyg | 2ghz-onlyn | 5ghz-a | 5ghz-a/n | 5ghz-onlyn | 5ghz-a/n/ac | 5ghz-only-ac</em>; Default: )</td>
+<td style="text-align: left;">Defines a set of used channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.control-channel-width</strong> (<em>40mhz-turbo | 20mhz | 10mhz | 5mhz</em>; Default: )</td>
+<td style="text-align: left;">Defines a set of used channel widths.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.extension-channel</strong> (<em>Ce | Ceee | eC | eCee | eeCe | eeeC | xx | xxxx | disabled</em>; Default: )</td>
+<td style="text-align: left;">Extension channel configuration. (E.g. Ce = extension channel is above Control channel, eC = extension channel is below Control channel)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel frequency value in MHz on which AP will operate. If left blank, CAPsMAN will automatically determine the best frequency that is least occupied.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.reselect-interval</strong> (<em>time [00:00:00]; [00:00:00..00:00:00]</em>; Default: )</td>
+<td style="text-align: left;">The interval after which the least occupied frequency is chosen, can be defined as a random interval, ex. as "30m..60m". Works only if <strong>channel.frequency</strong> is left blank.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.save-selected</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If channel frequency is chosen automatically and <strong>channel.reselect-interval</strong> is used, then it saves the last picked frequency.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.secondary-frequency</strong> (<em>integer [0..4294967295]</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Specifies the second frequency that will be used for 80+80MHz configuration. Set it to <strong>Disabled</strong> in order to disable 80+80MHz capability.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.skip-dfs-channels</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If <strong>channel.frequency</strong> is left blank, the selection will skip DFS channels</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.tx-power</strong> (<em>integer [-30..40]</em>; Default: )</td>
+<td style="text-align: left;">TX Power for CAP interface (for the whole interface not for individual chains) in dBm. It is not possible to set higher than allowed by country regulations or interface. By default max allowed by country or interface is used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.width</strong> (; Default: )</td>
+<td style="text-align: left;">Sets Channel Width in MHz.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Configuration profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>country</strong> (<em>name of the country | no_country_set</em>; Default: <strong>no_country_set</strong>)</td>
+<td style="text-align: left;">Limits available bands, frequencies and maximum transmit power for each frequency. Also specifies default value of <strong>scan-list</strong>. Value <em>no_country_set</em> is an FCC compliant set of channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">User defined list taken from Datapath names (<code>/caps-man/datapath</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">Bridge to which particular interface should be automatically added as port. Required only when local-forwarding is not used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge-cost</strong> (<em>integer [1..</em>200000000<em>]</em>; Default: )</td>
+<td style="text-align: left;">bridge port cost to use when adding as bridge port</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge-horizon</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">bridge horizon to use when adding as bridge port</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.client-to-client-forwarding</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">controls if client-to-client forwarding between wireless clients connected to interface should be allowed, in local forwarding mode this function is performed by CAP, otherwise it is performed by CAPsMAN</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.interface-list</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.l2mtu</strong> (; Default: )</td>
+<td style="text-align: left;">set Layer2 MTU size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.local-forwarding</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Controls forwarding mode. If disabled, all L2 and L3 data will be forwarded to CAPsMAN, and further forwarding decisions will be made only then. <strong>Note</strong>, if disabled, make sure that each CAP interface MAC Address that participates in the same broadcast domain is unique (including local MACs, like Bridge-MAC).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.mtu</strong> (; Default: )</td>
+<td style="text-align: left;">set MTU size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.openflow-switch</strong> (; Default: )</td>
+<td style="text-align: left;">OpenFlow switch port (when enabled) to add interface to</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.vlan-id</strong> (<em>integer [1..4095]</em>; Default: )</td>
+<td style="text-align: left;">VLAN ID to assign to interface if vlan-mode enables use of VLAN tagging</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.vlan-mode</strong> (<em>use-service-tag | use-tag</em>; Default: )</td>
+<td style="text-align: left;">Enables and specifies the type of VLAN tag to be assigned to the interface (causes all received data to get tagged with VLAN tag and allows the interface to only send out data tagged with given tag)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disconnect-timeout</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>distance</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frame-lifetime</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>guard-interval</strong> (<em>any | long</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Whether to allow the use of short guard interval (refer to 802.11n MCS specification to see how this may affect throughput). "any" will use either short or long, depending on data rate, "long" will use long only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hide-ssid</strong> (<em>yes | no</em>; Default: )</td>
+<td style="text-align: left;">yes - AP does not include SSID in the beacon frames and does not reply to probe requests that have broadcast SSID.no - AP includes SSID in the beacon frames and replies to probe requests that have broadcast SSID.This property has an effect only in AP mode. Setting it to <em>yes</em> can remove this network from the list of wireless networks that are shown by some client software. Changing this setting does not improve the security of the wireless network, because SSID is included in other frames sent by the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-protection-mode</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-retries</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>installation</strong> (<em>any | indoor | outdoor</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keepalive-frames</strong> (<em>enabled | disabled</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>load-balancing-group</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Tags the interface to the load balancing group. For a client to connect to interface in this group, the interface should have the same number of already connected clients as all other interfaces in the group or smaller. Useful in setups where ranges of CAPs mostly overlap.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-sta-count</strong> (<em>integer [1..2007]</em>; Default: )</td>
+<td style="text-align: left;">Maximum number of associated clients.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (; Default: <strong>ap</strong>)</td>
+<td style="text-align: left;">Set operational mode. Only ap is currently supported.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-helper</strong> (<em>default | disabled | full</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">When set to full multicast packets will be sent with unicast destination MAC address, resolving multicast problems on a wireless link. This option should be enabled only on the access point, clients should be configured in <strong>station-bridge</strong> mode.disabled - disables the helper and sends multicast packets with multicast destination MAC addressesfull - all multicast packet MAC addresses are changed to unicast mac addresses prior to sending them outdefault - default choice that currently is set to disabled. Value can be changed in future releases.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Descriptive name for the Configuration Profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates</strong> (; Default: )</td>
+<td style="text-align: left;">User defined list taken from Rates names (<code>/caps-man/rates</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.basic</strong> (<em>1Mbps | 2Mbps | 5.5Mbps | 6Mbps | 9Mbps | 11Mbps | 12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.supported</strong> (<em>1Mbps | 2Mbps | 5.5Mbps | 6Mbps | 9Mbps | 11Mbps | 12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.ht-basic-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.ht-supported-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7; mcs-8; mcs-9; mcs-10; mcs-11; mcs-12; mcs-13; mcs-14; mcs-15; mcs-16; mcs-17; mcs-18; mcs-19; mcs-20; mcs-21; mcs-22; mcs-23</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.vht-basic-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream none - will not use selected Spatial StreamMCS 0-7 - client must support MCS-0 to MCS-7MCS 0-8 - client must support MCS-0 to MCS-8MCS 0-9 - client must support MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.vht-supported-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;"><a href="http://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream none - will not use selected Spatial StreamMCS 0-7 - devices will advertise as supported MCS-0 to MCS-7MCS 0-8 - devices will advertise as supported MCS-0 to MCS-8MCS 0-9 - devices will advertise as supported MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for receiving.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security</strong> (<em>string</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Name of security configuration from <code>/caps-man/security</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.authentication-types</strong> (<em>list of string</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Specify the type of Authentication from <strong>wpa-psk</strong>, <strong>wpa2-psk</strong>, <strong>wpa-eap</strong> or <strong>wpa2-eap</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.disable-pmkid</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.eap-methods</strong> (<em>eap-tls | passthrough</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">eap-tls - Use built-in EAP TLS authentication.passthrough - Access point will relay authentication process to the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.eap-radius-accounting</strong> (; Default: )</td>
+<td style="text-align: left;">specifies if RADIUS traffic accounting should be used if RADIUS authentication gets done for this client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.encryption</strong> (<em>aes-ccm | tkip</em>; Default: )</td>
+<td style="text-align: left;">Set type of unicast encryption algorithm used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.group-encryption</strong> (<em>aes-ccm | tkip</em>; Default: <strong>aes-ccm</strong>)</td>
+<td style="text-align: left;">Access Point advertises one of these ciphers, multiple values can be selected. Access Point uses it to encrypt all broadcast and multicast frames. Client attempts connection only to Access Points that use one of the specified group ciphers.tkip - Temporal Key Integrity Protocol - encryption protocol, compatible with legacy WEP equipment, but enhanced to correct some of the WEP flaws.aes-ccm - more secure WPA encryption protocol, based on the reliable AES (Advanced Encryption Standard). Networks free of WEP legacy should use only this cipher.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.group-key-update</strong> (<em>time: 30s..1h</em>; Default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Controls how often Access Point updates the group key. This key is used to encrypt all broadcast and multicast frames. property only has effect for Access Points.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.passphrase</strong> (<em>string</em>; Default: ) <em><a href="../../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">WPA or WPA2 pre-shared key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.tls-certificate</strong> (<em>none | name</em>; Default: )</td>
+<td style="text-align: left;">Access Point always needs a certificate when <strong>security.tls-mode</strong> is set to value other than <strong>no-certificates</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.tls-mode</strong> (<em>verify-certificate | dont-verify-certificate | no-certificates | verify-certificate-with-crl</em>; Default: )</td>
+<td style="text-align: left;">This property has effect only when <strong>security.eap-methods</strong> contains <em>eap-tls</em>.verify-certificate - Require remote device to have valid certificate. Check that it is signed by known certificate authority. No additional identity verification is done. Certificate may include information about time period during which it is valid. If router has incorrect time and date, it may reject valid certificate because router's clock is outside that period. See also the Certificates configuration.dont-verify-certificate - Do not check certificate of the remote device. Access Point will not require client to provide certificate.no-certificates - Do not use certificates. TLS session is established using 2048 bit anonymous Diffie-Hellman key exchange.verify-certificate-with-crl - Same as verify-certificate but also checks if the certificate is valid by checking the Certificate Revocation List.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string (0..32 chars)</em>; Default: )</td>
+<td style="text-align: left;">SSID (service set identifier) is a name broadcast in the beacons that identifies wireless network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for transmitting.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="capsman-datapath">CAPsMAN datapath</h2>
+<p>Datapath settings control data forwarding related aspects. In CAPsMAN datapath settings are configured in the datapath profile menu <code>/caps-man/datapath</code> or directly in a configuration profile or interface menu as settings with the <strong>datapath.</strong> prefix.</p>
+<p>There are 2 major forwarding modes:</p>
+<ul>
+<li>Local forwarding mode, where CAP is locally forwarding data to and from the wireless interface.</li>
+<li>Manager forwarding mode, where CAP sends to CAPsMAN all data received over wireless and only sends out the wireless data received from CAPsMAN. In this mode, even client-to-client forwarding is controlled and performed by CAPsMAN.</li>
+</ul>
+<p>Forwarding mode is configured on a per-interface basis - so if one CAP provides 2 radio interfaces, one can be configured to operate in local forwarding mode and the other in manager forwarding mode. The same applies to Virtual-AP interfaces - each can have a different forwarding mode from the master interface or other Virtual-AP interfaces.</p>
+<p>Most of the datapath settings are used only when in manager forwarding mode, because in local forwarding mode CAPsMAN does not have control over data forwarding.</p>
+<p>There are the following datapath settings:</p>
+<ul>
+<li>bridge -- bridge interface to add the interface to, as a bridge port, when enabled.</li>
+<li>bridge-cost -- bridge port cost to use when adding as a bridge port.</li>
+<li>bridge-horizon -- bridge horizon to use when adding as a bridge port.</li>
+<li>client-to-client-forwarding -- controls if client-to-client forwarding between wireless clients connected to the interface should be allowed, in local forwarding mode this function is performed by CAP, otherwise it is performed by CAPsMAN.</li>
+<li>local-forwarding -- controls forwarding mode.</li>
+<li>openflow-switch -- OpenFlow switch to add the interface to, as a port when enabled.</li>
+<li>vlan-id -- VLAN ID to assign to the interface if vlan-mode enables use of VLAN tagging.</li>
+<li>vlan-mode -- VLAN tagging mode specifies if a VLAN tag should be assigned to the interface (causes all received data to get tagged with a VLAN tag and allows the interface to only send out data tagged with the given tag).</li>
+</ul>
+<h2 id="capsman-interface">CAPsMAN interface</h2>
+<p>CAPsMAN interfaces are managed in the <code>/caps-man/interface</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/interface/print 
+Flags: M - master, D - dynamic, B - bound, X - disabled, I - inactive, R - running 
+# NAME RADIO-MAC MASTER-INTERFACE 
+0 M BR cap2 00:0C:42:1B:4E:F5 none 
+1 B cap3 00:00:00:00:00:00 cap2
+</code></pre>
+<h2 id="capsman-manager">CAPsMAN manager</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable or enable CAPsMAN functionality</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (<em>auto | certificate name | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Device certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ca-certificate</strong> (<em>auto | certificate name | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Device CA certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>require-peer-certificate</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Require all connecting CAPs to have a valid certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>package-path</strong> (<em>string |</em>; Default: )</td>
+<td style="text-align: left;">Folder location for the RouterOS packages. For example, use "/upgrade" to specify the upgrade folder from the files section. If an empty string is set, CAPsMAN can use built-in RouterOS packages, note that in this case only CAPs with the same architecture as CAPsMAN will be upgraded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>upgrade-policy</strong> (<em>none | require-same-version | suggest-same-version</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">CAPsMAN can send NPK packages to CAP devices to upgrade them. This circumvents any upgrade channel preferences the CAP device might have and works by simple number comparison. If a newer version is installed on the CAPsMAN, it will send packages and upgrade the devices, no matter the channel. none - do not perform upgraderequire-same-version - CAPsMAN suggests to upgrade the CAP RouterOS version and if it fails it will not provision the CAP. (Manual provision is still possible)suggest-same-version - CAPsMAN suggests to upgrade the CAP RouterOS version and if it fails it will still be provisioned</td>
+</tr>
+</tbody>
+</table>
+<h2 id="capsman-provisioning">CAPsMAN provisioning</h2>
+<p>CAPsMAN distinguishes between CAPs based on a common-name identifier. The identifier is generated based on the following rules:</p>
+<ul>
+<li>If CAP provides a certificate, the identifier is set to the Common Name field in the certificate.</li>
+<li>Otherwise, an identifier is based on Base-MAC provided by CAP in the form: '[XX:XX:XX:XX:XX:XX]'.</li>
+</ul>
+<p>When the DTLS connection with CAP is successfully established (which means that the CAP identifier is known and valid), CAPsMAN makes sure there is no stale connection with CAP using the same identifier. Currently connected CAPs are listed in the <code>/caps-man/remote-cap</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; remote-cap print 
+# ADDRESS IDENT STATE RADIOS
+0 00:0C:42:00:C0:32/27044 MT-000C4200C032 Run 1
+</code></pre>
+<p>CAPsMAN distinguishes between actual wireless interfaces (radios) based on their built-in MAC address (radio-mac). This implies that it is impossible to manage two radios with the same MAC address on one CAPsMAN. Radios currently managed by CAPsMAN (provided by connected CAPs) are listed in the <code>/caps-man/radio</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; radio print 
+Flags: L - local, P - provisioned 
+# RADIO-MAC INTERFACE REMOTE-AP-IDENT 
+0 P 00:03:7F:48:CC:07 cap1 MT-000C4200C032
+</code></pre>
+<p>When a CAP connects, CAPsMAN at first tries to bind each CAP radio to a CAPsMAN master interface based on radio-mac. If an appropriate interface is found, the radio gets set up using the master interface configuration and the configuration of slave interfaces that refer to a particular master interface. At this moment, the interfaces (both master and slaves) are considered bound to the radio and the radio is considered provisioned.</p>
+<p>If no matching master interface for radio is found, CAPsMAN executes 'provisioning rules'. Provisioning rules are an ordered list of rules that contain settings that specify which radio to match and settings that specify what action to take if a radio matches.</p>
+<p>Provisioning rules for matching radios are configured in the <code>/caps-man/provisioning</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>action</strong> (<em>create-disabled | create-enabled | create-dynamic-enabled | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Action to take if rule matches, specified by the following settings:create-disabled - create disabled static interfaces for radio. I.e., the interfaces will be bound to the radio, but the radio will not be operational until the interface is manually enabled;create-enabled - create enabled static interfaces. I.e., the interfaces will be bound to the radio and the radio will be operational;create-dynamic-enabled - create enabled dynamic interfaces. I.e., the interfaces will be bound to the radio, and the radio will be operational;none - do nothing, leaves radio in the non-provisioned state;</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Provisioning rule</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>common-name-regexp</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Regular expression to match radios by common name. Each CAP's common name identifier can be found under <code>/caps-man/radio</code> as the value "REMOTE-CAP-NAME"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-supported-modes</strong> (<em>a|a-turbo|ac|an|b|g|g-turbo|gn</em>; Default: )</td>
+<td style="text-align: left;">Match radios by supported wireless modes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>identity-regexp</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Regular expression to match radios by router identity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-address-ranges</strong> (<em>IpAddressRange[,IpAddressRanges] max 100x</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Match CAPs with IPs within the configured address range.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-configuration</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">If <strong>action</strong> is set to create interfaces, then a new master interface with its configuration set to this configuration profile will be created</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name-format</strong> (<em>cap | identity | prefix | prefix-identity</em>; Default: <strong>cap</strong>)</td>
+<td style="text-align: left;">Specifies the syntax of the CAP interface name creationcap - default nameidentity - CAP board's system identity nameprefix - name from the name-prefix valueprefix-identity - name from the name-prefix value and the CAP board's system identity name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name-prefix</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name prefix which can be used in the name-format for creating the CAP interface names</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-mac</strong> (<em>MAC address</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">MAC address of the radio to be matched, empty MAC (00:00:00:00:00:00) means match all MAC addresses</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slave-configurations</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">If <strong>action</strong> is set to create interfaces, then a new slave interface for each configuration profile in this list is created.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If no rule matches the radio, then the implicit default rule with action <strong>create-enabled</strong> and no configurations set is executed.</p>
+</div>
+<p>To get the active provisioning matchers:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/provisioning&gt; print 
+Flags: X - disabled 
+0 radio-mac=00:00:00:00:00:00 action=create-enabled master-configuration=main-cfg 
+slave-configurations=virtual-ap-cfg name-prefix=&quot;&quot;
+</code></pre>
+<p>For the user's convenience there are commands that allow the re-execution of the provisioning process for some radio or all radios provided by some AP:</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/radio/provision 0
+</code></pre>
+<p>and</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/remote-cap/provision 0
+</code></pre>
+<h3 id="capsman-radio">CAPsMAN radio</h3>
+<p><a href="#capsman-provisioning">See <code>/caps-man/provisioning</code></a></p>
+<h3 id="capsman-rates">CAPsMAN rates</h3>
+<p><a href="#capsman-configuration">See <code>/caps-man/configuration</code></a></p>
+<h3 id="capsman-registration-table">CAPsMAN registration-table</h3>
+<p>The Registration table contains a list of clients that are connected to radios controlled by CAPsMAN and is available in the <code>/caps-man/registration-table</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; registration-table print
+# INTERFACE MAC-ADDRESS UPTIME RX-SIGNAL
+0 cap1 00:03:7F:48:CC:0B 1h38m9s210ms -36
+</code></pre>
+<h3 id="capsman-remote-cap">CAPsMAN remote-cap</h3>
+<p><a href="#capsman-provisioning">See <code>/caps-man/provisioning</code></a></p>
+<h3 id="capsman-security">CAPsMAN security</h3>
+<p>Assuming that the rest of the settings are already configured and only the "Security" part has been left.</p>
+<p><strong>Radius authentication with one server</strong></p>
+<ol>
+<li>
+<p>Create a CAPsMAN security configuration.</p>
+</li>
+<li>
+<p>Configure a Radius server client.</p>
+</li>
+<li>
+<p>Assign the configuration to your master profile (or directly to CAP itself).</p>
+</li>
+</ol>
+<pre><code class="language-ros">/caps-man/security/add authentication-types=wpa2-eap eap-methods=passthrough encryption=aes-ccm group-encryption=aes-ccm name=radius 
+/radius/add address=x.x.x.x secret=SecretUserPass service=wireless 
+/caps-man/configuration/set security=radius
+</code></pre>
+<p><strong>Radius authentication with different radius servers for each SSID</strong></p>
+<ol>
+<li>
+<p>Create CAPsMAN security configuration.</p>
+</li>
+<li>
+<p>Configure AAA settings.</p>
+</li>
+<li>
+<p>Configure Radius server clients.</p>
+</li>
+<li>
+<p>Assign the configuration to your master profile (or directly to CAP itself).</p>
+</li>
+</ol>
+<pre><code class="language-ros">/caps-man/security/add authentication-types=wpa2-eap eap-methods=passthrough encryption=aes-ccm group-encryption=aes-ccm name=radius 
+/caps-man/aaa/set called-format=ssid 
+/radius/add address=x.x.x.x secret=SecretUserPass service=wireless called-id=SSID1 
+/radius/add address=y.y.y.y secret=SecretUserPass service=wireless called-id=SSID2 
+/caps-man/configuration/set security=radius
+</code></pre>
+<p>Now everyone connecting to CAPs with ssid=<strong>SSID1</strong> will have their radius authentication requests sent to <strong>x.x.x.x</strong> and everyone connecting to CAPs with ssid=<strong>SSID2</strong> will have their radius authentication requests sent to <strong>y.y.y.y</strong></p>
+<hr />
+<h1 id="ap-controller-capsman">AP Controller (CAPsMAN)</h1>
+<blockquote>
+<p>CAPsMAN (Controlled Access Point System Manager) centralizes wireless network management by allowing a RouterOS server to configure multiple access points, handling client authentication and data forwarding. It...</p>
+</blockquote>
+<h1 id="ap-controller-capsman_1">AP Controller (CAPsMAN)</h1>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>This page describes the legacy CAPsMAN (<code>/caps-man</code>) for devices running the <code>wireless</code> package (<code>/interface/wireless</code>). If your device uses the <code>/interface/wifi</code> menu (<code>wifi-qcom</code> / <code>wifi-qcom-ac</code> packages), see <a href="../../wifi/capsman.md">WiFi CAPsMAN</a> instead.</p>
+</div>
+<hr />
+<p>CAPsMAN allows applying wireless settings to multiple MikroTik AP devices from a central configuration interface.</p>
+<p>More specifically, the Controlled Access Point system Manager (CAPsMAN) allows centralization of wireless network management and if necessary, data processing. When using the CAPsMAN feature, the network will consist of a number of 'Controlled Access Points' (CAP) that provide wireless connectivity and a 'system Manager' (CAPsMAN) that manages the configuration of the APs. It also takes care of client authentication and optionally, data forwarding.</p>
+<p>When a CAP is controlled by CAPsMAN it only requires the minimum configuration required to allow it to establish a connection with CAPsMAN. Functions that were conventionally executed by an AP (like access control, client authentication) are now executed by CAPsMAN. The CAP device now only has to provide the wireless link layer encryption/decryption.</p>
+<p>Depending on the configuration, data is either forwarded to CAPsMAN for centralized processing (<em>default</em>) or forwarded locally at the CAP itself (local forwarding mode).</p>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>Any RouterOS device can be a controlled wireless access point (CAP) as long as it has at least a Level 4 RouterOS license.</li>
+<li>CAPsMAN server can be installed on any RouterOS device, even if the device itself does not have a wireless interface.</li>
+<li>Unlimited CAPs (access points) are supported by CAPsMAN.</li>
+<li>32 Radios per CAP maximum.</li>
+<li>32 Virtual interfaces per master radio interface maximum.</li>
+<li>It is not possible to use Nv2 and NStreme proprietary protocols.</li>
+</ul>
+<hr />
+<h2 id="simple-setup-of-a-capsman-system">Simple setup of a CAPsMAN system</h2>
+<p><em>[gambar: Network diagram: a router with CAP1 connected to ether2 and CAP2 connected to ether3]</em></p>
+<p>Before deep-diving into the details of CAPsMAN operation, let us quickly illustrate how to set up the most basic system where you have a MikroTik router that manages two MikroTik AP devices. The benefit of CAPsMAN is that the CAP units don't need to be configured; all settings are done in the CAPsMAN server.</p>
+<p>The CAPsMAN setup consists of defining configuration templates, which will then be pushed to the controllable AP devices (CAPs). Assuming your main router is already connected to the internet and works fine, you can proceed as follows.</p>
+<p>On the central device, which will be your CAPsMAN server, create a new "Configuration" template with only the basic settings (network name, country, the local LAN bridge interface, the wireless password):</p>
+<p><em>[gambar: WinBox CAPsMAN Configurations tab: new configuration with name, SSID and country set]</em>Add a new configuration profile:
+<em>[gambar: WinBox new CAPs configuration, Datapath tab with the bridge selected]</em>
+<em>[gambar: WinBox new CAPs configuration, Security tab with WPA PSK, WPA2 PSK and a passphrase set]</em></p>
+<p>Then create a new "Provisioning" rule, which will assign the created configuration template to the CAP devices:</p>
+<p><em>[gambar: WinBox CAPsMAN Provisioning tab: new rule with action create dynamic enabled and the master configuration]</em></p>
+<p>All that remains to do on the CAPsMAN is to enable it:</p>
+<p><em>[gambar: WinBox CAPs Manager dialog with Enabled selected]</em></p>
+<p>Most MikroTik AP devices already support CAP mode out of the box, all you need to do is make sure they are on the same network as your CAPsMAN, and then boot them up, while holding the reset button.</p>
+<p>So, for example, connect the CAP device to one of the CAPsMAN device LAN ports while it is turned off, then hold the reset button, and power on the CAP device. Keep holding the button until the User LED turns solid, then release to turn on CAP mode. The device will now look for a CAPsMAN server (total time to hold the button, around 10 seconds).</p>
+<p>The device will now show up in the CAPsMAN "Remote CAP" menu and will be "provisioned" with the configuration template, as per the provisioning settings. For more details on how to manually adjust all settings, keep reading this document.</p>
+<h3 id="cap-to-capsman-connection">CAP to CAPsMAN Connection</h3>
+<p>For the CAPsMAN system to function and provide wireless connectivity, a CAP must establish a management connection with CAPsMAN. A management connection can be established using MAC or IP layer protocols and is secured using 'DTLS'.</p>
+<p>A CAP can also pass the client data connection to the Manager, but the data connection is not secured. If this is deemed necessary, then other means of data security need to be used, e.g. IPSec or encrypted tunnels.</p>
+<p>A CAP to CAPsMAN connection can be established using 2 transport protocols (via Layer 2 and Layer 3).</p>
+<ul>
+<li>MAC layer connection features:</li>
+<li>No IP configuration necessary on CAP.</li>
+<li>CAP and CAPsMAN must be on the same Layer 2 segment - either physical or virtual (by means of L2 tunnels).</li>
+<li>IP layer (UDP) connection features:</li>
+<li>Can traverse NAT if necessary.</li>
+<li>CAP must be able to reach CAPsMAN using IP protocol.</li>
+<li>If the CAP is not on the same L2 segment as CAPsMAN, it must be provisioned with the CAPsMAN IP address, because IP multicast-based discovery does not work over Layer 3.</li>
+</ul>
+<p>In order to establish a connection with CAPsMAN, CAP executes a discovery process. During discovery, CAP attempts to contact CAPsMAN and builds an available CAPsMANs list. CAP attempts to contact an available CAPsMAN using:</p>
+<ul>
+<li>Configured list of Manager IP addresses.</li>
+<li>List of CAPsMAN IP addresses obtained from DHCP server.</li>
+<li>Broadcasting on configured interfaces using both IP and MAC layer protocols.</li>
+</ul>
+<p>When the list of available CAPsMANs is built, CAP selects a CAPsMAN based on the following rules:</p>
+<ul>
+<li>If <strong>caps-man-names</strong> parameter specifies allowed manager names (<code>/system/identity</code> of CAPsMAN), CAP will prefer the CAPsMAN that is earlier in the list; if the list is empty it will connect to any available Manager.</li>
+<li>A suitable Manager with MAC layer connectivity is preferred to a Manager with IP connectivity.</li>
+</ul>
+<p>After Manager is selected, CAP attempts to establish a DTLS connection. There are the following authentication modes possible:</p>
+<ul>
+<li>No certificates on CAP and CAPsMAN - no authentication.</li>
+<li>Only Manager is configured with a certificate - CAP checks CAPsMAN certificate, but does not fail if it does not have an appropriate trusted CA certificate, CAPsMAN must be configured with <strong>require-peer-certificate=no</strong> in order to establish connection with CAP that does not possess a certificate.</li>
+<li>CAP and CAPsMAN are configured with certificates - mutual authentication.</li>
+</ul>
+<p>After DTLS connection is established, CAP can optionally check the CommonName field of the certificate provided by CAPsMAN. <strong>caps-man-certificate-common-names</strong> parameter contains a list of allowed CommonName values. If this list is not empty, CAPsMAN must be configured with a certificate. If this list is empty, CAP does not check the CommonName field.</p>
+<p>If the CAPsMAN or CAP gets disconnected from the network, the loss of connection between CAP and CAPsMAN will be detected in approximately 10-20 seconds.</p>
+<h4 id="cap-auto-locking-to-capsman">CAP Auto Locking to CAPsMAN</h4>
+<p>CAP can be configured to automatically lock to a particular CAPsMAN server. Locking is implemented by recording the certificate CommonName of CAPsMAN that the CAP is locked to and checking this CommonName for all subsequent connections. As this feature is implemented using the certificate CommonName, use of certificates is mandatory for locking to work.</p>
+<p>Locking is enabled by the following command:</p>
+<pre><code class="language-ros">[admin@CAP] &gt; /interface/wireless/cap/set lock-to-caps-man=yes
+</code></pre>
+<p>Once CAP connects to a suitable CAPsMAN and locks to it, it is reflected like this:</p>
+<pre><code class="language-ros">[admin@wtp] &gt; /interface/wireless/cap/print
+...
+        locked-caps-man-common-name: CAPsMAN-000C424C30F3
+</code></pre>
+<p>From now on CAP will only connect to CAPsMAN with this CommonName, until the locking requirement is cleared, by setting <strong>lock-to-caps-man=no</strong>. This approach needs to be used if it is necessary to force CAP to lock to another CAPsMAN - by at first setting <strong>lock-to-caps-man=no</strong> followed by <strong>lock-to-caps-man=yes</strong>.</p>
+<p>Note that CAP can be manually "locked" to CAPsMAN by setting <strong>caps-man-certificate-common-names</strong>.</p>
+<h4 id="auto-certificates">Auto Certificates</h4>
+<p>To simplify CAPsMAN and CAP configuration when certificates are required (e.g. for the automatic locking feature), CAPsMAN can be configured to generate necessary certificates automatically and CAP can be configured to request a certificate from CAPsMAN.</p>
+<p><strong>Automatic certificates do not provide full public key infrastructure</strong> and are provided for simple setups. If more complicated PKI is necessary - supporting proper certificate validity periods, multiple-level CA certificates, certificate renewal - other means must be used, such as manual certificate distribution or SCEP.</p>
+<p>CAPsMAN has the following certificate settings:</p>
+<ul>
+<li><strong>certificate</strong> - this is a CAPsMAN certificate, private key must be available for this certificate. If set to <strong>none</strong>, CAPsMAN will operate in no-certificate mode and none of the certificate requiring features will work. If set to <strong>auto</strong>, CAPsMAN will attempt to issue a certificate to itself using the CA certificate (see <strong>ca-certificate</strong> description). Note that CommonName for the automatically issued certificate will be <code>CAPsMAN-&lt;mac address&gt;</code> and validity period will be the same as for the CA certificate.</li>
+<li><strong>ca-certificate</strong> - this is the CA certificate that CAPsMAN will use when issuing a certificate for itself if necessary (see <strong>certificate</strong> description) and when signing certificate requests from CAPs. If set to <strong>none</strong>, CAPsMAN will not be able to issue a certificate to itself or sign certificate requests from CAPs. If set to <strong>auto</strong>, CAPsMAN will generate a self-signed CA certificate to use as CA certificate. CommonName for this certificate will take the form <code>CAPsMAN-CA-&lt;mac address&gt;</code> and validity period will be from 1970-01-01 until 2038-01-18.</li>
+</ul>
+<p>When CAPsMAN auto-generates certificates, this will be reflected like this:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/manager&gt; pr
+                   enabled: yes
+               certificate: auto
+            ca-certificate: auto
+  require-peer-certificate: no
+     generated-certificate: CAPsMAN-000C424C30F3
+  generated-ca-certificate: CAPsMAN-CA-000C424C30F3
+</code></pre>
+<p>And certificates:</p>
+<pre><code class="language-ros">[admin@CM] /certificate&gt; print detail
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, 
+A - authority, I - issued, R - revoked, E - expired, T - trusted 
+ 0 K   A T name=&quot;CAPsMAN-CA-000C424C30F3&quot; common-name=&quot;CAPsMAN-CA-000C424C30F3&quot; key-size=2048 
+           days-valid=24854 trusted=yes 
+           key-usage=digital-signature,key-encipherment,data-encipherment,key-cert-sign,crl-sign 
+           serial-number=&quot;1&quot; fingerprint=&quot;69d77bbb45c50afd2d6c1785c2a3d72596b8a5f6&quot; 
+           invalid-before=1970-01-01 00:00:01 invalid-after=2038-01-18 03:14:07 
+
+ 1 K   I   name=&quot;CAPsMAN-000C424C30F3&quot; common-name=&quot;CAPsMAN-000C424C30F3&quot; key-size=2048 
+           days-valid=24854 trusted=no key-usage=digital-signature,key-encipherment 
+           ca=CAPsMAN-CA-000C424C30F3 serial-number=&quot;1&quot; 
+           fingerprint=&quot;e853ddb9d41fc139083a176ab164331bc24bc5ed&quot; 
+           invalid-before=1970-01-01 00:00:01 invalid-after=2038-01-18 03:14:07 
+</code></pre>
+<p>CAP can be configured to request a certificate from CAPsMAN. In order for this to work, CAP must be configured with the setting <strong>certificate=request</strong> and CAPsMAN must have a CA certificate available (either specified in the <strong>ca-certificate</strong> setting or auto-generated).</p>
+<p>CAP will initially generate a private key and a certificate request with CommonName of the form <code>CAP-&lt;mac address&gt;</code>. When CAP establishes connection with CAPsMAN, CAP will request CAPsMAN to sign its certificate request. If this succeeds, CAPsMAN will send CA certificate and newly issued certificate to CAP. CAP will import these certificates into its certificate store:</p>
+<pre><code class="language-ros">[admin@CAP] &gt; /interface/wireless/cap/print
+...
+              requested-certificate: cert_2
+        locked-caps-man-common-name: CAPsMAN-000C424C30F3
+[admin@CAP] &gt; /certificate/print detail 
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, 
+A - authority, I - issued, R - revoked, E - expired, T - trusted 
+ 0       T name=&quot;cert_1&quot; issuer=CN=CAPsMAN-CA-000C424C30F3 common-name=&quot;CAPsMAN-CA-000C424C30F3&quot; 
+            key-size=2048 days-valid=24837 trusted=yes 
+            key-usage=digital-signature,key-encipherment,data-encipherment,key-cert-sign,crl-sign 
+            serial-number=&quot;1&quot; fingerprint=&quot;69d77bbb45c50afd2d6c1785c2a3d72596b8a5f6&quot; 
+            invalid-before=1970-01-01 00:00:01 invalid-after=2038-01-18 03:14:07 
+
+ 1 K     T name=&quot;cert_2&quot; issuer=CN=CAPsMAN-CA-000C424C30F3 common-name=&quot;CAP-000C4200C032&quot; 
+            key-size=2048 days-valid=24837 trusted=yes 
+            key-usage=digital-signature,key-encipherment serial-number=&quot;2&quot; 
+            fingerprint=&quot;2c85bf2fbc9fc0832e47cd2773a6f4b6af35ef65&quot; 
+            invalid-before=1970-01-01 00:00:01 invalid-after=2038-01-18 03:14:07 
+</code></pre>
+<p>On subsequent connections to CAPsMAN, CAP will use the generated certificate.</p>
+<hr />
+<h2 id="cap-configuration">CAP Configuration</h2>
+<p>When an AP is configured to be controlled by CAPsMAN, configuration of the managed wireless interfaces on the AP is ignored <em>(exceptions: antenna-gain, antenna-mode)</em>. Instead, the AP accepts configuration for the managed interfaces from CAPsMAN.</p>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>The CAP wireless interfaces that are managed by CAPsMAN and whose traffic is being forwarded to CAPsMAN (i.e., they are not in <em>local forwarding</em> mode) are shown as <em>disabled</em>, with the note <strong>Managed by CAPsMAN</strong>. Those interfaces that are in <em>local forwarding</em> mode (traffic is locally managed by CAP, and only management is done by CAPsMAN) are not shown disabled, but the note <strong>Managed by CAPsMAN</strong> is shown</p>
+</div>
+<p>CAP behavior of AP is configured in the <code>/interface/wireless/cap</code> menu. From there you can:</p>
+<ul>
+<li>Disable or enable CAP feature on the device.</li>
+<li>Set list of wireless interfaces to be controlled by Manager.</li>
+<li>Set list of interfaces over which CAP should attempt to discover Manager.</li>
+<li>Set list of Manager IP addresses that CAP will attempt to contact during discovery.</li>
+<li>Set list of Manager names that CAP will attempt to connect.</li>
+<li>Set list of Manager certificate CommonNames that CAP will connect to.</li>
+<li>Set bridge to which interfaces should be added when local forwarding mode is used.</li>
+</ul>
+<p>Each wireless interface on a CAP that is under CAPsMAN control appears as a virtual interface on the CAPsMAN. This provides maximum flexibility in data forwarding control using regular RouterOS features, such as routing, bridging, firewall, etc.</p>
+<h2 id="capsman-configuration-concepts">CAPsMAN Configuration Concepts</h2>
+<p>Many wireless interface settings are able to be grouped together into named groups ('profiles') that simplify the reuse of configuration - for example, common configuration settings can be configured in a 'configuration profile' and multiple interfaces can then refer to that profile. At the same time, any profile setting can be overridden directly in an interface configuration for maximum flexibility.</p>
+<p>Currently there are the following setting groups:</p>
+<ul>
+<li>channel - Channel related settings, such as frequency and width.</li>
+<li>datapath - Data forwarding related settings, such as bridge to which a particular interface should be automatically added as a port.</li>
+<li>security - Security related settings, such as allowed authentication types or passphrase.</li>
+<li>configuration - Main wireless settings group, includes settings such as SSID, and additionally binds together other setting groups - that is, configuration profile can refer to channel, security, etc., named setting groups. Additionally, any setting can be overridden directly in configuration profile.</li>
+</ul>
+<p>Interface settings bind together all setting groups, but additionally any setting can be overridden directly in interface settings.</p>
+<p>By means of setting groups, configuration is organized in a hierarchical structure with the interface (actual user of configuration) as the root. In order to figure out the effective value of some setting, this structure is consulted in a fashion where a higher level setting value overrides a lower level value.</p>
+<p>For example, when the WPA2 passphrase to be used by a particular interface needs to be found, the following places are consulted and the first place with the WPA2 passphrase configured specifies the effective passphrase. "-&gt;" denotes referring to the setting profile (if configured):</p>
+<ul>
+<li>interface passphrase</li>
+<li>interface-&gt;security passphrase</li>
+<li>interface-&gt;configuration passphrase</li>
+<li>interface-&gt;configuration-&gt;security passphrase</li>
+</ul>
+<p>There are 2 types of interfaces on CAPsMAN - "master" and "slave". The master interface holds the configuration for an actual wireless interface (radio), while a slave interface links to the master interface and is intended to hold the configuration for a Virtual-AP (multiple SSID support). There are settings that are meaningful only for the master interface, i.e. mainly hardware setup related settings such as radio channel settings. Note that in order for a radio to accept clients, its master interface needs to be enabled. Slave interfaces will become operational only if enabled and the master interface is enabled.</p>
+<p>Interfaces on CAPsMAN can be static or dynamic. Static interfaces are stored in RouterOS configuration and will persist across reboots. Dynamic interfaces exist only while a particular CAP is connected to CAPsMAN.</p>
+<h3 id="capsman-global-configuration">CAPsMAN Global Configuration</h3>
+<p>Settings to enable CAPsMAN functionality are found in the <code>/caps-man/manager</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable or enable CAPsMAN functionality</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (<em>auto | certificate name | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Device certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ca-certificate</strong> (<em>auto | certificate name | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Device CA certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>require-peer-certificate</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Require all connecting CAPs to have a valid certificate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>package-path</strong> (<em>string |</em>; Default: )</td>
+<td style="text-align: left;">Folder location for the RouterOS packages. For example, use "/upgrade" to specify the upgrade folder from the files section. If an empty string is set, CAPsMAN can use built-in RouterOS packages, note that in this case only CAPs with the same architecture as CAPsMAN will be upgraded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>upgrade-policy</strong> (<em>none | require-same-version | suggest-same-version</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Upgrade policy optionsnone - do not perform an upgraderequire-same-version - CAPsMAN suggests to upgrade the CAP RouterOS version and if it fails it will not provision the CAP. (Manual provision is still possible)suggest-same-version - CAPsMAN suggests to upgrade the CAP RouterOS version and if it fails it will still be provisioned</td>
+</tr>
+</tbody>
+</table>
+<h3 id="radio-provisioning">Radio Provisioning</h3>
+<p>CAPsMAN distinguishes between CAPs based on an identifier. The identifier is generated based on the following rules:</p>
+<ul>
+<li>if CAP provided a certificate, the identifier is set to the Common Name field in the certificate.</li>
+<li>Otherwise the identifier is based on Base-MAC provided by CAP in the form: '[XX:XX:XX:XX:XX:XX]'.</li>
+</ul>
+<p>When the DTLS connection with the CAP is successfully established (which means that the CAP identifier is known and valid), CAPsMAN makes sure there is no stale connection with the CAP using the same identifier. Currently connected CAPs are listed in the <code>/caps-man/remote-cap</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; remote-cap print
+ # ADDRESS                                    IDENT           STATE               RADIOS
+ 0 00:0C:42:00:C0:32/27044                    MT-000C4200C032 Run                      1
+</code></pre>
+<p>CAPsMAN distinguishes between actual wireless interfaces (radios) based on their builtin MAC address (radio-mac). This implies that it is impossible to manage two radios with the same MAC address on one CAPsMAN. Radios currently managed by CAPsMAN (provided by connected CAPs) are listed in the <code>/caps-man/radio</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; radio print
+Flags: L - local, P - provisioned 
+ #    RADIO-MAC         INTERFACE                               REMOTE-AP-IDENT
+ 0  P 00:03:7F:48:CC:07 cap1                                    MT-000C4200C032
+</code></pre>
+<p>When CAP connects, CAPsMAN at first tries to bind each CAP radio to CAPsMAN master interface based on radio-mac. If an appropriate interface is found, the radio gets set up using master interface configuration and configuration of slave interfaces that refer to the particular master interface. At this moment the interfaces (both master and slaves) are considered bound to the radio and the radio is considered provisioned.</p>
+<p>If no matching master interface for radio is found, CAPsMAN executes 'provisioning rules'. Provisioning rules are an ordered list of rules that contain settings that specify which radio to match and settings that specify what action to take if a radio matches.</p>
+<p>Provisioning rules for matching radios are configured in <code>/caps-man/provisioning</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>action</strong> (<em>create-disabled | create-enabled | create-dynamic-enabled | none</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Action to take if a rule match is specified by the following settings:create-disabled - create disabled static interfaces for the radio. I.e., the interfaces will be bound to the radio, but the radio will not be operational until the interface is manually enabled;create-enabled - create enabled static interfaces. I.e., the interfaces will be bound to the radio and the radio will be operational;create-dynamic-enabled - create enabled dynamic interfaces. I.e., the interfaces will be bound to the radio, and the radio will be operational;none - do nothing, leave the radio in a non-provisioned state;</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Provisioning rule</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>common-name-regexp</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Regular expression to match radios by common name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-supported-modes</strong> (<em>a|a-turbo|ac|an|b|g|g-turbo|gn</em>; Default: )</td>
+<td style="text-align: left;">Match radios by supported wireless modes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>identity-regexp</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Regular expression to match radios by router identity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ip-address-ranges</strong> (<em>IpAddressRange[,IpAddressRanges] max 100x</em>; Default: <strong>""</strong>)</td>
+<td style="text-align: left;">Match CAPs with IPs within the configured address range.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>master-configuration</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">If <strong>action</strong> specifies creating interfaces, then a new master interface with its configuration set to this configuration profile will be created</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name-format</strong> (<em>cap | identity | prefix | prefix-identity</em>; Default: <strong>cap</strong>)</td>
+<td style="text-align: left;">Specify the syntax of the CAP interface name creationcap - default nameidentity - CAP boards <code>/system/identity</code> nameprefix - name from the name-prefix valueprefix-identity - name from the name-prefix value and the CAP boards <code>/system/identity</code> name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name-prefix</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name prefix which can be used in the name-format for creating the CAP interface names</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio-mac</strong> (<em>MAC address</em>; Default: <strong>00:00:00:00:00:00</strong>)</td>
+<td style="text-align: left;">MAC address of radio to be matched, empty MAC (00:00:00:00:00:00) means match all MAC addresses</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>slave-configurations</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">If <strong>action</strong> specifies creating interfaces, then a new slave interface for each configuration profile in this list is created.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>If no rule matches the radio, then an implicit default rule with action <strong>create-enabled</strong> and no configurations set is executed.</p>
+</div>
+<p>To get the active provisioning matchers:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/provisioning&gt; print
+Flags: X - disabled 
+ 0   radio-mac=00:00:00:00:00:00 action=create-enabled master-configuration=main-cfg 
+     slave-configurations=virtual-ap-cfg name-prefix=&quot;&quot;
+</code></pre>
+<p>For user's convenience there are commands that allow the re-execution of the provisioning process for some radio or all radios provided by some AP:</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/radio/provision 0
+</code></pre>
+<p>and:</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/remote-cap/provision 0
+</code></pre>
+<h3 id="interface-configuration">Interface Configuration</h3>
+<p>CAPsMAN interfaces are managed in the <code>/caps-man/interface</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] &gt; /caps-man/interface/print          
+Flags: M - master, D - dynamic, B - bound, X - disabled, I - inactive, R - running 
+ #      NAME                                 RADIO-MAC         MASTER-INTERFACE                               
+ 0 M BR cap2                                 00:0C:42:1B:4E:F5 none                                           
+ 1   B  cap3                                 00:00:00:00:00:00 cap2                   
+
+</code></pre>
+<h3 id="master-configuration-profiles">Master Configuration Profiles</h3>
+<p>Configuration profiles permit pre-defined 'top level' master settings to be applied to CAP radios being provisioned.</p>
+<p>Configuration Profiles are configured in the <code>/caps-man/configuration</code> menu:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>channel</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">User defined list taken from Channel names (<code>/caps-man/channels</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.band</strong> (<em>2ghz-b | 2ghz-b/g | 2ghz-b/g/n | 2ghz-onlyg | 2ghz-onlyn | 5ghz-a | 5ghz-a/n | 5ghz-onlyn | 5ghz-a/n/ac | 5ghz-only-ac</em>; Default: )</td>
+<td style="text-align: left;">Defines a set of used channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.control-channel-width</strong> (<em>40mhz-turbo | 20mhz | 10mhz | 5mhz</em>; Default: )</td>
+<td style="text-align: left;">Defines a set of used channel widths.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.extension-channel</strong> (<em>Ce | Ceee | eC | eCee | eeCe | eeeC | xx | xxxx | disabled</em>; Default: )</td>
+<td style="text-align: left;">Extension channel configuration. (E.g. Ce = extension channel is above Control channel, eC = extension channel is below Control channel)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel frequency value in MHz on which the AP will operate. If left blank, CAPsMAN will automatically determine the best frequency that is least occupied.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.reselect-interval</strong> (<em>time [00:00:00]</em>; <em>[00:00:00..00:00:00];</em> Default: )</td>
+<td style="text-align: left;">The interval after which the least occupied frequency is chosen, can be defined as a random interval, ex. as "30m..60m". Works only if <strong>channel.frequency</strong> is left blank.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.save-selected</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If channel frequency is chosen automatically and <strong>channel.reselect-interval</strong> is used, then the last picked frequency is saved.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.secondary-frequency</strong> (<em>integer [0..4294967295]</em>; Default: <strong>auto</strong>)</td>
+<td style="text-align: left;">Specifies the second frequency that will be used for 80+80MHz configuration. Set it to <strong>Disabled</strong> in order to disable 80+80MHz capability.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.skip-dfs-channels</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">If <strong>channel.frequency</strong> is left blank, the selection will skip DFS channels</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.tx-power</strong> (<em>integer [-30..40]</em>; Default: )</td>
+<td style="text-align: left;">TX Power for CAP interface (for the whole interface not for individual chains) in dBm. It is not possible to set higher than allowed by country regulations or interface. By default max allowed by country or interface is used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel.width</strong> (; Default: )</td>
+<td style="text-align: left;">Sets Channel Width in MHz.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Configuration profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>country</strong> (<em>name of the country | no_country_set</em>; Default: <strong>no_country_set</strong>)</td>
+<td style="text-align: left;">Limits available bands, frequencies and maximum transmit power for each frequency. Also specifies default value of <strong>scan-list</strong>. Value <em>no_country_set</em> is an FCC-compliant set of channels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">User defined list taken from Datapath names (<code>/caps-man/datapath</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge</strong> (<em>list</em>; Default: )</td>
+<td style="text-align: left;">Bridge to which particular interface should be automatically added as a port</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge-cost</strong> (<em>integer [1..</em>200000000<em>]</em>; Default: )</td>
+<td style="text-align: left;">bridge port cost to use when adding as a bridge port</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.bridge-horizon</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">bridge horizon to use when adding as bridge port</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.client-to-client-forwarding</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">controls if client-to-client forwarding between wireless clients connected to interface should be allowed, In local forwarding mode, this function is performed by CAP; otherwise, it is performed by CAPsMAN</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.interface-list</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.l2mtu</strong> (; Default: )</td>
+<td style="text-align: left;">set Layer2 MTU size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.local-forwarding</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">controls forwarding mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.mtu</strong> (; Default: )</td>
+<td style="text-align: left;">set MTU size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.openflow-switch</strong> (; Default: )</td>
+<td style="text-align: left;">OpenFlow switch port (when enabled) to add interface to</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.vlan-id</strong> (<em>integer [1..4095]</em>; Default: )</td>
+<td style="text-align: left;">VLAN ID to assign to interface if vlan-mode enables use of VLAN tagging</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>datapath.vlan-mode</strong> (<em>use-service-tag | use-tag</em>; Default: )</td>
+<td style="text-align: left;">Enables and specifies the type of VLAN tag to be assigned to the interface (causes all received data to get tagged with VLAN tag and allows the interface to only send out data tagged with given tag)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disconnect-timeout</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>distance</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frame-lifetime</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>guard-interval</strong> (<em>any | long</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;">Whether to allow the use of short guard interval (refer to 802.11n MCS specification to see how this may affect throughput). "any" will use either short or long, depending on data rate, "long" will use long only.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hide-ssid</strong> (<em>yes | no</em>; Default: )</td>
+<td style="text-align: left;">yes - AP does not include SSID in the beacon frames and does not reply to probe requests that have broadcast SSID.no - AP includes SSID in the beacon frames and replies to probe requests that have broadcast SSID.This property has effect only in AP mode. Setting it to <em>yes</em> can remove this network from the list of wireless networks that are shown by some client software. Changing this setting does not improve the security of the wireless network, because SSID is included in other frames sent by the AP.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-protection-mode</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>hw-retries</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>installation</strong> (<em>any | indoor | outdoor</em>; Default: <strong>any</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>keepalive-frames</strong> (<em>enabled | disabled</em>; Default: <strong>enabled</strong>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>load-balancing-group</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Tags the interface to the load balancing group. For a client to connect to interface in this group, the interface should have the same number of already connected clients as all other interfaces in the group or smaller. Useful in setups where ranges of CAPs mostly overlap.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>max-sta-count</strong> (<em>integer [1..2007]</em>; Default: )</td>
+<td style="text-align: left;">Maximum number of associated clients.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>mode</strong> (; Default: <strong>ap</strong>)</td>
+<td style="text-align: left;">Set operational mode. Only ap is currently supported.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>multicast-helper</strong> (<em>default | disabled | full</em>; Default: <strong>default</strong>)</td>
+<td style="text-align: left;">When set to full multicast packets will be sent with unicast destination MAC address, resolving multicast problems on a wireless link. This option should be enabled only on the access point; clients should be configured in <strong>station-bridge</strong> mode.disabled - disables the helper and sends multicast packets with multicast destination MAC addressesfull - all multicast packet mac addresses are changed to unicast mac addresses prior to sending them outdefault - default choice that currently is set to disabled. Value can be changed in future releases.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Descriptive name for the Configuration Profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates</strong> (; Default: )</td>
+<td style="text-align: left;">User defined list taken from Rates names (<code>/caps-man/rates</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.basic</strong> (<em>1Mbps | 2Mbps | 5.5Mbps | 6Mbps | 9Mbps | 11Mbps | 12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.supported</strong> (<em>1Mbps | 2Mbps | 5.5Mbps | 6Mbps | 9Mbps | 11Mbps | 12Mbps | 18Mbps | 24Mbps | 36Mbps | 48Mbps | 54Mbps</em>; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.ht-basic-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7</strong>)</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.ht-supported-mcs</strong> (<em>list of (mcs-0 | mcs-1 | mcs-2 | mcs-3 | mcs-4 | mcs-5 | mcs-6 | mcs-7 | mcs-8 | mcs-9 | mcs-10 | mcs-11 | mcs-12 | mcs-13 | mcs-14 | mcs-15 | mcs-16 | mcs-17 | mcs-18 | mcs-19 | mcs-20 | mcs-21 | mcs-22 | mcs-23)</em>; Default: <strong>mcs-0; mcs-1; mcs-2; mcs-3; mcs-4; mcs-5; mcs-6; mcs-7; mcs-8; mcs-9; mcs-10; mcs-11; mcs-12; mcs-13; mcs-14; mcs-15; mcs-16; mcs-17; mcs-18; mcs-19; mcs-20; mcs-21; mcs-22; mcs-23</strong>)</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/IEEE_802.11n-2009#Data_rates">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11n for MCS specification.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.vht-basic-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that every connecting client must support. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream none - will not use selected Spatial StreamMCS 0-7 - client must support MCS-0 to MCS-7MCS 0-8 - client must support MCS-0 to MCS-8MCS 0-9 - client must support MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rates.vht-supported-mcs</strong> (<em>none | MCS 0-7 | MCS 0-8 | MCS 0-9</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;"><a href="https://en.wikipedia.org/wiki/IEEE_802.11ac#Data_rates_and_speed">Modulation and Coding Schemes</a> that this device advertises as supported. Refer to 802.11ac for MCS specification. You can set MCS interval for each of Spatial Stream none - will not use selected Spatial StreamMCS 0-7 - devices will advertise as supported MCS-0 to MCS-7MCS 0-8 - devices will advertise as supported MCS-0 to MCS-8MCS 0-9 - devices will advertise as supported MCS-0 to MCS-9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for receiving.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security</strong> (<em>string</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Name of security configuration from <code>/caps-man/security</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.authentication-types</strong> (<em>list of string</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Specify the type of Authentication from <strong>wpa-psk</strong>, <strong>wpa2-psk</strong>, <strong>wpa-eap</strong> or <strong>wpa2-eap</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.disable-pmkid</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.eap-methods</strong> (<em>eap-tls | passthrough</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">eap-tls - Use built-in EAP TLS authentication.passthrough - Access point will relay authentication process to the RADIUS server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.eap-radius-accounting</strong> (; Default: )</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.encryption</strong> (<em>aes-ccm | tkip</em>; Default: )</td>
+<td style="text-align: left;">Set type of unicast encryption algorithm used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.group-encryption</strong> (<em>aes-ccm | tkip</em>; Default: <strong>aes-ccm</strong>)</td>
+<td style="text-align: left;">Access Point advertises one of these ciphers, multiple values can be selected. Access Point uses it to encrypt all broadcast and multicast frames. Client attempts connection only to Access Points that use one of the specified group ciphers.tkip - Temporal Key Integrity Protocol - encryption protocol, compatible with legacy WEP equipment, but enhanced to correct some of the WEP flaws.aes-ccm - more secure WPA encryption protocol, based on the reliable AES (Advanced Encryption Standard). Networks free of WEP legacy should use only this cipher.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.group-key-update</strong> (<em>time: 30s..1h</em>; Default: <strong>5m</strong>)</td>
+<td style="text-align: left;">Controls how often Access Point updates the group key. This key is used to encrypt all broadcast and multicast frames. property only has effect for Access Points.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.passphrase</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">WPA or WPA2 pre-shared key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.tls-certificate</strong> (<em>none | name</em>; Default: )</td>
+<td style="text-align: left;">Access Point always needs a certificate when <code>security.tls-mode</code> is set to a value other than <code>no-certificates</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>security.tls-mode</strong> (<em>verify-certificate | dont-verify-certificate | no-certificates | verify-certificate-with-crl</em>; Default: )</td>
+<td style="text-align: left;">This property has effect only when <strong>security.eap-methods</strong> contains <em>eap-tls</em>.verify-certificate - Require the remote device to have a valid certificate. Check that it is signed by a known certificate authority. No additional identity verification is done. The certificate may include information about time period during which it is valid. If the router has incorrect time and date, it may reject valid certificate because router's clock is outside that period. See also the  Certificates configuration.dont-verify-certificate - Do not check certificate of the remote device. Access Point will not require client to provide certificate.no-certificates - Do not use certificates. TLS session is established using 2048 bit anonymous Diffie-Hellman key exchange.verify-certificate-with-crl - Same as verify-certificate but also checks if the certificate is valid by checking the Certificate Revocation List.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssid</strong> (<em>string (0..32 chars)</em>; Default: )</td>
+<td style="text-align: left;">SSID (service set identifier) is a name broadcast in the beacons that identifies wireless network.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-chains</strong> (<em>list of integer [0..3]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Which antennas to use for transmission.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="channel-groups">Channel Groups</h3>
+<p>Channel group settings allow for the configuration of lists of radio channel related settings, such as radio band, frequency, Tx Power extension channel and width.</p>
+<p>Channel group settings are configured in the Channels profile menu <code>/caps-man/channels</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>band</strong> (<em>2ghz-b | 2ghz-b/g | 2ghz-b/g/n | 2ghz-onlyg | 2ghz-onlyn | 5ghz-a | 5ghz-a/n | 5ghz-onlyn</em>; Default: )</td>
+<td style="text-align: left;">Defines operational radio frequency band and mode taken from hardware capability of wireless card</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>comment</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Short description of the Channel Group profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>extension-channel</strong> (<em>Ce | Ceee | eC | eCee | eeCe | eeeC | disabled</em>; Default: )</td>
+<td style="text-align: left;">Extension channel configuration. (E.g. Ce = extension channel is above Control channel, eC = extension channel is below Control channel)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>frequency</strong> (<em>integer [0..4294967295]</em>; Default: )</td>
+<td style="text-align: left;">Channel frequency value in MHz on which the AP will operate.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Descriptive name for the Channel Group Profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>tx-power</strong> (<em>integer [-30..40]</em>; Default: )</td>
+<td style="text-align: left;">TX Power for the CAP interface (for the whole interface not for individual chains) in dBm. It is not possible to set higher than allowed by country regulations or interface. By default, the max allowed by country or interface is used.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>width</strong> (; Default: )</td>
+<td style="text-align: left;">Sets Channel Width in MHz. (E.g. 20, 40)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>save-selected</strong> (; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Saves selected channel for the CAP Radio - will select this channel after the CAP reconnects to CAPsMAN and use it till the channel Re-optimize is done for this CAP.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="datapath-configuration">Datapath Configuration</h3>
+<p>Datapath settings control data forwarding related aspects. On CAPsMAN datapath settings are configured in the datapath profile menu <code>/caps-man/datapath</code> or directly in a configuration profile or an interface menu as settings with the <strong>datapath.</strong> prefix.</p>
+<p>There are 2 major forwarding modes:</p>
+<ul>
+<li>Local forwarding mode, where CAP is locally forwarding data to and from the wireless interface.</li>
+<li>Manager forwarding mode, where CAP sends to CAPsMAN all data received over wireless and only sends out the wireless data received from CAPsMAN. In this mode even client-to-client forwarding is controlled and performed by CAPsMAN.</li>
+</ul>
+<p>Forwarding mode is configured on a per-interface basis - so if one CAP provides 2 radio interfaces, one can be configured to operate in local forwarding mode and the other in manager forwarding mode. The same applies to Virtual-AP interfaces - each can have a different forwarding mode from the master interface or other Virtual-AP interfaces.</p>
+<p>Most of the datapath settings are used only when in manager forwarding mode, because in local forwarding mode CAPsMAN does not have control over data forwarding.</p>
+<p>There are the following datapath settings:</p>
+<ul>
+<li>bridge -- bridge interface to add interface to, as a bridge port, when enabled.</li>
+<li>bridge-cost -- bridge port cost to use when adding as a bridge port.</li>
+<li>bridge-horizon -- bridge horizon to use when adding as a bridge port.</li>
+<li>client-to-client-forwarding -- controls if client-to-client forwarding between wireless clients connected to the interface should be allowed, in local forwarding mode this function is performed by CAP, otherwise it is performed by CAPsMAN.</li>
+<li>local-forwarding -- controls forwarding mode.</li>
+<li>openflow-switch -- OpenFlow switch to add interface to, as a port when enabled.</li>
+<li>vlan-id -- VLAN ID to assign to the interface if vlan-mode enables use of VLAN tagging.</li>
+<li>vlan-mode -- VLAN tagging mode specifies if VLAN tag should be assigned to the interface (causes all received data to get tagged with the VLAN tag and allows the interface to only send out data tagged with the given tag).</li>
+</ul>
+<h3 id="local-forwarding-mode">Local Forwarding Mode</h3>
+<p>In this mode, the wireless interface on the CAP behaves as a normal interface and takes part in normal data forwarding. The wireless interface will accept/pass data to the networking stack on the CAP. CAPsMAN will not participate in data forwarding and will not process any of the data frames. It will only control interface configuration and client association process.</p>
+<p>The wireless interface on CAP will change its configuration to 'enabled' and its state and some relevant parameters (e.g. mac-address, arp, mtu) will reflect that of the interface on CAPsMAN. Note that wireless-related configuration <strong>will not</strong> reflect the actual interface configuration as applied by CAPsMAN:</p>
+<pre><code class="language-ros">[admin@CAP] /interface/wireless&gt; pr
+Flags: X - disabled, R - running 
+ 0  R ;;; managed by CAPsMAN
+      ;;; channel: 5180/20-Ceee/ac, SSID: master, local forwarding
+      name=&quot;wlan2&quot; mtu=1500 mac-address=00:03:7F:48:CC:07 arp=enabled 
+      interface-type=Atheros AR9888 mode=ap-bridge ssid=&quot;merlin&quot; 
+      frequency=5240 band=5ghz-a/n channel-width=20/40mhz-eC scan-list=default
+      ...
+</code></pre>
+<p>Virtual-AP interfaces in local forwarding mode will appear as enabled and dynamic Virtual-AP interfaces:</p>
+<pre><code class="language-ros">[admin@CAP] /interface&gt; pr
+Flags: D - dynamic, X - disabled, R - running, S - slave 
+ #     NAME                                TYPE         MTU L2MTU  MAX-L2MTU
+ ...
+ 2  RS ;;; managed by CAPsMAN
+       ;;; channel: 5180/20-Ceee/ac, SSID: master, local forwarding
+       wlan2                               wlan        1500  1600
+ 3 DRS ;;; managed by CAPsMAN
+       ;;; SSID: slave, local forwarding
+       wlan6                               wlan        1500  1600
+ ...
+[admin@CAP] /interface&gt; wireless pr   
+Flags: X - disabled, R - running 
+ ...
+ 2  R ;;; managed by CAPsMAN
+      ;;; SSID: slave, local forwarding
+      name=&quot;wlan6&quot; mtu=1500 mac-address=00:00:00:00:00:00 arp=enabled 
+      interface-type=virtual-AP master-interface=wlan2 
+</code></pre>
+<p>The fact that Virtual-AP interfaces are added as dynamic somewhat limits static configuration possibilities on CAP for data forwarding, such as assigning addresses to the Virtual-AP interface. This does not apply to the master wireless interface.</p>
+<p>To overcome this, it is possible to use the static-virtual setting on the CAP which will create Static Virtual Interfaces instead of Dynamic and allows the possibility to assign IP configuration to those interfaces. The MAC address is used to remember each static-interface when applying the configuration from the CAPsMAN. If two or more static interfaces have the same MAC address the configuration could be applied in random order.</p>
+<p>To facilitate data forwarding configuration, CAP can be configured with a bridge to which interfaces are automatically added as ports when interfaces are enabled by CAPsMAN. This can be done in the <code>/interface/wireless/cap</code> menu.</p>
+<h3 id="manager-forwarding-mode">Manager Forwarding Mode</h3>
+<p>In this mode CAP sends all data received over wireless to CAPsMAN and only sends out over wireless data received from CAPsMAN. CAPsMAN has full control over data forwarding including client-to-client forwarding. The wireless interface on CAP is disabled and does not participate in networking:</p>
+<pre><code class="language-ros"> ...
+ 1 X  ;;; managed by CAPsMAN
+      ;;; channel: 5180/20-Ceee/ac, SSID: master, manager forwarding
+      name=&quot;wlan2&quot; mtu=1500 mac-address=00:03:7F:48:CC:07 arp=enabled 
+      interface-type=Atheros AR9888 mode=ap-bridge ssid=&quot;merlin&quot; 
+ ...
+</code></pre>
+<p>Virtual-AP interfaces are also created as 'disabled' and do not take part in data forwarding on the CAP.</p>
+<h3 id="access-list">Access List</h3>
+<p>The access list on CAPsMAN is an ordered list of rules that is used to allow/deny clients to connect to any CAP under CAPsMAN control. When a client attempts to connect to a CAP that is controlled by CAPsMAN, CAP forwards that request to CAPsMAN. As a part of the registration process, CAPsMAN consults the access list to determine if the client should be allowed to connect. The default behaviour of the access list is to allow connection.</p>
+<p>Access list rules are processed one by one until a matching rule is found. Then the action in the matching rule is executed. If the action specifies that the client should be accepted, the client is accepted, potentially overriding its default connection parameters with ones specified in the access list rule.</p>
+<p>The Access list is configured in the <code>/caps-man/access-list</code> menu. There are the following parameters for access list rules:</p>
+<ul>
+<li>Client matching parameters:</li>
+<li>address - MAC address of client (or, if mask is specified, only those parts will be checked as per the mask, so to match vendor D8 from "D8:1C:79:6E:1E:FE", simply enter a bogus entry, such as "D8:00:00:00:00:00" and then use the mask as per the next line).</li>
+<li>mask - MAC address mask to apply when comparing client address. For example, use FF:00:00:00:00:00 to match only the first octet of the specified MAC address. In the above example, regardless of the entered MAC, it will match only the first octet. Similarly, entering 00:00:00:00:00:FF will only match the last octet (FE) of a hypothetical MAC "D8:1C:79:6E:1E:FE"). So in the mac line, you could just enter 00:00:00:00:00:FE, if you would use such a mask.</li>
+<li>interface - optional interface to compare with interface to which the client actually connects.</li>
+<li>time - time of day and days when the rule matches.</li>
+<li>signal-range - range in which the client signal must fit for the rule to match.</li>
+<li>Action parameter - specifies action to take when the client matches:</li>
+<li>accept - accept client.</li>
+<li>reject - reject client.</li>
+<li>query-radius - query RADIUS server if a particular client is allowed to connect.</li>
+<li>Connection parameters:</li>
+<li>ap-tx-limit - tx speed limit in the direction to the client.</li>
+<li>client-tx-limit - tx speed limit in the direction to the AP (applies to RouterOS clients only).</li>
+<li>client-to-client-forwarding - specifies whether to allow forwarding data received from this client to other clients connected to the same interface.</li>
+<li>private-passphrase - PSK passphrase to use for this client if some PSK authentication algorithm is used.</li>
+<li>radius-accounting - specifies if RADIUS traffic accounting should be used if RADIUS authentication gets done for this client.</li>
+<li>vlan-mode - VLAN tagging mode specifies if traffic coming from the client should get tagged (and untagged when going to the client).</li>
+<li>vlan-id - VLAN ID to use if doing VLAN tagging.</li>
+</ul>
+<h3 id="registration-table">Registration Table</h3>
+<p>The Registration table contains a list of clients that are connected to radios controlled by CAPsMAN and is available in the <code>/caps-man/registration-table</code> menu:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man&gt; registration-table print
+ # INTERFACE                   MAC-ADDRESS       UPTIME                RX-SIGNAL
+ 0 cap1                        00:03:7F:48:CC:0B 1h38m9s210ms                -36
+</code></pre>
+<h2 id="examples">Examples</h2>
+<h3 id="basic-configuration-with-master-and-slave-interface">Basic configuration with master and slave interface</h3>
+<p>Create a security profile for WPA2 PSK, without specifying a passphrase:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/security&gt;add name=&quot;wpa2psk&quot; authentication-types=wpa2-psk encryption=aes-ccm
+</code></pre>
+<p>Create a configuration profile to be used by the master interface:</p>
+<ul>
+<li>Specify WPA2 passphrase in the configuration.</li>
+<li>Specify channel settings in the configuration.</li>
+</ul>
+<pre><code class="language-ros">[admin@CM] /caps-man/configuration&gt; add name=master-cfg ssid=master security=wpa2psk
+security.passphrase=12345678 channel.frequency=5180 channel.width=20 channel.band=5ghz-a
+</code></pre>
+<p>Create a configuration profile to be used by the virtual AP interface:</p>
+<ul>
+<li>Specify a different WPA2 passphrase in the configuration.</li>
+</ul>
+<pre><code class="language-ros">[admin@CM] /caps-man/configuration&gt; add name=slave-cfg ssid=slave security=wpa2psk
+security.passphrase=87654321
+</code></pre>
+<p>Create a provisioning rule that matches any radio and creates dynamic interfaces using master-cfg and slave-cfg:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/provisioning&gt; add action=create-dynamic-enabled master-configuration=master-cfg
+slave-configurations=slave-cfg
+</code></pre>
+<p>Now when an AP connects and is provisioned, 2 dynamic interfaces (one master and one slave) will get created:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/interface&gt; print detail 
+Flags: M - master, D - dynamic, B - bound, X - disabled, I - inactive, R - running 
+ 0 MDB  name=&quot;cap1&quot; mtu=1500 l2mtu=2300 radio-mac=00:0C:42:1B:4E:F5 master-interface=none 
+        configuration=master-cfg 
+
+ 1  DB  name=&quot;cap2&quot; mtu=1500 l2mtu=2300 radio-mac=00:00:00:00:00:00 master-interface=cap1 
+        configuration=slave-cfg 
+</code></pre>
+<p>Consider an AP that does not support configured frequency connects and can not become operational:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/interface&gt; pr
+Flags: M - master, D - dynamic, B - bound, X - disabled, I - inactive, R - running 
+ #      NAME                                 RADIO-MAC         MASTER-INTERFACE                               
+ 0 MDB  ;;; unsupported band or channel
+        cap3                                 00:0C:42:1B:4E:FF none    
+ ...
+</code></pre>
+<p>We can override channel settings for this particular radio in interface settings, without affecting the master-cfg profile:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/interface&gt; set cap3 channel.frequency=2142 channel.band=2ghz-b/g
+</code></pre>
+<p>Allow specific MAC address range to match the Access-list, for example, match all the Apple devices:</p>
+<pre><code class="language-ros">[admin@CM] /caps-man/access-list&gt; add mac-address=18:34:51:00:00:00 mac-address-mask=FF:FF:FF:00:00:00 action=accept
+</code></pre>
+<p>Configuring DHCP Server Option 138 for setting the CAPsMAN address on the CAP boards</p>
+<pre><code class="language-ros">[admin@CM] /ip/dhcp-server/network/set &lt;network-id&gt; caps-manager=&lt;capsman-server-ip&gt;
+</code></pre>
+<p>The DHCP client will see this CAPsMAN IP in <code>/ip/dhcp-client/print detail</code>.</p>
+<h3 id="configuration-with-certificates">Configuration with certificates</h3>
+<p>You would want to configure certificates in your CAPsMAN to use options such as <em>Require Peer Certificate</em> and <em>Lock To Caps Man</em>. These options increase security and in some cases stability of your CAPsMAN network. CAPs won't connect to CAPsMAN without a specific certificate and vice versa.</p>
+<h4 id="fast-and-easy-configuration">Fast and easy configuration</h4>
+<p>This is a basic configuration for using certificates in your CAPsMAN setup. This example assumes that you already have basic configuration on your CAPsMAN and CAP. It is best to use this configuration in CAPsMAN networks which are not constantly growing. For more details read about <a href="#cap-to-capsman-connection">CAP to CAPsMAN Connection</a>.</p>
+<p><strong>CAPsMAN device:</strong></p>
+<p>In the CAPsMAN Manager menu set <em>Certificate</em> and <em>CA Certificate</em> to <em>auto</em>:</p>
+<pre><code class="language-ros">/caps-man/manager
+set ca-certificate=auto certificate=auto
+</code></pre>
+<p>Print output:</p>
+<pre><code class="language-ros">[admin@CAPsMAN] /caps-man/manager/print 
+                   enabled: yes
+               certificate: auto
+            ca-certificate: auto
+              package-path: 
+            upgrade-policy: none
+  require-peer-certificate: no
+     generated-certificate: CAPsMAN-D4CA6D987C26
+  generated-ca-certificate: CAPsMAN-CA-D4CA6D987C26
+</code></pre>
+<p>The CAPsMAN device will first generate <em>CA-Certificate</em> and then it will generate a <em>Certificate</em> which depends on <em>CA-Certificate</em>.</p>
+<p><strong>CAP device:</strong></p>
+<p>Set in CAP configuration to <em>request</em> a certificate:</p>
+<pre><code class="language-ros">/interface/wireless/cap
+set certificate=request
+</code></pre>
+<p>CAP will connect to CAPsMAN and request a certificate. CAP will receive <em>CA-Certificate</em> from CAPsMAN and another certificate will be created for use on CAP.</p>
+<p><strong>In Result</strong></p>
+<p>On the CAP device in the CAP menu <em>Requested Certificate</em> is set:</p>
+<pre><code class="language-ros">[admin@CAP] /interface/wireless/cap/print
+                            enabled: yes
+                         interfaces: wlan1
+                        certificate: request
+                   lock-to-caps-man: no
+               discovery-interfaces: ether1
+                 caps-man-addresses: 
+                     caps-man-names: 
+  caps-man-certificate-common-names: 
+                             bridge: none
+                     static-virtual: no
+         --&gt;  requested-certificate: CAP-D4CA6D7F45BA  &lt;--
+</code></pre>
+<p>Also, two certificates are gained and are seen in the <em>Certificate</em> menu:</p>
+<pre><code class="language-ros">[admin@CAP] &gt; /certificate/print 
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, A - authority, I - issued, R - revoked, E - expired, T - trusted 
+ #          NAME              COMMON-NAME              SUBJECT-ALT-NAME                                           FINGERPRINT             
+ 0     A  T _0                CAPsMAN-CA-D4CA6D987C26                                                             383e63d7b...
+ 1 K        CAP-D4CA6D7F45BA  CAP-D4CA6D7F45BA                                                                    d495d1a94...
+</code></pre>
+<p>On the CAPsMAN device in the Certificate menu three certificates are created. CAPsMAN and CAPsMAN-CA certificates, as well as a certificate which is issued to CAP:</p>
+<pre><code class="language-ros">[admin@CAPsMAN] &gt; /certificate/print 
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, A - authority, I - issued, R - revoked, E - expired, T - trusted 
+ #          NAME                     COMMON-NAME              SUBJECT-ALT-NAME                                    FINGERPRINT         
+ 0 K   A  T CAPsMAN-CA-D4CA6D987C26  CAPsMAN-CA-D4CA6D987C26                                                      383e63d7b...
+ 1 K    I   CAPsMAN-D4CA6D987C26     CAPsMAN-D4CA6D987C26                                                         02b0f7ff4...
+ 2      I   issued_1                 CAP-D4CA6D7F45BA                                                             d495d1a94...
+</code></pre>
+<p><strong>Additionally</strong></p>
+<p>If you want to allow only CAPs with a valid certificate to connect to this CAPsMAN you can set <em>Require Peer Certificate</em> to <em>yes</em> on the CAPsMAN device:</p>
+<pre><code class="language-ros">/caps-man/manager
+set require-peer-certificate=yes
+</code></pre>
+<p>However, when you want to add new CAP devices to your CAPsMAN network you will have to set this option to <em>no</em> and then back to <em>yes</em> after CAP has gained certificates. Every time you change this option CAPsMAN will drop all dynamic interfaces and CAPs will try to connect again.</p>
+<p>If you want to lock CAP to a specific CAPsMAN and be sure it won't connect to other CAPsMANs you should set the option <em>Lock To CAPsMAN</em> to <em>yes</em>. Additionally, you can specify the CAPsMAN to lock to by setting <em>CAPsMAN Certificate Common Names</em> on the CAP device:</p>
+<pre><code class="language-ros">/interface/wireless/cap
+set lock-to-caps-man=yes
+set caps-man-certificate-common-names=CAPsMAN-D4CA6D987C26
+</code></pre>
+<h4 id="manual-certificates-and-issuing-with-scep">Manual certificates and issuing with SCEP</h4>
+<p>With this example, you can create your own certificates for CAPsMAN and take control over issuing certificates to CAPs. This configuration can be useful in big, growing CAPsMAN networks. Many segments of this example can be done differently depending on your situation and needs. At this point, some knowledge about <a href="../../../authentication-authorization-accounting/certificates.md">Certificates</a> and their <a href="../../../authentication-authorization-accounting/certificates.md#create-a-certificate-authority-and-sign-certificates">application</a> can be useful.</p>
+<p><strong>CAPsMAN device:</strong></p>
+<p>In the <em>Certificate</em> menu add certificate templates for CA certificate and CAPsMAN server certificate:</p>
+<pre><code class="language-ros">/certificate
+add name=CA-temp common-name=CA
+add name=CAPsMAN-temp common-name=CAPsMAN
+</code></pre>
+<p>Now <em>Sign</em> the certificate templates. First <em>Sign</em> the CA certificate and use CAPsMAN device IP as <em>CA CRL Host</em>:</p>
+<pre><code class="language-ros">/certificate
+sign CA-temp ca-crl-host=10.5.138.157 name=CA
+sign CAPsMAN-temp ca=CA name=CAPsMAN
+</code></pre>
+<p>Alternatively, the previous two steps can be done with auto setting in <em>Certificate</em> and <em>CA-Certificate</em> options in CAPsMAN Manager menu, see the <a href="#fast-and-easy-configuration">Fast and easy configuration</a>.</p>
+<p><em>Export</em> CA certificate. You will have to <em>Import</em> it on the CAP device. You can use <em>Download -&gt; Drag&amp;Drop</em> to the CAP device, in this example the <em>fetch</em> command is used later from the CAP device. Using a long passphrase is advisable - a longer passphrase will take longer to crack if it gets into the wrong hands:</p>
+<pre><code class="language-ros">/certificate
+export-certificate CA export-passphrase=thelongerthebetterpassphrase
+</code></pre>
+<p>Create an <em>SCEP server</em> which will be used to issue and grant certificates to CAP devices:</p>
+<pre><code class="language-ros">/certificate/scep-server
+add ca-cert=CA path=/scep/CAPsMAN
+</code></pre>
+<p>Set certificates in the CAPsMAN Manager menu and set <em>Require Peer Certificate</em> to yes:</p>
+<pre><code class="language-ros">/caps-man/manager
+set ca-certificate=CA certificate=CAPsMAN
+set require-peer-certificate=yes
+</code></pre>
+<p>At this point, only CAPs with a valid certificate will be able to connect.</p>
+<p><strong>CAP device</strong></p>
+<p>Download the export of the CA certificate from the CAPsMAN device to the CAP device. In this example <em>fetch</em> is used; however, there are multiple other ways:</p>
+<pre><code class="language-ros">/tool/fetch address=10.5.138.157 src-path=cert_export_CA.crt user=admin password=&quot;123&quot; mode=ftp
+</code></pre>
+<p>Import CA certificate from CAPsMAN device in the <em>Certificate</em> menu:</p>
+<pre><code class="language-ros">/certificate&gt; import file-name=cert_export_CA.crt passphrase=thelongerthebetterpassphrase
+</code></pre>
+<p>Add a certificate template for CAP:</p>
+<pre><code class="language-ros">/certificate
+add name=CAP1 common-name=CAP1
+</code></pre>
+<p>Ask the CAPsMAN device to grant this certificate with a key using SCEP:</p>
+<pre><code class="language-ros">/certificate
+add-scep template=CAP1 scep-url=&quot;https://10.5.138.157/scep/CAPsMAN&quot;
+</code></pre>
+<p>You will have to return to the CAPsMAN device to grant the key to this certificate.</p>
+<p>In the CAP menu set the just created certificate:</p>
+<pre><code class="language-ros">/interface/wireless/cap
+set certificate=CAP1
+</code></pre>
+<p><strong>CAPsMAN device:</strong></p>
+<p>Return to the CAPsMAN device to grant a key to the CAP certificate in the <em>Certificate Request</em> menu:</p>
+<pre><code class="language-ros">/certificate/scep-server/requests
+grant numbers=0
+</code></pre>
+<p><strong>In Result</strong></p>
+<p>Now CAP should be able to connect to CAPsMAN. See in <em>CAPsMAN interfaces</em> if it connects. In the CAPsMAN device <em>Certificate</em> menu three certificates can be seen: CA, CAPsMAN, and the one which is issued to CAP:</p>
+<pre><code class="language-ros">[admin@CAPsMAN] /certificate/print 
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, A - authority, I - issued, R - revoked, 
+E - expired, T - trusted 
+ #          NAME        COMMON-NAME      SUBJECT-ALT-NAME                                   FINGERPRINT     
+ 0 K L A  T CA          CA                                                                  752775b457a37...
+ 1 K   A    CAPsMAN     CAPsMAN                                                             12911ba445b3b...
+ 2      I   issued_1    CAP1                                                                5b9a52b6ce3fb...
+</code></pre>
+<p>In the CAP devices' <em>Certificate</em> menu two acquired certificates can be seen:</p>
+<pre><code class="language-ros">[admin@CAP1] /interface/wireless&gt; /certificate/print 
+Flags: K - private-key, D - dsa, L - crl, C - smart-card-key, A - authority, I - issued, R - revoked, 
+E - expired, T - trusted 
+ #          NAME        COMMON-NAME      SUBJECT-ALT-NAME                                   FINGERPRINT     
+ 0   L A  T cert_exp... CA                                                                  752775b457a37...
+ 1 K      T CAP1        CAP1                                                                5b9a52b6ce3fb...
+</code></pre>
+<hr />
+<h1 id="capsman-with-vlans">CAPsMAN with VLANs</h1>
+<blockquote>
+<p>This page explains configuring CAPsMAN with VLANs in MikroTik RouterOS, enabling centralized wireless management and VLAN tagging for different client groups. It covers Local Forwarding Mode setup, provisioning...</p>
+</blockquote>
+<h1 id="capsman-with-vlans_1">CAPsMAN with VLANs</h1>
+<h2 id="summary">Summary</h2>
+<p>It is possible to create a centralized Access Point management setup for a home or office environment that is scalable to many Access Points. Such a setup is quite easy to configure and has been explained in the <a href="./ap-controller-capsman.md#simple-setup-of-a-capsman-system">Simple CAPsMAN setup</a> guide, but for more complex setups VLANs might be required. CAPsMAN has the functionality to assign a certain VLAN ID under certain conditions. This guide will provide an example on how to assign a VLAN ID to Wireless packets based on the AP, to which a wireless client connects. CAPsMAN with VLANs can be achieved either by using <a href="./ap-controller-capsman.md#local-forwarding-mode">Local Forwarding Mode</a> or <a href="./ap-controller-capsman.md#manager-forwarding-mode">CAPsMAN Forwarding Mode</a>, the Local Forwarding Mode will provide the possibility to use a switch between your APs and CAPsMAN router to switch packets (to achieve larger throughput), while CAPsMAN Forwarding Mode should be used when all traffic should always be forwarded to the CAPsMAN router (in most cases to filter packets).</p>
+<p>In this example, we are going to assign all our Wireless clients to <strong>VLAN10</strong>, if they connect to <strong>WiFi_WORK</strong>, and we are going to assign Wireless clients to <strong>VLAN20</strong>, if they connect to <strong>WiFi_GUEST</strong>. We are going to use Virtual APs along with CAPsMAN to create multiple SSIDs for our Wireless clients to connect to while using a single physical device. An example of how to use a single SSID for a single physical device will also be shown by using CAPsMAN provisioning rules.</p>
+<h2 id="using-local-forwarding-mode">Using Local Forwarding Mode</h2>
+<p>In Local Forwarding Mode, the CAPsMAN router is distributing the configuration across all CAPs that are being provisioned by the CAPsMAN router. In Local Forwarding Mode, traffic is not required to be sent to the CAPsMAN router, but rather it can be sent to a different router without involving the CAPsMAN router when forwarding traffic. This mode allows you to tag traffic with a certain VLAN ID before it is sent to your network from your wireless client, which adds the possibility to use a switch to limit certain VLAN IDs to certain ports. In Local Forwarding Mode, traffic is not encapsulated with a special CAPsMAN header, which can only be removed by a CAPsMAN router.</p>
+<h3 id="capsman-router">CAPsMAN Router</h3>
+<ul>
+<li>Create appropriate CAP configurations for each VLAN:</li>
+</ul>
+<pre><code>/caps-man/configuration
+add country=latvia datapath.local-forwarding=yes datapath.vlan-id=10 datapath.vlan-mode=use-tag name=Config_WORK security.authentication-types=wpa-psk,wpa2-psk \
+    security.passphrase=secret_work_password ssid=WiFi_WORK
+add country=latvia datapath.local-forwarding=yes datapath.vlan-id=20 datapath.vlan-mode=use-tag name=Config_GUEST security.authentication-types=\
+    wpa-psk,wpa2-psk security.passphrase=secret_guest_password ssid=WiFi_GUEST
+</code></pre>
+<ul>
+<li>We are going to create a single CAPsMAN provisioning rule to create the <strong>WiFi_WORK</strong> and the <strong>WiFi_GUEST</strong> SSIDs on a single device, and each connected CAP is going to create these SSIDs automatically.</li>
+</ul>
+<pre><code>/caps-man/provisioning
+add action=create-dynamic-enabled master-configuration=Config_WORK slave-configurations=Config_GUEST
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You can create even more Virtual APs by adding multiple slave-configurations. That requires multiple CAPsMAN configurations that were created earlier.</p>
+</div>
+<ul>
+<li>For security reasons, limit the CAPsMAN to a single interface:</li>
+</ul>
+<pre><code>/caps-man/manager/interface
+set [ find default=yes ] forbid=yes
+add disabled=no interface=ether1
+</code></pre>
+<ul>
+<li>Enable the CAPsMAN manager:</li>
+</ul>
+<pre><code>/caps-man/manager
+set enabled=yes
+</code></pre>
+<ul>
+<li>Set up DHCP Server for each VLAN:</li>
+</ul>
+<pre><code>/interface/vlan
+add interface=ether1 name=VLAN10 vlan-id=10
+add interface=ether1 name=VLAN20 vlan-id=20
+/ip/address
+add address=192.168.10.1/24 interface=VLAN10
+add address=192.168.20.1/24 interface=VLAN20
+/ip/pool
+add name=dhcp_pool10 ranges=192.168.10.2-192.168.10.254
+add name=dhcp_pool20 ranges=192.168.20.2-192.168.20.254
+/ip/dhcp-server
+add address-pool=dhcp_pool10 disabled=no interface=VLAN10 name=dhcp10
+add address-pool=dhcp_pool20 disabled=no interface=VLAN20 name=dhcp20
+/ip/dhcp-server/network
+add address=192.168.10.0/24 dns-server=8.8.8.8 gateway=192.168.10.1
+add address=192.168.20.0/24 dns-server=8.8.8.8 gateway=192.168.20.1
+</code></pre>
+<h3 id="switch">Switch</h3>
+<p>In this example, we are going to be using <a href="../../../bridging-and-switching/index.md#vlan-example-trunk-and-access-ports">Bridge VLAN Filtering</a> to filter unknown VLANs and to assign other devices to the same networks. Some devices are capable of offloading this to the built-in switch chip, check the <a href="../../../bridging-and-switching/user-guides/basic-vlan-switching.md">Basic VLAN switching</a> guide to see how to configure it on different types of devices.</p>
+<ul>
+<li>Setup Bridge VLAN Filtering:</li>
+</ul>
+<pre><code>/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+add bridge=bridge1 interface=ether4 pvid=10
+add bridge=bridge1 interface=ether5 pvid=20
+/interface/bridge/vlan
+add bridge=bridge1 tagged=ether1,ether2,ether3 untagged=ether4 vlan-ids=10
+add bridge=bridge1 tagged=ether1,ether2,ether3 untagged=ether5 vlan-ids=20
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In this example, untagged traffic is going to be used to communicate between CAPs and CAPsMAN Router. By default, if PVID is not changed, untagged traffic is going to be forwarded between ports that have the same PVID value set (including the default PVID).</p>
+</div>
+<h3 id="caps">CAPs</h3>
+<ul>
+<li>Create a bridge and assign a port to it, which is connected to the CAPsMAN Router:</li>
+</ul>
+<pre><code>/interface/bridge
+add name=bridge1
+/interface/bridge/port
+add bridge=bridge1 interface=ether1
+</code></pre>
+<ul>
+<li>Enable CAP mode on the AP, and make sure you specify to use the newly created bridge:</li>
+</ul>
+<pre><code>/interface/wireless/cap
+set bridge=bridge1 discovery-interfaces=bridge1 enabled=yes interfaces=wlan1
+</code></pre>
+<ul>
+<li>After CAPs are successfully connected to the CAPsMAN Router, the wlan1 (SSID <strong>WiFi_WORK</strong>) and a newly created virtual wlan5 (SSID <strong>WiFi_GUEST</strong>) interfaces get dynamically added as bridge ports. The VLAN is assigned for a wireless interface and as a result, all data coming from wireless gets tagged and only data with this tag will be sent out over wireless. Bridge vlan-filtering can be disabled if additional VLAN managing and controlling is not needed. The associated VLAN can be seen with the port VLAN ID (PVID) property:</li>
+</ul>
+<pre><code>[admin@CAP_1] /interface/bridge/port/pr
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload 
+ #     INTERFACE                     BRIDGE                    HW  PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+ 0   H ether1                        bridge1                   yes    1     0x80         10                 10       none
+ 1  D  wlan1                         bridge1                         10     0x80         10                 10       none
+ 2  D  wlan5                         bridge1                         20     0x80         10                 10       none
+</code></pre>
+<p>That is it! Connect Wireless clients to your APs and check connectivity.</p>
+<h2 id="using-capsman-forwarding-mode">Using CAPsMAN Forwarding Mode</h2>
+<p>In CAPsMAN Forwarding Mode all traffic that is coming from a CAP is encapsulated with a special CAPsMAN header, which can only be removed by a CAPsMAN router. This means that a switch will not be able to distinguish the VLAN ID set by the CAP since the VLAN tag is also going to be encapsulated. This mode limits the possibility to divert traffic in Layer2 networks, but gives you the possibility to forward traffic from each CAP over Layer3 networks for a distant CAPsMAN router to process the traffic. This mode is useful when you want to control multiple CAPs in remote locations, but want to use a central gateway.</p>
+<h3 id="capsman-router_1">CAPsMAN router</h3>
+<ul>
+<li>Set up Bridge VLAN filtering to limit interfaces to appropriate VLANs:</li>
+</ul>
+<pre><code>/interface/bridge
+add name=bridge1 vlan-filtering=yes
+/interface/bridge/port
+add bridge=bridge1 interface=ether1 pvid=10
+add bridge=bridge1 interface=ether2 pvid=20
+/interface/bridge/vlan
+add bridge=bridge1 tagged=bridge1 untagged=ether1 vlan-ids=10
+add bridge=bridge1 tagged=bridge1 untagged=ether2 vlan-ids=20
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>CAPsMAN will attach CAP interfaces to the bridge and will automatically add appropriate entries to the bridge VLAN table.</p>
+</div>
+<ul>
+<li>Create appropriate CAP configurations for each VLAN:</li>
+</ul>
+<pre><code>/caps-man/configuration
+add country=latvia datapath.bridge=bridge1 datapath.vlan-id=10 datapath.vlan-mode=use-tag name=Config_WORK security.authentication-types=wpa-psk,wpa2-psk \
+    security.passphrase=secret_work_password ssid=WiFi_WORK
+add country=latvia datapath.bridge=bridge1 datapath.vlan-id=20 datapath.vlan-mode=use-tag name=Config_GUEST security.authentication-types=wpa-psk,wpa2-psk \
+    security.passphrase=secret_guest_password ssid=WiFi_GUEST
+</code></pre>
+<ul>
+<li>We are going to create a single CAPsMAN provisioning rule to create the <strong>WiFi_WORK</strong> and the <strong>WiFi_GUEST</strong> SSIDs on a single device, each connected CAP is going to create these SSIDs automatically</li>
+</ul>
+<pre><code>/caps-man/provisioning
+add action=create-dynamic-enabled master-configuration=Config_WORK slave-configurations=Config_GUEST
+</code></pre>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>You can create even more Virtual APs by adding multiple slave-configurations. That requires multiple CAPsMAN configurations that were created earlier.</p>
+</div>
+<ul>
+<li>For security reasons, limit the CAPsMAN to interfaces to which CAPs are going to be connected:</li>
+</ul>
+<pre><code>/caps-man/manager/interface
+set [ find default=yes ] forbid=yes
+add disabled=no interface=ether3
+add disabled=no interface=ether4
+</code></pre>
+<ul>
+<li>Enable the CAPsMAN manager:</li>
+</ul>
+<pre><code>/caps-man/manager
+set enabled=yes
+</code></pre>
+<ul>
+<li>Setup DHCP Server for each VLAN:</li>
+</ul>
+<pre><code>/interface/vlan
+add interface=bridge1 name=VLAN10 vlan-id=10
+add interface=bridge1 name=VLAN20 vlan-id=20
+/ip/address
+add address=192.168.10.1/24 interface=VLAN10
+add address=192.168.20.1/24 interface=VLAN20
+/ip/pool
+add name=dhcp_pool10 ranges=192.168.10.2-192.168.10.254
+add name=dhcp_pool20 ranges=192.168.20.2-192.168.20.254
+/ip/dhcp-server
+add address-pool=dhcp_pool10 disabled=no interface=VLAN10 name=dhcp10
+add address-pool=dhcp_pool20 disabled=no interface=VLAN20 name=dhcp20
+/ip/dhcp-server/network
+add address=192.168.10.0/24 dns-server=8.8.8.8 gateway=192.168.10.1
+add address=192.168.20.0/24 dns-server=8.8.8.8 gateway=192.168.20.1
+</code></pre>
+<h3 id="caps_1">CAPs</h3>
+<ul>
+<li>Enable CAP mode on each AP, specify which interface is connected to the CAPsMAN router:</li>
+</ul>
+<pre><code>/interface/wireless/cap
+set discovery-interfaces=ether1 enabled=yes interfaces=wlan1
+</code></pre>
+<ul>
+<li>After CAPs are successfully connected to the CAPsMAN Router, two CAP interfaces will be dynamically created on the CAPsMAN Router. Both of these interfaces will get dynamically added as bridge ports on the same CAPsMAN Router due to explicitly selecting the bridge interface with datapath.bridge=bridge1 and using the default CAPsMAN Forwarding Mode datapath.local-forwarding=no. Because of using a bridge with vlan-filtering enabled, both CAP interfaces will also show up in a bridge VLAN table:</li>
+</ul>
+<pre><code>[admin@CAPsMAN_Router] /interface/bridge/port/print
+Flags: X - disabled, I - inactive, D - dynamic, H - hw-offload 
+ #     INTERFACE                       BRIDGE                      HW  PVID PRIORITY  PATH-COST INTERNAL-PATH-COST    HORIZON
+ 0     ether1                          bridge1                     yes   10     0x80         10                 10       none
+ 1     ether2                          bridge1                     yes   20     0x80         10                 10       none
+ 2  D  cap16                           bridge1                           10     0x80         10                 10       none
+ 3  D  cap17                           bridge1                           20     0x80         10                 10       none
+[admin@CAPsMAN_Router] /interface/bridge/vlan/print
+Flags: X - disabled, D - dynamic 
+ #   BRIDGE                         VLAN-IDS  CURRENT-TAGGED                         CURRENT-UNTAGGED                        
+ 0 D bridge1                        1                                                bridge1                                 
+ 1   bridge1                        10        cap16                                  ether1                                  
+ 2   bridge1                        20        cap17                                  ether2  
+</code></pre>
+<p>That is it! Connect Wireless clients to your APs and check connectivity.</p>
+<h2 id="case-studies">Case studies</h2>
+<h3 id="without-virtual-aps">Without Virtual APs</h3>
+<p>Not everyone wants to create Virtual APs since that does decrease the total throughput. If you want to use multiple devices to create multiple SSIDs, then it is possible to assign a certain configuration to a CAP based on its identity. To achieve this you should use CAPsMAN provisioning rules along with RegEx expressions. In this example we are going to assign the <strong>Config_WORK</strong> configuration to CAPs that have an identity set to "'<strong>AP_WORK_*</strong>" and we are going to assign the <strong>Config_GUEST</strong> configuration to CAPs that have an identity set to "<strong>AP_GUEST_*</strong>". To do this, you simply need to change the CAPsMAN provisioning rules.</p>
+<ul>
+<li>Remove any existing provisioning rules:</li>
+</ul>
+<pre><code>/caps-man/provisioning/remove [f]
+</code></pre>
+<ul>
+<li>Create new provisioning rules that will assign appropriate configuration to a CAP based on its identity:</li>
+</ul>
+<pre><code>/caps-man/provisioning
+add action=create-dynamic-enabled identity-regexp=^AP_GUEST_ master-configuration=Config_GUEST
+add action=create-dynamic-enabled identity-regexp=^AP_WORK_ master-configuration=Config_WORK
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Don't forget to set a proper identity on the CAPs since CAPsMAN is going to assign appropriate configuration on the APs based on its identity.</p>
+</div>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

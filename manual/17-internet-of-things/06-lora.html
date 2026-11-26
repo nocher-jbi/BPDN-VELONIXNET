@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lora · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Internet of Things</p>
+      <h1 id="lora">Lora</h1>
+<h1 id="lora_1">Lora</h1>
+<blockquote>
+<p>This page introduces MikroTik RouterOS LoRa and LoRaWAN configuration, covering gateway setup, general properties, server integration, and non-LoRaWAN payload forwarding with MQTT/HTTP. It details supported hardware,...</p>
+</blockquote>
+<h1 id="lora_2">Lora</h1>
+<p>This section covers LoRa and LoRaWAN features in RouterOS. Use it to configure LoRa gateways, general properties, and integrations with supported LoRaWAN networks.</p>
+<p>Available settings:</p>
+<ul>
+<li>
+<h2 id="general-properties"><a href="./general-properties.md">General Properties</a></h2>
+</li>
+</ul>
+<p>Gateway initial steps and different LoRaWAN setup examples:</p>
+<ul>
+<li>
+<h2 id="user-guides"><a href="./user-guides/index.md">User Guides</a></h2>
+</li>
+</ul>
+<p>The term "LoRa" represents the "radio" itself ("LoRa payloads" are packets broadcasted by the nodes using the LoRa frequencies), while the term "LoRaWAN" represents a logical/link layer on top that enables the communication between "LoRa" devices. In other words, "LoRaWAN" is how the "LoRa" radio devices communicate.</p>
+<p><strong>R11e-LR8</strong> (operates in 863-870 MHz frequency), <strong>R11e-LR9</strong> (operates in 902-928 MHz frequency) and <strong>R11e-LR2</strong> (operates using 2.4 GHz frequencies) are concentrator Gateway cards for LoRa® technology in the mini PCIe form factor based on a Semtech chipset. They enable LoRa® connectivity for any MikroTik product that has an mPCIe slot with connected USB lines.</p>
+<p>A typical LoRaWAN topology consists of 3 main elements → the server, the node and the gateway. The gateway's job is to simply forward received LoRa packets that are broadcasted by the nodes (within the same supported frequency spectrum) to the server.</p>
+<p>MikroTik LoRaWAN gateways are devices that have an R11e-LR<strong>x</strong> miniPCIe card and have the "iot" <a href="../../getting-started/installation-and-upgrade/packages.md">package</a> (which enables LoRa drivers) installed.</p>
+<p>The primary design for the MikroTik gateway devices is to operate as LoRaWAN devices. To achieve this, simply configure/select a correct server in the LoRa interface settings. A few examples can be found in the <a href="./user-guides/index.md">user guides section</a>.</p>
+<h4 id="non-lorawan-setup">Non-LoRaWAN setup</h4>
+<p>However, if you do not wish to use a LoRaWAN network/topology, and you wish to forward "raw LoRa" payloads to your own server, you have an option to do so. You can use <a href="../mqtt/index.md">MQTT</a> or <a href="../../system-information-and-utilities/fetch.md">HTTP post</a> to forward received payloads to your MQTT/HTTP server, but it will require additional <a href="../../developer-guides/scripting/index.md">scripting</a>. The script will have to collect information (payloads) from the <code>IoT&gt;LoRa&gt;Traffic</code> tab, store those payloads as variables, structure an MQTT/HTTP message out of the variables and post it.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Please note that if the payloads broadcasted by the node are encrypted, and you wish to forward them to your own MQTT/HTTP server (without using LoRaWAN), you will need to decipher the payloads on the server-side. The gateway does not have the built-in functionality to decipher the node's data. Servers are responsible for this task.</p>
+<p>Also, there is no option to "relay" downlink MQTT/HTTP messages back from the MQTT/HTTP server to the LoRa node (only "uplink" payloads from the nodes can be "forwarded" to the server), primarily because there is no way to "make" LR cards "broadcast" custom payloads (there is no way to pass the content of the MQTT/HTTP downlink message into the LoRa chip).</p>
+</div>
+<hr />
+<h1 id="general-properties_1">General Properties</h1>
+<blockquote>
+<p>This page documents the configuration settings for setting up a LoRaWAN gateway on MikroTik RouterOS, including antenna gain, channel plans, server connections, and traffic forwarding rules. It explains how to enable...</p>
+</blockquote>
+<h1 id="general-properties_2">General Properties</h1>
+<p>Every RouterBOARD with a miniPCI-e slot which supports LTE modems can also be used as a LoRaWAN gateway by installing an <strong>R11e-LR8</strong> or <strong>R11e-LR9</strong> card. Both UDP and LNS (starting with <strong>v7.12rc1</strong> testing version) protocols are supported.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In order to work with LoRa, the IoT package should be installed. You can find the package for your device architecture in the extra packages archive on the <a href="https://mikrotik.com/download">download</a> page.</p>
+<p><strong>Important:</strong> Starting with v<strong>7.11</strong> (stable), LoRa functionality is moved into the <strong>IoT package</strong> that is available on the <a href="https://mikrotik.com/download">download</a> page under extra packages. A separate Lora package is still available for download.</p>
+<p>When using the IoT package, LoRa functionality will move to a <code>/iot/lora</code> sub-menu. When using the LoRa package, LoRa functionality will be possible via <code>/lora</code> sub-menu.</p>
+<p>The LoRa package is not obligatory anymore and is left only for compatibility reasons.</p>
+<p><strong>Caution:</strong> <em><strong>Note</strong>:</em> RouterOS does not support 3rd party LoRaWAN gateway cards.</p>
+</div>
+<h2 id="properties">Properties</h2>
+<p>This menu is used to apply settings to the LoRa interface.</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>antenna-gain</strong> (<em>integer [-128..127]</em>; Default: <strong>0</strong>)</td>
+<td style="text-align: left;">Antenna gain in dBi. This value should be equal to <code>setup-antenna-gain</code> minus <code>cable-loss</code>. Using a 6.5 dBi antenna, 6.5 is the value to be configured (not taking into account cable loss).  Output power of the gateway is dictated by the server. The gateway will calculate its actual output power by subtracting <code>antenna-gain</code> setting from <code>server_value</code> (value received in the downlink message).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>channel-plan</strong> (<em>2.4-ghz | as-923 | as-923-2 | as-923-3 | as-923-4 | au-915 | au-915-1 | au-915-2 | custom | eu-868 | in-865 | kr-920 | ru-864 | ru-864-mid | us-915 | us-915-1 | us-915-2 | us-915-3 | us-915-4 | us-915-5 | us-915-6 | us-915-7 | us-915-8</em>; Default: <strong>eu-868</strong>)</td>
+<td style="text-align: left;">Frequency plans for various regions.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>yes</strong>)</td>
+<td style="text-align: left;">Whether LoRaWAN gateway is disabled.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>forward</strong> (<em>crc-validation | dev-addr-validation | proprietary-traffic</em>; Default: <strong>crc-validation</strong>)</td>
+<td style="text-align: left;">Defines what kind of packets should be forwarded to Network server:crc-validation - Forward valid packets with correct CRC.dev-addr-validation - Checks if DevAddr of the packet corresponds to the NetID and if not, drops the packet. The following sequence happens: 1) Dev. Addr value gets "obtained" from the received LoRa packet; 2) Dev. Addr is "compared" against "valid" Net IDs list; 3) If there is no Net ID for the Dev. Addr, the packet is not forwarded; 4) If Net ID is valid, Dev. Addr range is valid, the packet is forwarded.proprietary-traffic - Checks the content of the LoRa packet and if the "type" of the frame is "proprietary", the packet is not forwarded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>gateway-id</strong>(string)</td>
+<td style="text-align: left;">Gateway ID or Gateway EUI is used when registering the gateway with the server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lbt-enabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Whether the gateway should use LBT (Listen Before Talk) protocol.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>listen-time</strong> (<em>integer [0us..4294967295us]</em>; Default: <strong>5000us</strong>)</td>
+<td style="text-align: left;">Time in microseconds to track RSSI before TX (used when <strong>lbt-enabled=yes</strong>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Name of LoRaWAN gateway.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>network</strong> (<em>private | public</em>; Default: <strong>public</strong>)</td>
+<td style="text-align: left;">Whether sync word should (network=private) or should not (network=public) be used for communication.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>rssi-threshold</strong> (<em>integer [-32,768 .. 32,767]</em>; Default: <strong>-65dBm</strong>)</td>
+<td style="text-align: left;">RSSI value to determine whether the forwarder may use a specific channel to talk. If RSSI value is below <strong>rssi-threshold</strong>, channel could be used (used when <strong>lbt-enabled=yes</strong>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>servers</strong> (<em>list of string</em>; Default: )</td>
+<td style="text-align: left;">Name of the server from the <code>/iot/lora/servers</code> section.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>src-address</strong> (<em>IP</em>; Default: )</td>
+<td style="text-align: left;">Specifies the uplink packet source address if necessary (address should match an address configured on the RB).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>spoof-gps</strong> (<em>bool | lat | long | alt</em>; Default: )</td>
+<td style="text-align: left;">Set custom GPS location. Use <code>lat</code>, <code>long</code>, <code>alt</code> to specify latitude, longitude, and altitude values.</td>
+</tr>
+</tbody>
+</table>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Once the server is selected and the LoRa interface is enabled using the <code>/iot/lora/enable [find]</code> command, the device will start operating as a LoRaWAN gateway. It will start forwarding LoRa payloads from the <a href="./general-properties.md#traffic"><code>/iot/lora/traffic</code></a> tab to the configured server.</p>
+</div>
+<h2 id="channels">Channels</h2>
+<p>This section is used to alter channel/frequency related settings.</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora/channels</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>bandwidth</strong> (<em>200_kHz | 400_kHz | 62.5_kHz | 125_kHz | 250_kHz | 500_kHz</em>; Default: <strong>125_kHz</strong>)</td>
+<td style="text-align: left;">Bandwidth of a specific channel, predefined when any of the channel-plan presets is used, but could be manually changed when the channel-plan is set to custom.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>disabled</strong> (<em>yes | no</em>; Default: <strong>no</strong>)</td>
+<td style="text-align: left;">Disable or enable the channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>freq-off</strong> (<em>integer</em> [-400000..400000]; Default:  )</td>
+<td style="text-align: left;">Channel frequency offset against radio central frequency, it makes it possible to adjust channel frequencies so that channels do not overlap.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>radio</strong> (<em>radio0 | radio1</em>; Default: )</td>
+<td style="text-align: left;">Defines which radio uses the selected channel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>spread-factor</strong> (<em>SF5 | SF6 | SF7 | SF8 | SF9 | SF10 | SF11 | SF12</em>; Default: )</td>
+<td style="text-align: left;">Defines the Spread Factor for a channel with type=LoRa. Lower Spread Factor means higher data rate.</td>
+</tr>
+</tbody>
+</table>
+<p>To view current channels, issue the command <code>/iot/lora/channels/print</code>:</p>
+<pre><code class="language-ros">/iot/lora/channels/print
+Columns: NAME, TYPE, RADIO, FREQ-OFF, BANDWIDTH, FREQ, SPREAD-FACTOR, DATARATE
+# NAME       TYPE  RADIO   FREQ-OFF  BANDWIDTH  FREQ   SPREAD-FACTOR  DATARATE
+0 gateway-0  MSF   radio1  -400000   125_kHz    868.1                         
+1 gateway-0  MSF   radio1  -200000   125_kHz    868.3                         
+2 gateway-0  MSF   radio1  0         125_kHz    868.5                         
+3 gateway-0  MSF   radio0  -400000   125_kHz    867.1                         
+4 gateway-0  MSF   radio0  -200000   125_kHz    867.3                         
+5 gateway-0  MSF   radio0  0         125_kHz    867.5                         
+6 gateway-0  MSF   radio0  200000    125_kHz    867.7                         
+7 gateway-0  MSF   radio0  400000    125_kHz    867.9                         
+8 gateway-0  LoRa  radio1  -200000   250_kHz    868.3  SF7                    
+9 gateway-0  FSK   radio1  300000    125_kHz    868.8                    50000
+</code></pre>
+<p>Channels are created using <code>freq-off</code> and radio's <code>center-freq</code> frequencies. To view <strong>radios'</strong> center frequencies use the command <code>/iot/lora/radios/print</code>.</p>
+<p>To understand how each channel's frequency is calculated, check the example below:</p>
+<pre><code class="language-ros"># NAME       TYPE  RADIO   FREQ-OFF  BANDWIDTH  FREQ   SPREAD-FACTOR  DATARATE
+0 gateway-0  MSF   radio1  -400000   125_kHz    868.1                         
+</code></pre>
+<p><code>radio1</code> is selected to be used for channel #0 and it is configured with <code>center-freq=868500000</code> (868500000 Hz or 868.5 MHz).</p>
+<p>By using a frequency offset, <code>freq-off=-400000</code> (-400000 Hz or -0.4 MHz), we define channel #0 to be <code>868500000-400000=868100000</code> Hz or 868.1 MHz.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>To configure custom channels, select "custom" channel profile with the help of the command:</p>
+<pre><code class="language-ros">/iot/lora/set [find] channel-plan=custom
+</code></pre>
+</div>
+<h2 id="join-eui">Join EUI</h2>
+<p>The gateway will forward to the server every single LoRaWAN payload it receives. That includes neighboring LoRaWAN node's payloads as well. It might not be ideal to forward everything, as, for example, it can increase the data amount used (and directly impact ISP plan cost).</p>
+<p>The Join EUI menu allows you to specify a blacklisted or a whitelisted range of JOIN EUIs that the gateway should forward (if it is "whitelisted") or should block (if it is "blacklisted"). After adding the range, make sure to apply it to the <a href="./general-properties.md#servers">server</a> settings.</p>
+<p>The filters work using the following principle:</p>
+<p>1) By default, everything is allowed (unless whitelist/blacklist filters are added);</p>
+<p>2) <strong>If "blacklist" filter range is added</strong>, and then a JOIN EUI packet that matches the blacklisted range appears nearby → <strong>it is dropped</strong>;</p>
+<p>3) <strong>If "whitelist" filter range is added, it has priority over the "blacklisted" filters</strong>. Meaning that if both "blacklist" and "whitelist" match the same JOIN EUI, "whitelist" takes priority and the packet is forwarded.</p>
+<p>You can find the Join EUI used by your node with the help of the RouterOS GUI. Go to the "LoRa" section and to the "Traffic" sub-menu (which is only available using the graphical interface). After you power your LoRaWAN node, the node should send a "Join-request" packet. Double-click on it to inspect it:</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora/joineui</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>joineuis</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Defines a range of Join EUIs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>logging</strong>(<em>yes | no</em>; Default: no)</td>
+<td style="text-align: left;">Enables additional logging for the filter feature.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Defines the name for the range.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (blacklist | whitelist; Default: whitelist)</td>
+<td style="text-align: left;">Defines the type for the filter: blacklist (if the range matches it blocks/drops packets)whitelist (if the range matches it forwards the packets)</td>
+</tr>
+</tbody>
+</table>
+<p>An example of Join EUI would look like this <strong>E0 E1 E2 01 02 03 04 05</strong>. It consists of 8 octets in HEX format.</p>
+<p>To add a range that <strong>blocks everything</strong>, add a filter like this:</p>
+<pre><code class="language-ros">/iot/lora/joineui/add name=block_all joineuis=0000000000000000-ffffffffffffffff type=blacklist logging=yes
+</code></pre>
+<p>To allow a specific single Join EUI, add a filter like this:</p>
+<pre><code class="language-ros">/iot/lora/joineui/add name=allow_my_node joineuis=E0E1E20102030405-E0E1E20102030405 type=whitelist logging=yes
+</code></pre>
+<p>Disable LoRa interface:</p>
+<pre><code class="language-ros">/iot/lora/disable [find where ]
+</code></pre>
+<p>Apply both ranges to the LoRa server you are using and enable the interface again:</p>
+<pre><code class="language-ros">/iot/lora/servers/set joineui=block_all,allow_my_node [find where address ~ &quot;eu1.cloud.thethings.network&quot;]
+/iot/lora/enable [find where ]
+</code></pre>
+<p>As a result, we will only allow "JOIN EUI=<strong>E0 E1 E2 01 02 03 04 05</strong>" node payloads to be forwarded, while every single possible other JOIN EUI will be dropped by the blacklist rule.</p>
+<h2 id="network-id">Network ID</h2>
+<p>The gateway will forward to the server every single LoRaWAN payload it receives. That includes neighboring LoRaWAN nodes' payloads as well. It might not be ideal to forward everything, as, for example, it can increase the data amount used (and directly impact ISP plan cost).</p>
+<p>The NetID menu allows you to specify a blacklisted or a whitelisted range of NetIDs that the gateway should forward (if it is "whitelisted") or should block (if it is "blacklisted"). After adding the list, make sure to apply it to the <a href="./general-properties.md#servers">server</a> settings.</p>
+<p>The filters work using the following principle:</p>
+<p>1) By default, everything is allowed (unless whitelist/blacklist filters are added);</p>
+<p>2) <strong>If "blacklist" filter range is added</strong>, and then a NetID of the packet matches the blacklisted range → <strong>it is dropped</strong>;</p>
+<p>3) <strong>If "whitelist" filter range is added, it has priority over the "blacklisted" filters</strong>. Meaning that if both "blacklist" and "whitelist" match the same NetID,  "whitelist" takes priority and the packet is forwarded.</p>
+<p>NetIDs define the ranges of Device Addresses (DevAddr) that were assigned to different operators/servers by the LoRaWAN Alliance. A list with most ranges can be found in the <a href="https://www.thethingsnetwork.org/docs/lorawan/prefix-assignments/">TTN guide</a>.</p>
+<p>DevAddr is assigned to the LoRaWAN node by the LoRaWAN server after the communication with the server takes place. For example, <a href="https://www.thethingsnetwork.org/">TTN</a> will assign your node an address from within the range 26000000 - 27FFFFFF. You can find it under the LoRaWAN server dashboard or using the RouterOS GUI, under the "Traffic" sub-menu (after "join-request" and "join-accept" communication takes place) in the Dev Addr column/field.</p>
+<p>Let's say TTN assigned <strong>26 1B D8 D1</strong> Dev Addr to your node. Based on the <a href="https://www.thethingsnetwork.org/docs/lorawan/prefix-assignments/">TTN guide</a>, it falls under the 26000000 - 27FFFFFF DevAddr range and it belongs to the <strong>000013 NetID</strong>.</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora/netid</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>netids</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Define the NetIDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>logging</strong>(<em>yes | no</em>; Default: no)</td>
+<td style="text-align: left;">Enables additional logging for the filter feature.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Define the name for the ID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>type</strong> (blacklist | whitelist; Default: whitelist)</td>
+<td style="text-align: left;">Define the type for the filter: blacklist (if the range matches, it blocks/drops packets)whitelist (if the range matches, it forwards the packets)</td>
+</tr>
+</tbody>
+</table>
+<p>To add a filter that allows a specific NetID (in this example, <strong>000013</strong> NetID, which belongs to TTN), use the command:</p>
+<pre><code class="language-ros">/iot/lora/netid/add name=allow_TTN netids=000013-000013 type=whitelist
+</code></pre>
+<p>To block all other NetIDs use <code>type=blacklist</code>:</p>
+<pre><code class="language-ros">/iot/lora/netid/add name=block_all netids=000000-ffffff type=blacklist
+</code></pre>
+<p>Disable LoRa interface:</p>
+<pre><code class="language-ros">/iot/lora/disable [find where ]
+</code></pre>
+<p>Apply both ranges to the LoRa server you are using and enable the interface again:</p>
+<pre><code class="language-ros">/iot/lora/servers/set netid=block_all,allow_TTN [find where address ~ &quot;eu1.cloud.thethings.network&quot;]
+/iot/lora/enable [find where ]
+</code></pre>
+<h2 id="servers">Servers</h2>
+<p>This section is used to add new or alter current server settings.</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora/servers</code></p>
+<p>There are a few predefined servers that can be used (it requires making a <a href="https://thethingsnetwork.org">The Things Network</a> account to use them):</p>
+<pre><code class="language-ros">[admin@MikroTik] /iot/lora/servers/print
+Columns: NAME, UP-PORT, DOWN-PORT, ADDRESS
+#  NAME              UP-PORT  DOWN-PORT  ADDRESS                                     
+0  TTS Cloud (eu1)      1700       1700  eu1.cloud.thethings.industries         
+1  TTS Cloud (nam1)     1700       1700  nam1.cloud.thethings.industries        
+2  TTS Cloud (au1)      1700       1700  au1.cloud.thethings.industries         
+3  TTN V3 (eu1)         1700       1700  eu1.cloud.thethings.network            
+4  TTN V3 (nam1)        1700       1700  nam1.cloud.thethings.network           
+5  TTN V3 (au1)         1700       1700  au1.cloud.thethings.network          
+</code></pre>
+<p>Custom servers can be added as well. Data forwarding to multiple servers can work simultaneously if the first server does not change the "DevAddress" part of the packet and under the condition that all servers are able to decode the packet.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>address</strong> (<em>domain name or IP address</em>; Default: )</td>
+<td style="text-align: left;">Defines the LoRaWAN Network server address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>name</strong> (<em>string</em>; Default: )</td>
+<td style="text-align: left;">Defines the server name.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>protocol</strong> (<em>UDP | LNS | CUPS</em>; Default: <strong>UDP</strong>)</td>
+<td style="text-align: left;">Specifies whether to use UDP, LNS or CUPS protocol for the communication with the LoRaWAN server.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>down-port</strong> (<em>integer [0..65535]</em>; Default: <strong>1700</strong>)</td>
+<td style="text-align: left;">Parameter that is used when UDP protocol is selected. Defines the port for down-link communication (from server to node) with the LoRaWAN Network server. Most of the known open source servers use port 1700 as default, but it can change if multiple servers are configured on the same machine.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>up-port</strong> (<em>integer [0..65535]</em>; Default: <strong>1700</strong>)</td>
+<td style="text-align: left;">Parameter that is used when UDP protocol is selected. Defines the port for up-link communication (from node to server) with the LoRaWAN Network server. Most of the known open source servers use port 1700 as the default, but it can change if multiple servers are configured on the same machine.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>netid</strong>(<em>list of string</em>; Default: )</td>
+<td style="text-align: left;">Parameter that is used when UDP protocol is selected. Applies a filter to only send LoRaWAN payloads that match the Network ID (Net ID) filter configured.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>joineui</strong> (<em>list of string</em>; Default: )</td>
+<td style="text-align: left;">Parameter that is used when UDP protocol is selected. Applies a filter to only send LoRaWAN payloads that match the Join EUI filter configured.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>port</strong> (<em>integer [0..65535]</em>; Default: <strong>8887</strong>)</td>
+<td style="text-align: left;">Parameter that is used when LNS or CUPS protocol is selected. For LNS, defines the WSS (WebSocket) port and, for CUPS, defines the HTTPS port.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>key</strong> (<em>string</em>; Default: ) <em><a href="../../getting-started/configuration-management/list-of-menus-with-sensitive-parameters.md">sensitive</a></em></td>
+<td style="text-align: left;">Parameter that is used when LNS or CUPS protocol is selected. Specifies the LoRa Basics Station LNS Authentication Key or CUPS API KEY (both generated on the server).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ssl</strong> (<em>yes or no</em>; Default: no)</td>
+<td style="text-align: left;">Parameter that is used when LNS or CUPS protocol is selected. Specifies whether to use or not to use SSL (if the server supports TLS server authentication). When this option is chosen, root SSL certificate(s) must be uploaded under the <a href="../../authentication-authorization-accounting/certificates.md">certificates</a> menu.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>certificate</strong> (<em>list of string</em>; Default: <strong>none</strong>)</td>
+<td style="text-align: left;">Parameter that is used when LNS or CUPS protocol is selected. Selects client <a href="../../authentication-authorization-accounting/certificates.md">certificate from certificate store</a> (if the server awaits TLS client authentication). If TLS client authentication is not required by the server, use the default "<strong>none</strong>" setting.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>interval</strong>(<em>integer [0..65535]</em>; Default: )</td>
+<td style="text-align: left;">Parameter that is used when CUPS protocol is selected. Specifies the interval with which the LoRa Basics Station will query the CUPS server for configuration updates/changes.</td>
+</tr>
+</tbody>
+</table>
+<p>There are a few pre-configured The Things default servers. If you deleted one and want to recover default servers, you can use the command:</p>
+<pre><code class="language-ros">/iot/lora/servers/reset-servers
+</code></pre>
+<div class="adm adm-warning">
+<p><strong>WARNING</strong></p>
+<p>Please be warned that resetting servers will delete all previously configured servers as well, so make sure to "save" them beforehand.</p>
+</div>
+<h2 id="traffic">Traffic</h2>
+<p>This section displays LoRa payloads that were broadcasted by the surrounding nodes.</p>
+<p><strong>Sub-menu:</strong> <code>/iot/lora/traffic</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>options</strong></td>
+<td style="text-align: left;">Allows to configure additional options for the traffic tab: crc-errors (yes | no) → Set to "no" to discard packets that have "crc error" status from appearing in the traffic tab;pckt-limit (10...1024) → To limit traffic tab's log list.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>clear</strong></td>
+<td style="text-align: left;">To clear the list (to remove all entries).</td>
+</tr>
+</tbody>
+</table>
+<p>To view the list, use the <code>print</code> command:</p>
+<pre><code class="language-ros">[admin@MikroTik] /iot/lora/traffic/print
+Columns: TIME, GWID, MSGTYPE, DEVADDR, MVER, FCNT, CRC, TYPE, JOINEUI, DEVEUI
+ #  TIME                             GWID  MSGTYPE                DEVADDR      MVER         FCNT  CRC    TY  JOINEUI                  DEVEUI                 
+ 0  2024-11-08 13:33:28  xxxxxxxxxxxxxxxx  Unconfirmed Data Up    6C B9 XX XX  LoRaWAN R1  59434  Error  Rx                                                  
+ 1  2024-11-08 13:33:50  xxxxxxxxxxxxxxxx  Rejoin-request                      LoRaWAN R1         Error  Rx                           50 62 9F FE XX XX XX XX
+ 2  2024-11-08 13:34:09  xxxxxxxxxxxxxxxx  Unconfirmed Data Down  5E 00 XX XX  RFU         41736  Error  Rx                                                  
+ 3  2024-11-08 13:34:15  xxxxxxxxxxxxxxxx  Rejoin-request                      RFU                Error  Rx                           D9 C2 BD 4B XX XX XX XX
+ 4  2024-11-08 13:34:55  xxxxxxxxxxxxxxxx  Join-request                        LoRaWAN R1         Error  Rx  A1 AE B1 8A XX XX XX XX  F4 62 81 BE XX XX XX XX
+</code></pre>
+<p>To clear the list (to remove all entries), issue the <code>clear</code> command:</p>
+<pre><code class="language-ros">[admin@MikroTik] /iot/lora/traffic/clear
+</code></pre>
+<p>The Traffic tab displays "LoRa" payloads. As soon as the LoRa interface is enabled with the <code>/iot/lora/enable [find]</code> command, all the payloads from the list will be converted into TCP/UDP packets (depending on whether you use UDP 1700 or LNS/CUPS protocol) and forwarded to the configured server.</p>
+<p>If you do not wish to use LoRaWAN topology, and if you wish to forward "raw" LoRa payloads to your own server, you have an option to do so, using <a href="../mqtt/index.md">MQTT</a> or <a href="../../system-information-and-utilities/fetch.md">Fetch</a> to run the script with an interval of your choice to constantly send the data.</p>
+<p>A basic example (first step in the script) on how to convert traffic payloads into a variable called "traffic":</p>
+<pre><code class="language-ros">[admin@MikroTik] &gt; :global traffic;:set traffic [/iot/lora/traffic/print as-value ];put $traffic 
+.id=*4f;band=125 kHz;coderate=?/?;counter=890652548;crc=Error;datarate=SF 7;freqhz=868300;gwid=50313xxxxxx;ifcha
+in=1;mod=LoRa;msgtype=Proprietary;mver=RFU;rfchain=1;rssi=-116.00;rxcrc=3809;size=213;snr=-12.00;snrmax=-8.25;snrmin=
+-14.25;time=2024-11-08 14:39:45;type=Rx
+</code></pre>
+<h2 id="debugging">Debugging</h2>
+<p>If you have issues with the connection, make sure to enable logs:</p>
+<pre><code class="language-ros">/system/logging/add topics=debug,lora
+</code></pre>
+<p>This will enable debug logging and help you pinpoint where the potential issue could be. Logs can be viewed using:</p>
+<pre><code class="language-ros">/log/print
+</code></pre>
+<p>A successful connection would look like this:</p>
+<pre><code class="language-ros"> 13:50:33 lora,info gateway-0 forwarder started
+ 13:50:38 lora,info [LNS] connecting to wss://eu1.cloud.thethings.network:8887/router-info
+ 13:50:39 lora,info [LNS] eu1.cloud.thethings.network discovered
+ 13:50:39 lora,info [LNS] eu1.cloud.thethings.network disconnected
+ 13:50:39 lora,info [LNS] connecting to wss://eu1.cloud.thethings.network:8887/traffic/eui-xxxx
+ 13:50:39 lora,info [LNS] eu1.cloud.thethings.network configured
+ 13:50:52 lora,info gateway-0 forwarder is ready
+</code></pre>
+<p>More logging information can be found in our <a href="../../diagnostics-monitoring-and-troubleshooting/log/index.md">Log</a> guide.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

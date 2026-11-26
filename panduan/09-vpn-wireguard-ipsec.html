@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPN: WireGuard, IPsec &amp; L2TP · MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan praktis (Bahasa Indonesia)</p>
+      <h1 id="vpn-wireguard-ipsec-l2tp">VPN: WireGuard, IPsec &amp; L2TP</h1>
+<p>Menghubungkan site/lokasi secara aman.</p>
+<h2 id="1-wireguard-rekomendasi-buku-cepat-modern">1. WireGuard (rekomendasi buku, cepat &amp; modern)</h2>
+<h3 id="side-a">Side A</h3>
+<pre><code>/interface/wireguard/add name=wg0 listen-port=13231
+/ip/address/add address=10.0.0.1/24 interface=wg0
+/interface/wireguard/peers/add interface=wg0 public-key=&quot;&lt;pubkey B&gt;&quot; \
+    endpoint-address=&lt;ip-publik-B&gt; endpoint-port=13231 \
+    allowed-address=10.0.0.2/32 persistent-keepalive=25s
+/ip/firewall/filter/add chain=input action=accept protocol=udp dst-port=13231 \
+    comment=&quot;WireGuard&quot;
+</code></pre>
+<h3 id="side-b">Side B</h3>
+<pre><code>/interface/wireguard/add name=wg0 listen-port=13231
+/ip/address/add address=10.0.0.2/24 interface=wg0
+/interface/wireguard/peers/add interface=wg0 public-key=&quot;&lt;pubkey A&gt;&quot; \
+    endpoint-address=&lt;ip-publik-A&gt; endpoint-port=13231 allowed-address=10.0.0.1/32
+</code></pre>
+<p>Lihat kunci publik router sendiri:</p>
+<pre><code>/interface/wireguard/print
+</code></pre>
+<p>Akses manajemen router lewat tunnel WireGuard lebih aman daripada membuka
+WinBox/SSH ke internet.</p>
+<h2 id="2-ipsec">2. IPsec</h2>
+<p>Untuk site-to-site dengan perangkat non-WireGuard:</p>
+<pre><code>/ip/ipsec/policy/add src-address=192.168.10.0/24 dst-address=192.168.20.0/24 \
+    tunnel=yes action=encrypt proposal=default peer=peer1
+/ip/ipsec/peer/add name=peer1 address=&lt;ip-lawan&gt; exchange-mode=ike2
+/ip/ipsec/identity/add peer=peer1 secret=&quot;kunci-bersama&quot;
+</code></pre>
+<p>Cek: <code>/ip/ipsec/active-peers/print</code>, <code>/ip/ipsec/policy/print</code></p>
+<h2 id="3-l2tp-client-ke-server">3. L2TP (client ke server)</h2>
+<pre><code>/interface/l2tp-client/add name=l2tp-out connect-to=&lt;ip-server&gt; \
+    user=&lt;nama&gt; password=&lt;sandi&gt; disabled=no
+</code></pre>
+<p>Bisa dibungkus IPsec untuk keamanan tambahan.</p>
+<h2 id="tips-umum">Tips umum</h2>
+<ul>
+<li>Selalu batasi firewall: hanya izinkan UDP port VPN yang dipakai</li>
+<li>Pakai <code>allowed-address</code> yang spesifik, jangan <code>0.0.0.0/0</code> kalau tidak perlu</li>
+<li>Untuk NOC: VPN jadi jalur utama akses router, bukan port-forward</li>
+</ul>
+<h2 id="referensi-buku">Referensi buku</h2>
+<ul>
+<li>Manual: <em>14 Virtual Private Networks → WireGuard, IPsec, L2TP</em></li>
+<li>Manual: <em>02 Getting Started → Securing your router</em></li>
+</ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">High Availability Solutions</p>
+      <h1 id="user-guides">User Guides</h1>
+<h1 id="bonding-examples">Bonding Examples</h1>
+<blockquote>
+<p>Bonding example for RouterOS: join two EoIP tunnels over two separate links between two routers into one bonded link, test it, and add ARP link monitoring so that a failed link is not used.</p>
+</blockquote>
+<h1 id="bonding-examples_1">Bonding Examples</h1>
+<h2 id="bond-two-eoip-tunnels-over-two-links">Bond two EoIP tunnels over two links</h2>
+<p>Two routers are connected with two separate IP links, for example two wireless links. This example joins the two links into one, to use the capacity of both and to keep the connection when one fails.</p>
+<p><em>[gambar: Two routers connected with two wireless links, with an EoIP tunnel over each link and a bonding interface over the tunnels]</em></p>
+<p>Bonding works on layer 2 (Ethernet) interfaces only, so each link first gets an <a href="../../virtual-private-networks/eoip">EoIP</a> tunnel. The bond then uses the two tunnels.</p>
+<p>In the example the first link has the network 10.0.1.0/24 and the second 10.2.2.0/24. R1 has the addresses 10.0.1.2 and 10.2.2.2, and R2 has 10.0.1.1 and 10.2.2.1.</p>
+<h3 id="configuration">Configuration</h3>
+<p>Add an EoIP tunnel over each link. On R1:</p>
+<pre><code class="language-ros">/interface/eoip/add name=eoip-tunnel1 remote-address=10.0.1.1 \
+    tunnel-id=1
+/interface/eoip/add name=eoip-tunnel2 remote-address=10.2.2.1 \
+    tunnel-id=2
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/eoip/add name=eoip-tunnel1 remote-address=10.0.1.2 \
+    tunnel-id=1
+/interface/eoip/add name=eoip-tunnel2 remote-address=10.2.2.2 \
+    tunnel-id=2
+</code></pre>
+<p>Add a bonding interface with the tunnels as slaves, and an address on it. On R1:</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 mode=balance-rr \
+    slaves=eoip-tunnel1,eoip-tunnel2
+/ip/address/add address=192.168.0.1/24 interface=bond1
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/bonding/add name=bond1 mode=balance-rr \
+    slaves=eoip-tunnel1,eoip-tunnel2
+/ip/address/add address=192.168.0.2/24 interface=bond1
+</code></pre>
+<h3 id="add-link-monitoring">Add link monitoring</h3>
+<p>The default link monitoring (MII) does not help here: the bond does not notice with it that the link of a tunnel failed, so it keeps sending packets into the failed tunnel and most of the traffic is lost. Use ARP monitoring, which checks that each tunnel really passes packets. On R1:</p>
+<pre><code class="language-ros">/interface/bonding/set [find name=bond1] link-monitoring=arp \
+    arp-ip-targets=192.168.0.2
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/bonding/set [find name=bond1] link-monitoring=arp \
+    arp-ip-targets=192.168.0.1
+</code></pre>
+<p>When a link fails, the bond now moves its tunnel to <code>inactive-ports</code> and uses the other one:</p>
+<pre><code class="language-ros">[admin@R1] &gt; /interface/bonding/monitor bond1 once
+            mode: balance-rr  
+    active-ports: eoip-tunnel1
+  inactive-ports: eoip-tunnel2
+</code></pre>
+<h3 id="test">Test</h3>
+<p>The two routers reach each other with the addresses of 192.168.0.0/24. To see that the traffic uses both tunnels, watch the tunnels on R1 with <code>/interface/monitor-traffic eoip-tunnel1,eoip-tunnel2</code>, and send traffic from R2 with <code>/tool/bandwidth-test 192.168.0.1 direction=transmit</code>. The traffic is spread over both tunnels.</p>
+<p><code>balance-rr</code> sends the packets of one connection through both links, so they can arrive out of order when the links have different delays.</p>
+<h2 id="read-more">Read more</h2>
+<ul>
+<li><a href="../bonding">Bonding</a></li>
+<li><a href="../../virtual-private-networks/eoip">EoIP</a></li>
+</ul>
+<hr />
+<h1 id="vrrp-configuration-examples">VRRP Configuration Examples</h1>
+<blockquote>
+<p>Basic VRRP configuration examples for RouterOS: a master and backup pair with a shared gateway, load sharing with two virtual routers, and a pair without preemption.</p>
+</blockquote>
+<h1 id="vrrp-configuration-examples_1">VRRP Configuration Examples</h1>
+<p>These examples configure a redundant gateway with two RouterOS routers, R1 and R2. The examples use
+<code>ether5</code> as the LAN-facing interface; replace it with the interface or bridge that connects to the
+LAN. The routers share the VRID, the virtual address and the advertisement interval, and both run the
+same RouterOS version.</p>
+<p>See <a href="../vrrp">VRRP</a> for the protocol, the virtual MAC address, master election and preemption.</p>
+<h2 id="basic-setup">Basic setup</h2>
+<p>As long as R1 is available, it is the master and forwards all traffic for the virtual address. R2 is
+the backup and stays idle. If R1 fails, R2 becomes master and continues to answer for the same
+address, so the hosts' gateway setting does not change.</p>
+<pre><code class="language-mermaid">graph LR
+    hosts[&quot;LAN hostsgateway 192.168.1.1&quot;] --&gt; r1[&quot;R1192.168.1.10/24priority 254master&quot;]
+    hosts -.-&gt; r2[&quot;R2192.168.1.20/24priority 100backup&quot;]
+</code></pre>
+<h3 id="r1-configuration">R1 configuration</h3>
+<pre><code class="language-ros">/ip/address/add address=192.168.1.10/24 interface=ether5
+/interface/vrrp/add name=vrrp1 interface=ether5 vrid=49 priority=254
+/ip/address/add address=192.168.1.1/32 interface=vrrp1
+</code></pre>
+<h3 id="r2-configuration">R2 configuration</h3>
+<pre><code class="language-ros">/ip/address/add address=192.168.1.20/24 interface=ether5
+/interface/vrrp/add name=vrrp1 interface=ether5 vrid=49
+/ip/address/add address=192.168.1.1/32 interface=vrrp1
+</code></pre>
+<p>Both routers have the same VRID and the same virtual address. R1 has the higher priority and is the
+master. Name the VRRP interface explicitly on both routers so that the name does not depend on
+automatically assigned numbers.</p>
+<h3 id="check-the-result">Check the result</h3>
+<p>On R1:</p>
+<pre><code class="language-ros">/interface/vrrp/print detail
+Flags: R - RUNNING; M - MASTER
+0 RM name=&quot;vrrp1&quot; mtu=1500 mac-address=00:00:5E:00:01:31 arp=enabled
+     arp-timeout=auto interface=ether5 group-authority=&quot;&quot; vrid=49 priority=254
+     interval=1s preemption-mode=yes authentication=none on-backup=&quot;&quot;
+     on-master=&quot;&quot; on-fail=&quot;&quot; version=3 v3-protocol=ipv4 v3-checksum-as-v2=no
+     sync-connection-tracking=no connection-tracking-mode=passive-active
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/vrrp/print detail
+Flags: B - BACKUP
+0 B name=&quot;vrrp1&quot; mtu=1500 mac-address=00:00:5E:00:01:31 arp=enabled
+    arp-timeout=auto interface=ether5 group-authority=&quot;&quot; vrid=49 priority=100
+    interval=1s preemption-mode=yes authentication=none on-backup=&quot;&quot;
+    on-master=&quot;&quot; on-fail=&quot;&quot; version=3 v3-protocol=ipv4 v3-checksum-as-v2=no
+    sync-connection-tracking=no connection-tracking-mode=passive-active
+</code></pre>
+<p>The virtual MAC address is the same on both routers. The master sends advertisements and answers ARP
+requests for 192.168.1.1 with this address; the backup only listens.</p>
+<p>To test a failover, disable the VRRP interface on R1 (<code>/interface/vrrp/disable [find name=vrrp1]</code>) or
+disconnect the interface it runs on. A disabled master sends an advertisement with priority 0, so R2
+takes over at once; after a disconnect, R2 becomes master when the master-down timer expires:</p>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: R - RUNNING; M - MASTER
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#    NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0 RM vrrp1  ether5     00:00:5E:00:01:31    49       100  1s  3  ipv4  no
+</code></pre>
+<p>Enable R1 again (<code>/interface/vrrp/enable [find name=vrrp1]</code>) or reconnect its interface. Preemption
+is enabled by default, so R1 returns to the master role and R2 becomes backup. The virtual MAC
+address does not change, so hosts keep the same gateway address in their ARP entry, and the new
+master announces it.</p>
+<h2 id="load-sharing">Load sharing</h2>
+<p>In the basic setup R2 is idle while it is the backup. With two virtual routers, each router can be
+the master for one address and the backup for the other, so both routers forward traffic and each
+backs up the other. This example replaces the basic setup; remove its VRRP interfaces and addresses
+on both routers first.</p>
+<p><em>[gambar: Load sharing with two virtual routers: in V1 (VRID 49) R1 is the master and R2 the backup, in V2 (VRID 77) R2 is the master and R1 the backup; clients on the LAN use 192.168.1.253 or 192.168.1.254 as their gateway.]</em></p>
+<p>In V1, R1 is the master and R2 is the backup. In V2, the roles are reversed. If one router fails, the
+other takes over both virtual addresses. Each host uses one of the two addresses as its default
+gateway: some hosts use 192.168.1.253, the others use 192.168.1.254.</p>
+<h3 id="r1-configuration_1">R1 configuration</h3>
+<pre><code class="language-ros">/ip/address/add address=192.168.1.1/24 interface=ether5
+/interface/vrrp/add name=vrrp1 interface=ether5 vrid=49 priority=254
+/interface/vrrp/add name=vrrp2 interface=ether5 vrid=77
+/ip/address/add address=192.168.1.253/32 interface=vrrp1
+/ip/address/add address=192.168.1.254/32 interface=vrrp2
+</code></pre>
+<h3 id="r2-configuration_1">R2 configuration</h3>
+<pre><code class="language-ros">/ip/address/add address=192.168.1.2/24 interface=ether5
+/interface/vrrp/add name=vrrp1 interface=ether5 vrid=49
+/interface/vrrp/add name=vrrp2 interface=ether5 vrid=77 priority=254
+/ip/address/add address=192.168.1.253/32 interface=vrrp1
+/ip/address/add address=192.168.1.254/32 interface=vrrp2
+</code></pre>
+<p>Both virtual addresses are configured on both routers. The priorities give R1 the master role for
+VRID 49 and R2 the master role for VRID 77.</p>
+<h3 id="check-the-result_1">Check the result</h3>
+<p>On R1:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: R - RUNNING; M - MASTER, B - BACKUP
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#    NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0 RM vrrp1  ether5     00:00:5E:00:01:31    49       254  1s  3  ipv4  no
+1  B vrrp2  ether5     00:00:5E:00:01:4D    77       100  1s  3  ipv4  no
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: R - RUNNING; M - MASTER, B - BACKUP
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#    NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0  B vrrp1  ether5     00:00:5E:00:01:31    49       100  1s  3  ipv4  no
+1 RM vrrp2  ether5     00:00:5E:00:01:4D    77       254  1s  3  ipv4  no
+</code></pre>
+<p>Traffic to 192.168.1.253 uses R1 and traffic to 192.168.1.254 uses R2 while both routers are
+available.</p>
+<h2 id="vrrp-without-preemption">VRRP without preemption</h2>
+<p>A router with a higher priority takes over when it becomes available. This is not always wanted, for
+example when the current master should keep the role until it fails. Disable preemption on the VRRP
+interfaces:</p>
+<pre><code class="language-ros">/interface/vrrp/set [find] preemption-mode=no
+</code></pre>
+<p>Run the command on both routers, so the behavior does not depend on which router is master. The
+command changes every VRRP interface on the router.</p>
+<p>With the basic setup, R1 starts as master and R2 as backup. Disable the VRRP interface on R1
+(<code>/interface/vrrp/disable [find name=vrrp1]</code>); R2 becomes master. Enable it again
+(<code>/interface/vrrp/enable [find name=vrrp1]</code>); R1 returns as backup, and R2 keeps the master role even
+though R1 has the higher priority:</p>
+<p>On R1:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: B - BACKUP
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#   NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0 B vrrp1  ether5     00:00:5E:00:01:31    49       254  1s  3  ipv4  no
+</code></pre>
+<p>On R2:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: R - RUNNING; M - MASTER
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#    NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0 RM vrrp1  ether5     00:00:5E:00:01:31    49       100  1s  3  ipv4  no
+</code></pre>
+<hr />
+<h1 id="vrrp">VRRP</h1>
+<blockquote>
+<p>VRRP provides a redundant default gateway by combining RouterOS routers into a virtual router. The page covers the protocol, virtual MAC addresses, master election and preemption, IPv4 and IPv6 configuration,...</p>
+</blockquote>
+<h1 id="vrrp_1">VRRP</h1>
+<p>VRRP (Virtual Router Redundancy Protocol) gives a LAN a redundant default gateway. Two or more
+routers form a virtual router with a shared virtual IP address and a shared virtual MAC address. One
+router is the master and forwards traffic for that address; the others are backups and take over if
+the master fails. Hosts keep using one gateway address, so their configuration does not change.
+RouterOS implements VRRPv2 (RFC 3768) and VRRPv3 (RFC 5798); VRRPv3 supports IPv4 and IPv6.</p>
+<p>A statically configured first hop is a single point of failure: if that router stops, hosts lose
+connectivity until their gateway is reconfigured. Dynamic routing protocols such as OSPF or RIP can
+provide another path, but they add complexity that a small network may not need. In IPv6, Neighbor
+Discovery detects an unreachable router only after several missed advertisements, which can take
+tens of seconds. VRRP detects a failed master within a few seconds without adding traffic for every
+host.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Use the same RouterOS version on all routers that share a VRID.</p>
+</div>
+<p>The configuration examples are on <a href="./user-guides/vrrp-configuration-examples">VRRP configuration examples</a>.</p>
+<h2 id="how-vrrp-works">How VRRP works</h2>
+<p>A virtual router is identified by a Virtual Router ID (VRID) and a set of virtual IP addresses.
+Every router in the group is configured with the same VRID and the same virtual addresses. All
+members receive VRRP advertisements, but only the master sends them periodically; backups listen and
+wait for the master to stop.</p>
+<p>VRRP advertisements are IPv4 or IPv6 multicast packets with IP protocol number 112:</p>
+<ul>
+<li>IPv4 destination <code>224.0.0.18</code>, multicast MAC <code>01:00:5E:00:00:12</code>.</li>
+<li>IPv6 destination <code>FF02::12</code>, multicast MAC <code>33:33:00:00:00:12</code>.</li>
+</ul>
+<p>The source address is the primary IPv4 address of the parent interface for IPv4, or the link-local
+address of the VRRP interface for IPv6. Advertisements are sent with TTL 255 and are not forwarded by
+routers.</p>
+<p>Every member must use the same advertisement interval. A router discards an advertisement whose
+interval differs from its own and records <code>misconfigured interval</code> in the log.</p>
+<h3 id="virtual-mac-address">Virtual MAC address</h3>
+<p>VRRP assigns each virtual router a MAC address derived from the VRID. It cannot be set or edited.</p>
+<ul>
+<li>IPv4 uses <code>00:00:5E:00:01:VRID</code>.</li>
+<li>IPv6 uses <code>00:00:5E:00:02:VRID</code>.</li>
+</ul>
+<p>The last octet is the VRID in hexadecimal. VRID 49 gives the IPv4 address <code>00:00:5E:00:01:31</code>. The
+master uses the virtual MAC address as the source of its advertisements and answers ARP or Neighbor
+Discovery requests for the virtual IP address with it. The VRRP interface also derives an IPv6
+link-local address from this MAC address.</p>
+<p>When a router becomes master, it sends an ARP announcement for the virtual IPv4 address from the
+virtual MAC address, so hosts update their ARP tables as soon as the master changes.</p>
+<p>A VRID must be unique on a parent interface. An IPv4 and an IPv6 virtual router on the same
+interface need different VRIDs.</p>
+<h3 id="master-election-and-preemption">Master election and preemption</h3>
+<p>The member with the highest priority becomes the master. Priorities range from 1 to 254; the default
+is 100. If two members have the same priority, the one with the higher primary IP address becomes
+master.</p>
+<p>Priority 255 is reserved for the owner, a router whose real address is the virtual address, and
+priority 0 for a master that releases the role. RouterOS accepts neither value and cannot be
+configured as an owner, so the virtual address must differ from the real address on every RouterOS
+member.</p>
+<p>The current master's <code>preemption-mode</code> setting decides whether it gives up the role to a router with
+a higher priority that appears later:</p>
+<ul>
+<li><code>yes</code> (default) - The master yields, and the higher-priority router becomes master.</li>
+<li><code>no</code> - The master keeps the role until it fails, even when a higher-priority router is available.</li>
+</ul>
+<p>The setting on a backup does not change this decision. Set the same value on all members so the
+result does not depend on which router is master.</p>
+<h2 id="configuration_1">Configuration</h2>
+<h3 id="ipv4">IPv4</h3>
+<p>Create the VRRP interface on the LAN-facing interface, add the router's real address to that
+interface, and add the shared virtual address to the VRRP interface:</p>
+<pre><code class="language-ros">/interface/vrrp/add name=vrrp1 interface=ether5
+/ip/address/add address=192.168.1.2/24 interface=ether5
+/ip/address/add address=192.168.1.1/32 interface=vrrp1
+</code></pre>
+<p>Only the <code>interface</code> argument is required. The other settings take their defaults: <code>vrid=1</code>,
+<code>priority=100</code>, <code>interval=1s</code> and <code>authentication=none</code>. Name the interface explicitly, because
+RouterOS does not reuse automatically assigned names after an interface is deleted.</p>
+<p>The real address on the parent interface is required; without it, the VRRP interface stays invalid
+with the status comment <code>No IPv4 address!</code>. The virtual address needs a <code>/32</code> netmask when it belongs
+to the same subnet as an address on another interface of the router.</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>With strict reverse path filtering (<code>rp-filter=strict</code>), traffic sent to the virtual address can be
+dropped: packets arrive on the parent interface, but the route to the virtual address points at the
+VRRP interface. Set <code>rp-filter=loose</code> on routers that must reach the virtual address.</p>
+</div>
+<p>Configure the second router the same way with its own real address, the same VRID and the same
+virtual address. The <a href="./user-guides/vrrp-configuration-examples">configuration examples</a> show both
+routers and the failover test. Set the virtual address as the default gateway on the LAN hosts, for
+example with the <code>gateway</code> setting of the DHCP server, not the real address of either router.</p>
+<p>Check the state:</p>
+<pre><code class="language-ros">/interface/vrrp/print
+Flags: R - RUNNING; M - MASTER
+Columns: NAME, INTERFACE, MAC-ADDRESS, VRID, PRIORITY, INTERVAL, VERSION, 
+         V3-PROTOCOL, SYNC-CONNECTION-TRACKING
+#    NAME   INTERFACE  MAC-ADDRESS        VRID  PRIORITY  IN  V  V3-P  SY
+0 RM vrrp1  ether5     00:00:5E:00:01:01     1       100  1s  3  ipv4  no
+</code></pre>
+<p>The <code>M</code> flag marks the master, <code>B</code> the backup and <code>F</code> the failure state. An instance that cannot
+start shows <code>I</code> (invalid) and the reason as a status comment, for example <code>No IPv4 address!</code>.</p>
+<h3 id="ipv6">IPv6</h3>
+<p>VRRPv3 is required for IPv6. Create the interface with <code>v3-protocol=ipv6</code> and add a global address
+with <code>advertise=yes</code>:</p>
+<pre><code class="language-ros">/interface/vrrp/add name=vrrp6 interface=ether5 vrid=6 v3-protocol=ipv6
+/ipv6/address/add address=fd00:1::1/64 advertise=yes interface=vrrp6
+</code></pre>
+<p>The VRRP interface receives a link-local address automatically and uses it for advertisements. With
+<code>advertise=yes</code>, the master advertises the prefix in Router Advertisements. The IPv6 virtual router is
+independent of an IPv4 one on the same interface and needs its own VRID.</p>
+<h2 id="connection-tracking-synchronization">Connection tracking synchronization</h2>
+<p>Connection tracking synchronization copies connection tracking entries from the master to the
+backup, so established connections can continue after a failover. The log and the status refer to it
+as CTSYNC. It requires connection tracking on both routers. Connection tracking is in <code>auto</code> mode by
+default, which disables it until a firewall rule needs it; enable it explicitly when the routers have
+no such rule:</p>
+<pre><code class="language-ros">/ip/firewall/connection/tracking/set enabled=yes
+</code></pre>
+<p>Enable synchronization on both routers of the pair:</p>
+<pre><code class="language-ros">/interface/vrrp/set [find name=vrrp1] sync-connection-tracking=yes
+</code></pre>
+<p>The routers exchange synchronization data over UDP port 8275. If the firewall filters traffic between
+the routers, allow this port in the input chain on both of them.</p>
+<p>The log shows the synchronization state, for example on the master:</p>
+<pre><code class="language-text">2026-11-13 14:52:10 vrrp,info vrrp1 now MASTER, master down timer
+2026-11-13 14:52:10 vrrp,info vrrp1 stop CTSYNC
+2026-11-13 14:52:10 vrrp,info vrrp1 starting CTSYNC MASTER
+2026-11-13 14:52:10 vrrp,info Obtaining CTSYNC Backup IP address...
+2026-11-13 14:52:11 vrrp,info Waiting for CTSYNC Backup...
+2026-11-13 14:52:11 vrrp,info CTSYNC Backup ready
+2026-11-13 14:52:11 vrrp,info Initial CTSYNC complete
+</code></pre>
+<p>In the default <code>passive-active</code> mode, only the master sends connection tracking data. Use
+<code>active-active</code> mode when several VRRP groups spread the master role across routers; every group then
+needs its own <code>connection-tracking-port</code>. See the <a href="../cli-reference/interface/vrrp"><code>/interface/vrrp</code></a>
+CLI reference for the synchronization arguments.</p>
+<h2 id="group-authority">Group authority</h2>
+<p>Several VRRP interfaces on the same router can be grouped so that they share one state. This matters
+when the router performs NAT between two interfaces: if the LAN instance is master and the WAN
+instance is backup, the router forwards traffic for one interface but not the other, and NAT fails.
+In a group, all members share one state, so they are master or backup together.</p>
+<p>One interface is the group authority. It controls the state of the other members and is the only
+interface that sends advertisements. A group member follows the authority. A failure on any member,
+for example a link-down on its parent interface, moves the whole group to the failure state.</p>
+<p>Create the group from the interfaces and their addresses:</p>
+<pre><code class="language-ros">/interface/vrrp/add name=vrrp-lan interface=bridge vrid=2
+/interface/vrrp/add name=vrrp-wan interface=ether1 vrid=1
+/ip/address/add address=192.168.10.2/24 interface=bridge
+/ip/address/add address=192.168.10.1/32 interface=vrrp-lan
+/ip/address/add address=192.0.2.2/24 interface=ether1
+/ip/address/add address=192.0.2.1/32 interface=vrrp-wan
+/interface/vrrp/set [find name=vrrp-lan] group-authority=self
+/interface/vrrp/set [find name=vrrp-wan] group-authority=vrrp-lan
+</code></pre>
+<p>Use the LAN interface as the authority so that VRRP control traffic stays in the internal network.
+Every member needs a real address on its parent interface and a virtual address; otherwise it stays
+invalid with the status comment <code>No IPv4 address!</code>, and a member whose authority is not ready shows
+<code>VRRP Group is not ready!</code>.</p>
+<h2 id="hardware-offloading">Hardware offloading</h2>
+<p>A master VRRP instance is hardware-offloaded when L3 hardware offloading is enabled. The switch then
+routes frames addressed to the virtual MAC address. The source MAC address of the routed traffic
+stays the parent interface MAC address, not the virtual MAC address. The instance reports the
+read-only <code>hw-offloaded</code> property as the <code>H</code> flag in <code>/interface/vrrp/print</code>.</p>
+<p>Offloading is removed when the instance is not master or when L3 hardware offloading is disabled.
+VRRP hardware offloading is not available on every switch that supports L3 hardware offloading. See
+<a href="../bridging-and-switching/l3-hardware-offloading">L3 Hardware Offloading</a> for the configuration and
+the list of supported devices.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="all-routers-are-master">All routers are master</h3>
+<p>Members that cannot hear each other all become master. Check that both routers use the same VRID,
+version, <code>v3-protocol</code>, virtual addresses and advertisement interval. The log shows why an
+advertisement was rejected:</p>
+<ul>
+<li><code>misconfigured interval (1 != 2)</code> - The advertisement intervals differ.</li>
+<li><code>misconfigured authentication type</code> or <code>simple authentication failed</code> - VRRPv2 authentication does
+  not match.</li>
+<li><code>bad checksum</code> - The <code>v3-checksum-as-v2</code> setting differs between the routers.</li>
+<li><code>misconfigured IP addresses [192.168.1.253](my) != [192.168.1.1](received)</code> - The virtual address
+  sets differ.</li>
+</ul>
+<p>A firewall that drops IP protocol 112 also prevents the routers from hearing each other. Allow VRRP
+in the input chain on both routers.</p>
+<h3 id="the-vrrp-interface-is-invalid">The VRRP interface is invalid</h3>
+<p>An <code>I</code> flag means that the instance cannot run. The status comment gives the reason:</p>
+<ul>
+<li><code>No IPv4 address!</code> - The parent interface has no address, or the VRRP interface has no virtual
+  address.</li>
+<li><code>VRRP Group is not ready!</code> - The group authority is not ready.</li>
+</ul>
+<h3 id="a-backup-does-not-take-over">A backup does not take over</h3>
+<p>Check that the backup has the same virtual address and VRID and that its parent interface is up.
+When the master is still reachable, a backup with a lower priority stays backup; if the priorities
+are equal, the router with the lower primary IP address stays backup. Only a higher priority, or an
+equal priority with a higher primary IP address, triggers preemption. If the master's
+<code>preemption-mode</code> is <code>no</code>, it also keeps the role after a higher-priority router returns.</p>
+<h3 id="connection-tracking-synchronization-does-not-start">Connection tracking synchronization does not start</h3>
+<p>Check that <code>sync-connection-tracking</code> is enabled on both routers and that connection tracking is
+enabled; otherwise the VRRP interface shows the status comment <code>Connection tracking inactive!</code> and
+nothing is synchronized. Allow UDP port 8275 between the routers. If the synchronization data must
+use a different path than the VRRP advertisements, set <code>remote-address</code> to the other router's
+address.</p>
+<h3 id="no-traffic-after-a-failover">No traffic after a failover</h3>
+<p>Confirm that the backup became master and has the virtual address configured. Check the ARP or
+Neighbor Discovery entry for the virtual address on a host: it must resolve to the virtual MAC
+address, not to the MAC address of a physical interface.</p>
+<h2 id="technical-details">Technical details</h2>
+<h3 id="router-states">Router states</h3>
+<p><em>[gambar: VRRP state transitions between Init, Backup and Master]</em></p>
+<p>The protocol defines three states:</p>
+<ul>
+<li><strong>Init</strong> - The instance is waiting to start. RouterOS instances do not use the owner startup path,
+  because priority 255 is rejected.</li>
+<li><strong>Backup</strong> - The instance listens for advertisements and does not forward traffic for the virtual
+  addresses. It becomes master when the master-down timer expires, when it receives an advertisement
+  with priority 0, or when preemption applies and its own priority is higher.</li>
+<li><strong>Master</strong> - The instance forwards traffic for the virtual addresses, answers ARP and Neighbor
+  Discovery requests, and sends advertisements. If it receives an advertisement with a higher
+  priority, or with an equal priority from a router with a higher primary IP address, it returns to
+  the backup state. When its VRRP interface is disabled, it sends an advertisement with priority 0,
+  so the backups take over without waiting for the master-down timer.</li>
+</ul>
+<p>RouterOS reports an additional failure state with the <code>F</code> flag when the parent interface is down or a
+group member has failed; the instance cannot forward traffic for the virtual addresses until the
+failure clears.</p>
+<p>The master-down timer is three advertisement intervals plus a priority-dependent skew. A backup that
+receives an advertisement with a differing interval, authentication or virtual address set discards
+it and logs the reason.</p>
+<h3 id="owner">Owner</h3>
+<p>RFC 3768 and RFC 5798 define an owner as the router whose interface address is the virtual address;
+it has priority 255 and becomes master immediately. RouterOS cannot be configured as an owner:
+<code>priority=255</code> is rejected with <code>value of priority out of range (1..254)</code>, and the virtual address
+must be a separate address (a floating or pure virtual address). Use the same floating virtual
+address on every member, and configure it on the VRRP interface on each router.</p>
+<h3 id="authentication">Authentication</h3>
+<p>VRRPv2 supports <code>none</code>, <code>simple</code> (a cleartext password) and <code>ah</code> (IP Authentication Header with
+HMAC-MD5). RFC 5798 deprecates authentication for VRRPv3. All members of a VRRPv2 virtual router
+must use the same authentication method and password.</p>
+<p>The menu and its arguments are described in the
+<a href="../cli-reference/interface/vrrp"><code>/interface/vrrp</code></a> CLI reference.</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

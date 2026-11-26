@@ -1,0 +1,1729 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth / User Guides · MikroTik Guide</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Internet of Things</p>
+      <h1 id="bluetooth-user-guides-part-12">Bluetooth / User Guides (part 1/2)</h1>
+<h1 id="bluetooth-tag-tracking-using-mqtt-and-thingsboard">Bluetooth tag-tracking using MQTT and ThingsBoard</h1>
+<blockquote>
+<p>This page documents Bluetooth tag-tracking using MikroTik RouterOS with MQTT and ThingsBoard, detailing how Bluetooth advertising packets are captured by KNOT devices, processed into MQTT messages, and visualized in...</p>
+</blockquote>
+<h1 id="bluetooth-tag-tracking-using-mqtt-and-thingsboard_1">Bluetooth tag-tracking using MQTT and ThingsBoard</h1>
+<p>Bluetooth interface implementation in RouterOS allows the device to capture Bluetooth advertising packets that are broadcasted over 37, 38, and 39 advertising channels. More information can be found in the <a href="../index.md">guide here</a>.</p>
+<p>Bluetooth tags like, for example, <a href="https://mikrotik.com/product/tg_bt5_in">TG-BT5-IN</a> and <a href="https://mikrotik.com/product/tg_bt5_out">TG-BT5-OUT</a>, do exactly that. They broadcast advertising payloads over the mentioned channels. To understand what kind of information is stored in the payload, make sure to check the <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-MikroTikPDUPayloadstructure">link</a>. The tags can be configured (using the <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Beacon+Manager">MikroTik Beacon Manager</a> app) to broadcast the payloads automatically, with an interval and/or when a movement, tilt, or free-fall trigger is detected. In simple terms, the tag will "tell" (broadcast to) all the surrounding Bluetooth scanners (like the <a href="https://mikrotik.com/product/knot">KNOT</a>) information about itself periodically.</p>
+<p>When the payload is broadcasted by the tag, and the tag is within the KNOT's Bluetooth operating range, the KNOT will capture and display the payload under its "scanner" Bluetooth interface section. It would look like this:</p>
+<pre><code class="language-ros">/iot/bluetooth/scanners/advertisements/print
+Columns: DEVICE, PDU-TYPE, TIME, ADDRESS-TYPE, ADDRESS, RSSI, LENGTH, DATA
+#  DEVICE  PDU-TYPE        TIME                  ADDRESS-TYPE  ADDRESS            RSSI    LENGTH  DATA                                        
+0  bt1     adv-noconn-ind  2023-03-07 12:11:57  public        DC:2C:6E:0F:C0:3D  -51dBm      22  15ff4f09010079100000ffff0000cf188a6b2b000064
+1  bt1     adv-noconn-ind  2023-03-07 12:11:58  public        2C:C8:1B:4B:BB:0A  -49dBm      22  15ff4f090100168dfefffffffeffa51ae1362200005e 
+</code></pre>
+<p>The example above shows us that the KNOT sees two Bluetooth tags within its operating range with MAC addresses "DC:2C:6E:0F:C0:3D" and "2C:C8:1B:4B:BB:0A", their respective payloads ("DATA" field) and the signal strength ("RSSI" field).</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>When testing locally to see how many payloads the KNOT can handle, we've achieved the following results →  with 300 tags (in factory settings), scattered around the KNOT and using a Bluetooth filter "keep-newest" (which overwrites previously received payloads for each unique MAC address with the newest one, so that the Bluetooth list would display 1 payload per 1 unique tag's MAC address at all times), all 300 MAC addresses appeared in the KNOT's range after 30-40 seconds. This is where you need to keep in mind that all 300 tags broadcasting over the same channels at the same time will cause interference (delay in the reception). When we "cleared" the Bluetooth payload list, each second the list got 20 new entries and after about ~15 seconds, the list had 250-290 payloads. Then after ~15 seconds more, the list displayed all 300 unique tag payloads. <strong>The actual number of tags your KNOT is able to handle is heavily dependent on the environment, so it is better to test it on site.</strong></p>
+</div>
+<p>With the help of RouterOS <a href="../../../developer-guides/scripting/index.md">scripting</a> and <a href="../../../system-information-and-utilities/scheduler.md">scheduling</a>, we can make the KNOT automatically periodically scan the payload list and, in case a specific payload or a specific tag's MAC address is found on the list, we can make the KNOT structure an MQTT message (out of the printed information shown in the example above) and send it to the configured server via <a href="../../mqtt/index.md">MQTT</a>, <a href="../../../system-information-and-utilities/e-mail.md">e-mail</a> or <a href="../../../system-information-and-utilities/fetch.md">HTTP</a> post. Script examples will be shown later on in the guide.</p>
+<p>As the title suggests, the goal is to implement a <strong>Bluetooth tag-tracking solution</strong> and the idea is quite simple. <strong>When you have 2 KNOTs</strong> (KNOT-A and KNOT-B), running the same script on a scheduler, <strong>and the tag moves between their Bluetooth operating ranges</strong>, the data on <strong>the server will indicate</strong> <strong>whether</strong> it was <strong>KNOT-A or KNOT-B</strong> that <strong>has sent</strong> <strong>the</strong> tag's <strong>payload</strong>. That will help you figure out the proximity of the tag, whether the tag is broadcasting payloads in the KNOT-A zone, or in the KNOT-B zone.</p>
+<p>You will need a server where the data is going to be stored and visualized. In this guide, we will showcase a platform called <a href="https://thingsboard.io/">ThingsBoard</a> and how to communicate with it using the MQTT protocol.</p>
+<p>ThingsBoard has a cloud solution and different local installation options (on different OS). Since we've added a <a href="../../../containers/index.md">container</a> feature, it became possible to also run the platform within RouterOS. In order to do that, you will need a RouterOS device that has at least 2 GB RAM to spare or 1 GB RAM to spare with minimal load, has the option to increase storage (for example, an additional USB port), and is either ARM64 or AMD64 architecture. Consider using a <a href="../../../getting-started/routeros-licensing/chr/index.md">CHR</a> machine, as it could be a good fit.</p>
+<h3 id="setup-requirements">Setup requirements</h3>
+<ul>
+<li>A running ThingsBoard server.</li>
+<li>2+ <a href="https://mikrotik.com/product/knot">KNOT</a>s with access to the server's network via ethernet, Wi-Fi, or cellular connection (the number of units required depends on the size of the area that needs to be covered).</li>
+<li>1+ Bluetooth <a href="https://mikrotik.com/product/tg_bt5_in">TG-BT5-IN</a> and/or <a href="https://mikrotik.com/product/tg_bt5_out">TG-BT5-OUT</a> tags (depending on how many assets you need to track - 1 tag per asset).</li>
+</ul>
+<h2 id="scenario-explanation">Scenario explanation</h2>
+<p>Let's take a look at a basic example first. We have two KNOTs (KNOT-A and KNOT-B). We've tested Bluetooth ranges in our environment and could verify that both KNOTs are able to capture the tag at a 70-meter distance. If we install KNOT-A and KNOT-B 140 meters apart, their Bluetooth ranges will not overlap or overlap just slightly. When the tag moves into the KNOT-A range → the payload from the monitored tag will appear under the Bluetooth scanner list →  the script will be initiated on a set schedule → an MQTT message with a report is going to be sent to the server →  and, finally, the server will display that the tag is in the KNOT-A zone. When the tag moves into the KNOT-B range, the same happens, and the server will display that the tag is inside the KNOT-B zone.</p>
+<p>The actual Bluetooth operating distance can vary from site to site because a lot of different factors can impact it, like 2.4 GHz interference or the surrounding materials used. For example, in line of sight, with no interference, the distance at which the KNOT is able to capture the tag's broadcasted payload can be up to 180 meters (KNOT — ~180 meters — TG-BT5-OUT). But you also have to keep in mind that with further distance, more packets will be lost on the way. In the office environment, the range can go down to 30-100 meters.</p>
+<p>Logically, if the Bluetooth operating ranges overlap and the tag is within the overlapped area (at the same time within KNOT-A and KNOT-B Bluetooth ranges), both KNOTs will send the data and the server is going to show that the tag is reported by both devices at the same time.</p>
+<p><strong>Surely, there will be zones where two or more KNOT's Bluetooth ranges overlap and you can use it to your advantage</strong>. Basically, you will have information that the tag, right now, is on the edges of the Bluetooth ranges in-between specific KNOT zones. In other words, when the asset moves into the overlapped area, you will have information on the server that the asset is somewhere between the two KNOT operating ranges, which is useful information to have <strong>as it gives more precision</strong>.</p>
+<p>Additionally, <strong>the tag's output power can be reduced using the <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Beacon+Manager+for+Android+devices#heading-TxPower">Tx power</a> parameter</strong>. Meaning that even if the tag's payloads are broadcasted way too far and they are caught by other KNOTs that are not supposed to see those payloads (at longer distances) → you can reduce the output power of the tag, which will reduce the distance at which the KNOT is able to capture them. That way, you can "tweak" the "range" of reception and also avoid "interfering" with the signal in other zones.</p>
+<p>The scripts we've prepared also allow you to set up a filter (that will be shown later on), which will make the KNOT ignore the payloads that the scanner captures unless the signal strength (RSSI) is stronger than the specified value. In the Bluetooth scanner example print shown above under the "<a href="../index.md">Introduction</a>" section, we can see that the KNOT sees one of the tags with an <strong>RSSI</strong> signal strength of <strong>-51 dBm</strong> (tag with a MAC address "<strong>DC:2C:6E:0F:C0:3D</strong>") and the other one with an <strong>RSSI</strong> signal strength of <strong>-49 dBm</strong> (tag with a MAC address "<strong>2C:C8:1B:4B:BB:0A</strong>"). So, <strong>if we</strong> apply a filter to the script to <strong>ignore</strong> all payloads that are received with signal strength (<strong>RSSI</strong>) <strong>weaker than -50 dBm</strong>, our <strong>KNOT would report that only tag "2C:C8:1B:4B:BB:0A" is within the Bluetooth range</strong>, because its RSSI is -49 dBm, and the second tag (with RSSI -51 dBm) will be ignored. What this means, essentially, is a second way of "tweaking" the "range" of reception. The actual signal strength will vary between different locations (as mentioned before, because of interference and surrounding materials), so it needs to be tested on site.</p>
+<h3 id="example-1">Example #1</h3>
+<p>One of the use cases is shown in the topology below:</p>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>The scale of objects and Bluetooth operating ranges are just shown as an example, to help visually understand and imagine the topology!</p>
+</div>
+<p>We have a warehouse area and <strong>we have 3 assets</strong> (pallets) that we are interested in tracking. <strong>We</strong> also <strong>have 3 zones</strong>: zone <strong>A</strong>, where newly arrived pallets are stored; zone <strong>B</strong>, where our assets are relocated to be inspected; and zone <strong>C</strong>, where assets are moved after inspection. To achieve Bluetooth asset-tracking, just install x1 KNOT per zone and x1 tag per asset.</p>
+<p>If TAG 1 and TAG 2 (pallets) arrive in the "arrival" zone A, KNOT A will report to the server that both assets are within its Bluetooth range. If TAG 3 gets moved to zone C, the server will indicate it is within the KNOT C range. If TAG 1 and TAG 2 move toward the B zone, and stay on the edges between A and B zones, the server will show that they are in the overlapped area (at the same time within KNOT-A and KNOT-B ranges). If the tags move to the middle of the warehouse, the server will indicate that they are in all 3 zones at once, in the overlapping area.</p>
+<h4 id="configuration">Configuration</h4>
+<p>In this example, we will showcase a basic topology, when two KNOTs are used and we just want to know whether the tag is located in one part of the building or the other one (whether it is inside zone A or zone B).</p>
+<h5 id="thingsboard-preparation">ThingsBoard preparation</h5>
+<p>Check the guide over <a href="../../mqtt/mqtt-and-thingsboard-configuration.md">here</a> to understand how ThingsBoard and RouterOS can be set up to utilize MQTT communication.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>This example will showcase an <a href="../../mqtt/mqtt-and-thingsboard-configuration.md#access-token-scenario-1">access-token</a> scenario for simplicity reasons, but you can use other available options as well. For the production environment, it is suggested to use SSL-MQTT, as non-SSL-MQTT can be easily packet captured and inspected.</p>
+<p>To understand how to implement SSL-MQTT communication on the instance that is run with the <a href="../../../containers/index.md">container</a>, check the guide linked <a href="../../../containers/user-guides/container-thingsboard-mqtt-http-server.md">here</a> (<a href="../../../containers/user-guides/container-thingsboard-mqtt-http-server.md#https-and-mqtt-over-tls">HTTPS and MQTT over TLS</a> section).</p>
+</div>
+<p>Create 2 KNOTs under the ThingsBoard GUI and make them "gateways".</p>
+<p>Go to the "Devices" section, click on the "+" button and "Add new device":</p>
+<p>Name the device and check the "Is gateway" option:</p>
+<p>Do that for each KNOT that you have:</p>
+<p>Set up a unique access token (unique credentials) for each KNOT under the device you've just created, under the "Manage credentials" tab:</p>
+<h5 id="routeros-configuration">RouterOS configuration</h5>
+<h6 id="preparation">Preparation</h6>
+<p>Before we proceed, we need to confirm that our Bluetooth tag actually appears in the KNOT's Bluetooth range and that the KNOT detects it. To do that, you can issue the command <code>/iot/bluetooth/scanners/advertisements/print</code>:</p>
+<pre><code class="language-ros">/iot/bluetooth/scanners/advertisements/print
+ # DEVICE     PDU-TYPE        TIME                 ADDRESS-TYPE ADDRESS                    RSSI     LENGTH DATA                                           
+ 0 bt1        adv-noconn-ind  2023-03-08 12:35:15 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f090100b0110100ffff00000019d68d2300005d   
+ 1 bt1        adv-noconn-ind  2023-03-08 12:35:16 public       DC:2C:6E:0F:C0:3D        -39dBm         22 15ff4f0901008f3cfcfffbfffaff301783c22c000064   
+ 2 bt1        adv-noconn-ind  2023-03-08 12:35:35 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f09010084d500000400ffff0319ea8d2300005d   
+ 3 bt1        adv-noconn-ind  2023-03-08 12:35:45 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f090100e607faffffff03000319f48d2300005d   
+</code></pre>
+<p>Or you can check it using <a href="../../../management-tools/webfig.md">Webfig</a> or <a href="../../../management-tools/winbox.md">Winbox</a> under the IoT&gt;Bluetooth&gt;Advertising reports tab.</p>
+<p>The list can be chaotic. Random payloads can appear on the list as the scanner captures everything around it. To help reduce the list, you can filter it using the tag's MAC address <code>/iot/bluetooth/scanners/advertisements/print where address=DC:2C:6E:0F:C0:3D</code>:</p>
+<pre><code class="language-ros">/iot/bluetooth/scanners/advertisements/print where address=DC:2C:6E:0F:C0:3D
+ # DEVICE    PDU-TYPE        TIME                 ADDRESS-TYPE ADDRESS                    RSSI     LENGTH DATA                                           
+ 0 bt1       adv-noconn-ind  2023-03-08 12:41:06 public       DC:2C:6E:0F:C0:3D        -49dBm         22 15ff4f0901005ab20100fdfffdff4017e1c32c000064   
+ 1 bt1       adv-noconn-ind  2023-03-08 12:41:26 public       DC:2C:6E:0F:C0:3D        -40dBm         22 15ff4f090100349704000000fcff4017f5c32c000064   
+ 2 bt1       adv-noconn-ind  2023-03-08 12:41:36 public       DC:2C:6E:0F:C0:3D        -49dBm         22 15ff4f09010073fb0000000000003017ffc32c000064   
+ 3 bt1       adv-noconn-ind  2023-03-08 12:41:46 public       DC:2C:6E:0F:C0:3D        -43dBm         22 15ff4f090100b88cffffffffffff401709c42c000064   
+</code></pre>
+<p>To figure out how to decipher the payload, please check the guide <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-Scriptfordecoding">here</a>.</p>
+<h6 id="mqtt-broker">MQTT broker</h6>
+<p>On each KNOT setup an MQTT broker.</p>
+<p>For KNOT A:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=1883 username=knot-A_access_token
+</code></pre>
+<p>Where:</p>
+<ul>
+<li><code>name</code> is the name that you wish to give to the broker and this name will be used later in the script.</li>
+<li><code>address</code> is the IP address of the broker/ThingsBoard server.</li>
+<li><code>port</code> is the TCP port that the broker is listening on → for non-SSL it is typically TCP 1883.</li>
+<li><code>username</code> is dictated by the MQTT broker and, in our case, it is an "access token" that was generated in the ThingsBoard management portal.</li>
+</ul>
+<p>For KNOT B → Do the same step. Just change <code>username</code> to the respective access token that was generated for the KNOT B device (gateway).</p>
+<h6 id="script">Script</h6>
+<p>Import the script shown below to each KNOT. To do that, just copy the "code" shown below and paste it into a new terminal window and press <kbd>Enter</kbd>:</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=tracking owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;# Requ\
+    ired packages: iot\r\
+    \n\r\
+    \n################################ Configuration ##############################\
+    ##\r\
+    \n# Name of an existing MQTT broker that should be used for publishing\r\
+    \n:local broker \&quot;tb\&quot;\r\
+    \n\r\
+    \n# MQTT topic where the message should be published\r\
+    \n:local topic \&quot;v1/gateway/telemetry\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering advertisement Bluetooth addresses. E.g. \&quot;^BC:33:\
+    AC\&quot;\r\
+    \n# would only include addresses which start with those 3 octets.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local addressRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering Bluetooth advertisements based on their data. Sam\
+    e\r\
+    \n# usage as with 'addressRegex'.\r\
+    \n:local advertisingDataRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# Signal strength filter. E.g. -40 would only include Bluetooth advertisement\
+    s\r\
+    \n# whose signal strength is stronger than -40dBm.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local rssiThreshold \&quot;\&quot;\r\
+    \n\r\
+    \n#Name the KNOT. Identity of the unit that will be sending the message. This n\
+    ame will be reported to the MQTT broker.\r\
+    \n:local gwName \&quot;KNOT_A\&quot;\r\
+    \n\r\
+    \n################################## Bluetooth ################################\
+    ##\r\
+    \n:put (\&quot;[*] Gathering Bluetooth info...\&quot;)\r\
+    \n\r\
+    \n:global makeRecord do={\r\
+    \n    :local jsonStr \&quot;{\\\&quot;ts\\\&quot;:\$ts,\\\&quot;values\\\&quot;:{\\\&quot;reporter\\\&quot;:\\\&quot;\$\
+    gwName\\\&quot;,\\\&quot;rssi\\\&quot;:\$rssi}}\&quot;\r\
+    \n    :return \$jsonStr\r\
+    \n}   \r\
+    \n\r\
+    \n# array of record strings collected for each advertising MAC address\r\
+    \n:global macRecords [:toarray \&quot;\&quot;]\r\
+    \n\r\
+    \n# process advertisements and update macRecords\r\
+    \n:local advertisements [/iot/bluetooth/scanners/advertisements/print detail as\
+    -value where \\\r\
+    \naddress ~ \$addressRegex and \\\r\
+    \ndata ~ \$advertisingDataRegex and \\\r\
+    \nrssi &gt; \$rssiThreshold]\r\
+    \n\r\
+    \n/iot/bluetooth/scanners/advertisements/clear\r\
+    \n\r\
+    \n:foreach adv in=\$advertisements do={\r\
+    \n:local address (\$adv-&gt;\&quot;address\&quot;)\r\
+    \n:local rssi (\$adv-&gt;\&quot;rssi\&quot;)\r\
+    \n:local epoch (\$adv-&gt;\&quot;epoch\&quot;)\r\
+    \n                \r\
+    \n:local recordStr [\$makeRecord ts=\$epoch gwName=\$gwName rssi=\$rssi]\r\
+    \n\r\
+    \n:if ([:len (\$macRecords-&gt;\$address)] &gt; 0) do={\r\
+    \n:local str (\$macRecords-&gt;\$address)\r\
+    \n:local newStr \&quot;\$str,\$recordStr\&quot;\r\
+    \n:set (\$macRecords-&gt;\$address) \$newStr} else={:set (\$macRecords-&gt;\$address)\
+    \_\$recordStr}}\r\
+    \n\r\
+    \n# TODO: add some logic to decide when we want to send data\r\
+    \n:local sendData true\r\
+    \n\r\
+    \n:if (\$sendData) do={\r\
+    \n:local jsonStr \&quot;{\&quot;\r\
+    \n\r\
+    \n:foreach addr,advRec in=\$macRecords do={\r\
+    \n:set jsonStr \&quot;\$jsonStr\\\&quot;\$addr\\\&quot;:[\$advRec],\&quot;}\r\
+    \n\r\
+    \n:local payloadlength\r\
+    \n:set payloadlength [:len (\$jsonStr)]\r\
+    \n:local remcom\r\
+    \n:set remcom [:pick \$jsonStr 0 (\$payloadlength-1)]\r\
+    \n:set jsonStr \&quot;\$remcom}\&quot;\r\
+    \n:local message\r\
+    \n:set message \&quot;\$jsonStr\&quot;\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Message structured: \$message\&quot;)\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message to MQTT broker...\&quot;)\r\
+    \n/iot/mqtt/publish broker=\&quot;\$broker\&quot; topic=\&quot;\$topic\&quot; message=\$message}&quot;
+</code></pre>
+<p>The script should appear under the "System&gt;Scripts&gt;Script List" tab with the name "tracking" or with the help of the command <code>/system/script/print</code>.</p>
+<p>There are certain script lines that you need to pay attention to.</p>
+<p>The broker name configuration line is where you need to input the MQTT broker name that you have set:</p>
+<blockquote>
+<pre><code> :local broker "tb"
+</code></pre>
+</blockquote>
+<p>You need to input a correct topic used by the MQTT broker. Check <a href="https://thingsboard.io/docs/reference/gateway-mqtt-api/">ThingsBoard documentation</a> for more details. By default, the topic should be:</p>
+<blockquote>
+<pre><code> :local topic "v1/gateway/telemetry"
+</code></pre>
+</blockquote>
+<p>The MAC address filtering option is inside the script itself. You can type in all 6 octets of the MAC address (to apply the filter to 1 specific tag), or you can filter the list using a few/couple of octets, like "^BC:33:AC" (to apply the filter, so that only MAC addresses that begin with "BC:33:AC:..." would be processed):</p>
+<blockquote>
+<pre><code>:local addressRegex "DC:2C:6E:0F:C0:3D"
+</code></pre>
+</blockquote>
+<p>Payload content/data line. It allows you to filter the list, per specific payload content, like "<a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-MikroTikPDUPayloadstructure">manufacturer data</a>". For example, "15ff4f09" would discard all payloads that are not MikroTik format payloads:</p>
+<blockquote>
+<pre><code>:local advertisingDataRegex "15ff4f09"
+</code></pre>
+</blockquote>
+<p>RSSI signal strength filtering option. This filtering option was mentioned in the "<a href="#scenario-explanation">Scenario explanation</a>" section. This filter allows you to ignore any payload that has RSSI weaker than the configured value. For example, "-40" would only include Bluetooth advertisements that have signal strength stronger than -40dBm:</p>
+<blockquote>
+<pre><code>:local rssiThreshold "-40"
+</code></pre>
+</blockquote>
+<p>KNOT identifier line. You will need to change it for each unique KNOT. For example, name your first KNOT →  KNOT_A and your second KNOT →  KNOT_B:</p>
+<blockquote>
+<p>:local gwName "KNOT_A"</p>
+</blockquote>
+<p>The rest of the script does not need to be changed/altered</p>
+<p>How does the script work when you run it? The script "inspects" the "Advertising reports" tab (payload list tab) using the filters applied and structures a JSON message. An example of the JSON message would be:</p>
+<pre><code>{
+  &quot;2C:C8:1B:4B:BB:0A&quot;: [
+    {
+      &quot;ts&quot;: 1678967250600,
+      &quot;values&quot;: {
+        &quot;reporter&quot;: &quot;KNOT_A&quot;,
+        &quot;rssi&quot;: -47
+      }
+    }
+  ],
+  &quot;DC:2C:6E:0F:C0:3D&quot;: [
+    {
+      &quot;ts&quot;: 1678967247850,
+      &quot;values&quot;: {
+        &quot;reporter&quot;: &quot;KNOT_A&quot;,
+        &quot;rssi&quot;: -59
+      }
+    },
+    {
+      &quot;ts&quot;: 1678967257849,
+      &quot;values&quot;: {
+        &quot;reporter&quot;: &quot;KNOT_A&quot;,
+        &quot;rssi&quot;: -67
+      }
+    }
+  ]
+}
+</code></pre>
+<p>The data is structured per the <a href="https://thingsboard.io/docs/reference/gateway-mqtt-api/#telemetry-upload-api">ThingsBoard guide</a>, where <code>2C:C8:1B:4B:BB:0A</code> and <code>DC:2C:6E:0F:C0:3D</code> are MAC addresses of tags that appeared in the KNOT's range, <code>ts</code> is a Unix timestamp of each payload broadcasted by the tag in milliseconds, <code>reporter</code> indicates which specific KNOT has sent the message and <code>rssi</code> is the signal strength of each payload broadcasted by the tag in dBm.</p>
+<p>After the payload list is "searched" and the JSON message is structured, the Bluetooth interface payload list gets "cleaned" (or "flashed"), and the previously structured JSON message is sent to the ThingsBoard MQTT broker.</p>
+<p>To run the script, use the command:</p>
+<pre><code class="language-ros">/system/script/run tracking
+</code></pre>
+<h6 id="scheduler">Scheduler</h6>
+<p>Apply a scheduler to the script, so that RouterOS periodically initiates the script by itself:</p>
+<pre><code class="language-ros">/system/scheduler/add name=bluetoothscheduler interval=30s on-event=&quot;/system/script/run tracking&quot;
+</code></pre>
+<p>You can set up shorter and longer intervals. If you want to send data more often, so that the data is "fresher" →  set up shorter time intervals (10-15 seconds). If you want to send fewer messages, less often → you can set up longer time intervals (30min+).</p>
+<p>The JSON message structured using the script has a <code>ts</code> value (timestamp) assigned for each payload received. This means that <strong>when the script is run</strong>, for example, <strong>every minute</strong>, 1 tag is used and <strong>the tag broadcasts</strong> 1 payload every 10 seconds (that is <strong>6 payloads per minute</strong>) → ThingsBoard data (GUI) will be updated every minute, and every minute, 6 new entries will appear (each entry will indicate that it was received 10 seconds after the previous one). And if you send the message every 15 minutes when using 1 tag that is broadcasting a payload every 10 seconds (that is 6*15=90 payloads per 15 minutes) → ThingsBoard data (GUI) will be updated every 15 minutes, but 90 entries will appear.</p>
+<h4 id="thingsboard-data-visualization-and-result-verification">ThingsBoard data visualization and result verification</h4>
+<p>After you run the script with <code>/system/script/run tracking</code> or via a scheduler and refresh the GUI portal, all MAC addresses (tags) that are found in the JSON message will be made into new devices under the ThingsBoard GUI:</p>
+<p>To help you visualize the data, you can use the built-in <a href="https://thingsboard.io/docs/user-guide/ui/widget-library/">widgets</a> or create your own.</p>
+<p>Select the tag's MAC address from the list of devices, go to the "Latest telemetry" section, check the "reporter" parameter, and click on the "Show on widget" button:</p>
+<p>Select a widget that you wish to use, for example, under the "Cards" bundle, "Timeseries table", and click on "Add to dashboard":</p>
+<p>Create a new dashboard and name it however you like. Click on "Add":</p>
+<p>Do the same steps for your other tags that appeared under the "Devices" tab. Create a new widget for each unique tag under the same dashboard.</p>
+<p>Change the widget's "Timewindow" from "Realtime-last minute" (which is used by default) to "Realtime-current day":</p>
+<p>As a result, if both tags are inside the <strong>KNOT A</strong> <strong>range</strong>, the dashboard would show:</p>
+<p>If they move to the <strong>KNOT B range</strong>, it would show:</p>
+<p>If the tags move to the <strong>overlapped area</strong>, inside both ranges, both reporters (KNOT_A and KNOT_B) should show up within a few seconds of each other, depending on the interval used in the scheduler:</p>
+<h3 id="example-2">Example #2</h3>
+<p>In the second example, we will showcase another topology:</p>
+<p>We have a few warehouses, a few company delivery vehicles, and 3 assets that we are interested in tracking. Our assets are pallets that hold cargo and our goals are to know:</p>
+<ul>
+<li>In which specific warehouse (equipped with the KNOT) the asset (equipped with the tag) is currently in and how much time it spent inside the specific warehouse.</li>
+<li>Whether the asset (equipped with the tag) is on the road, traveling between warehouses, and how much time it spent inside the vehicle (equipped with the KNOT).</li>
+<li><strong>(Optionally) if <a href="https://mikrotik.com/product/tg_bt5_out">TG-BT5-OUT</a> tags are used</strong>, what the temperature was during all this time? You can also/instead monitor other parameters that you can get out of the advertised <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-Example">payload</a>, like for example acceleration.</li>
+<li><strong>(optionally)</strong> Find out the KNOT's GPS location.</li>
+</ul>
+<p>To achieve Bluetooth asset-tracking, just install x1 KNOT per warehouse, x1 KNOT per vehicle, and x1 tag per asset.</p>
+<p>We can see that TAG 1 is inside the vehicle, and this vehicle just parked near the warehouse. Both KNOT 1 and KNOT 4 will report to the server that the asset is inside their ranges. This will tell you that the asset is parked but not being transported yet.</p>
+<p>We can see that TAG 2 is traveling between the warehouses and is only inside the KNOT 5 Bluetooth range. In this case, KNOT 5 will be the only reporter and the result that is displayed on the server would mean that the asset is getting transported.</p>
+<p>We can see that TAG 3 is inside the warehouse. The server will indicate just that.</p>
+<p>The data on the server will show the timestamps of each report sent by the KNOT, which will tell you for how long the asset stayed inside the specific device's Bluetooth range.</p>
+<h4 id="configuration_1">Configuration</h4>
+<p>In this example, we will showcase a basic topology with 2 warehouses, 1 vehicle/truck traveling between them, and 1 asset/pallet/tag.</p>
+<h5 id="thingsboard-preparation_1">ThingsBoard preparation</h5>
+<p>Check the guide over <a href="../../mqtt/mqtt-and-thingsboard-configuration.md">here</a> to understand how ThingsBoard and RouterOS can be set up to utilize MQTT communication.</p>
+<div class="adm adm-tip">
+<p><strong>TIP</strong></p>
+<p>This example will showcase the <a href="../../mqtt/mqtt-and-thingsboard-configuration.md#access-token-scenario-1">access-token</a> scenario for simplicity reasons, but you can use other available options as well. For the production environment, it is suggested to use SSL-MQTT, as non-SSL-MQTT can be easily packet captured and inspected.</p>
+<p>To understand how to implement SSL-MQTT communication on the instance that is run with the <a href="../../../containers/index.md">container</a>, check the guide linked <a href="../../../containers/user-guides/container-thingsboard-mqtt-http-server.md">here</a> (<a href="../../../containers/user-guides/container-thingsboard-mqtt-http-server.md#https-and-mqtt-over-tls">HTTPS and MQTT over TLS</a> section).</p>
+</div>
+<p>Create 3 KNOTs under the ThingsBoard GUI and make them "gateways".</p>
+<p>Go to the "Devices" section, click on the "+" button and "Add new device":</p>
+<p>Name the device and checkbox the "Is gateway" option:</p>
+<p>Do that for each KNOT that you have:</p>
+<p>Set up a unique access token (unique credentials) for each KNOT under the device you've just created, under the "Manage credentials" tab:</p>
+<h5 id="routeros-configuration_1">RouterOS configuration</h5>
+<h6 id="preparation_1">Preparation</h6>
+<p>Before we proceed, we need to confirm that our Bluetooth tag actually appears in the KNOT's Bluetooth range and that the KNOT detects it. To do that, you can issue the command <code>/iot/bluetooth/scanners/advertisements/print</code>:</p>
+<pre><code class="language-ros">/iot/bluetooth/scanners/advertisements/print
+ # DEVICE     PDU-TYPE        TIME                 ADDRESS-TYPE ADDRESS                    RSSI     LENGTH DATA                                           
+ 0 bt1        adv-noconn-ind  2023-03-08 12:35:15 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f090100b0110100ffff00000019d68d2300005d   
+ 1 bt1        adv-noconn-ind  2023-03-08 12:35:16 public       DC:2C:6E:0F:C0:3D        -39dBm         22 15ff4f0901008f3cfcfffbfffaff301783c22c000064   
+ 2 bt1        adv-noconn-ind  2023-03-08 12:35:35 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f09010084d500000400ffff0319ea8d2300005d   
+ 3 bt1        adv-noconn-ind  2023-03-08 12:35:45 public       2C:C8:1B:4B:BB:0A        -50dBm         22 15ff4f090100e607faffffff03000319f48d2300005d   
+</code></pre>
+<p>Or you can check it using <a href="../../../management-tools/webfig.md">Webfig</a> or <a href="../../../management-tools/winbox.md">Winbox</a> under the IoT&gt;Bluetooth&gt;Advertising reports tab.</p>
+<p>The list can be chaotic. Random payloads can appear on the list as the scanner captures everything around it. To help reduce the list, you can filter it using the tag's MAC address <code>/iot/bluetooth/scanners/advertisements/print where address=DC:2C:6E:0F:C0:3D</code>:</p>
+<pre><code class="language-ros">/iot/bluetooth/scanners/advertisements/print where address=DC:2C:6E:0F:C0:3D
+ # DEVICE    PDU-TYPE        TIME                 ADDRESS-TYPE ADDRESS                    RSSI     LENGTH DATA                                           
+ 0 bt1       adv-noconn-ind  2023-03-08 12:41:06 public       DC:2C:6E:0F:C0:3D        -49dBm         22 15ff4f0901005ab20100fdfffdff4017e1c32c000064   
+ 1 bt1       adv-noconn-ind  2023-03-08 12:41:26 public       DC:2C:6E:0F:C0:3D        -40dBm         22 15ff4f090100349704000000fcff4017f5c32c000064   
+ 2 bt1       adv-noconn-ind  2023-03-08 12:41:36 public       DC:2C:6E:0F:C0:3D        -49dBm         22 15ff4f09010073fb0000000000003017ffc32c000064   
+ 3 bt1       adv-noconn-ind  2023-03-08 12:41:46 public       DC:2C:6E:0F:C0:3D        -43dBm         22 15ff4f090100b88cffffffffffff401709c42c000064   
+</code></pre>
+<p>To figure out how to decipher the payload, please check the guide <a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-Scriptfordecoding">here</a>.</p>
+<h6 id="mqtt-broker_1">MQTT broker</h6>
+<p>On each KNOT set up an MQTT broker.</p>
+<p>For KNOT_1:</p>
+<pre><code class="language-ros">/iot/mqtt/brokers/add name=tb address=x.x.x.x port=1883 username=knot-1_access_token
+</code></pre>
+<p>Where:</p>
+<ul>
+<li><code>name</code> is the name that you wish to give to the broker and this name will be used later in the script.</li>
+<li><code>address</code> is the IP address of the broker/ThingsBoard server.</li>
+<li><code>port</code> is the TCP port that the broker is listening on → for non-SSL it is typically TCP 1883.</li>
+<li><code>username</code> is dictated by the MQTT broker and, in our case, it is an "access token" that was generated in the ThingsBoard management portal.</li>
+</ul>
+<p>For KNOT_2 and KNOT_3 → Do the same steps. Just change <code>username</code> to the respective access token that was generated.</p>
+<h6 id="script_1">Script</h6>
+<p>Import the script shown below to each KNOT. To do that, just copy the "code" shown below and paste it into a new terminal window and press <kbd>Enter</kbd>:</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=tracking owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;# Required package\
+    s: iot\r\
+    \n\r\
+    \n################################ Configuration ################################\r\
+    \n# Name of an existing MQTT broker that should be used for publishing\r\
+    \n:local broker \&quot;tb\&quot;\r\
+    \n\r\
+    \n# MQTT topic where the message should be published\r\
+    \n:local topic \&quot;v1/gateway/telemetry\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering advertisement Bluetooth addresses. E.g. \&quot;^BC:33:AC\&quot;\r\
+    \n# would only include addresses which start with those 3 octets.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local addressRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering Bluetooth advertisements based on their data. Same\r\
+    \n# usage as with 'addressRegex'.\r\
+    \n:local advertisingDataRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# Signal strength filter. E.g. -40 would only include Bluetooth advertisements\r\
+    \n# whose signal strength is stronger than -40dBm.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local rssiThreshold \&quot;\&quot;\r\
+    \n\r\
+    \n#Name the KNOT. Identity of the unit that will be sending the message. This name will be \
+    reported to the MQTT broker.\r\
+    \n:local gwName \&quot;1\&quot;\r\
+    \n\r\
+    \n################################## Bluetooth ##################################\r\
+    \n:put (\&quot;[*] Gathering Bluetooth info...\&quot;)\r\
+    \n\r\
+    \n:global makeRecord do={\r\
+    \n    :local jsonStr \&quot;{\\\&quot;ts\\\&quot;:\$ts,\\\&quot;values\\\&quot;:{\\\&quot;KNOT_\$gwName\\\&quot;:\\\&quot;\$gwName\
+    \\\&quot;,\\\&quot;rssi\\\&quot;:\$rssi}}\&quot;\r\
+    \n    :return \$jsonStr\r\
+    \n}   \r\
+    \n\r\
+    \n# array of record strings collected for each advertising MAC address\r\
+    \n:global macRecords [:toarray \&quot;\&quot;]\r\
+    \n\r\
+    \n# process advertisements and update macRecords\r\
+    \n:local advertisements [/iot/bluetooth/scanners/advertisements/print detail as-value where\
+    \_\\\r\
+    \naddress ~ \$addressRegex and \\\r\
+    \ndata ~ \$advertisingDataRegex and \\\r\
+    \nrssi &gt; \$rssiThreshold]\r\
+    \n\r\
+    \n/iot/bluetooth/scanners/advertisements/clear\r\
+    \n\r\
+    \n:foreach adv in=\$advertisements do={\r\
+    \n:local address (\$adv-&gt;\&quot;address\&quot;)\r\
+    \n:local rssi (\$adv-&gt;\&quot;rssi\&quot;)\r\
+    \n:local epoch (\$adv-&gt;\&quot;epoch\&quot;)\r\
+    \n                \r\
+    \n:local recordStr [\$makeRecord ts=\$epoch gwName=\$gwName rssi=\$rssi]\r\
+    \n\r\
+    \n:if ([:len (\$macRecords-&gt;\$address)] &gt; 0) do={\r\
+    \n:local str (\$macRecords-&gt;\$address)\r\
+    \n:local newStr \&quot;\$str,\$recordStr\&quot;\r\
+    \n:set (\$macRecords-&gt;\$address) \$newStr} else={:set (\$macRecords-&gt;\$address) \$recordStr\
+    }}\r\
+    \n\r\
+    \n# TODO: add some logic to decide when we want to send data\r\
+    \n:local sendData true\r\
+    \n\r\
+    \n:if (\$sendData) do={\r\
+    \n:local jsonStr \&quot;{\&quot;\r\
+    \n\r\
+    \n:foreach addr,advRec in=\$macRecords do={\r\
+    \n:set jsonStr \&quot;\$jsonStr\\\&quot;\$addr\\\&quot;:[\$advRec],\&quot;}\r\
+    \n\r\
+    \n:local payloadlength\r\
+    \n:set payloadlength [:len (\$jsonStr)]\r\
+    \n:local remcom\r\
+    \n:set remcom [:pick \$jsonStr 0 (\$payloadlength-1)]\r\
+    \n:set jsonStr \&quot;\$remcom}\&quot;\r\
+    \n:local message\r\
+    \n:set message \&quot;\$jsonStr\&quot;\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Message structured: \$message\&quot;)\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message to MQTT broker...\&quot;)\r\
+    \n/iot/mqtt/publish broker=\&quot;\$broker\&quot; topic=\&quot;\$topic\&quot; message=\$message}&quot;
+</code></pre>
+<p>The script should appear under the "System&gt;Scripts&gt;Script List" tab with the name "tracking" or with the help of the command <code>/system/script/print</code>.</p>
+<p>There are certain script lines that you need to pay attention to.</p>
+<p>Broker name configuration line, where you need to input the MQTT broker name that you have set:</p>
+<blockquote>
+<pre><code> :local broker "tb"
+</code></pre>
+</blockquote>
+<p>You need to input a correct topic used by the MQTT broker. Check <a href="https://thingsboard.io/docs/reference/gateway-mqtt-api/">ThingsBoard documentation</a> for more details and by default, the topic should be:</p>
+<blockquote>
+<pre><code> :local topic "v1/gateway/telemetry"
+</code></pre>
+</blockquote>
+<p>MAC address filtering option inside the script itself. You can type in all 6 octets of the MAC address (to apply the filter to 1 specific tag), or you can filter the list using a few/couple of octets, like "^BC:33:AC" (to apply the filter, so that only MAC addresses that begin with "BC:33:AC:..." would be processed):</p>
+<blockquote>
+<pre><code>:local addressRegex "DC:2C:6E:0F:C0:3D"
+</code></pre>
+</blockquote>
+<p>Payload content/data line. Allows you to filter the list, per specific payload content, like "<a href="https://help.mikrotik.com/docs/display/UM/MikroTik+Tag+advertisement+formats#heading-MikroTikPDUPayloadstructure">manufacturer data</a>". For example, "15ff4f09" would discard all payloads that are not MikroTik format payloads:</p>
+<blockquote>
+<pre><code>:local advertisingDataRegex "15ff4f09"
+</code></pre>
+</blockquote>
+<p>RSSI signal strength filtering option. This filtering option was mentioned in the "<a href="#scenario-explanation">Scenario explanation</a>" section. This filter allows you to ignore any payload that has RSSI weaker than the configured value. For example, "-40" would only include Bluetooth advertisements that have signal strength stronger than -40dBm:</p>
+<blockquote>
+<pre><code>:local rssiThreshold "-40"
+</code></pre>
+</blockquote>
+<p>KNOT identifier line. You will need to change it for each unique KNOT. For example, ID your first KNOT as "1", your second KNOT as "2" and your third KNOT as "3":</p>
+<blockquote>
+<p>:local gwName "1"</p>
+</blockquote>
+<p>The rest of the script does not need to be changed/altered</p>
+<p>How does the script work when you run it? The script "inspects" the "Advertising reports" tab (payload list tab) using the filters applied and structures a JSON message. An example of the JSON message would be:</p>
+<pre><code>{
+  &quot;2C:C8:1B:4B:BB:0A&quot;: [
+    {
+      &quot;ts&quot;: 1680526087729,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;rssi&quot;: -47
+      }
+    }
+  ],
+  &quot;DC:2C:6E:0F:C0:3D&quot;: [
+    {
+      &quot;ts&quot;: 1680526065000,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;rssi&quot;: -49
+      }
+    },
+    {
+      &quot;ts&quot;: 1680526075001,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;rssi&quot;: -50
+      }
+    }
+  ]
+}
+</code></pre>
+<p>The data is structured per the <a href="https://thingsboard.io/docs/reference/gateway-mqtt-api/#telemetry-upload-api">ThingsBoard guide</a>, where <code>2C:C8:1B:4B:BB:0A</code> and <code>DC:2C:6E:0F:C0:3D</code> are MAC addresses of tags that appeared in the KNOT's range, <code>ts</code> is the Unix timestamp of each payload broadcasted by the tag in milliseconds, <code>KNOT_X</code> indicates which specific KNOT has sent the message and <code>rssi</code> is the signal strength of each payload broadcasted by the tag in dBm.</p>
+<p>After the payload list is "searched" and the JSON message is structured, the Bluetooth interface payload list gets "cleaned" (or "flashed"), and the previously structured JSON message is sent to the ThingsBoard MQTT broker.</p>
+<p>To run the script, use the command:</p>
+<pre><code class="language-ros">/system/script/run tracking
+</code></pre>
+<p><strong>Script that includes temperature data (optional)</strong></p>
+<p>In case you wish to add temperature reports to the structured message, use the script below:</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=tracking+temp owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;# Required package\
+    s: iot\r\
+    \n\r\
+    \n################################ Configuration ################################\r\
+    \n# Name of an existing MQTT broker that should be used for publishing\r\
+    \n:local broker \&quot;tb\&quot;\r\
+    \n\r\
+    \n# MQTT topic where the message should be published\r\
+    \n:local topic \&quot;v1/gateway/telemetry\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering advertisement Bluetooth addresses. E.g. \&quot;^BC:33:AC\&quot;\r\
+    \n# would only include addresses which start with those 3 octets.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local addressRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering Bluetooth advertisements based on their data. Same\r\
+    \n# usage as with 'addressRegex'.\r\
+    \n:local advertisingDataRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# Signal strength filter. E.g. -40 would only include Bluetooth advertisements\r\
+    \n# whose signal strength is stronger than -40dBm.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local rssiThreshold \&quot;\&quot;\r\
+    \n\r\
+    \n#Name the KNOT. Identity of the unit that will be sending the message. This name will be \
+    reported to the MQTT broker.\r\
+    \n:local gwName \&quot;1\&quot;\r\
+    \n\r\
+    \n################################## Bluetooth ##################################\r\
+    \n:global invertU16 do={\r\
+    \n    :local inverted 0\r\
+    \n    :for idx from=0 to=15 step=1 do={\r\
+    \n        :local mask (1 &lt;&lt; \$idx)\r\
+    \n        :if (\$1 &amp; \$mask = 0) do={\r\
+    \n            :set \$inverted (\$inverted | \$mask)\r\
+    \n        }\r\
+    \n    }\r\
+    \n    return \$inverted\r\
+    \n}\r\
+    \n\r\
+    \n:global le16ToHost do={\r\
+    \n    :local lsb [:pick \$1 0 2]\r\
+    \n    :local msb [:pick \$1 2 4]\r\
+    \n\r\
+    \n    :return [:tonum \&quot;0x\$msb\$lsb\&quot;]\r\
+    \n}\r\
+    \n:local from88 do={\r\
+    \n    :global invertU16\r\
+    \n    :global le16ToHost\r\
+    \n    :local num [\$le16ToHost \$1]\r\
+    \n\r\
+    \n    # Handle negative numbers\r\
+    \n    :if (\$num &amp; 0x8000) do={\r\
+    \n        :set num (-1 * ([\$invertU16 \$num] + 1))\r\
+    \n    }\r\
+    \n\r\
+    \n    # Convert from 8.8. Scale by 1000 since floating point is not supported\r\
+    \n    :return ((\$num * 125) / 32)\r\
+    \n}\r\
+    \n:put (\&quot;[*] Gathering Bluetooth info...\&quot;)\r\
+    \n\r\
+    \n:global makeRecord do={\r\
+    \n    :local jsonStr \&quot;{\\\&quot;ts\\\&quot;:\$ts,\\\&quot;values\\\&quot;:{\\\&quot;KNOT_\$gwName\\\&quot;:\\\&quot;\$gwName\
+    \\\&quot;,\\\&quot;temp\\\&quot;:\$temp}}\&quot;\r\
+    \n    :return \$jsonStr\r\
+    \n}   \r\
+    \n\r\
+    \n# array of record strings collected for each advertising MAC address\r\
+    \n:global macRecords [:toarray \&quot;\&quot;]\r\
+    \n\r\
+    \n# process advertisements and update macRecords\r\
+    \n:local advertisements [/iot/bluetooth/scanners/advertisements/print detail as-value where\
+    \_\\\r\
+    \naddress ~ \$addressRegex and \\\r\
+    \ndata ~ \$advertisingDataRegex and \\\r\
+    \nrssi &gt; \$rssiThreshold]\r\
+    \n\r\
+    \n/iot/bluetooth/scanners/advertisements/clear\r\
+    \n\r\
+    \n:foreach adv in=\$advertisements do={\r\
+    \n:local address (\$adv-&gt;\&quot;address\&quot;)\r\
+    \n:local ad (\$adv-&gt;\&quot;data\&quot;)\r\
+    \n:local rssi (\$adv-&gt;\&quot;rssi\&quot;)\r\
+    \n:local epoch (\$adv-&gt;\&quot;epoch\&quot;)\r\
+    \n:local temp [\$from88 [:pick \$ad 28 32]]\r\
+    \n                \r\
+    \n:local recordStr [\$makeRecord ts=\$epoch gwName=\$gwName temp=\$temp]\r\
+    \n\r\
+    \n:if ([:len (\$macRecords-&gt;\$address)] &gt; 0) do={\r\
+    \n:local str (\$macRecords-&gt;\$address)\r\
+    \n:local newStr \&quot;\$str,\$recordStr\&quot;\r\
+    \n:set (\$macRecords-&gt;\$address) \$newStr} else={:set (\$macRecords-&gt;\$address) \$recordStr\
+    }}\r\
+    \n\r\
+    \n# TODO: add some logic to decide when we want to send data\r\
+    \n:local sendData true\r\
+    \n\r\
+    \n:if (\$sendData) do={\r\
+    \n:local jsonStr \&quot;{\&quot;\r\
+    \n\r\
+    \n:foreach addr,advRec in=\$macRecords do={\r\
+    \n:set jsonStr \&quot;\$jsonStr\\\&quot;\$addr\\\&quot;:[\$advRec],\&quot;}\r\
+    \n\r\
+    \n:local payloadlength\r\
+    \n:set payloadlength [:len (\$jsonStr)]\r\
+    \n:local remcom\r\
+    \n:set remcom [:pick \$jsonStr 0 (\$payloadlength-1)]\r\
+    \n:set jsonStr \&quot;\$remcom}\&quot;\r\
+    \n:local message\r\
+    \n:set message \&quot;\$jsonStr\&quot;\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Message structured: \$message\&quot;)\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message to MQTT broker...\&quot;)\r\
+    \n/iot/mqtt/publish broker=\&quot;\$broker\&quot; topic=\&quot;\$topic\&quot; message=\$message}&quot;
+</code></pre>
+<p>In this case, the JSON message would look like this:</p>
+<pre><code>{
+  &quot;2C:C8:1B:4B:BB:0A&quot;: [
+    {
+      &quot;ts&quot;: 1680527467840,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;temp&quot;: 26460
+      }
+    }
+  ],
+  &quot;DC:2C:6E:0F:C0:3D&quot;: [
+    {
+      &quot;ts&quot;: 1680527464996,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;temp&quot;: 24750
+      }
+    },
+    {
+      &quot;ts&quot;: 1680527474996,
+      &quot;values&quot;: {
+        &quot;KNOT_1&quot;: &quot;1&quot;,
+        &quot;temp&quot;: 24750
+      }
+    }
+  ]
+}
+</code></pre>
+<div class="adm adm-note">
+<p><strong>NOTE</strong></p>
+<p>Because of the fact that floating point is not supported → every calculation after the decimal point will be "rounded up" to a whole number. This is why the script will calculate the temperature and acceleration values <strong>scaled by 1000</strong> (multiplied by <strong>1000</strong>).<br />
+So, if you see the temperature as <strong>temp=24750</strong>, the real temperature is <strong>24.750 C</strong>. To add a decimal point, you will need to do an additional result "translation" on the server side or with additional scripting on the RouterOS side, which will increase the CPU usage of the device.</p>
+</div>
+<h6 id="script-that-includes-gps-data-optional">Script that includes GPS data (optional)</h6>
+<p>In case you also wish to include GPS data (longitude and latitude values from the KNOTs), use the script shown below:</p>
+<pre><code class="language-ros">/system/script/add dont-require-permissions=no name=tracking+gps+temp owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=&quot;# Required package\
+    s: iot\r\
+    \n\r\
+    \n################################ Configuration ################################\r\
+    \n# Name of an existing MQTT broker that should be used for publishing\r\
+    \n:local broker \&quot;tb\&quot;\r\
+    \n\r\
+    \n# MQTT topic where the message should be published\r\
+    \n:local topic \&quot;v1/gateway/telemetry\&quot;\r\
+    \n:local gwtopic \&quot;v1/devices/me/telemetry\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering advertisement Bluetooth addresses. E.g. \&quot;^BC:33:AC\&quot;\r\
+    \n# would only include addresses which start with those 3 octets.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local addressRegex \&quot;\&quot;\r\
+    \n\r\
+    \n# POSIX regex for filtering Bluetooth advertisements based on their data. Same\r\
+    \n# usage as with 'addressRegex'.\r\
+    \n:local advertisingDataRegex \&quot;15ff\&quot;\r\
+    \n\r\
+    \n# Signal strength filter. E.g. -40 would only include Bluetooth advertisements\r\
+    \n# whose signal strength is stronger than -40dBm.\r\
+    \n# To disable this filter, set it to \&quot;\&quot;\r\
+    \n:local rssiThreshold \&quot;\&quot;\r\
+    \n\r\
+    \n#Name the KNOT. Identity of the unit that will be sending the message. This name will be \
+    reported to the MQTT broker.\r\
+    \n:local gwName \&quot;2\&quot;\r\
+    \n\r\
+    \n###########GPS#############\r\
+    \n:global lat\r\
+    \n:global lon\r\
+    \n\r\
+    \n/interface/ppp-client/set ppp-out1 disabled=yes\r\
+    \n:log info (\&quot;disabling WWAN to get GPS coordinates\&quot;)\r\
+    \n\r\
+    \n/interface/ppp-client/at-chat ppp-out1 input=\&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,0\&quot;\r\
+    \n:log info (\&quot;enabling priority for GPS\&quot;)\r\
+    \n\r\
+    \n###the time in the delay below is the time that the device will wait for to get the coord\
+    inate fix\r\
+    \n:delay 32000ms\r\
+    \n:log info (\&quot;reading GPS coordinates\&quot;)\r\
+    \n/system/gps/monitor once do={\r\
+    \n:set \$lat \$(\&quot;latitude\&quot;)\r\
+    \n:set \$lon \$(\&quot;longitude\&quot;)\r\
+    \n}\r\
+    \n:if (\$lat != \&quot;none\&quot;) do={\\\r\
+    \n:log info (\&quot;enabling priority back to WWAN\&quot;)\r\
+    \n/interface/ppp-client/at-chat ppp-out1 input=\&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,1\&quot;\r\
+    \n:log info (\&quot;enabling WWAN\&quot;)\r\
+    \n/interface/ppp-client/set ppp-out1 disabled=no\r\
+    \n:delay 1000ms\r\
+    \n###if dial on demand is enabled\r\
+    \n/ping 1.1.1.1 count=1\r\
+    \n\r\
+    \n#the delay below waits for 5 seconds for the ppp connection to get established - this tim\
+    e can differ based on the signal strength\r\
+    \n:delay 5000ms\r\
+    \n:log info (\&quot;posting coordinates via mqtt\&quot;)\r\
+    \n:local gpsmessage \\\r\
+    \n    \&quot;{\\\&quot;latitude\\\&quot;:\$lat,\\\r\
+    \n    \\\&quot;longitude\\\&quot;:\$lon}\&quot;\r\
+    \n/iot/mqtt/publish broker=\$broker topic=\$gwtopic message=\$gpsmessage} else={\\\r\
+    \n:log info (\&quot;could not read GPS coordinates...enabling back WWAN\&quot;)\r\
+    \n/interface/ppp-client/at-chat ppp-out1 input=\&quot;AT+QGPSCFG=\\\&quot;priority\\\&quot;,1\&quot;\r\
+    \n/interface/ppp-client/set ppp-out1 disabled=no\r\
+    \n:delay 1000ms\r\
+    \n###if dial on demand is enabled\r\
+    \n/ping 1.1.1.1 count=1\r\
+    \n:delay 5000ms\r\
+    \n}\r\
+    \n\r\
+    \n##################################Bluetooth##################################\r\
+    \n:global invertU16 do={\r\
+    \n    :local inverted 0\r\
+    \n    :for idx from=0 to=15 step=1 do={\r\
+    \n        :local mask (1 &lt;&lt; \$idx)\r\
+    \n        :if (\$1 &amp; \$mask = 0) do={\r\
+    \n            :set \$inverted (\$inverted | \$mask)\r\
+    \n        }\r\
+    \n    }\r\
+    \n    return \$inverted\r\
+    \n}\r\
+    \n\r\
+    \n:global le16ToHost do={\r\
+    \n    :local lsb [:pick \$1 0 2]\r\
+    \n    :local msb [:pick \$1 2 4]\r\
+    \n\r\
+    \n    :return [:tonum \&quot;0x\$msb\$lsb\&quot;]\r\
+    \n}\r\
+    \n:local from88 do={\r\
+    \n    :global invertU16\r\
+    \n    :global le16ToHost\r\
+    \n    :local num [\$le16ToHost \$1]\r\
+    \n\r\
+    \n    # Handle negative numbers\r\
+    \n    :if (\$num &amp; 0x8000) do={\r\
+    \n        :set num (-1 * ([\$invertU16 \$num] + 1))\r\
+    \n    }\r\
+    \n\r\
+    \n    # Convert from 8.8. Scale by 1000 since floating point is not supported\r\
+    \n    :return ((\$num * 125) / 32)\r\
+    \n}\r\
+    \n:put (\&quot;[*] Gathering Bluetooth info...\&quot;)\r\
+    \n\r\
+    \n:global makeRecord do={\r\
+    \n    :local jsonStr \&quot;{\\\&quot;ts\\\&quot;:\$ts,\\\&quot;values\\\&quot;:{\\\&quot;KNOT_\$gwName\\\&quot;:\\\&quot;\$gwName\
+    \\\&quot;,\\\&quot;temp\\\&quot;:\$temp}}\&quot;\r\
+    \n    :return \$jsonStr\r\
+    \n}   \r\
+    \n\r\
+    \n# array of record strings collected for each advertising MAC address\r\
+    \n:global macRecords [:toarray \&quot;\&quot;]\r\
+    \n\r\
+    \n# process advertisements and update macRecords\r\
+    \n:local advertisements [/iot/bluetooth/scanners/advertisements/print detail as-value where\
+    \_\\\r\
+    \naddress ~ \$addressRegex and \\\r\
+    \ndata ~ \$advertisingDataRegex and \\\r\
+    \nrssi &gt; \$rssiThreshold]\r\
+    \n\r\
+    \n/iot/bluetooth/scanners/advertisements/clear\r\
+    \n\r\
+    \n:foreach adv in=\$advertisements do={\r\
+    \n:local address (\$adv-&gt;\&quot;address\&quot;)\r\
+    \n:local ad (\$adv-&gt;\&quot;data\&quot;)\r\
+    \n:local rssi (\$adv-&gt;\&quot;rssi\&quot;)\r\
+    \n:local epoch (\$adv-&gt;\&quot;epoch\&quot;)\r\
+    \n:local temp [\$from88 [:pick \$ad 28 32]]\r\
+    \n                \r\
+    \n:local recordStr [\$makeRecord ts=\$epoch gwName=\$gwName temp=\$temp]\r\
+    \n\r\
+    \n:if ([:len (\$macRecords-&gt;\$address)] &gt; 0) do={\r\
+    \n:local str (\$macRecords-&gt;\$address)\r\
+    \n:local newStr \&quot;\$str,\$recordStr\&quot;\r\
+    \n:set (\$macRecords-&gt;\$address) \$newStr} else={:set (\$macRecords-&gt;\$address) \$recordStr\
+    }}\r\
+    \n\r\
+    \n# TODO: add some logic to decide when we want to send data\r\
+    \n:local sendData true\r\
+    \n\r\
+    \n:if (\$sendData) do={\r\
+    \n:local jsonStr \&quot;{\&quot;\r\
+    \n\r\
+    \n:foreach addr,advRec in=\$macRecords do={\r\
+    \n:set jsonStr \&quot;\$jsonStr\\\&quot;\$addr\\\&quot;:[\$advRec],\&quot;}\r\
+    \n\r\
+    \n:local payloadlength\r\
+    \n:set payloadlength [:len (\$jsonStr)]\r\
+    \n:local remcom\r\
+    \n:set remcom [:pick \$jsonStr 0 (\$payloadlength-1)]\r\
+    \n:set jsonStr \&quot;\$remcom}\&quot;\r\
+    \n:local message\r\
+    \n:set message \&quot;\$jsonStr\&quot;\r\
+    \n:log info \&quot;\$message\&quot;;\r\
+    \n:put (\&quot;[*] Message structured: \$message\&quot;)\r\
+    \n:put (\&quot;[*] Total message size: \$[:len \$message] bytes\&quot;)\r\
+    \n:put (\&quot;[*] Sending message to MQTT broker...\&quot;)\r\
+    \n/iot/mqtt/publish broker=\&quot;\$broker\&quot; topic=\&quot;\$topic\&quot; message=\$message}&quot;
+</code></pre>
+<p>This is where you need to keep in mind the <a href="https://help.mikrotik.com/docs/display/UM/WWAN+and+GNSS+priority+automatization">BG77 modem behavior</a> → BG77 cellular modem (used in the KNOT) cannot be used to have a cellular CAT-M/NB-IoT ongoing connection and to obtain GPS coordinates at the same time.</p>
+<p>When the script is run:</p>
+<ul>
+<li>PPP interface is disabled and the highest priority is set for GPS reception (while the cellular PPP interface is down) for 32 seconds (this time can be altered in the script).</li>
+<li>(a) If the device managed to obtain a GPS latitude value during the configured 32 seconds (if the value obtained equals anything other than "none"), the script will structure a JSON message with captured latitude and longitude values, the script will set the highest priority for WWAN (change the priority from GPS to WWAN) and enable the PPP interface back (for internet access). After that, the script will send a GPS data JSON message via the first MQTT publish, and the script will run the Bluetooth part, where the Bluetooth data JSON message is structured and sent via the second MQTT publish (x2 MQTT messages are sent → GPS data MQTT message and Bluetooth data MQTT message).</li>
+<li>(b) If the device fails to obtain a GPS latitude value during the 32-second interval (if the value obtained equals "none"), the script sets the highest priority for WWAN (changes the priority from GPS to WWAN), enables the PPP interface back (for internet access) and just processes the Bluetooth part, where the Bluetooth data JSON message is structured and sent via MQTT publish (basically, if GPS data could not be obtained, x1 MQTT message with Bluetooth data is sent).</li>
+</ul>
+<h6 id="scheduler_1">Scheduler</h6>
+<p>Apply a scheduler to the script, so that RouterOS periodically initiates the script by itself:</p>
+<pre><code class="language-ros">/system/scheduler/add name=bluetoothscheduler interval=50s on-event=&quot;/system/script/run tracking&quot;
+</code></pre>
+<p>You can set up shorter and longer intervals. If you want to send data more often, so that the data is "fresher" →  set up shorter time intervals (10-15 seconds). If you want to send fewer messages, less often → you can set up longer time intervals (30min+).</p>
+<p>The JSON message structured using the script has a <code>ts</code> value (timestamp) assigned to each payload received. This means that <strong>when the script is run</strong>, for example, <strong>every minute</strong>, 1 tag is used and <strong>the tag broadcasts</strong> 1 payload every 10 seconds (that is <strong>6 payloads per minute</strong>) → ThingsBoard data (GUI) will be updated every minute, and every minute, 6 new entries will appear (each entry will indicate that it was received 10 seconds after the previous one). And if you send the message every 15 minutes when using 1 tag that is broadcasting a payload every 10 seconds (that is 6*15=90 payloads per 15 minutes) → ThingsBoard data (GUI) will be updated every 15 minutes but 90 entries will appear.</p>
+<h4 id="thingsboard-data-visualization-and-result-verification_1">ThingsBoard data visualization and result verification</h4>
+<p>After you run the script with <code>/system/script/run tracking</code> or via a scheduler and refresh the GUI portal → all MAC addresses (tags) that are found in the JSON message will be made into new devices under the ThingsBoard GUI:</p>
+<p>To help you visualize the data, you can use the built-in <a href="https://thingsboard.io/docs/user-guide/ui/widget-library/">widgets</a> or create your own one.</p>
+<p>Select the tag's MAC address from the list of devices, go to the "Latest telemetry" section, select KNOT IDs that you wish to monitor, and click on the "Show on widget" button:</p>
+<p>Select a widget that you wish to use, for example, under the "Charts" bundle, "Timeseries Bar Chart" and click on "Add to dashboard":</p>
+<p>Create a new dashboard and name it however you like. Click on "Add":</p>
+<p>Change the widget's "Timewindow" from "Realtime-last minute" (which is used by default) to "Realtime-last 5 hours" and disable "data aggregation function" (select "none"):</p>
+<p>To help you better visualize the result, edit the widget and then edit each "KNOT_X" parameter/key. Enable the "Show points" checkbox for each key:</p>
+<p>Check the ThingsBoard widget <a href="https://thingsboard.io/docs/user-guide/ui/chart-widget/#timeseries-bar-chart">guide</a> for more options that you have.</p>
+<p>The end result would look like this:</p>
+<p>Per the dashboard, we can tell that:</p>
+<ul>
+<li>From ~11:00 to ~11:30, our asset was inside KNOT_1 Bluetooth range (inside warehouse #1).</li>
+<li>From ~11:30 to ~11:35, our asset was relocated to the vehicle (KNOT_2) that was parked near the warehouse (the tag was inside both KNOTs' ranges).</li>
+<li>From ~11:35 to ~12:00, the tag was inside the truck (KNOT_2) - traveling to another warehouse.</li>
+<li>From ~12:00 to ~12:05, the asset was parked outside of warehouse #2, and it was inside both KNOT_2 and KNOT_3 ranges at the same time.</li>
+<li>From ~12:05 to 12:30, our asset was stored inside warehouse #2 (KNOT_3).</li>
+<li>From ~12:30 onwards, the tag was on the road again, inside the truck (KNOT_2).</li>
+</ul>
+<h5 id="temperature-visualization-optional">Temperature visualization (optional)</h5>
+<p>Select the tag's MAC address from the list of devices, go to the "Latest telemetry" section, check the <code>temp</code> parameter, and click on the "Show on widget" button:</p>
+<p>Select a widget that you wish to use, for example under the "Charts" bundle, "Timeseries Line Chart". Click on "Add to dashboard", and choose the dashboard where you want to add the widget.</p>
+<p>The result would look like this:</p>
+<p>Now you have an additional graph that indicates how the tag's temperature changes during different time intervals.</p>
+<h5 id="gps-coordinate-visualization-optional">GPS coordinate visualization (optional)</h5>
+<p>Per the script in the <a href="#script-that-includes-gps-data-optional">Script that includes GPS data</a> section, the script sends x2 MQTT messages. Each message is sent to a different MQTT topic. The GPS coordinate message will be posted to a topic named "v1/devices/me/telemetry", while Bluetooth data will be posted to a topic named "v1/gateway/telemetry". Coordinates will be available to you under the ThingsBoard device list, under the specific gateway:</p>
+<p>Check both "latitude" and "longitude" parameters, click on the "Show on widget button", set "Current bundle" to "Maps", and choose the "Route Map - OpenStreetMap" widget:</p>
+<p>To finish things up, click on the "Add to dashboard" button and choose the dashboard where you want the widget to be shown.</p>
+<p>After adding 3 widgets into 1 dashboard (temperature line chart, Bluetooth reporter bar chart, and GPS coordinates map), you would get something similar to this:</p>
+<ul>
+<li>You will have a graph showing temperature changes (the tag's surrounding temperature).</li>
+<li>You will have a chart that indicates which specific KNOT has sent the report that tells you in which KNOT's Bluetooth range the tag is currently in.</li>
+<li>You will have a map that shows the GPS position of the KNOT.</li>
+</ul>
+<hr />
+<h1 id="email-notification-on-the-mikrotik-ble-tags-accelerometer-triggers">Email notification on the MikroTik BLE tag's accelerometer triggers</h1>
+<blockquote>
+<p>In this guide, we will show a quick step-by-step on how you can set up your KNOT to send an e-mail notification, whenever it detects a "triggered" condition reported by the TG-BT5-IN or TG-BT5-OUT tag.</p>
+</blockquote>
+<h3 id="introduction">Introduction</h3>
+<p>In this guide, we will show a quick step-by-step on how you can set up your KNOT to send an e-mail notification, whenever it detects a "triggered" condition reported by the <a href="https://mikrotik.com/product/tg_bt5_in">TG-BT5-IN</a> or <a href="https://mikrotik.com/product/tg_bt5_out">TG-BT5-OUT</a> tag.</p>
+<p>Both tags have a built-in accelerometer that is able to detect free-falling, wakeup/movement, and tilted states. When the tag is set up to broadcast <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/mikrotik-tag-advertisement-formats">MikroTik format</a> payloads and accelerometer triggers are enabled (using the MikroTik Beacon Manager app) → the tag will instantly broadcast an advertising payload/report whenever the trigger is going to be detected.</p>
+<p>For <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/mikrotik-beacon-manager-for-ios-devices">iOS</a>, the trigger setting looks like this (in a disabled state/default settings):</p>
+<p>For <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/mikrotik-beacon-manager-android-devices">Android</a>, the trigger setting looks like this (in a disabled state/default settings):</p>
+<p>To active trigger detection, just enable the corresponding "checkbox".</p>
+<p>After the Bluetooth payload is broadcasted by the tag →  the payload's 21st octet will indicate which exact trigger was detected. You can view the payloads under the <strong>IoT&gt;Bluetooth&gt;Advertisng reports</strong> tab:</p>
+<p>As per the screenshot above, the 21st octet is "04", which indicates, that the payload was sent when a freefalling condition was detected by the tag (these payloads were broadcasted when we "accidentally" dropped or threw the tag).</p>
+<p>Once everything is configured the following is going to happen:</p>
+<ul>
+<li>The KNOT will run a script on a schedule.</li>
+<li>The script will "read/scan" the payloads that are shown in the <strong>IoT&gt;Bluetooth&gt;Advertising reports</strong> tab.</li>
+<li>If the stored/captured payload's 21st octet value equals to any "triggered" value → email notification is going to be sent.</li>
+</ul>
+<p>In other words, when the KNOT scans through the payloads and finds one where the 21st octet indicates that the trigger was activated → you will get an email notification that the trigger was detected.</p>
+<h3 id="tg-bt5-tag-configuration">TG-BT5 tag configuration</h3>
+<p>In this specific example, we need to set up our tags to work in the <strong>MikroTik format</strong>. In the MikroTik format, the 21st octet of each payload will indicate the reason it was triggered.</p>
+<p>You can find a manual on how to enable the triggers by following the <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/mikrotik-beacon-manager-for-ios-devices">iOS</a> and/or <a href="/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/mikrotik-beacon-manager-android-devices">Android</a> guides (<strong>"Advertisement"/Beacon settings</strong> sections).</p>
+<p>To easier "activate" the trigger, we can also alter the trigger's settings as per the iOS and/or Android guides (<strong>Free Fall Threshold and Duration</strong> sections). For the purpose of the test and to, basically, just "trigger" the detection much faster, we can change the "<strong>Free Fall Duration</strong>" parameter to "0" seconds (this will make sure that any acceleration that is within the threshold on all axis will be instantly detected as a "freefalling" event).</p>
+<h3 id="routeros-configuration_2">RouterOS configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><strong>iot</strong> package is required. You can get it from our download page - under "Extra packages".</p>
+</div>
+<p>The configuration can be completed in 4 steps:</p>
+<ul>
+<li>enable scanner (and, preferably, confirm that the tag is broadcasting payloads when the trigger is detected);</li>
+<li>set up an email server;</li>
+<li>import the script (and alter a few script lines depending on the requirement);</li>
+<li>set up the scheduler.</li>
+</ul>
+<h4 id="bluetooth-scanner">Bluetooth Scanner</h4>
+<p>Go to the <a href="/docs/internet-of-things/bluetooth/">IoT&gt;Bluetooth&gt;Scanners</a> tab and make sure that it is enabled:</p>
+<p>Go to the <strong>Advertising reports</strong> tab and filter the list using the MAC address filtering option (you can find the MAC address of the MikroTik tag printed on the label on the tag itself).</p>
+<p>Try to "trigger" the configured detection and confirm it by checking the 21 octet's value.</p>
+<p>In our example, we configured the "freefalling" detection for our tag and we <strong>dropped it</strong>. We got reports from the tag indicating the "falling" state (21st octet = <strong>04</strong>):</p>
+<p>We have confirmed, that the tag is reporting the trigger properly.</p>
+<h4 id="email">Email</h4>
+<p>Navigate to the <a href="/docs/system-information-and-utilities/e-mail">Tools&gt;Email</a> section and set up an email server of your choice.</p>
+<p>We will be using shown <strong>GMAIL</strong> example in this guide.</p>
+<p>Try sending a test email to make sure that it is set up correctly.</p>
+<h4 id="scripts">Scripts</h4>
+<h5 id="option-a">Option (a)</h5>
+<p>Navigate to <a href="/docs/developer-guides/scripting/">System&gt;Scripts</a> menu and add a new script there.</p>
+<p>You can copy the script below. Copy the script below into a "notepad" and copy it again into the script "<strong>Source:</strong>" field.</p>
+<pre><code class="language-ros">## Input MAC address of the tag within &quot;&quot;
+:local addressRegex &quot;2C:C8:1B:E2:15:29&quot;
+
+#enter the subject for the email within the &quot;&quot;
+:local emailsubject &quot;RouterOS report!&quot;
+
+#enter the email address wthin the &quot;&quot;
+:local emailaddress &quot;YOUR_EMAIL@gmail.com&quot;
+
+#Script:
+################################## Bluetooth ##################################
+:local flagStr do={
+    :local str &quot;&quot;
+
+    :if ($1 &amp; 0x01) do={ :set $str &quot; switch&quot; }
+    :if ($1 &amp; 0x02) do={ :set $str &quot;$str tilt&quot; }
+    :if ($1 &amp; 0x04) do={ :set $str &quot;$str free_fall&quot; }
+    :if ($1 &amp; 0x08) do={ :set $str &quot;$str impact_x&quot; }
+    :if ($1 &amp; 0x10) do={ :set $str &quot;$str impact_y&quot; }
+    :if ($1 &amp; 0x20) do={ :set $str &quot;$str impact_z&quot; }
+
+    :if ([:len $str] = 0) do={ :return &quot;&quot; }
+
+    :return [:pick $str 1 [:len $str]]
+}
+
+:local triggernameF &quot;free_fall&quot;
+:local triggernameT &quot;tilt&quot;
+:local triggernameX &quot;impact_x&quot;
+:local triggernameY &quot;impact_y&quot;
+:local triggernameZ &quot;impact_z&quot;
+:local triggernameS &quot;switch&quot;
+
+## Find fresh Bluetooth advertisements
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex
+]
+:local advCount 0
+:local lastAdvTimestamp 0
+:local triggerlist &quot;&quot;
+
+:local triggerF
+:local triggerT
+:local triggerX
+:local triggerY
+:local triggerZ
+:local triggerS
+
+:local messageF &quot;&quot;
+:local messageT &quot;&quot;
+:local messageX &quot;&quot;
+:local messageY &quot;&quot;
+:local messageZ &quot;&quot;
+:local messageS &quot;&quot;
+
+:local 21st &quot;&quot;
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local epoch ($adv-&gt;&quot;epoch&quot;)
+    :local rtime ($adv-&gt;&quot;time&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local flags [:tonum &quot;0x$[:pick $ad 40 42]&quot;]
+    :local obj &quot;$[$flagStr $flags]&quot;
+
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $epoch
+    :set $triggerlist &quot;$triggerlist$obj&quot;
+
+:set triggerF [:pick $triggerlist ([find $triggerlist &quot;free_fall&quot;]-0) ([find $triggerlist &quot;free_fall&quot;]+9)]
+:if ($triggerF=$triggernameF) do={:set messageF &quot;$triggernameF&quot;;:set 21st &quot;not00&quot;;}
+:set triggerT [:pick $triggerlist ([find $triggerlist &quot;tilt&quot;]-0) ([find $triggerlist &quot;tilt&quot;]+4)]
+:if ($triggerT=$triggernameT) do={:set messageT &quot;$triggernameT&quot;;:set 21st &quot;not00&quot;;}
+:set triggerX [:pick $triggerlist ([find $triggerlist &quot;impact_x&quot;]-0) ([find $triggerlist &quot;impact_x&quot;]+8)]
+:if ($triggerX=$triggernameX) do={:set messageX &quot;$triggernameX&quot;;:set 21st &quot;not00&quot;;}
+:set triggerY [:pick $triggerlist ([find $triggerlist &quot;impact_y&quot;]-0) ([find $triggerlist &quot;impact_y&quot;]+8)]
+:if ($triggerY=$triggernameY) do={:set messageY &quot;$triggernameY&quot;;:set 21st &quot;not00&quot;;}
+:set triggerZ [:pick $triggerlist ([find $triggerlist &quot;impact_z&quot;]-0) ([find $triggerlist &quot;impact_z&quot;]+8)]
+:if ($triggerZ=$triggernameZ) do={:set messageZ &quot;$triggernameZ&quot;;:set 21st &quot;not00&quot;;}
+:set triggerS [:pick $triggerlist ([find $triggerlist &quot;switch&quot;]-0) ([find $triggerlist &quot;switch&quot;]+6)]
+:if ($triggerS=$triggernameS) do={:set messageS &quot;$triggernameS&quot;;:set 21st &quot;not00&quot;;}
+
+}
+:if ($advCount &gt; 0) do={
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+}
+
+#Message structure:
+:local message &quot;$messageF
+$messageT
+$messageX
+$messageY
+$messageZ
+$messageS
+--trigger(s) reported by the tag!&quot;
+
+:if ($21st=&quot;not00&quot;) do={/tool e-mail send to=$emailaddress subject=&quot;$emailsubject&quot; body=&quot;$message&quot;} else={:put &quot;21st octet does not have triggers detected!&quot;}
+</code></pre>
+<p>The following 3 lines need to be taken into account:</p>
+<pre><code>:local addressRegex &quot;2C:C8:1B:E2:15:29&quot;
+</code></pre>
+<p>line, where we input the MAC address of the tag that you wish to monitor;</p>
+<pre><code>:local emailsubject &quot;RouterOS report!&quot;
+</code></pre>
+<p>line, where you can alter the subject for the email;</p>
+<pre><code>:local emailaddress &quot;YOUR_EMAIL@gmail.com&quot;
+</code></pre>
+<p>the email address line, where you need to input the email address. To where do you want to send the report.</p>
+<p>You can also change the structure of the e-mail message using the lines:</p>
+<pre><code class="language-ros">#Message structure:
+:local message &quot;$messageF
+$messageT
+$messageX
+$messageY
+$messageZ
+$messageS
+--trigger(s) reported by the tag!&quot;
+</code></pre>
+<p>Name the script however you like, for example, <strong>triggernotification</strong>. Click on <strong>Apply</strong> and <strong>OK</strong>.</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>AdditionallyIn this example, we are specifically showcasing an e-mail notification scenario. <strong>But!</strong> in case you want to use other methods for sending a notification, you can just alter the line below:</p>
+<pre><code>:if ($21st=&quot;not00&quot;) do={/tool e-mail send to=$emailaddress subject=&quot;$emailsubject&quot; body=&quot;$message&quot;}
+</code></pre>
+<p>You can change the <code>do={/tool e-mail...</code> part of the line to, for example, <code>do={/tool fetch...</code> or <code>do={/iot mqtt publish...</code>. That way, you can send out an HTTP post or MQTT publish message instead.</p>
+<p>If you would like to get a phone notification when the trigger is detected, you can also utilize IFTTT services (HTTP post to IFTTT webhook) as described in our other guide over <a href="/docs/internet-of-things/bluetooth/user-guides/ifttt-app-notifications-ble-tag">here</a>.</p>
+</div>
+<p>You can run the script manually via the command "<strong>/system script run triggernotification</strong>" or by clicking on the "<strong>Run Script</strong>" button under the <strong>Script List</strong> section.</p>
+<p>You should make sure that the e-mail notification was received after manually initiating the script.</p>
+<p>When script <strong>(a)</strong> is initiated, RouterOS is going to check every received/stored Bluetooth payload, and if any trigger is found in the payload's list → an e-mail message is structured and sent. This e-mail message will simply indicate which triggers were detected in the list with no additional information.</p>
+<h5 id="option-b">Option (b)</h5>
+<pre><code class="language-ros">## Input MAC address of the tag within &quot;&quot;
+:local addressRegex &quot;2C:C8:1B:E2:15:29&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;&quot;
+
+#enter the subject for the email within the &quot;&quot;
+:local emailsubject &quot;RouterOS report!&quot;
+
+#enter the email address wthin the &quot;&quot;
+:local emailaddress &quot;YOUR_GMAIL@gmail.com&quot;
+
+#Script:
+################################## Bluetooth ##################################
+:local flagStr do={
+    :local str &quot;&quot;
+
+    :if ($1 &amp; 0x01) do={ :set $str &quot; switch&quot; }
+    :if ($1 &amp; 0x02) do={ :set $str &quot;$str tilt&quot; }
+    :if ($1 &amp; 0x04) do={ :set $str &quot;$str free_fall&quot; }
+    :if ($1 &amp; 0x08) do={ :set $str &quot;$str impact_x&quot; }
+    :if ($1 &amp; 0x10) do={ :set $str &quot;$str impact_y&quot; }
+    :if ($1 &amp; 0x20) do={ :set $str &quot;$str impact_z&quot; }
+
+    :if ([:len $str] = 0) do={ :return &quot;&quot; }
+
+    :return [:pick $str 1 [:len $str]]
+}
+
+:local triggernameF &quot;free_fall&quot;
+:local triggernameT &quot;tilt&quot;
+:local triggernameX &quot;impact_x&quot;
+:local triggernameY &quot;impact_y&quot;
+:local triggernameZ &quot;impact_z&quot;
+:local triggernameS &quot;switch&quot;
+
+## Find fresh Bluetooth advertisements
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advCount 0
+:local lastAdvTimestamp 0
+:local triggerlist &quot;&quot;
+
+:local triggerF
+:local triggerT
+:local triggerX
+:local triggerY
+:local triggerZ
+:local triggerS
+
+:local messageF &quot;&quot;
+:local messageT &quot;&quot;
+:local messageX &quot;&quot;
+:local messageY &quot;&quot;
+:local messageZ &quot;&quot;
+:local messageS &quot;&quot;
+
+:local 21st &quot;&quot;
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local epoch ($adv-&gt;&quot;epoch&quot;)
+    :local rtime ($adv-&gt;&quot;time&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local flags [:tonum &quot;0x$[:pick $ad 40 42]&quot;]
+    :local fflags &quot;$[$flagStr $flags]&quot;
+    :if ($fflags=&quot;&quot;) do={:set $fflags &quot;none - periodically broadcasted payload&quot;}
+
+    :local obj &quot;# $advCount:
+                             time: $rtime
+                             trigger: $fflags
+
+&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $epoch
+    :set $triggerlist &quot;$triggerlist$obj&quot;
+
+:set triggerF [:pick $triggerlist ([find $triggerlist &quot;free_fall&quot;]-0) ([find $triggerlist &quot;free_fall&quot;]+9)]
+:if ($triggerF=$triggernameF) do={:set messageF &quot;$triggernameF&quot;;:set 21st &quot;not00&quot;;}
+:set triggerT [:pick $triggerlist ([find $triggerlist &quot;tilt&quot;]-0) ([find $triggerlist &quot;tilt&quot;]+4)]
+:if ($triggerT=$triggernameT) do={:set messageT &quot;$triggernameT&quot;;:set 21st &quot;not00&quot;;}
+:set triggerX [:pick $triggerlist ([find $triggerlist &quot;impact_x&quot;]-0) ([find $triggerlist &quot;impact_x&quot;]+8)]
+:if ($triggerX=$triggernameX) do={:set messageX &quot;$triggernameX&quot;;:set 21st &quot;not00&quot;;}
+:set triggerY [:pick $triggerlist ([find $triggerlist &quot;impact_y&quot;]-0) ([find $triggerlist &quot;impact_y&quot;]+8)]
+:if ($triggerY=$triggernameY) do={:set messageY &quot;$triggernameY&quot;;:set 21st &quot;not00&quot;;}
+:set triggerZ [:pick $triggerlist ([find $triggerlist &quot;impact_z&quot;]-0) ([find $triggerlist &quot;impact_z&quot;]+8)]
+:if ($triggerZ=$triggernameZ) do={:set messageZ &quot;$triggernameZ&quot;;:set 21st &quot;not00&quot;;}
+:set triggerS [:pick $triggerlist ([find $triggerlist &quot;switch&quot;]-0) ([find $triggerlist &quot;switch&quot;]+6)]
+:if ($triggerS=$triggernameS) do={:set messageS &quot;$triggernameS&quot;;:set 21st &quot;not00&quot;;}
+
+}
+:if ($advCount &gt; 0) do={
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+}
+
+:if ($21st=&quot;not00&quot;) do={/tool e-mail send to=$emailaddress subject=&quot;$emailsubject&quot; body=&quot;$triggerlist&quot;} else={:put &quot;21st octet does not have triggers detected!&quot;}
+</code></pre>
+<p>When script <strong>(b)</strong> is initiated, RouterOS is going to check every received/stored Bluetooth payload, and if any trigger is found in the payload's list → an e-mail message is structured and sent. This e-mail message will have a bit more detailed information, compared to script <strong>(a)</strong>. The message, in this case, will indicate each payload's reception time.</p>
+<h4 id="scheduler_2">Scheduler</h4>
+<p>To automate the process add a new scheduler under the <strong>System&gt;Scheduler</strong> tab:</p>
+<p>Type in "<strong>/system script run triggernotification</strong>" under the "<strong>On Event:</strong>" field and set up an <strong>interval</strong> with which you wish to run the script to check/scan advertising reports (to, for example, 10 seconds).</p>
+<p>Click on <strong>Apply</strong> and <strong>OK</strong>.</p>
+<h4 id="result-verification">Result verification</h4>
+<p>1) Confirm that the tag broadcasts advertising reports and that the tag's triggers get detected:</p>
+<p>1) Confirm that your email server is set up correctly and that you are able to send emails from the KNOT (RouterOS).</p>
+<p>2) After you manually run the script or apply a scheduler to the script, an email notification should go through, like so:</p>
+<p>Script <strong>(a)</strong>:</p>
+<p>Script <strong>(b)</strong>:</p>
+<hr />
+<h1 id="https-post-and-azure-configuration">HTTPS post and Azure configuration</h1>
+<blockquote>
+<p>This article will demonstrate how to configure both Azure and RouterOS to publish the data using the HTTPS protocol. RouterOS, in this scenario, is going to act as a gateway and publish the data that is broadcasted...</p>
+</blockquote>
+<h3 id="introduction_1">Introduction</h3>
+<p>This article will demonstrate how to configure both <a href="https://azure.microsoft.com/en-us">Azure</a> and RouterOS to publish the data using the HTTPS protocol. RouterOS, in this scenario, is going to act as a gateway and publish the data that is broadcasted by the BLEtag to the cloud (Azure).</p>
+<p>Before we proceed with the settings, you need to create an account in the Azure system. You can find more information on how to do that following this <a href="https://azure.microsoft.com/en-us/pricing/purchase-options/azure-account?icid=azurefreeaccount">link</a>.</p>
+<p>Azure has many different options and services that they provide and many of those options/services have a pricelist. You can find more information about pricing following the <a href="https://www.azure.cn/en-us/pricing/">link</a>.</p>
+<h3 id="azure-configuration">Azure configuration</h3>
+<p>Once you have a subscription setup (Azure Portal&gt;All Services&gt;Subscriptions), you will need to configure a resource group, an IoT hub, a device and generate a SAS token.</p>
+<h4 id="resource-group">Resource Group</h4>
+<p>Go to All Services&gt;Resource groups and create one.</p>
+<p>You can find a more detailed guide following the <a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal">link</a>.</p>
+<p>After successfully configuring a resource group, you will need to create an IoT hub.</p>
+<h4 id="iot-hub">IoT Hub</h4>
+<p>Navigate to All services&gt;IoT Hub and create one.</p>
+<p>Link your IoT Hub to the previously created resource group. Do not forget to check/set up "Networking" (Network connectivity) and Management (a <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-scaling">subscription tier</a>) tabs.</p>
+<p>You can find more information over <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-concepts-and-iot-hub">here</a>.</p>
+<h4 id="devices">Devices</h4>
+<p>Navigate to your IoT Hub&gt;IoT Devices and add a new device:</p>
+<p>Chose <code>Authentication type=Symmetric Key</code> and save the setting.</p>
+<h4 id="sas-token">SAS Token</h4>
+<p>In our example, we will be using the <a href="https://code.visualstudio.com/">Visual Studio Code</a> program to generate the <a href="https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview">SAS token</a>.</p>
+<p>Simply, download the program and connect it to your <a href="https://marketplace.visualstudio.com/items?itemName=vsciot-vscode.azure-iot-toolkit">IoT Hub</a>.</p>
+<p>When it is done and the previously configured device name shows up in your IoT HUB - right-click on the device name and generate the token as shown in the screenshot below:</p>
+<p>You will be asked to enter the expiration time (in hours) for the token and to press "enter" to confirm the setting.</p>
+<p>After this step, the token should be generated in the "OUTPUT" field:</p>
+<p>Copy the token, as it is going to be used later in our HTTPS post script.</p>
+<p>With this, the Azure part of the configuration is complete.</p>
+<h3 id="routeros-configuration_3">RouterOS configuration</h3>
+<p>In this guide, we are using <a href="https://mikrotik.com/product/knot">KNOT</a> as a gateway and a script (created specifically for the KNOT) to publish the data. In your specific application scenario, you can use any RouterOS device to post any data that you need.</p>
+<h4 id="https-post-with-a-script">HTTPS post with a script</h4>
+<p>HTTPS post can be achieved using the <a href="/docs/system-information-and-utilities/fetch">fetch tool</a>. In order to post the data from the Bluetooth tag (in our example, TG-BT5-XX) to Azure, we will be using the script. Script example is shown below.</p>
+<p>Every line that begins with a symbol <code>#</code> is instructional and it describes the parameter that is going to be configured below the line. Change the parameters within quotation marks <code>""</code> that would apply to your specific case.</p>
+<pre><code class="language-ros">################################ Configuration ################################
+## Interface whose MAC should be used as 'Locator ID'
+:local locatorIface &quot;ether1&quot;
+
+## POSIX regex for filtering advertisement Bluetooth addresses. E.g. &quot;^BC:33:AC&quot;
+## would only include addresses which start with those 3 octets.
+## To disable this filter, set it to &quot;&quot;
+:local addressRegex &quot;&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;-40&quot;
+
+#################################### System ###################################
+:put (&quot;[*] Gathering system info...&quot;)
+:local ifaceMac [/interface get [/interface find name=$locatorIface] mac-address]
+:local cpuLoad [/system resource get cpu-load]
+:local freeMemory [/system resource get free-memory]
+:local usedMemory ([/system resource get total-memory] - $freeMemory)
+:local rosVersion [/system package get value-name=version \
+    [/system package find where name ~ &quot;^routeros&quot;]]
+:local model [/system routerboard get value-name=model]
+:local serialNumber [/system routerboard get value-name=serial-number]
+## Health is a bit iffy since '/system health' does not have 'find' in ROS6
+:local health [/system health print as-value]
+:local supplyVoltage 0
+:local boardTemp 0
+:foreach entry in=$health do={
+    :if ($entry-&gt;&quot;name&quot; = &quot;voltage&quot;) do={:set $supplyVoltage ($entry-&gt;&quot;value&quot;)}
+    :if ($entry-&gt;&quot;name&quot; = &quot;board-temperature1&quot;) do={:set $boardTemp ($entry-&gt;&quot;value&quot;)}
+}
+
+################################## Bluetooth ##################################
+:put (&quot;[*] Gathering Bluetooth info...&quot;)
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local btProcessingStart [/system clock get time]
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advJson &quot;&quot;
+:local advCount 0
+:local advSeparator &quot;&quot;
+:local lastAdvTimestamp 0
+## Remove semicolons from MAC/Bluetooth addresses
+:local minimizeMac do={
+    :local minimized
+    :local lastIdx ([:len $address] - 1)
+    :for idx from=0 to=$lastIdx step=1 do={
+        :local char [:pick $address $idx]
+        :if ($char != &quot;:&quot;) do={
+            :set $minimized &quot;$minimized$char&quot;
+        }
+    }
+    :return $minimized
+}
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local ts ($adv-&gt;&quot;epoch&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local obj &quot;\
+        {\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;ts\&quot;:$ts,\
+            \&quot;rssi\&quot;:$rssi,\
+            \&quot;ed\&quot;:{\
+                \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $ts
+    # Ensure that the last object is not terminated by a comma
+    :set $advJson &quot;$advJson$advSeparator$obj&quot;
+    :if ($advSeparator = &quot;&quot;) do={
+        :set $advSeparator &quot;,&quot;
+    }
+}
+
+:if ($advCount &gt; 0) do={
+
+    :set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+
+}
+
+:put (&quot;[*] Found $advCount new advertisements \
+    (processing time: $[([/system clock get time] - $btProcessingStart)])&quot;)
+
+#################################### message #####################################
+:local message \
+    &quot;{\
+        \&quot;t\&quot;:0,\
+        \&quot;v\&quot;:1,\
+        \&quot;OldestAdvertisementTimestamp\&quot;:$btOldestAdvertisementTimestamp,\
+        \&quot;locs\&quot;:[{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$ifaceMac]\&quot;,\
+            \&quot;tags\&quot;:[$advJson],\
+            \&quot;ed\&quot;:{\
+                \&quot;model\&quot;:\&quot;$model\&quot;,\
+                \&quot;sn\&quot;:\&quot;$serialNumber\&quot;,\
+                \&quot;ros\&quot;:\&quot;$rosVersion\&quot;,\
+                \&quot;cpu\&quot;:$cpuLoad,\
+                \&quot;umem\&quot;:$usedMemory,\
+                \&quot;fmem\&quot;:$freeMemory,\
+                \&quot;psu\&quot;:$supplyVoltage,\
+                \&quot;temp\&quot;:$boardTemp\
+            }\
+        }]\
+    }&quot;
+:log info &quot;$message&quot;;
+:put (&quot;[*] Total message size: $[:len $message] bytes&quot;)
+/tool fetch http-method=post output=user http-header-field=&quot;authorization:{sas_token}&quot; http-data=$message url=&quot;https://{iot_hub_name}.azure-devices.net/devices/{device_id}/messages/events\?api-version=2020-03-13&quot;
+
+:put (&quot;[*] Done&quot;)
+</code></pre>
+<p>1 script line should be taken into account:</p>
+<pre><code class="language-ros">/tool fetch http-method=post output=user http-header-field=&quot;authorization:{sas_token}&quot; http-data=$message url=&quot;https://{iot_hub_name}.azure-devices.net/devices/{device_id}/messages/events\?api-version=2020-03-13&quot;
+</code></pre>
+<p>Change the <code>{sas_token}</code> in the HTTP header to the token that was generated in the SAS Token section.</p>
+<p>Change the <code>{iot_hub_name}</code> and <code>{device_id}</code> in the URL to the actual IoT Hub name and Device ID that were configured on the Azure portal.</p>
+<p>The rest of the script configuration depends on the overall requirements. The script explains which exact parameters are configured to be published.</p>
+<p>Navigate to System&gt;Scripts, add a new script there, and paste the script that is shown above (name it, for example, script1).</p>
+<p>To run the script, you can use the command line:</p>
+<pre><code class="language-ros">/system script run script1
+</code></pre>
+<h3 id="verification">Verification</h3>
+<p>There are many different ways to view the received/published message on the Azure portal. Please check Azure tutorials on the options you have.</p>
+<p>We will be using the <a href="https://code.visualstudio.com/">Visual Studio Code</a> program to verify the results.</p>
+<p>Open your IoT Hub and start monitoring the endpoint (the device):</p>
+<p>You can view published messages in the "OUTPUT" section as shown in the screenshot below. Just run the script and check the received message:</p>
+<hr />
+<h1 id="ifttt-app-notifications-on-ble-tag-appearance-in-knots-range">IFTTT app notifications on BLE tag appearance in KNOT's range</h1>
+<blockquote>
+<p>Our Bluetooth tags and the KNOT can be used in different scenarios for IoT asset tracking.</p>
+</blockquote>
+<h3 id="introduction_2">Introduction</h3>
+<p>Our Bluetooth tags and the KNOT can be used in different scenarios for IoT asset tracking.</p>
+<p>The scenario we will be showing in this guide is receiving a notification on your phone as soon as the tag gets into the KNOT's Bluetooth range and as soon as the tag gets outside of the Bluetooth operating range.</p>
+<p>That scenario can be achieved with the help of the <a href="https://ifttt.com/explore">IFTTT</a> services. IFTTT will generate an URL for you. You can, then use <a href="/docs/system-information-and-utilities/fetch">/tool fetch</a> from RouterOS, to post HTTP/web request to IFTTT generated URL and that will trigger APP notification to your phone.</p>
+<p>Once the IFTTT service is set up and KNOT has been configured accordingly, you can attach the Bluetooth tag (<a href="https://mikrotik.com/product/tg_bt5_in">TG-BT5-IN</a> or <a href="https://mikrotik.com/product/tg_bt5_out">OUT</a> model) to any piece of equipment you wish to track.</p>
+<p>Let's say, you attached the tag to an expensive piece of machinery or just ... your keys. Then, you install and position your KNOT so that the tag is within the KNOT's Bluetooth range. What is going to happen next and how is it going to work?</p>
+<p>The KNOT is going to run a script on a schedule (with an interval that you choose). Based on the MAC address of the tag that was configured in the script →  the script is going to check the latest received Bluetooth packet's time (the time when the latest packet was received). In case:</p>
+<ul>
+<li>the packet's time of reception is within 1 minute of <strong>/system clock</strong> time (for example, <strong>/system clock</strong> time is <strong>16:02:00</strong>, and the tag's payload was received at <strong>16:01:50</strong>) → a "TAG IS WITHIN RANGE" notification will be triggered, and sent to your phone.</li>
+<li>the packet's reception time is older than 1 minute of <strong>/system clock</strong> time (for example, <strong>/system clock</strong> time is <strong>16:02:00</strong>, and the tag's payload was received at <strong>16:00:50</strong>) → a "TAG IS NOT IN RANGE" notification will be triggered and send to your phone.</li>
+</ul>
+<p>Because there is no other way to know whether the tag is actually within or outside of the operating range, the script uses the "time" parameter to confirm it. So when the payload's reception time is getting refreshed constantly → it means the tag is present and the KNOT receives the packets successfully. When 1 minute has passed since the last packet was received by the KNOT→ it means that the KNOT did not receive any updates from the tag for a whole minute and that confirms that the tag is not in range.</p>
+<h3 id="ifttt-setup">IFTTT setup</h3>
+<p>The first step is to register an IFTTT account or log in to an existing one following the <a href="https://ifttt.com/join">link</a>.</p>
+<p>Download the IFTTT app for your phone and you can configure the follow-up steps either through the APP or through the browser.</p>
+<p>After you are logged in, press the "Create" button in the right upper corner:</p>
+<p>This will take you to the applet creation screen:</p>
+<p>Select the "<strong>Add</strong>" button in the "<strong>If This</strong>" field. Choose a service called "<strong>Webhooks</strong>". Then, select an option called "<strong>Receive a web request</strong>".</p>
+<p>Enter an "<strong>Event Name</strong>", for example, <code>**{The_tag_IS_within_range}**</code> and select "<strong>Create trigger</strong>". This will take you back to:</p>
+<p>Select the "<strong>Add</strong>" button in the "<strong>Then That</strong>" field and find an action called "<strong>Notifications</strong>". Choose an option called "<strong>Send a notification from the IFTTT app</strong>" and confirm the decision by clicking on "<strong>Create Action</strong>".</p>
+<p>Click on "<strong>Continue</strong>" and review the applet. Click on "<strong>Finish</strong>".</p>
+<p>Now, do the same steps again to create a second applet, but for the second one, enter another "<strong>Event Name</strong>", for example, <code>**{The_tag_is_NOT_in_range}**</code>.</p>
+<p>Once you have two applets created → check the web request URL that was generated for you. Go to the <a href="https://ifttt.com/maker_webhooks">link</a> and click on the "<strong>Documentation</strong>" button:</p>
+<p>The page will indicate the URL that you need to use:</p>
+<p>Copy this URL - you will need to use it in the script later.</p>
+<h3 id="bluetooth-tag-configuration">Bluetooth tag configuration</h3>
+<p>Check our tag configuration guides (iOS and Android) by following the <a href="https://manual.mikrotik.com/docs/internet-of-things/bluetooth/mikrotik-beacon-manager/">link</a>.</p>
+<p>In this specific use case, the KNOT is going to check the time of the received Bluetooth payload, so it does not matter which packet type is configured for the tag.</p>
+<p>The only important setting is "Advertisement interval". Make sure that this parameter is configured.</p>
+<p>Or you can <strong>just leave the tag in its default settings</strong> without changing anything.</p>
+<h3 id="routeros-configuration_4">RouterOS configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>Note that <strong>iot</strong> package is required. You can get it from our <a href="https://mikrotik.com/download">download page</a>.</p>
+</div>
+<p>Make sure you have configured internet access so that the KNOT is able to reach IFTTT webhooks.</p>
+<h4 id="bluetooth-scanner_1">Bluetooth Scanner</h4>
+<p>Navigate to <strong>IoT&gt;Bluetooth&gt;Scanners</strong>. Make sure to enable the scanner in case it is disabled and then, edit the scanner settings:</p>
+<p>Select <strong>Filter duplicates</strong>=<strong>keep-newest</strong>.</p>
+<p>The <strong>keep-newest</strong> setting will make sure that only the latest reports are kept under the "Advertising reports" section. A new packet captured by the scanner (for each individual MAC address) will overwrite an older packet.</p>
+<h4 id="script_2">Script</h4>
+<p>Navigate to <strong>System&gt;Scripts</strong> menu and add a new script there.</p>
+<p>You can copy the script below. Copy the script below into a "notepad" and copy it again into the script "<strong>Source:</strong>" field.</p>
+<pre><code class="language-ros">#### User params
+:local addressRegex    &quot;DC:2C:6E:91:D6:F3&quot;
+:local urlNotInRange   &quot;https://maker.ifttt.com/trigger/{The_tag_is_NOT_in_range}/json/with/key/-xxxx&quot;
+:local urlInRange      &quot;https://maker.ifttt.com/trigger/{The_tag_IS_within_range}/json/with/key/-xxxx&quot;
+:local missingInterval 60000
+
+###Time
+
+:local realtime [/system clock get time]
+:local realdate [/system clock get date]
+:local tonumtime [:tonum [:totime &quot;$realdate $realtime&quot;]];
+:local gmt ([system/clock/print as-value]-&gt;&quot;gmt-offset&quot;)
+
+###to offset epoch with curretn GMT
+:global tonumtimeoffset ($tonumtime-$gmt)
+
+:global Epomili
+:set Epomili ([$tonumtimeoffset].&quot;000&quot;)
+
+###Bluetooth
+:local adver
+:local adver2
+:local ts
+:local clockmin
+
+:set adver [/iot bluetooth scanners advertisements print detail as-value where address ~ $addressRegex]
+:set adver2 ($adver-&gt;0)
+:set ts ($adver2 -&gt; &quot;epoch&quot;)
+:set clockmin ($Epomili-$missingInterval)
+
+:local counterIN
+:local counterOUT
+
+:if ($ts&amp;lt;=$clockmin) do={
+    :set $counterIN 0;
+    :if ($counterOUT=0 or $counterOUT=null) do={
+        :set $counterOUT 0;
+        /tool fetch http-method=get output=user url=$urlNotInRange;
+        :set counterOUT ($counterOUT+1);
+        :log info &quot;IFTTT notification - the tag is OUT OF range!&quot;
+    } else={
+        :log info &quot;Tag is OUT of range! Notification was already sent before!&quot;
+    }
+} else={
+    :set $counterOUT 0;
+    :if ($counterIN=0 or $counterIN=null) do={
+        :set $counterIN 0;
+        /tool fetch http-method=get output=user url=$urlInRange;
+        :set $counterIN ($counterIN+1);
+        :log info &quot;IFTTT notification - tag IS WITHIN range!&quot;
+    } else={
+        :log info &quot;Tag is WITHIN the range! Notification was already sent before!&quot;
+    }
+}
+</code></pre>
+<p>There are 3 lines that need to be taken into account (in the <strong>### User parameters</strong> part of the script).</p>
+<p>1) MAC address line:</p>
+<pre><code>:local addressRegex &quot;DC:2C:6E:91:D6:F3&quot;
+</code></pre>
+<p>the line above, where you need to input the MAC address of the tag (you can find the MAC address of the tag printed on the tag's label).</p>
+<p>1) Not in range notification URL line:</p>
+<pre><code>:local urlNotInRange &quot;https://maker.ifttt.com/trigger/{The_tag_is_NOT_in_range}/json/with/key/-xxxx&quot;
+</code></pre>
+<p>the line, where you need to input the URL that was generated for you by the IFTTT service. The URL should look like this → <code>https://maker.ifttt.com/trigger/{event}/json/with/key/-xxxxx</code>. Change the <code>{event}</code> part of the URL to the <code>Event Name</code> that was chosen in the IFTTT portal when creating an applet and change the -<strong>xxxxx</strong> part of the URL to the key that was generated for you by the IFTTT portal.</p>
+<p>1) In range notification URL line:</p>
+<pre><code>:local urlInRange &quot;https://maker.ifttt.com/trigger/{The_tag_IS_within_range}/json/with/key/-xxxx&quot;
+</code></pre>
+<p>the line, where you need to input the URL that was generated for you by the IFTTT service. The URL should look like this → <code>https://maker.ifttt.com/trigger/{event}/json/with/key/-xxxxx</code>. Change the <code>{event}</code> part of the URL to the second <code>Event Name</code> that was chosen in the IFTTT portal when creating your second applet and change the -<strong>xxxxx</strong> part of the URL to the key that was generated for you by the IFTTT portal.</p>
+<p>Name the script, for example, <strong>ifttt</strong> and save it ("Apply" and "OK").</p>
+<p><strong>How is the script going to work?</strong></p>
+<p>We apply a scheduler to the script and the script will run with a set interval. Scheduler settings will be shown later in the guide.</p>
+<p>The <strong>###Time</strong> part of the script takes <strong>/system clock</strong> time and calculates "<strong>epoch</strong>" time. When we have an "<strong>epoch</strong>" value for our current <strong>/system clock</strong> time, we can then subtract 1 minute from it. Having the "subtracted minute" epoch time value will help the script compare the packet's reception time against it to see whether the packet is 1+ minute(s) late or whether it is within a 1-minute interval of the current time.</p>
+<p>In case the tag's moved out of range (the packet is older than 1 minute) → the KNOT will send an HTTP post to the IFTTT webhook (with the "<strong>Event Name</strong>" that it is outside of range) and <strong>System&gt;Log</strong> that event.</p>
+<p>In case the tag's payload is received and it is not older than 1 minute → the KNOT will send an HTTP post to the IFTTT webhook (with the "<strong>Event Name</strong>" that it is in the range) and <strong>System&gt;Log</strong> that.</p>
+<p>The "counter" parameter will make sure that you are not spammed notifications every time the script is run by the scheduler and that will make sure that you only receive x1 notification when the tag moves into the range and x1 notification when the tag moves out of range.</p>
+<h4 id="scheduler_3">Scheduler</h4>
+<p>Navigate to the <strong>System&gt;Scheduler</strong> and add a new scheduler there.</p>
+<p>Name it, for example, <strong>scheduler1</strong>, and apply an interval with which you want the KNOT to check for the packet.</p>
+<p>Add a line "/system script run <strong>ifttt</strong>" (where <strong>ifttt</strong> is the name of the script created) in the "<strong>On Event:</strong>" field, click on "<strong>Apply</strong>" and "<strong>OK</strong>".</p>
+<h3 id="result-verification_1">Result verification</h3>
+<p>Make sure you are logged into the IFTTT app on your phone.</p>
+<p>Position the tag within the KNOTs Bluetooth range and you should get a notification once the scheduler runs the script, like so:</p>
+<p>Move the tag outside of KNOTs range (wait for 1 minute) and you will get another notification:</p>
+<hr />
+<h1 id="mqtt-and-azure-configuration">MQTT and Azure configuration</h1>
+<blockquote>
+<p>Publish MikroTik MQTT data to Microsoft Azure IoT, covering Azure account setup, device credentials, and MQTT broker configuration.</p>
+</blockquote>
+<h3 id="introduction_3">Introduction</h3>
+<p>One of the many cloud services that you can use to monitor information that is sent by an MQTT publisher is Microsoft <a href="https://azure.microsoft.com/en-us">Azure</a>. This article will demonstrate how to configure both Azure and RouterOS to publish the data using the MQTT protocol. RouterOS, in this scenario, is going to act as a gateway and publish the data that is broadcasted by the BLEtag to the cloud (Azure). Azure, in this scenario, will act as an MQTT broker and MQTT subscriber (server, where data will be posted/shown).</p>
+<p>Before we proceed with the settings, you need to create an account in the Azure system. You can find more information on how to do that following this <a href="https://azure.microsoft.com/en-us/pricing/purchase-options/azure-account?icid=azurefreeaccount">link</a>.</p>
+<p>Azure has many different options and services that they provide and many of those options/services have a pricelist. You can find more information about pricing following the <a href="https://www.azure.cn/en-us/pricing/">link</a>.</p>
+<h3 id="azure-configuration_1">Azure configuration</h3>
+<p>Once you have a subscription setup (Azure Portal&gt;All Services&gt;Subscriptions), you will need to configure a resource group, an IoT hub, a certificate, and a device.</p>
+<h4 id="resource-group_1">Resource Group</h4>
+<p>Go to All Services&gt;Resource groups and create one.</p>
+<p>Link your IoT Hub to the previously created resource group. Do not forget to check/set up "Networking" (Network connectivity) and Management (a <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-scaling">subscription tier</a>) tabs.</p>
+<p>You can find more information over <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-concepts-and-iot-hub">here</a>.</p>
+<h4 id="iot-hub_1">IoT Hub</h4>
+<p>Navigate to All services&gt;IoT Hub and create one.</p>
+<p>Link your IoT Hub to the previously created resource group. Do not forget to check/set up "Networking" (Network connectivity) and Management (a subscription tier) tabs.</p>
+<p>You can find more information over here.</p>
+<h4 id="certificates">Certificates</h4>
+<p>In this example, we will be focusing on <a href="https://learn.microsoft.com/en-us/azure/iot-edge/how-to-authenticate-downstream-device?view=iotedge-2020-11#x509-ca-signed-authentication">X.509 CA-signed</a> authentication.</p>
+<p>You can use <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows">Microsoft-supplied scripts</a>) or <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows">open SSL</a> to generate test certificates.</p>
+<p>After generating RootCA, go to IoT Hub&gt;Certificates and add the certificate there:</p>
+<p>After successfully adding RootCA, you will need to <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows">prove possession</a> (verify it).</p>
+<p>It is well described and shown in the <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-3---prove-possession">tutorial (step 3)</a> if you are using scripts or <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-7---demonstrate-proof-of-possession">tutorial (step 7)</a> if you are using open ssl.</p>
+<p>Once the certificate is successfully verified, you will need to create the <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-4---create-a-new-device">device certificate</a> (or follow this <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-8---create-a-device-in-your-iot-hub">link</a> if you are using open ssl).</p>
+<h4 id="devices_1">Devices</h4>
+<p>Navigate to your IoT Hub&gt;IoT Devices and add a new device:</p>
+<p>Pay attention to the "Device ID" field. The Device ID should match the "Common name" for the device certificate.</p>
+<p>Chose <code>Authentication type=X.509 CA Signed</code> and save the setting.</p>
+<p>You can now generate the last required certificate - the <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-4---create-a-new-device">device certificate</a> (or follow this <a href="https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows#step-8---create-a-device-in-your-iot-hub">link</a> if you are using open ssl).</p>
+<p>With this, the Azure part of the configuration is complete.</p>
+<h3 id="routeros-configuration_5">RouterOS configuration</h3>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p>In order to configure MQTT, make sure that <strong>iot</strong> package is installed beforehand.</p>
+</div>
+<p>In our example, we are using <a href="https://mikrotik.com/product/knot">KNOT</a> as a gateway and a script (created specifically for the KNOT) to publish the data. In your specific application scenario, you can use any RouterOS device (with iot package installed) to post any data that you need.</p>
+<h4 id="certificates_1">Certificates</h4>
+<p>Since we are using an SSL connection, we will require the previously generated device certificate and its private key. We will also be using <a href="https://learn.microsoft.com/en-us/azure/security/fundamentals/azure-certificate-authority-details?tabs=root-and-subordinate-cas-list">Baltimore CyberTrust Root certificate</a>.</p>
+<p>Go to the "Files" menu and add there the following certificates - <em>Baltimore CyberTrust Root certificate, previously generated device certificate, and its private key</em>.</p>
+<p>Go to System&gt;Certificates and import all 3 files (via the "Import" button - one by one):</p>
+<div class="adm adm-info">
+<p><strong>INFO</strong></p>
+<p><em>Double-check that the "Common Name" matches the Device ID that was configured for the device on the Azure portal. In our case, the Device ID is "testor" and it matches the "Common Name" field.</em></p>
+</div>
+<p>Make sure that both certificates are trusted (T) and that the private key (K) was added to the device certificate.</p>
+<h4 id="mqtt-broker_2">MQTT Broker</h4>
+<p>Navigate to IoT&gt;MQTT and add a new broker ("+" button):</p>
+<ul>
+<li>Name the broker in the "Name" field (for example, <strong>Azure</strong>).</li>
+<li>
+<p>Type in/paste Azure hostname address into the "Address" field (you can find the hostname in the IoT Hub&gt;Overview menu):</p>
+</li>
+<li>
+<p>Configure the port used by the broker in the "Port" field and enable SSL via SSL checkbox (Azure, in this case, uses <strong>8883</strong> and, since we use certificates, it requires to <strong>enable SSL</strong>).</p>
+</li>
+<li>The "Username" field should be configured the following way - <code>{iothubhostname}/{device_id}/?api-version=2018-06-30</code>, where <code>{iothubhostname}</code> is the hostname for your IoT hub and <code>{device_id}</code> is the Device ID that was set up on the Azure portal (same as the "Common Name" for the certificate and in our example, it is "testor").</li>
+<li>"Password" field is not required in this scenario (this configuration depends on the broker's settings - skip this field).</li>
+<li>"Client Id" should be the same as the Device's ID (in our example, <strong>testor</strong>).</li>
+<li>Since SSL is used, the certificate must be selected in the "Certificate" field (select the device certificate).</li>
+</ul>
+<p>You can find more information about the required settings over <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-mqtt-connect-to-iot-hub#using-the-mqtt-protocol-directly-as-a-device">here</a>.</p>
+<p>Click on "Apply" and "OK" to finish setting up the broker.</p>
+<h4 id="mqtt-publish-with-a-script">MQTT Publish with a script</h4>
+<p>In order to publish data from the Bluetooth tag (in our example, TG-BT5-IN) to Azure, we will be using the script. Script example is shown below.</p>
+<p>Every line that begins with the symbol <code>#</code> is instructional and it describes the parameter that is going to be configured below the line. Change the parameters within quotation marks <code>""</code> that would apply to your specific case.</p>
+<pre><code class="language-ros">## Required packages: iot
+
+################################ Configuration ################################
+## Name of an existing MQTT broker that should be used for publishing
+:local broker &quot;Azure&quot;
+
+## MQTT topic where the message should be published
+:local topic &quot;devices/testor/messages/events/&quot;
+
+## Interface whose MAC should be used as 'Locator ID'
+:local locatorIface &quot;ether1&quot;
+
+## POSIX regex for filtering advertisement Bluetooth addresses. E.g. &quot;^BC:33:AC&quot;
+## would only include addresses which start with those 3 octets.
+## To disable this filter, set it to &quot;&quot;
+:local addressRegex &quot;&quot;
+
+## POSIX regex for filtering Bluetooth advertisements based on their data. Same
+## usage as with 'addressRegex'.
+:local advertisingDataRegex &quot;&quot;
+
+## Signal strength filter. E.g. -40 would only include Bluetooth advertisements
+## whose signal strength is stronger than -40dBm.
+## To disable this filter, set it to &quot;&quot;
+:local rssiThreshold &quot;-40&quot;
+
+#################################### System ###################################
+:put (&quot;[*] Gathering system info...&quot;)
+:local ifaceMac [/interface get [/interface find name=$locatorIface] mac-address]
+:local cpuLoad [/system resource get cpu-load]
+:local freeMemory [/system resource get free-memory]
+:local usedMemory ([/system resource get total-memory] - $freeMemory)
+:local rosVersion [/system package get value-name=version \
+    [/system package find where name ~ &quot;^routeros&quot;]]
+:local model [/system routerboard get value-name=model]
+:local serialNumber [/system routerboard get value-name=serial-number]
+## Health is a bit iffy since '/system health' does not have 'find' in ROS6
+:local health [/system health print as-value]
+:local supplyVoltage 0
+:local boardTemp 0
+:foreach entry in=$health do={
+    :if ($entry-&gt;&quot;name&quot; = &quot;voltage&quot;) do={:set $supplyVoltage ($entry-&gt;&quot;value&quot;)}
+    :if ($entry-&gt;&quot;name&quot; = &quot;board-temperature1&quot;) do={:set $boardTemp ($entry-&gt;&quot;value&quot;)}
+}
+
+################################## Bluetooth ##################################
+:put (&quot;[*] Gathering Bluetooth info...&quot;)
+:global btOldestAdvertisementTimestamp
+:if ([:typeof $btOldestAdvertisementTimestamp] = &quot;nothing&quot;) do={
+    # First time this script has been run since booting, need to initialize
+    # persistent variables
+    :set $btOldestAdvertisementTimestamp 0
+}
+:local btProcessingStart [/system clock get time]
+:local advertisements [/iot bluetooth scanners advertisements print detail \
+    as-value where \
+        epoch &gt; $btOldestAdvertisementTimestamp and \
+        address ~ $addressRegex and \
+        data ~ $advertisingDataRegex and \
+        rssi &gt; $rssiThreshold
+]
+:local advJson &quot;&quot;
+:local advCount 0
+:local advSeparator &quot;&quot;
+:local lastAdvTimestamp 0
+## Remove semicolons from MAC/Bluetooth addresses
+:local minimizeMac do={
+    :local minimized
+    :local lastIdx ([:len $address] - 1)
+    :for idx from=0 to=$lastIdx step=1 do={
+        :local char [:pick $address $idx]
+        :if ($char != &quot;:&quot;) do={
+            :set $minimized &quot;$minimized$char&quot;
+        }
+    }
+    :return $minimized
+}
+
+:foreach adv in=$advertisements do={
+    :local address ($adv-&gt;&quot;address&quot;)
+    :local ts ($adv-&gt;&quot;epoch&quot;)
+    :local rssi ($adv-&gt;&quot;rssi&quot;)
+    :local ad ($adv-&gt;&quot;data&quot;)
+    :local obj &quot;\
+        {\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$address]\&quot;,\
+            \&quot;ts\&quot;:$ts,\
+            \&quot;rssi\&quot;:$rssi,\
+            \&quot;ed\&quot;:{\
+                \&quot;ad\&quot;:\&quot;$ad\&quot;\
+            }\
+        }&quot;
+    :set $advCount ($advCount + 1)
+    :set $lastAdvTimestamp $ts
+    # Ensure that the last object is not terminated by a comma
+    :set $advJson &quot;$advJson$advSeparator$obj&quot;
+    :if ($advSeparator = &quot;&quot;) do={
+        :set $advSeparator &quot;,&quot;
+    }
+}
+
+:set $btOldestAdvertisementTimestamp $lastAdvTimestamp
+:put (&quot;[*] Found $advCount new advertisements \
+    (processing time: $[([/system clock get time] - $btProcessingStart)])&quot;)
+
+#################################### MQTT #####################################
+:local message \
+    &quot;{\
+        \&quot;clientId\&quot;:\&quot;$[/iot mqtt brokers get value-name=client-id \
+            [/iot mqtt brokers find name=$broker]]\&quot;,\
+        \&quot;t\&quot;:0,\
+        \&quot;v\&quot;:1,\
+        \&quot;OldestAdvertisementTimestamp\&quot;:$btOldestAdvertisementTimestamp,\
+        \&quot;locs\&quot;:[{\
+            \&quot;id\&quot;:\&quot;$[$minimizeMac address=$ifaceMac]\&quot;,\
+            \&quot;tags\&quot;:[$advJson],\
+            \&quot;ed\&quot;:{\
+                \&quot;model\&quot;:\&quot;$model\&quot;,\
+                \&quot;sn\&quot;:\&quot;$serialNumber\&quot;,\
+                \&quot;ros\&quot;:\&quot;$rosVersion\&quot;,\
+                \&quot;cpu\&quot;:$cpuLoad,\
+                \&quot;umem\&quot;:$usedMemory,\
+                \&quot;fmem\&quot;:$freeMemory,\
+                \&quot;psu\&quot;:$supplyVoltage,\
+                \&quot;temp\&quot;:$boardTemp\
+            }\
+        }]\
+    }&quot;
+:log info &quot;$message&quot;;
+:put (&quot;[*] Total message size: $[:len $message] bytes&quot;)
+:put (&quot;[*] Sending message to MQTT broker...&quot;)
+/iot mqtt publish broker=$broker topic=$topic message=$message
+:put (&quot;[*] Done&quot;)
+</code></pre>
+<p>2 script lines should be taken into account:</p>
+<pre><code>:local broker &quot;Azure&quot;
+</code></pre>
+<p>line, where you should specify the broker's name within the quotation marks <code>""</code> (in our example, <strong>Azure</strong>).</p>
+<pre><code>:local topic &quot;devices/testor/messages/events/&quot;
+</code></pre>
+<p>line, where you should specify the correct topic within the quotation marks <code>""</code>. The topic <code>devices/{device_id}/messages/events/</code> is used for publishing by Azure by default (as described in the manual <a href="https://learn.microsoft.com/en-us/azure/iot-hub/iot-mqtt-connect-to-iot-hub#for-azure-iot-tools">here</a>). Do not forget to change the <code>{device_id}</code> part to the "Device ID" that was configured on your Azure portal.</p>
+<p>The rest of the script configuration depends on the overall requirements. The script explains which exact parameters are configured to be published.</p>
+<p>Navigate to System&gt;Scripts, add a new script there, and paste the script that is shown above (name it, for example, script1).</p>
+<p>To run the script, you can use the command line:</p>
+<pre><code>/system script run script1
+</code></pre>
+<h3 id="verification_1">Verification</h3>
+<p>There are many different ways to view the received/published message on the Azure portal. Please check Azure tutorials on the options you have.</p>
+<p>In our example, we will verify the results using the <a href="https://code.visualstudio.com/">Visual Studio Code program</a>.</p>
+<p>Download the program and connect it to your <a href="https://marketplace.visualstudio.com/items?itemName=vsciot-vscode.azure-iot-toolkit">IoT Hub</a>.</p>
+<p>Once the IoT Hub is added, you can start monitoring the endpoint:</p>
+<p>And you can view published messages in the "OUTPUT" section as shown in the screenshot below:</p>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../../";</script>
+<script src="../../assets/nav-data.js"></script>
+<script src="../../assets/search-index.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>
