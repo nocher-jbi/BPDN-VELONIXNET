@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ringkasan Konsep &amp; Panduan Cepat &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="ringkasan-konsep-panduan-cepat">Ringkasan Konsep &amp; Panduan Cepat</h1>
+<p>Bagian ini dirancang khusus bagi Tim IT DPUTR untuk memberikan pemahaman menyeluruh mengenai arsitektur, alur kerja harian, batasan operasional, serta checklist serah terima proyek sebelum memasuki bagian teknis detail.</p>
+<h2 id="a-gambaran-besar-3-server-dputr-bahasa-sederhana">A. Gambaran Besar 3 Server DPUTR (Bahasa Sederhana)</h2>
+<ul><li><strong>Server 1 (</strong><code>pve-node1</code><strong>) &amp; Server 2 (</strong><code>pve-node2</code><strong>) — Proxmox VE:</strong> Berfungsi seperti &quot;gedung utama&quot; yang menampung banyak server virtual (VM/Container) di dalamnya (misalnya server website DPUTR, aplikasi e-Office/GIS/SIMBG, database, dll.). Keduanya digabung dalam satu <strong>Cluster</strong>, sehingga Tim IT cukup membuka satu alamat web untuk mengelola seluruh aplikasi di kedua server. Jika satu server perlu dimatikan untuk perawatan, aplikasi bisa dipindahkan (<em>migrate</em>) ke server satunya.</li><li><strong>Server 3 (</strong><code>pbs-server</code><strong>) — Proxmox Backup Server &amp; QDevice:</strong> Memiliki dua peran krusial: (1) <strong>&quot;Brankas Cadangan Otomatis&quot;</strong> yang menyimpan salinan data harian semua VM/aplikasi dengan teknologi deduplikasi (hemat kapasitas disk), dan (2) <strong>&quot;Wasit / Pemberi Suara ke-3 (Quorum)&quot;</strong> agar saat salah satu server utama mati mendadak, server utama yang masih hidup tetap bisa beroperasi normal dan tidak terkunci.</li></ul>
+<h2 id="b-alur-kerja-harian-tim-it-dputr-cukup-510-menithari">B. Alur Kerja Harian Tim IT DPUTR (Cukup 5–10 Menit/Hari)</h2>
+<ol><li>Login ke Web GUI Proxmox VE (<code>https://&lt;IP-Node1&gt;:8006</code>) menggunakan akun masing-masing (plus kode 2FA).</li><li>Cek panel kiri: pastikan ikon <code>pve-node1</code>, <code>pve-node2</code>, dan storage <code>pbs-dputr</code> semuanya bertanda centang hijau.</li><li>Cek menu <strong>Tasks</strong> di bagian bawah: pastikan tidak ada tugas <em>Backup</em> semalam yang berstatus <code>ERROR</code>.</li><li>Cek penggunaan <strong>CPU, RAM, dan Disk</strong> pada menu <em>Summary</em> tiap node (waspada jika kapasitas disk mendekati 80%).</li></ol>
+<h2 id="c-aturan-emas-hal-yang-boleh-dan-dilarang-dos-donts-bagi-tim-it-dputr">C. Aturan Emas: Hal yang BOLEH dan DILARANG (Do&#x27;s &amp; Don&#x27;ts) bagi Tim IT DPUTR</h2>
+<div class="table-scroll"><table><thead><tr><th>Wajib Dilakukan (Do&#x27;s)</th><th>Dilarang Keras (Don&#x27;ts)</th></tr></thead><tbody><tr><td>Ambil Snapshot sebelum melakukan update besar pada aplikasi/OS di dalam VM.</td><td>Mematikan server fisik secara paksa (cabut kabel listrik/tekan tombol power lama) tanpa Shutdown VM terlebih dahulu.</td></tr><tr><td>Gunakan akun staf IT masing-masing untuk pekerjaan harian agar riwayat aktivitas tercatat.</td><td>Menggunakan atau membagikan kata sandi root ke pihak luar atau menyimpan Secret API Token secara terbuka.</td></tr><tr><td>Pindahkan (Migrate) VM ke node lain sebelum me-reboot salah satu node PVE saat pemeliharaan.</td><td>Menghapus manual file backup di dalam disk PBS lewat terminal Linux (selalu gunakan fitur Prune &amp; Garbage Collection di Web GUI).</td></tr><tr><td>Lakukan uji coba Restore ke VM ID baru secara berkala (minimal per triwulan).</td><td>Menjalankan update sistem (apt full-upgrade) pada kedua node PVE secara bersamaan di jam kerja.</td></tr></tbody></table></div>
+<h2 id="d-daftar-serah-terima-proyek-handover-ke-tim-it-dputr">D. Daftar Serah Terima Proyek (Handover) ke Tim IT DPUTR</h2>
+<ol><li><strong>Dokumen As-Built:</strong> Tabel Pra-Implementasi yang telah diisi lengkap dengan alamat IP aktual, VLAN, dan topologi jaringan DPUTR.</li><li><strong>Amplop / Brankas Kredensial Tertutup:</strong> Kata sandi <code>root</code> PVE &amp; PBS, akun admin individu Tim IT, serta Secret API Token backup.</li><li><strong>Bukti Uji Fungsi (User Acceptance Test / UAT):</strong> Tangkapan layar status Cluster Quorum (3 votes), uji live migration VM antar node, serta uji Backup &amp; Restore yang berhasil.</li><li><strong>Sesi Pelatihan (Knowledge Transfer):</strong> Pelaksanaan simulasi praktik langsung pengelolaan harian bersama Tim IT DPUTR.</li></ol>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

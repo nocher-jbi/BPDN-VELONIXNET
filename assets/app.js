@@ -1,11 +1,11 @@
 (function () {
   var ROOT = window.ROOT || "";
-  var NAV = window.NAV || { panduan: [], aplikasi: [], server: [], manual: [] };
+  var NAV = window.NAV || { panduan: [], huawei: [], proxmox: [], aplikasi: [], server: [], manual: [] };
   var SEARCH = window.SEARCH || [];
 
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function abs(u){return ROOT + u;}
-  function urlEncode(u){return u.split('/').map(encodeURIComponent).join('/');}
+  function urlEncode(u){var i=u.indexOf('#');var frag=i>=0?u.slice(i):'';var path=(i>=0?u.slice(0,i):u).split('/').map(encodeURIComponent).join('/');return path+frag;}
   function here(){return decodeURIComponent(location.pathname);}
   function isActive(u){var h=here();return h.endsWith('/'+u)||h.endsWith(u);}
   function isMobile(){return window.matchMedia('(max-width:960px)').matches;}
@@ -13,6 +13,8 @@
   // flatten for pager + lookup
   var flat = [], lookup = {};
   NAV.panduan.forEach(function(p){ flat.push(p); lookup[p.u]={kind:'panduan',title:p.t}; });
+  (NAV.huawei||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'huawei',title:p.t}; });
+  (NAV.proxmox||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'proxmox',title:p.t}; });
   (NAV.aplikasi||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'aplikasi',title:p.t}; });
   (NAV.server||[]).forEach(function(p){ flat.push(p); lookup[p.u]={kind:'server',title:p.t}; });
   NAV.manual.forEach(function(s){
@@ -27,13 +29,19 @@
     h+='<div class="nav-group"><div class="nav-title">Panduan Praktis (ID)</div><ul>';
     NAV.panduan.forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
+    h+='<div class="nav-group"><div class="nav-title">Panduan Huawei Switch</div><ul>';
+    (NAV.huawei||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
+    h+='</ul></div>';
+    h+='<div class="nav-group"><div class="nav-title">Panduan Proxmox &amp; PBS</div><ul>';
+    (NAV.proxmox||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
+    h+='</ul></div>';
     h+='<div class="nav-group"><div class="nav-title">Panduan Aplikasi e-monev</div><ul>';
     (NAV.aplikasi||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
     h+='<div class="nav-group"><div class="nav-title">Server &amp; Infrastruktur BPTR</div><ul>';
     (NAV.server||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
-    h+='<div class="nav-group"><div class="nav-title">Manual Lengkap 7.26</div>';
+    h+='<div class="nav-group"><div class="nav-title">Panduan MikroTik V7</div>';
     NAV.manual.forEach(function(sec){
       var open=sec.items.some(function(i){return isActive(i.u);});
       h+='<details class="nav-sec"'+(open?' open':'')+'><summary>'+esc(sec.section)+'</summary><ul>';
@@ -52,9 +60,11 @@
     if(idx>=0){
       var info=lookup[flat[idx].u];
       if(info.kind==='panduan'){ h.push('<span class="sep">/</span><span>Panduan Praktis</span>'); }
+      else if(info.kind==='huawei'){ h.push('<span class="sep">/</span><span>Panduan Huawei Switch</span>'); }
+      else if(info.kind==='proxmox'){ h.push('<span class="sep">/</span><span>Panduan Proxmox &amp; PBS</span>'); }
       else if(info.kind==='aplikasi'){ h.push('<span class="sep">/</span><span>Panduan Aplikasi</span>'); }
       else if(info.kind==='server'){ h.push('<span class="sep">/</span><span>Server &amp; Infrastruktur</span>'); }
-      else { h.push('<span class="sep">/</span><span>Manual</span>'); h.push('<span class="sep">/</span><span>'+esc(info.section)+'</span>'); }
+      else { h.push('<span class="sep">/</span><span>Panduan MikroTik V7</span>'); h.push('<span class="sep">/</span><span>'+esc(info.section)+'</span>'); }
       h.push('<span class="sep">/</span><span>'+esc(info.title)+'</span>');
     }
     el.innerHTML=h.join(' ');

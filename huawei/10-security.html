@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="security">Security</h1>
+<h2 id="091-aaa-nac-8021x-mac-auth-portal">09.1 AAA / NAC (802.1X / MAC Auth / Portal)</h2>
+<pre><code class="language-bash"># 802.1X
+[HUAWEI] dot1x enable
+[HUAWEI] interface gigabitethernet 0/0/1
+[HUAWEI-GigabitEthernet0/0/1] dot1x port-method portbased
+[HUAWEI-GigabitEthernet0/0/1] dot1x authentication-method eap
+[HUAWEI-GigabitEthernet0/0/1] quit
+
+# MAC Authentication (Printer/IoT)
+[HUAWEI] mac-authen
+[HUAWEI] interface gigabitethernet 0/0/2
+[HUAWEI-GigabitEthernet0/0/2] mac-authen enable
+[HUAWEI-GigabitEthernet0/0/2] quit
+
+# Portal (Web Auth)
+[HUAWEI] portal-server http1 ip 10.10.10.100 port 50100
+[HUAWEI] interface vlanif 30
+[HUAWEI-Vlanif30] portal enable
+[HUAWEI-Vlanif30] quit
+</code></pre>
+<h2 id="092-acl-ipv4ipv6l2">09.2 ACL (IPv4/IPv6/L2)</h2>
+<pre><code class="language-bash"># Basic ACL (Src IP)
+[HUAWEI] acl 2000
+[HUAWEI-acl-basic-2000] rule 5 permit source 10.10.10.0 0.0.0.255
+[HUAWEI-acl-basic-2000] rule 10 deny
+[HUAWEI-acl-basic-2000] quit
+
+# Advanced ACL (L3/L4)
+[HUAWEI] acl 3000
+[HUAWEI-acl-adv-3000] rule 5 permit tcp source 192.168.20.0 0.0.0.255 destination-port eq 443
+[HUAWEI-acl-adv-3000] rule 10 permit udp source 192.168.20.0 0.0.0.255 destination-port eq 53
+[HUAWEI-acl-adv-3000] rule 15 deny ip
+[HUAWEI-acl-adv-3000] quit
+
+# Apply to interface
+[HUAWEI] interface vlanif 20
+[HUAWEI-Vlanif20] traffic-filter inbound acl 3000
+[HUAWEI-Vlanif20] quit
+
+# Apply to VTY
+[HUAWEI] user-interface vty 0 4
+[HUAWEI-ui-vty0-4] acl 2000 inbound
+[HUAWEI-ui-vty0-4] quit
+</code></pre>
+<h2 id="093-port-security">09.3 Port Security</h2>
+<pre><code class="language-bash">[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] port-security enable
+[HUAWEI-port-group-access_ports] port-security max-mac-num 2
+[HUAWEI-port-group-access_ports] port-security protect-action restrict
+[HUAWEI-port-group-access_ports] port-security aging-time 30
+[HUAWEI-port-group-access_ports] quit
+</code></pre>
+<h2 id="094-dhcp-snooping-dai-ipsg-sudah-di-043">09.4 DHCP Snooping / DAI / IPSG (sudah di 04.3)</h2>
+<h2 id="095-storm-control">09.5 Storm Control</h2>
+<pre><code class="language-bash">[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] storm-suppression broadcast pps 1000
+[HUAWEI-port-group-access_ports] storm-suppression multicast pps 2000
+[HUAWEI-port-group-access_ports] storm-suppression unicast pps 5000
+[HUAWEI-port-group-access_ports] quit
+</code></pre>
+<h2 id="096-arp-anti-spoof-ip-source-guard">09.6 ARP Anti-Spoof / IP Source Guard</h2>
+<pre><code class="language-bash">[HUAWEI] arp anti-attack gateway-duplicate enable
+[HUAWEI] arp anti-attack user-valid enable
+[HUAWEI] arp anti-attack check user-bind enable
+
+[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] ip source check user-bind enable
+[HUAWEI-port-group-access_ports] quit
+</code></pre>
+<h2 id="097-acl-virusworm-blocking-ref-vqiucn">09.7 ACL Virus/Worm Blocking (Ref: vqiu.cn)</h2>
+<pre><code class="language-bash">[HUAWEI] acl name defenceVirus 3801
+[HUAWEI-acl-adv-3801-defenceVirus] rule 5 permit tcp destination-port eq 445
+[HUAWEI-acl-adv-3801-defenceVirus] rule 10 permit tcp destination-port eq 135
+[HUAWEI-acl-adv-3801-defenceVirus] rule 15 permit tcp destination-port eq 137
+[HUAWEI-acl-adv-3801-defenceVirus] rule 20 permit tcp destination-port eq 139
+[HUAWEI-acl-adv-3801-defenceVirus] rule 25 permit udp destination-port eq 445
+[HUAWEI-acl-adv-3801-defenceVirus] rule 30 permit udp destination-port eq 135
+[HUAWEI-acl-adv-3801-defenceVirus] rule 35 permit udp destination-port eq 137
+[HUAWEI-acl-adv-3801-defenceVirus] rule 40 permit udp destination-port eq 139
+[HUAWEI-acl-adv-3801-defenceVirus] quit
+
+[HUAWEI] interface eth-trunk 1
+[HUAWEI-Eth-Trunk1] traffic-filter inbound acl 3801
+[HUAWEI-Eth-Trunk1] traffic-filter outbound acl 3801
+[HUAWEI-Eth-Trunk1] quit
+</code></pre>
+<h2 id="098-ssh-hardening">09.8 SSH Hardening</h2>
+<pre><code class="language-bash">[HUAWEI] ssh server authentication-retries 3
+[HUAWEI] ssh server timeout 60
+[HUAWEI] ssh server rekey-interval 1
+[HUAWEI] ssh server cipher aes256_ctr aes192_ctr aes128_ctr
+[HUAWEI] ssh server hmac sha2_256 sha2_512
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

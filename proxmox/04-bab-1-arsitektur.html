@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB I — Arsitektur Sistem &amp; Persiapan &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="arsitektur-sistem-persiapan">BAB I — Arsitektur Sistem &amp; Persiapan</h1>
+<h2 id="11-tujuan-dan-ruang-lingkup">1.1 Tujuan dan Ruang Lingkup</h2>
+<p>Dokumen ini berfungsi sebagai acuan standar bagi tim IT dalam melakukan instalasi, konfigurasi, operasional harian, pencadangan data (backup), dan pemulihan bencana (disaster recovery) pada infrastruktur virtualisasi kantor yang terdiri atas 3 (tiga) unit server fisik: dua server komputasi Proxmox Virtual Environment (PVE) dan satu server pencadangan khusus Proxmox Backup Server (PBS).</p>
+<h2 id="12-topologi-dan-alokasi-server">1.2 Topologi dan Alokasi Server</h2>
+<p>Gunakan skema penamaan (hostname) dan pengalamatan IP statis yang seragam sebelum memulai instalasi. Nilai IP di bawah ini merupakan contoh standar yang dapat disesuaikan dengan segmen VLAN/subnet server kantor:</p>
+<div class="table-scroll"><table><thead><tr><th>Nama Host (Hostname)</th><th>Peran Server</th><th>Sistem Operasi</th><th>Contoh Alamat IP</th><th>Fungsi Utama</th></tr></thead><tbody><tr><td>pve-node1.dputr.local</td><td>Compute Node 1</td><td></td><td>192.168.10.11/24</td><td>Menjalankan VM/CT produksi utama</td></tr><tr><td>pve-node2.dputr.local</td><td>Compute Node 2</td><td></td><td>192.168.10.12/24</td><td>Menjalankan VM/CT produksi &amp; target migrasi</td></tr><tr><td>pbs-server.dputr.local</td><td>Backup &amp; QDevice</td><td></td><td>192.168.10.13/24</td><td>Penyimpanan backup terdeduplikasi &amp; pemberi suara ke-3 (Quorum)</td></tr></tbody></table></div>
+<h2 id="13-catatan-arsitektur-quorum-pada-cluster-2-node">1.3 Catatan Arsitektur: Quorum pada Cluster 2-Node</h2>
+<p>Secara bawaan, Proxmox Cluster menggunakan protokol Corosync yang membutuhkan suara mayoritas (quorum) lebih dari 50% untuk mengizinkan perubahan konfigurasi dan menjalankan High Availability. Pada cluster yang hanya memiliki 2 node, matinya 1 node mengakibatkan suara tersisa 1 dari 2 (50%), sehingga cluster terkunci (read-only) untuk mencegah kondisi split-brain.</p>
+<p>Untuk mengatasi hal tersebut pada infrastruktur 3 server ini, Server PBS (pbs-server) wajib difungsikan sekaligus sebagai Corosync QDevice (pemberi suara ke-3 tanpa menjalankan VM). Dengan demikian, jika salah satu node PVE mengalami gangguan, node PVE yang tersisa tetap memiliki 2 dari 3 suara (66,7%) dan operasional tetap berjalan normal.</p>
+<h2 id="14-persiapan-perangkat-keras-dan-biosuefi">1.4 Persiapan Perangkat Keras dan BIOS/UEFI</h2>
+<p>Sebelum instalasi dilakukan pada ketiga server, pastikan persyaratan berikut telah terpenuhi:</p>
+<ul><li><strong>Virtualisasi CPU:</strong> Aktifkan fitur Intel VT-x / VT-d atau AMD-V / AMD-Vi pada BIOS/UEFI (wajib untuk <code>pve-node1</code> dan <code>pve-node2</code>).</li><li><strong>Konfigurasi Penyimpanan:</strong></li></ul>
+<ul><li>Jika menggunakan ZFS (direkomendasikan untuk fitur replikasi antar node), atur RAID Controller ke mode HBA / IT Mode (nonaktifkan Hardware RAID).</li><li>Jika menggunakan Hardware RAID, buat konfigurasi RAID 1 untuk OS dan RAID 10/5/6 untuk penyimpanan VM, lalu gunakan filesystem LVM-Thin atau ext4.</li></ul>
+<ul><li><strong>Jaringan:</strong> Disarankan memisahkan trafik manajemen/cluster dan trafik jaringan VM/backup menggunakan port NIC fisik terpisah atau VLAN.</li><li><strong>Media Instalasi:</strong> Siapkan USB bootable berisi berkas ISO resmi terbaru untuk Proxmox VE dan Proxmox Backup Server (gunakan tool seperti BalenaEtcher, Ventoy, atau Rufus dalam mode DD Image).</li></ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB IV — Instalasi &amp; Integrasi PBS &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="instalasi-integrasi-pbs">BAB IV — Instalasi &amp; Integrasi PBS</h1>
+<h2 id="41-prosedur-instalasi-pbs">4.1 Prosedur Instalasi PBS</h2>
+<ol><li>Lakukan booting server ke-3 menggunakan USB bootable Proxmox Backup Server.</li><li>Pilih <em>Install Proxmox Backup Server (Graphical)</em> dan setujui EULA.</li><li>Pilih disk khusus Sistem Operasi (pisahkan disk OS dari disk kapasitas besar yang akan digunakan sebagai Datastore backup).</li><li>Atur lokasi (Indonesia), zona waktu, kata sandi root, email admin, dan konfigurasi jaringan statis (<code>pbs-server.dputr.local</code> / <code>192.168.10.13/24</code>).</li><li>Selesaikan instalasi dan reboot. Akses Web GUI PBS melalui <code>https://192.168.10.13:8007</code>.</li></ol>
+<h2 id="42-konfigurasi-pasca-instalasi-pbs">4.2 Konfigurasi Pasca-Instalasi PBS</h2>
+<ol><li>Buka menu <strong>Administration &gt; Repositories</strong>. Nonaktifkan repositori <code>pbs-enterprise</code> (jika tanpa lisensi) dan tambahkan repositori <code>No-Subscription</code>.</li><li>Buka <strong>Administration &gt; Shell</strong>, lalu perbarui sistem:</li></ol>
+<pre><code>apt update &amp;&amp; apt full-upgrade -y</code></pre>
+<h2 id="43-pembuatan-datastore-backup">4.3 Pembuatan Datastore Backup</h2>
+<ol><li>Buka menu <strong>Administration &gt; Storage / Disks</strong>.</li><li>Siapkan disk penyimpanan data backup (disarankan menggunakan ZFS melalui tab <strong>ZFS &gt; Create: ZFS</strong> dengan konfigurasi RAIDZ1/RAIDZ2 atau Mirror sesuai jumlah disk).</li><li>Centang opsi <strong>Add as Datastore</strong> saat membuat ZFS pool, atau buat manual melalui menu <strong>Datastore &gt; Add Datastore</strong> (contoh nama datastore: <code>backup-produksi</code>).</li></ol>
+<h2 id="44-manajemen-akses-aman-user-api-token">4.4 Manajemen Akses Aman (User &amp; API Token)</h2>
+<p>Demi keamanan (prinsip hak akses minimum), integrasi PVE ke PBS tidak boleh menggunakan akun root. Buat akun khusus backup:</p>
+<ol><li>Buka <strong>Access Control &gt; User Management &gt; Add:</strong> User name: <code>pve-backup</code> | Realm: <code>pbs</code> | Isi kata sandi.</li><li>Buka <strong>Access Control &gt; API Token &gt; Add:</strong> User: <code>pve-backup@pbs</code> | Token name: <code>cluster-token</code> | Hapus centang <em>Privilege Separation</em> (atau atur izin terpisah). Catat dan simpan Secret yang muncul karena hanya ditampilkan satu kali.</li><li>Buka <strong>Access Control &gt; Permissions &gt; Add &gt; User Permission</strong> (dan API Token Permission): Path: <code>/datastore/backup-produksi</code> | User / API Token: <code>pve-backup@pbs</code> (dan tokennya) | Role: <code>DatastoreBackup</code> (memberi hak baca/tulis backup tanpa izin menghapus backup lama secara sembarangan).</li></ol>
+<h2 id="45-integrasi-pbs-ke-cluster-proxmox-ve">4.5 Integrasi PBS ke Cluster Proxmox VE</h2>
+<ol><li><strong>Ambil Fingerprint PBS:</strong> Pada Web GUI PBS, buka <strong>Dashboard</strong>, klik <strong>Show Fingerprint</strong>, lalu klik <strong>Copy</strong>.</li><li><strong>Tambahkan Storage di PVE:</strong> Pada Web GUI Cluster PVE (<code>pve-node1</code>), buka <strong>Datacenter &gt; Storage &gt; Add &gt; Proxmox Backup Server</strong>.</li><li><strong>Isi parameter berikut:</strong></li></ol>
+<ol><li><strong>ID:</strong><code>pbs-dputr</code></li><li><strong>Server:</strong><code>192.168.10.13</code></li><li><strong>Username:</strong><code>pve-backup@pbs!cluster-token</code></li><li><strong>Password:</strong><em>(Masukkan Secret API Token yang telah dicatat)</em></li><li><strong>Datastore:</strong><code>backup-produksi</code></li><li><strong>Fingerprint:</strong><em>(Tempel Fingerprint dari langkah 1)</em></li><li><strong>Nodes:</strong><code>All</code> (otomatis tersedia di Node 1 dan Node 2)</li></ol>
+<ol><li>Klik <strong>Add</strong>. Storage <code>pbs-dputr</code> kini aktif dan siap digunakan oleh seluruh cluster.</li></ol>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

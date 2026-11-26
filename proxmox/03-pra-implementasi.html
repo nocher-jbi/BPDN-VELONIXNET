@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pra-Implementasi: Lembar Parameter &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="pra-implementasi-lembar-parameter">Pra-Implementasi: Lembar Parameter</h1>
+<p>Seluruh alamat IP, hostname, nama storage, dan jadwal di dalam buku panduan ini menggunakan nilai contoh standar; sebelum instalasi dimulai, Tim IT wajib mengisi dan menyepakati parameter aktual lingkungan kantor pada tabel-tabel berikut, lalu menyimpannya kembali sebagai dokumentasi As-Built setelah selesai implementasi.</p>
+<h2 id="a-identitas-instansi-dan-penanggung-jawab">A. Identitas Instansi dan Penanggung Jawab</h2>
+<div class="table-scroll"><table><thead><tr><th>Parameter</th><th>Contoh / Default</th><th>Nilai Aktual Kantor (Diisi Tim IT)</th><th>Keterangan</th></tr></thead><tbody><tr><td>Nama Instansi / Kantor</td><td>Dinas Pekerjaan Umum dan Tata Ruang (DPUTR)</td><td>[Isi sesuai instansi]</td><td>Digunakan pada kop dan dokumentasi resmi</td></tr><tr><td>Unit Kerja / Tim Pengelola</td><td>Bidang / Tim IT</td><td>[Isi unit kerja]</td><td>Pemilik operasional infrastruktur server</td></tr><tr><td>Penanggung Jawab (PIC)</td><td>Koordinator IT</td><td>[Isi nama &amp; kontak]</td><td>Kontak eskalasi saat gangguan kritikal</td></tr><tr><td>Email Notifikasi Sistem</td><td>it-ops@kantor.local</td><td>[Isi email tim IT]</td><td>Penerima alert backup gagal, SMART disk, dan error sistem</td></tr></tbody></table></div>
+<h2 id="b-pengalamatan-jaringan-vlan-dan-hostname">B. Pengalamatan Jaringan, VLAN, dan Hostname</h2>
+<div class="table-scroll"><table><thead><tr><th>Parameter</th><th>Nilai Contoh di Panduan</th><th>Nilai Aktual Kantor (Diisi Tim IT)</th><th>Keterangan</th></tr></thead><tbody><tr><td>Domain Internal</td><td>dputr.local</td><td>[Isi domain internal]</td><td>Suffix FQDN seluruh server</td></tr><tr><td>Hostname &amp; IP PVE Node 1</td><td>pve-node1.dputr.local (192.168.10.11/24)</td><td>[Isi Hostname &amp; IP]</td><td>Server komputasi utama (IP statis)</td></tr><tr><td>Hostname &amp; IP PVE Node 2</td><td>pve-node2.dputr.local (192.168.10.12/24)</td><td>[Isi Hostname &amp; IP]</td><td>Server komputasi kedua &amp; target migrasi (IP statis)</td></tr><tr><td>Hostname &amp; IP Server PBS</td><td>pbs-server.dputr.local (192.168.10.13/24)</td><td>[Isi Hostname &amp; IP]</td><td>Server backup &amp; Corosync QDevice (IP statis)</td></tr><tr><td>Default Gateway</td><td>192.168.10.1</td><td>[Isi IP Gateway]</td><td>Router/gateway segmen manajemen server</td></tr><tr><td>DNS Server (Primary &amp; Secondary)</td><td>192.168.10.2 / 8.8.8.8</td><td>[Isi IP DNS]</td><td>DNS internal kantor dan/atau DNS publik</td></tr><tr><td>VLAN Manajemen &amp; Cluster</td><td>VLAN 10 (Dedicated)</td><td>[Isi VLAN ID / NIC]</td><td>Disarankan terpisah dari trafik pengguna</td></tr><tr><td>VLAN / Subnet Jaringan VM</td><td>VLAN 20, 30, dst.</td><td>[Isi daftar VLAN VM]</td><td>Segmen jaringan aplikasi/layanan produksi</td></tr><tr><td>IP / Subnet Whitelist Admin</td><td>192.168.10.0/24 atau VPN</td><td>[Isi IP/Subnet Admin]</td><td>Daftar IP yang diizinkan mengakses port 8006, 8007, dan SSH 22</td></tr></tbody></table></div>
+<h2 id="c-konfigurasi-cluster-sistem-dan-waktu">C. Konfigurasi Cluster, Sistem, dan Waktu</h2>
+<div class="table-scroll"><table><thead><tr><th>Parameter</th><th>Nilai Contoh di Panduan</th><th>Nilai Aktual Kantor (Diisi Tim IT)</th><th>Keterangan</th></tr></thead><tbody><tr><td>Nama Cluster Proxmox</td><td>cluster-dputr</td><td>[Isi nama cluster]</td><td>Tanpa spasi, unik di jaringan kantor</td></tr><tr><td>Zona Waktu (Timezone)</td><td>Asia/Jakarta (WIB)</td><td>[WIB / WITA / WIT]</td><td>Harus seragam di ketiga server</td></tr><tr><td>NTP Server</td><td>Default pool / internal</td><td>[Isi IP NTP internal]</td><td>Wajib sinkron agar Corosync Cluster &amp; jadwal backup akurat</td></tr><tr><td>Status Lisensi Proxmox</td><td>No-Subscription</td><td>[No-Subscription / Enterprise]</td><td>Menentukan repositori paket yang diaktifkan</td></tr><tr><td>SMTP Relay / Mail Server</td><td>Opsional</td><td>[Isi host &amp; port SMTP]</td><td>Diperlukan agar notifikasi email otomatis terkirim</td></tr></tbody></table></div>
+<h2 id="d-penyimpanan-storage-dan-spesifikasi-perangkat-keras">D. Penyimpanan (Storage) dan Spesifikasi Perangkat Keras</h2>
+<div class="table-scroll"><table><thead><tr><th>Parameter</th><th>Nilai Contoh di Panduan</th><th>Nilai Aktual Kantor (Diisi Tim IT)</th><th>Keterangan</th></tr></thead><tbody><tr><td>Mode RAID Controller</td><td>HBA / IT Mode (untuk ZFS)</td><td>[HBA/IT Mode atau HW RAID]</td><td>Jangan jalankan ZFS di atas Hardware RAID</td></tr><tr><td>Filesystem OS &amp; VM (PVE)</td><td>ZFS (RAID1) / LVM-Thin</td><td>[Isi pilihan filesystem]</td><td>Wajib ZFS dengan Storage ID sama jika ingin fitur Replikasi antar node</td></tr><tr><td>Nama Storage ID VM (PVE)</td><td>local-zfs / local-lvm</td><td>[Isi nama Storage ID]</td><td>Harus identik di Node 1 dan Node 2 untuk kemudahan migrasi</td></tr><tr><td>Konfigurasi Disk Datastore PBS</td><td>ZFS Mirror / RAIDZ1-Z2</td><td>[Isi topologi disk PBS]</td><td>Pisahkan disk OS PBS dari disk Datastore backup</td></tr><tr><td>Nama Datastore PBS</td><td>backup-produksi</td><td>[Isi nama datastore]</td><td>Target penyimpanan backup di Server PBS</td></tr><tr><td>Nama Storage PBS di PVE</td><td>pbs-dputr</td><td>[Isi ID storage di PVE]</td><td>Nama tampilan storage backup di Web GUI PVE</td></tr><tr><td>Tipe CPU Standar VM</td><td>host / x86-64-v2-AES</td><td>[Isi tipe CPU]</td><td>Gunakan x86-64-v2-AES jika generasi CPU Node 1 &amp; Node 2 berbeda</td></tr></tbody></table></div>
+<h2 id="e-keamanan-manajemen-akun-dan-kebijakan-backup">E. Keamanan, Manajemen Akun, dan Kebijakan Backup</h2>
+<div class="table-scroll"><table><thead><tr><th>Parameter</th><th>Nilai Contoh di Panduan</th><th>Nilai Aktual Kantor (Diisi Tim IT)</th><th>Keterangan</th></tr></thead><tbody><tr><td>Daftar Akun Staf IT &amp; Role</td><td>Admin / Operator individual</td><td>[Isi daftar username &amp; role]</td><td>Hindari berbagi akun root untuk kerja harian</td></tr><tr><td>User &amp; API Token Backup PBS</td><td>pve-backup@pbs!cluster-token</td><td>[Isi nama user &amp; token]</td><td>Simpan Secret API Token di password manager resmi tim IT</td></tr><tr><td>Aplikasi 2FA / TOTP</td><td>Google Authenticator / FreeOTP</td><td>[Isi standar 2FA tim IT]</td><td>Wajib aktif untuk semua akun administrator PVE &amp; PBS</td></tr><tr><td>Jadwal Backup Otomatis</td><td>Setiap hari pukul 01:00</td><td>[Isi jam backup]</td><td>Pilih di luar jam operasional kantor agar tidak mengganggu performa</td></tr><tr><td>Kebijakan Retensi (Prune)</td><td>Daily: 7, Weekly: 4, Monthly: 6</td><td>[Isi kebijakan retensi]</td><td>Sesuaikan dengan kapasitas disk PBS &amp; aturan retensi data kantor</td></tr><tr><td>Jadwal Verify &amp; Garbage Collection</td><td>Verify Sabtu 02:00 / GC Minggu 04:00</td><td>[Isi jadwal Verify &amp; GC]</td><td>Pastikan tidak bertabrakan dengan jam Backup Job</td></tr></tbody></table></div>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

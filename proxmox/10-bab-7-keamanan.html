@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB VII — Keamanan, Pemeliharaan &amp; Gangguan &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="keamanan-pemeliharaan-gangguan">BAB VII — Keamanan, Pemeliharaan &amp; Gangguan</h1>
+<h2 id="71-standar-keamanan-infrastruktur">7.1 Standar Keamanan Infrastruktur</h2>
+<ul><li><strong>Autentikasi Dua Faktor (2FA/TOTP):</strong> Wajib diaktifkan untuk seluruh akun administrator pada PVE (<strong>Datacenter &gt; Permissions &gt; Two Factor</strong>) dan PBS (<strong>Access Control &gt; Two Factor Authentication</strong>).</li><li><strong>Pembatasan Akses Manajemen:</strong> Port manajemen PVE (8006), PBS (8007), dan SSH (22) hanya boleh dapat diakses dari jaringan/VLAN khusus tim IT atau melalui VPN kantor.</li><li><strong>Manajemen Akun Staf IT:</strong> Buat akun individual untuk setiap staf IT dengan peran (Role) sesuai tugasnya; hindari berbagi akun root untuk operasional harian agar jejak audit (Syslog/Task History) jelas.</li><li><strong>Proxmox Firewall:</strong> Aktifkan firewall di level Datacenter/VM untuk membatasi port yang terekspos ke jaringan pengguna.</li></ul>
+<h2 id="72-jadwal-pemeliharaan-rutin-tim-it">7.2 Jadwal Pemeliharaan Rutin Tim IT</h2>
+<div class="table-scroll"><table><thead><tr><th>Periode</th><th>Aktivitas Pemeliharaan</th></tr></thead><tbody><tr><td>Harian</td><td>Memeriksa status hasil Backup Job semalam, status kesehatan node (CPU/RAM/Storage), dan log error pada dasbor PVE &amp; PBS.</td></tr><tr><td>Mingguan</td><td>Memeriksa hasil Verify Job dan Garbage Collection di PBS, serta memantau kapasitas disk tersisa (pastikan di bawah 80%).</td></tr><tr><td>Bulanan</td><td>Memeriksa status kesehatan fisik disk (S.M.A.R.T.), melakukan pembaruan keamanan sistem (patching) secara bergantian per node (migrasi VM sebelum reboot), serta meninjau akun pengguna aktif.</td></tr><tr><td>Triwulanan</td><td>Melakukan Simulasi Uji Restore pada minimal 1 VM kritikal ke VM ID pengujian untuk memvalidasi bahwa backup benar-benar berfungsi saat darurat.</td></tr></tbody></table></div>
+<h2 id="73-penanganan-gangguan-umum-troubleshooting">7.3 Penanganan Gangguan Umum (Troubleshooting)</h2>
+<div class="table-scroll"><table><thead><tr><th>Gejala Gangguan</th><th>Kemungkinan Penyebab</th><th>Langkah Penanganan</th></tr></thead><tbody><tr><td>Web GUI PVE tidak bisa diakses, tetapi VM masih berjalan</td><td>Layanan pveproxy terhenti atau sertifikat SSL bermasalah.</td><td>Masuk via SSH ke node terkait, jalankan systemctl restart pveproxy pvedaemon.</td></tr><tr><td>Cluster terkunci (no quorum) saat 1 node mati</td><td>QDevice belum dikonfigurasi atau layanan corosync-qnetd di PBS mati.</td><td>Periksa pvecm status. Pastikan pbs-server menyala dan jalankan systemctl status corosync-qnetd di PBS. (Darurat sementara: jalankan pvecm expected 1 di node hidup hanya untuk penyelamatan).</td></tr><tr><td>Backup ke PBS gagal (Timeout / Permission Denied)</td><td>Jaringan ke PBS terputus, Datastore penuh, atau izin API Token berubah.</td><td>Cek koneksi ping ke IP PBS, cek sisa ruang disk di PBS, dan verifikasi izin role DatastoreBackup pada API Token.</td></tr><tr><td>VM tidak merespons saat diklik Shutdown</td><td>qemu-guest-agent belum terinstal atau OS di dalam VM mengalami hang.</td><td>Gunakan opsi Stop (setara cabut daya) dari Web GUI, atau jalankan qm stop &lt;VMID&gt; melalui shell node.</td></tr><tr><td>Kapasitas disk PBS penuh padahal backup lama sudah di-Prune</td><td>Garbage Collection (GC) belum berjalan atau masih dalam masa tunggu 24 jam.</td><td>Jalankan Garbage Collection secara manual di PBS (Datastore &gt; Prune &amp; GC &gt; Start Garbage Collection).</td></tr></tbody></table></div>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="reliability">Reliability</h1>
+<h2 id="071-bfd-bidirectional-forwarding-detection">07.1 BFD (Bidirectional Forwarding Detection)</h2>
+<pre><code class="language-bash">[HUAWEI] bfd
+[HUAWEI-bfd] quit
+
+[HUAWEI] interface vlanif 10
+[HUAWEI-Vlanif10] bfd min-tx-interval 100 min-rx-interval 100 detect-multiplier 3
+[HUAWEI-Vlanif10] quit
+
+[HUAWEI] ospf 1
+[HUAWEI-ospf-1] bfd all-interfaces enable
+[HUAWEI-ospf-1] quit
+</code></pre>
+<h2 id="072-vrrp-sudah-di-046">07.2 VRRP (sudah di 04.6)</h2>
+<h2 id="073-nsr-gr-non-stop-routing-graceful-restart">07.3 NSR / GR (Non-Stop Routing / Graceful Restart)</h2>
+<pre><code class="language-bash">[HUAWEI] ospf 1
+[HUAWEI-ospf-1] graceful-restart
+[HUAWEI-ospf-1] quit
+
+[HUAWEI] bgp 65001
+[HUAWEI-bgp] graceful-restart
+[HUAWEI-bgp] quit
+</code></pre>
+<h2 id="074-dldp-device-link-detection-protocol">07.4 DLDP (Device Link Detection Protocol)</h2>
+<pre><code class="language-bash">[HUAWEI] dldp enable
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] dldp enable
+[HUAWEI-GigabitEthernet0/0/25] dldp interval 5
+[HUAWEI-GigabitEthernet0/0/25] quit
+</code></pre>
+<h2 id="075-smart-link-monitor-link">07.5 Smart Link / Monitor Link</h2>
+<pre><code class="language-bash"># Smart Link (Fast failover &lt; 50ms)
+[HUAWEI] smart-link group 1
+[HUAWEI-smlk-group1] port gigabitethernet 0/0/25 master
+[HUAWEI-smlk-group1] port gigabitethernet 0/0/26 slave
+[HUAWEI-smlk-group1] flush send control-vlan 100
+[HUAWEI-smlk-group1] restore enable
+[HUAWEI-smlk-group1] restore time 30
+[HUAWEI-smlk-group1] quit
+[HUAWEI] smart-link enable
+
+# Monitor Link (Uplink → Downlink)
+[HUAWEI] monitor-link group 1
+[HUAWEI-mlk-group1] port gigabitethernet 0/0/25 uplink
+[HUAWEI-mlk-group1] port gigabitethernet 0/0/1 downlink
+[HUAWEI-mlk-group1] quit
+[HUAWEI] monitor-link enable
+</code></pre>
+<h2 id="076-m-lag-sudah-di-033">07.6 M-LAG (sudah di 03.3)</h2>
+<h2 id="077-css-istack-chassis-clustering">07.7 CSS / iStack (Chassis Clustering)</h2>
+<pre><code class="language-bash"># CSS (S7700/S9700/CE - Cluster Switch System)
+[HUAWEI] set css id 1 priority 100
+[HUAWEI] set css port interface gigabitethernet 1/0/1 to 1/0/4
+[HUAWEI] css enable
+# Reboot required
+
+# iStack (S5700/S6700 - Stack)
+[HUAWEI] stack
+[HUAWEI-stack] stack member 1 domain 10
+[HUAWEI-stack] stack member 1 priority 100
+[HUAWEI-stack] stack enable
+# Reboot required
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

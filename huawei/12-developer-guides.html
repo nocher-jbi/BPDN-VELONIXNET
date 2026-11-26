@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developer Guides &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="developer-guides">Developer Guides</h1>
+<h2 id="111-netconfyang-model-driven-automation">11.1 NETCONF/YANG (Model-Driven Automation)</h2>
+<pre><code class="language-bash"># Enable NETCONF over SSH (port 830)
+[HUAWEI] netconf
+[HUAWEI-netconf] ssh server enable
+[HUAWEI-netconf] quit
+
+# YANG Models: ietf-interfaces, ietf-vlan, huawei-qos, huawei-acl, huawei-bgp, huawei-mpls
+# Get capabilities:
+# &lt;hello&gt;&lt;capabilities&gt;&lt;capability&gt;urn:ietf:params:netconf:capability:yang-library:1.0&lt;/capability&gt;&lt;/capabilities&gt;&lt;/hello&gt;
+</code></pre>
+<h3 id="common-netconf-rpc-examples">Common NETCONF RPC Examples</h3>
+<pre><code class="language-xml">&lt;!-- Get running config --&gt;
+&lt;get-config&gt;
+  &lt;source&gt;&lt;running/&gt;&lt;/source&gt;
+&lt;/get-config&gt;
+
+&lt;!-- Edit config: Add VLAN --&gt;
+&lt;edit-config&gt;
+  &lt;target&gt;&lt;running/&gt;&lt;/target&gt;
+  &lt;config&gt;
+    &lt;vlans xmlns=&quot;urn:ietf:params:xml:ns:yang:ietf-vlan&quot;&gt;
+      &lt;vlan&gt;
+        &lt;vlan-id&gt;100&lt;/vlan-id&gt;
+        &lt;name&gt;SERVER&lt;/name&gt;
+        &lt;status&gt;active&lt;/status&gt;
+      &lt;/vlan&gt;
+    &lt;/vlans&gt;
+  &lt;/config&gt;
+&lt;/edit-config&gt;
+
+&lt;!-- Get interface statistics --&gt;
+&lt;get&gt;
+  &lt;filter type=&quot;subtree&quot;&gt;
+    &lt;interfaces-state xmlns=&quot;urn:ietf:params:xml:ns:yang:ietf-interfaces&quot;&gt;
+      &lt;interface&gt;
+        &lt;name&gt;GigabitEthernet0/0/1&lt;/name&gt;
+      &lt;/interface&gt;
+    &lt;/interfaces-state&gt;
+  &lt;/filter&gt;
+&lt;/get&gt;
+</code></pre>
+<h2 id="112-restconf-httpjson">11.2 RESTCONF (HTTP/JSON)</h2>
+<pre><code class="language-bash">[HUAWEI] restconf
+[HUAWEI-restconf] https server enable
+[HUAWEI-restconf] quit
+
+# API Endpoints:
+# GET  /restconf/data/ietf-interfaces:interfaces
+# POST /restconf/data/ietf-vlan:vlans
+# PATCH /restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet0/0/1
+</code></pre>
+<h2 id="113-gnmi-telemetry-streaming">11.3 gNMI / Telemetry Streaming</h2>
+<pre><code class="language-bash">[HUAWEI] gnmi
+[HUAWEI-gnmi] port 50051
+[HUAWEI-gnmi] quit
+
+# Subscription paths:
+# /interfaces/interface[name=*]/state/counters
+# /system/cpu-usage
+# /system/memory-usage
+# /lldp/neighbors
+# /bgp/neighbors/neighbor[neighbor-address=*]/state
+</code></pre>
+<h2 id="114-ops-python-scripts">11.4 OPS Python Scripts</h2>
+<pre><code class="language-bash"># Upload script
+[HUAWEI] ops install file flash:/backup_script.py
+
+# Register
+[HUAWEI] ops
+[HUAWEI-ops] script-python backup_script.py
+[HUAWEI-ops] timer cron backup_timer 0 2 * * * script-python backup_script.py
+[HUAWEI-ops] quit
+
+# Contoh backup_script.py:
+# import huawei
+# conn = huawei.connect()
+# config = conn.get_config('running')
+# conn.upload_tftp(config, '10.10.10.100', f'backup_{datetime.now()}.cfg')
+</code></pre>
+<h2 id="115-imaster-nce-campus-imaster-nce-fabric-api">11.5 iMaster NCE-Campus / iMaster NCE-Fabric API</h2>
+<pre><code class="language-bash"># Northbound REST API untuk SDN Controller
+# Base URL: https://nce-ip:18902/restconf/v1/
+# Auth: Bearer token dari /auth/token
+
+# Contoh: Push template ke switch
+# POST /network-element/{neId}/configuration/template
+# Body: { &quot;templateName&quot;: &quot;ACCESS_SWITCH_STD&quot;, &quot;parameters&quot;: { &quot;mgmtIp&quot;: &quot;10.10.10.2&quot;, &quot;uplinkPort&quot;: &quot;GE0/0/25&quot; } }
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

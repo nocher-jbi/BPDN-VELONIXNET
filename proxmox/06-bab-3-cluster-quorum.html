@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB III — Cluster 2-Node &amp; Quorum (QDevice) &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="cluster-2-node-quorum-qdevice">BAB III — Cluster 2-Node &amp; Quorum (QDevice)</h1>
+<p>Pastikan <code>pve-node1</code> dan <code>pve-node2</code> dapat saling berkomunikasi melalui jaringan (ping) dan belum memiliki VM/CT di node yang akan bergabung (pve-node2).</p>
+<h2 id="31-membuat-cluster-di-node-1-dan-menggabungkan-node-2">3.1 Membuat Cluster di Node 1 dan Menggabungkan Node 2</h2>
+<ol><li><strong>Pada Web GUI <code>pve-node1</code>:</strong> Buka menu <strong>Datacenter &gt; Cluster</strong>. Klik <strong>Create Cluster</strong>. Isi Cluster Name (contoh: <code>cluster-dputr</code>) dan pilih Cluster Network (IP manajemen/khusus cluster). Klik <strong>Create</strong>. Setelah terbentuk, klik <strong>Join Information</strong> lalu klik <strong>Copy Information</strong>.</li><li><strong>Pada Web GUI <code>pve-node2</code>:</strong> Buka menu <strong>Datacenter &gt; Cluster</strong>. Klik <strong>Join Cluster</strong>. Tempel (paste) informasi yang telah disalin ke kolom Information. Masukkan kata sandi root dari <code>pve-node1</code>, pilih Cluster Network, lalu klik <strong>Join &#x27;cluster-dputr&#x27;</strong>.</li><li><strong>Verifikasi:</strong> Tunggu hingga antarmuka Web GUI termuat ulang. Kedua node kini dapat dikelola dari satu dasbor terpusat.</li></ol>
+<h2 id="32-menjadikan-server-pbs-sebagai-corosync-qdevice">3.2 Menjadikan Server PBS sebagai Corosync QDevice</h2>
+<p><em>Catatan Prasyarat: Jalankan langkah ini setelah Server PBS selesai diinstal pada Bab IV (Bagian 4.1 &amp; 4.2).</em></p>
+<ol><li><strong>Instalasi layanan QNetd pada Server PBS (<code>pbs-server</code>):</strong> Masuk ke shell <code>pbs-server</code> dan jalankan:</li></ol>
+<pre><code>apt update &amp;&amp; apt install corosync-qnetd -y</code></pre>
+<ol><li><strong>Instalasi paket QDevice pada kedua Node PVE (<code>pve-node1</code> dan <code>pve-node2</code>):</strong> Jalankan perintah berikut pada shell masing-masing node PVE:</li></ol>
+<pre><code>apt update &amp;&amp; apt install corosync-qdevice -y</code></pre>
+<ol><li><strong>Mendaftarkan QDevice ke Cluster:</strong> Cukup jalankan dari shell <code>pve-node1</code>:</li></ol>
+<pre><code>pvecm qdevice setup 192.168.10.13</code></pre>
+<p><em>(Ganti 192.168.10.13 dengan IP aktual </em><em><code>pbs-server</code></em><em>. Masukkan kata sandi root PBS saat diminta).</em><br>4. <strong>Verifikasi Status Quorum:</strong> Jalankan <code>pvecm status</code> pada <code>pve-node1</code>. Pastikan keluaran menunjukkan <code>Total votes: 3</code>, <code>Quorum: 2</code>, dan Qdevice berstatus aktif.</p>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

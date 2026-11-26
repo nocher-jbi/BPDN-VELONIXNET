@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Management Plane &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="management-plane">Management Plane</h1>
+<h2 id="011-aaa-authentication-authorization">01.1 AAA Authentication &amp; Authorization</h2>
+<pre><code class="language-bash"># Local users
+[HUAWEI] aaa
+[HUAWEI-aaa] local-user noc-read password irreversible-cipher ReadOnly123!
+[HUAWEI-aaa] local-user noc-read privilege level 1
+[HUAWEI-aaa] local-user noc-read service-type terminal ssh
+[HUAWEI-aaa] quit
+
+# RADIUS (Centralized)
+[HUAWEI] radius-server template HUAWEI_RADIUS
+[HUAWEI-radius-HUAWEI_RADIUS] radius-server authentication 10.10.10.10 1812
+[HUAWEI-radius-HUAWEI_RADIUS] radius-server accounting 10.10.10.10 1813
+[HUAWEI-radius-HUAWEI_RADIUS] radius-server shared-key cipher RadiusSecret2026
+[HUAWEI-radius-HUAWEI_RADIUS] quit
+
+[HUAWEI] aaa
+[HUAWEI-aaa] authentication-scheme RADIUS_AUTH
+[HUAWEI-aaa-authen-RADIUS_AUTH] authentication-mode radius local
+[HUAWEI-aaa-authen-RADIUS_AUTH] quit
+[HUAWEI-aaa] authorization-scheme RADIUS_AUTHZ
+[HUAWEI-aaa-author-RADIUS_AUTHZ] authorization-mode radius local
+[HUAWEI-aaa-author-RADIUS_AUTHZ] quit
+[HUAWEI-aaa] accounting-scheme RADIUS_ACCT
+[HUAWEI-aaa-acct-RADIUS_ACCT] accounting-mode radius
+[HUAWEI-aaa-acct-RADIUS_ACCT] quit
+[HUAWEI-aaa] domain default_admin
+[HUAWEI-aaa-domain-default_admin] authentication-scheme RADIUS_AUTH
+[HUAWEI-aaa-domain-default_admin] authorization-scheme RADIUS_AUTHZ
+[HUAWEI-aaa-domain-default_admin] accounting-scheme RADIUS_ACCT
+[HUAWEI-aaa-domain-default_admin] radius-server HUAWEI_RADIUS
+[HUAWEI-aaa-domain-default_admin] quit
+</code></pre>
+<h2 id="012-snmp-v2cv3">01.2 SNMP (v2c/v3)</h2>
+<pre><code class="language-bash"># SNMPv2c
+[HUAWEI] snmp-agent sys-info version v2c v3
+[HUAWEI] snmp-agent community read cipher NOC_MONITOR_RO
+[HUAWEI] snmp-agent sys-info contact &quot;NOC Team - noc@company.co.id&quot;
+[HUAWEI] snmp-agent sys-info location &quot;DC-JKT-Rack-A12&quot;
+
+# SNMPv3 (Secure)
+[HUAWEI] snmp-agent group v3 NOC_GROUP privacy read-view ISO_VIEW write-view ISO_VIEW notify-view ISO_VIEW
+[HUAWEI] snmp-agent usm-user v3 noc-admin NOC_GROUP privacy cipher AuthPass123! cipher PrivPass456!
+[HUAWEI] snmp-agent mib-view included ISO_VIEW iso
+</code></pre>
+<h2 id="013-ntp-ptp-time-sync">01.3 NTP / PTP (Time Sync)</h2>
+<pre><code class="language-bash">[HUAWEI] ntp-service unicast-server 10.10.10.100
+[HUAWEI] ntp-service auth-keyid 1 authentication-mode md5 cipher NTP_Key_2026
+[HUAWEI] ntp-service reliable
+
+# PTP (1588v2) - untuk telecom/finance
+[HUAWEI] ptp enable
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] ptp enable
+[HUAWEI-GigabitEthernet0/0/25] ptp delay-mechanism e2e
+</code></pre>
+<h2 id="014-web-management-easyweb">01.4 Web Management / EasyWeb</h2>
+<pre><code class="language-bash">[HUAWEI] http server enable
+[HUAWEI] https server enable
+[HUAWEI] web-management acl 2000        # Restrict by ACL
+</code></pre>
+<h2 id="015-netconf-restconf-gnmi-automation">01.5 NETCONF / RESTCONF / gNMI (Automation)</h2>
+<pre><code class="language-bash">[HUAWEI] netconf
+[HUAWEI-netconf] ssh server enable
+[HUAWEI-netconf] quit
+
+[HUAWEI] restconf
+[HUAWEI-restconf] http server enable
+[HUAWEI-restconf] https server enable
+[HUAWEI-restconf] quit
+
+# gNMI (Telemetry streaming)
+[HUAWEI] gnmi
+[HUAWEI-gnmi] port 50051
+[HUAWEI-gnmi] quit
+</code></pre>
+<h2 id="016-ops-python-automation-scripts">01.6 OPS (Python Automation Scripts)</h2>
+<pre><code class="language-bash">[HUAWEI] ops
+[HUAWEI-ops] script-python startup.py
+[HUAWEI-ops] quit
+
+# Contoh script: auto-backup config ke TFTP tiap jam 2 AM
+</code></pre>
+<h2 id="017-firmware-upgrade-patch">01.7 Firmware Upgrade &amp; Patch</h2>
+<pre><code class="language-bash"># 1. Backup config
+[HUAWEI] save backup.cfg
+[HUAWEI] copy flash:/backup.cfg tftp://10.10.10.100/backup_$(date +%Y%m%d).cfg
+
+# 2. Download image
+[HUAWEI] copy tftp://10.10.10.100/S5720-V600R025C00.cc flash:/S5720-V600R025C00.cc
+
+# 3. Set startup
+[HUAWEI] startup system-software flash:/S5720-V600R025C00.cc
+
+# 4. Verify &amp; reboot
+[HUAWEI] display startup
+[HUAWEI] reboot
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

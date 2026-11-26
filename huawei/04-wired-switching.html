@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wired Switching &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="wired-switching">Wired Switching</h1>
+<h2 id="031-vlan">03.1 VLAN</h2>
+<pre><code class="language-bash"># Batch create
+[HUAWEI] vlan batch 10 20 30 99 100 200 1000-1010
+
+# Named VLAN
+[HUAWEI] vlan 10
+[HUAWEI-vlan10] name MGMT
+[HUAWEI-vlan10] description &quot;Management VLAN&quot;
+[HUAWEI-vlan10] quit
+
+# VLANIF (L3 Interface)
+[HUAWEI] interface vlanif 10
+[HUAWEI-Vlanif10] ip address 10.10.10.1 255.255.255.0
+[HUAWEI-Vlanif10] vrrp vrid 10 virtual-ip 10.10.10.254
+[HUAWEI-Vlanif10] quit
+</code></pre>
+<h2 id="032-port-configuration-accesstrunkhybrid">03.2 Port Configuration (Access/Trunk/Hybrid)</h2>
+<pre><code class="language-bash"># Access port (massal via port-group)
+[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] group-member gigabitethernet 0/0/1 to gigabitethernet 0/0/24
+[HUAWEI-port-group-access_ports] port link-type access
+[HUAWEI-port-group-access_ports] port default vlan 20
+[HUAWEI-port-group-access_ports] quit
+
+# Trunk port
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] port link-type trunk
+[HUAWEI-GigabitEthernet0/0/25] port trunk allow-pass vlan 10 20 30 99 100 200
+[HUAWEI-GigabitEthernet0/0/25] port trunk pvid vlan 99
+[HUAWEI-GigabitEthernet0/0/25] quit
+
+# Hybrid (untuk QinQ/voice VLAN)
+[HUAWEI] interface gigabitethernet 0/0/1
+[HUAWEI-GigabitEthernet0/0/1] port link-type hybrid
+[HUAWEI-GigabitEthernet0/0/1] port hybrid tagged vlan 200
+[HUAWEI-GigabitEthernet0/0/1] port hybrid untagged vlan 20
+[HUAWEI-GigabitEthernet0/0/1] quit
+</code></pre>
+<h2 id="033-eth-trunk-lacp-m-lag">03.3 Eth-Trunk / LACP / M-LAG</h2>
+<pre><code class="language-bash"># Static LACP (Standard)
+[HUAWEI] interface eth-trunk 1
+[HUAWEI-Eth-Trunk1] mode lacp-static
+[HUAWEI-Eth-Trunk1] port link-type trunk
+[HUAWEI-Eth-Trunk1] port trunk allow-pass vlan 10 20 30 99 100 200
+[HUAWEI-Eth-Trunk1] quit
+
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] eth-trunk 1
+[HUAWEI-GigabitEthernet0/0/25] quit
+[HUAWEI] interface gigabitethernet 0/0/26
+[HUAWEI-GigabitEthernet0/0/26] eth-trunk 1
+[HUAWEI-GigabitEthernet0/0/26] quit
+
+# M-LAG (Multi-Chassis LAG) - Peer Link
+[HUAWEI] interface eth-trunk 10
+[HUAWEI-Eth-Trunk10] mode lacp-static
+[HUAWEI-Eth-Trunk10] quit
+[HUAWEI] interface gigabitethernet 0/0/27
+[HUAWEI-GigabitEthernet0/0/27] eth-trunk 10
+[HUAWEI-GigabitEthernet0/0/27] quit
+[HUAWEI] interface gigabitethernet 0/0/28
+[HUAWEI-GigabitEthernet0/0/28] eth-trunk 10
+[HUAWEI-GigabitEthernet0/0/28] quit
+
+[HUAWEI] interface eth-trunk 10
+[HUAWEI-Eth-Trunk10] port link-type trunk
+[HUAWEI-Eth-Trunk10] port trunk allow-pass vlan 10 20 30 99 100 200
+[HUAWEI-Eth-Trunk10] quit
+
+[HUAWEI] m-lag domain 1
+[HUAWEI-m-lag-domain-1] local-ip 10.10.10.2 peer-ip 10.10.10.3
+[HUAWEI-m-lag-domain-1] member-interface eth-trunk 10
+[HUAWEI-m-lag-domain-1] source-ip 10.10.10.2
+[HUAWEI-m-lag-domain-1] priority 100
+[HUAWEI-m-lag-domain-1] quit
+</code></pre>
+<h2 id="034-mac-address-table">03.4 MAC Address Table</h2>
+<pre><code class="language-bash">&lt;HUAWEI&gt; display mac-address                  # All MAC
+&lt;HUAWEI&gt; display mac-address vlan 20          # Per VLAN
+&lt;HUAWEI&gt; display mac-address static           # Static entries
+&lt;HUAWEI&gt; display mac-address dynamic          # Dynamic entries
+&lt;HUAWEI&gt; display mac-limit                    # MAC limit per port/VLAN
+
+# Static MAC / Port Security
+[HUAWEI] mac-address static 0000-5e00-0101 vlan 10 interface gigabitethernet 0/0/1
+[HUAWEI] mac-limit maximum 2 vlan 20
+</code></pre>
+<h2 id="035-stp-rstp-mstp-vbst-erps">03.5 STP / RSTP / MSTP / VBST / ERPS</h2>
+<pre><code class="language-bash"># MSTP (Recommended)
+[HUAWEI] stp mode mstp
+[HUAWEI] stp region-configuration
+[HUAWEI-mst-region] region-name COMPANY_NET
+[HUAWEI-mst-region] revision-level 1
+[HUAWEI-mst-region] instance 1 vlan 10 20 30
+[HUAWEI-mst-region] instance 2 vlan 100 200
+[HUAWEI-mst-region] active region-configuration
+[HUAWEI-mst-region] quit
+
+[HUAWEI] stp instance 1 root primary
+[HUAWEI] stp instance 2 root secondary
+
+# Edge Port (PortFast)
+[HUAWEI] port-group access_ports
+[HUAWEI-port-group-access_ports] stp edged-port enable
+[HUAWEI-port-group-access_ports] stp bpdu-filter enable
+[HUAWEI-port-group-access_ports] quit
+
+# ERPS (G.8032 Ring Protection)
+[HUAWEI] erps ring 1
+[HUAWEI-erps-ring1] control-vlan 100
+[HUAWEI-erps-ring1] protected-instance 1 to 10
+[HUAWEI-erps-ring1] wtr-timer 5
+[HUAWEI-erps-ring1] quit
+[HUAWEI] interface gigabitethernet 0/0/25
+[HUAWEI-GigabitEthernet0/0/25] erps ring 1 rpl owner
+[HUAWEI-GigabitEthernet0/0/25] quit
+[HUAWEI] interface gigabitethernet 0/0/26
+[HUAWEI-GigabitEthernet0/0/26] erps ring 1 rpl neighbor
+[HUAWEI-GigabitEthernet0/0/26] quit
+[HUAWEI] erps ring 1 enable
+</code></pre>
+<h2 id="036-qinq-vlan-mapping">03.6 QinQ / VLAN Mapping</h2>
+<pre><code class="language-bash"># Basic QinQ
+[HUAWEI] interface gigabitethernet 0/0/1
+[HUAWEI-GigabitEthernet0/0/1] port link-type dot1q-tunnel
+[HUAWEI-GigabitEthernet0/0/1] port default vlan 100
+[HUAWEI-GigabitEthernet0/0/1] quit
+
+# Selective QinQ (VLAN Mapping)
+[HUAWEI] interface gigabitethernet 0/0/1
+[HUAWEI-GigabitEthernet0/0/1] port vlan-mapping vlan 10 map-vlan 1010
+[HUAWEI-GigabitEthernet0/0/1] port vlan-mapping vlan 20 map-vlan 1020
+[HUAWEI-GigabitEthernet0/0/1] quit
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

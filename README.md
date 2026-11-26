@@ -1,7 +1,8 @@
-# Panduan & Manual MikroTik RouterOS (pdn-mikrotik)
+# BPDN-VELONIXNET — Panduan MikroTik, Huawei & Aplikasi e-monev
 
 Situs dokumentasi **offline** untuk kerja NOC harian: panduan praktis berbahasa
-Indonesia plus salinan lengkap manual resmi **MikroTik RouterOS 7.26**.
+Indonesia untuk **MikroTik RouterOS** dan **switch Huawei**, panduan aplikasi
+**e-monev PUPR**, plus salinan lengkap manual resmi **RouterOS 7.26**.
 
 Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
 `index.html` di browser, semuanya jalan tanpa internet.
@@ -12,10 +13,21 @@ Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
   dasar RouterOS & akses, IP & routing, firewall & keamanan, DHCP/DNS/NAT,
   bridge & VLAN, PPPoE server/client, queue & bandwidth, routing (statis/OSPF/BGP),
   VPN (WireGuard/IPsec/L2TP), maintenance & monitoring.
-- **`manual/`** — salinan lengkap manual resmi RouterOS 7.26 (23 bab) dalam
-  bahasa Inggris, dari *Overview* sampai *CLI Reference* dan *Hardware Guides*.
+- **`huawei/`** — 14 bab panduan konfigurasi switch **Huawei** (Bahasa Indonesia),
+  disusun mengikuti struktur manual MikroTik: Getting Started, Management Plane,
+  Hardware & Diagnostics, Wired Switching, Network Services, Routing, MPLS & VPN,
+  Reliability, QoS, Security, WLAN AC, Developer Guides, CLI Reference, Appendices.
+  Mencakup seri campus (S220/S310/S530/S620, S5700/S6700) dan data center (CloudEngine).
+- **`proxmox/`** — 11 bab **Panduan Proxmox & Proxmox Backup Server** (Bahasa
+  Indonesia) untuk Tim IT: ringkasan konsep & alur kerja harian, lembar parameter
+  pra-implementasi, arsitektur + persiapan, instalasi Proxmox VE, cluster 2-node
+  & QDevice, instalasi/integrasi PBS, operasional VM/Container/migrasi,
+  kebijakan backup & restore, keamanan & penanganan gangguan, checklist produksi.
+- **`manual/`** (**Panduan MikroTik V7**) — salinan lengkap manual resmi
+  RouterOS 7.26 (23 bab) dalam bahasa Inggris, dari *Overview* sampai
+  *CLI Reference* dan *Hardware Guides*. Salinan manual **V6 belum tersedia**.
 
-Total **246 halaman HTML**.
+Total **282 halaman HTML**.
 
 ## Fitur
 
@@ -41,7 +53,7 @@ Karena semua file ada di root repo, situs bisa langsung dipublikasikan:
 
 1. **Settings → Pages**
 2. Source: **Deploy from a branch**, branch `main`, folder `/ (root)`
-3. Situs akan tersedia di `https://nocher-jbi.github.io/pdn-mikrotik/`
+3. Situs akan tersedia di `https://nocher-jbi.github.io/BPDN-VELONIXNET/`
 
 ## Sumber
 
@@ -50,5 +62,9 @@ Karena semua file ada di root repo, situs bisa langsung dipublikasikan:
 
 ## Catatan versi
 
-Konten manual mengikuti **RouterOS 7.26**. RouterOS v6 memiliki perbedaan pada
-beberapa menu (mis. Bridge VLAN filtering, `/routing`, paket Wi-Fi).
+- **Panduan MikroTik V7** (`manual/`) mengikuti **RouterOS 7.26** (23 bab).
+- **MikroTik V6 belum disertakan** — belum ada salinan manual V6 di repo ini.
+  Panduan praktis (`panduan/`) disusun untuk V7. Perbedaan penting V6 vs V7:
+  Bridge VLAN filtering, struktur menu `/routing`, dan paket Wi-Fi
+  (V6: `/interface wireless`, V7: `/interface wifi`). Bila ada sumber manual V6,
+  bisa ditambahkan sebagai bagian **Panduan MikroTik V6** tersendiri.

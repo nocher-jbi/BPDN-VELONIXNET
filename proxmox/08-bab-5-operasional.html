@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAB V — Operasional VM, Container &amp; Migrasi &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Proxmox VE &amp; Proxmox Backup Server (Bahasa Indonesia)</p>
+      <h1 id="operasional-vm-container-migrasi">BAB V — Operasional VM, Container &amp; Migrasi</h1>
+<h2 id="51-pengelolaan-media-iso-dan-template">5.1 Pengelolaan Media ISO dan Template</h2>
+<ul><li><strong>Mengunggah ISO:</strong> Pilih <strong>Node &gt; local &gt; ISO Images &gt; Upload</strong> (atau gunakan <em>Download from URL</em>).</li><li><strong>Mengunduh Template Container (LXC):</strong> Pilih <strong>Node &gt; local &gt; CT Templates &gt; Templates</strong>, pilih distribusi Linux (misal Ubuntu Server atau Debian), lalu klik <strong>Download</strong>.</li></ul>
+<h2 id="52-standar-pembuatan-virtual-machine-vm">5.2 Standar Pembuatan Virtual Machine (VM)</h2>
+<p>Untuk performa dan stabilitas optimal di lingkungan produksi kantor, terapkan standar berikut saat mengklik <strong>Create VM</strong>:</p>
+<ul><li><strong>OS:</strong> Pilih ISO yang sesuai; untuk VM Windows, sertakan juga ISO VirtIO Drivers pada CD/DVD tambahan.</li><li><strong>System:</strong> Graphic card: Default / VirtIO-GPU. SCSI Controller: VirtIO SCSI single. Centang <strong>Qemu Agent</strong> (wajib menginstal layanan <code>qemu-guest-agent</code> di dalam OS tamu agar shutdown rapi dan IP terbaca di dasbor PVE).</li><li><strong>Disks:</strong> Bus/Device gunakan <strong>SCSI</strong> (dengan opsi <em>Discard</em> dicentang agar ruang disk dapat diklaim kembali, dan <em>SSD emulation</em> jika menggunakan SSD).</li><li><strong>CPU:</strong> Type pilih <code>host</code> (jika kedua node memiliki generasi CPU yang sama) atau <code>x86-64-v2-AES</code> (jika generasi CPU Node 1 dan Node 2 berbeda agar Live Migration berjalan mulus).</li><li><strong>Network:</strong> Model pilih <strong>VirtIO (paravirtualized)</strong> untuk kecepatan jaringan maksimal.</li></ul>
+<h2 id="53-standar-pembuatan-container-lxc">5.3 Standar Pembuatan Container (LXC)</h2>
+<p>Gunakan LXC untuk layanan Linux ringan (seperti web server, reverse proxy, DNS internal, atau monitoring):</p>
+<ul><li>Selalu gunakan mode <strong>Unprivileged container</strong> (bawaan) demi keamanan isolasi kernel.</li><li>Aktifkan fitur <strong>Nesting</strong> (pada tab <strong>Options &gt; Features</strong>) jika container akan menjalankan layanan modern berbasis systemd atau Docker.</li></ul>
+<h2 id="54-migrasi-dan-replikasi-antar-node">5.4 Migrasi dan Replikasi Antar Node</h2>
+<ul><li><strong>Migrasi Manual:</strong> Klik kanan pada VM/CT &gt; <strong>Migrate</strong>, pilih node tujuan (<code>pve-node1</code> atau <code>pve-node2</code>), lalu klik <strong>Migrate</strong>.</li><li><strong>Replikasi ZFS (Opsional untuk Pemulihan Cepat):</strong> Jika kedua node menggunakan penyimpanan ZFS dengan nama Storage ID yang sama, buka <strong>VM &gt; Replication &gt; Add</strong>. Atur interval replikasi (misal setiap 15 menit). Jika 1 node rusak mendadak, VM dapat segera dinyalakan di node satunya dengan kehilangan data minimal.</li></ul>
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

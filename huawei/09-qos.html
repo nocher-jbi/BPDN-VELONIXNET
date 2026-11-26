@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QoS &middot; BPDN-VELONIXNET</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><img class="logo" src="../assets/logo-bpdn.png" alt="Velonixnet &amp; Dinas PUPR Provinsi Jambi" width="195" height="34"></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi…" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Huawei Switch (Bahasa Indonesia)</p>
+      <h1 id="qos">QoS</h1>
+<h2 id="081-traffic-classification">08.1 Traffic Classification</h2>
+<pre><code class="language-bash">[HUAWEI] traffic classifier VOICE operator and
+[HUAWEI-classifier-VOICE] if-match dscp ef
+[HUAWEI-classifier-VOICE] quit
+
+[HUAWEI] traffic classifier VIDEO operator and
+[HUAWEI-classifier-VIDEO] if-match dscp af41
+[HUAWEI-classifier-VIDEO] quit
+
+[HUAWEI] traffic classifier BEST_EFFORT operator and
+[HUAWEI-classifier-BEST_EFFORT] if-match any
+[HUAWEI-classifier-BEST_EFFORT] quit
+</code></pre>
+<h2 id="082-traffic-behavior-queuemarkingshape">08.2 Traffic Behavior (Queue/Marking/Shape)</h2>
+<pre><code class="language-bash">[HUAWEI] traffic behavior VOICE
+[HUAWEI-behavior-VOICE] remark dscp ef
+[HUAWEI-behavior-VOICE] car cir 2000 cbs 200000
+[HUAWEI-behavior-VOICE] queue pq
+[HUAWEI-behavior-VOICE] quit
+
+[HUAWEI] traffic behavior VIDEO
+[HUAWEI-behavior-VIDEO] remark dscp af41
+[HUAWEI-behavior-VIDEO] car cir 10000 cbs 1000000
+[HUAWEI-behavior-VIDEO] queue wrr weight 50
+[HUAWEI-behavior-VIDEO] quit
+
+[HUAWEI] traffic behavior BEST_EFFORT
+[HUAWEI-behavior-BEST_EFFORT] queue wrr weight 10
+[HUAWEI-behavior-BEST_EFFORT] quit
+</code></pre>
+<h2 id="083-qos-policy-ingressegress">08.3 QoS Policy (Ingress/Egress)</h2>
+<pre><code class="language-bash">[HUAWEI] traffic policy QOS_POLICY
+[HUAWEI-trafficpolicy-QOS_POLICY] classifier VOICE behavior VOICE
+[HUAWEI-trafficpolicy-QOS_POLICY] classifier VIDEO behavior VIDEO
+[HUAWEI-trafficpolicy-QOS_POLICY] classifier BEST_EFFORT behavior BEST_EFFORT
+[HUAWEI-trafficpolicy-QOS_POLICY] quit
+
+[HUAWEI] interface eth-trunk 1
+[HUAWEI-Eth-Trunk1] traffic-policy QOS_POLICY inbound
+[HUAWEI-Eth-Trunk1] traffic-policy QOS_POLICY outbound
+[HUAWEI-Eth-Trunk1] quit
+</code></pre>
+<h2 id="084-cpcar-control-plane-protection">08.4 CPCAR (Control Plane Protection)</h2>
+<pre><code class="language-bash">[HUAWEI] cpu-defend policy anti_attack
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type icmp cir 64
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type igmp cir 128
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type arp-request cir 256
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type arp-reply cir 256
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type dhcp cir 128
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type bpdu cir 512
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type lacp cir 256
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type lldp cir 128
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type ospf cir 512
+[HUAWEI-cpu-defend-policy-anti_attack] car packet-type bgp cir 512
+[HUAWEI-cpu-defend-policy-anti_attack] deny packet-type ttl-expired
+[HUAWEI-cpu-defend-policy-anti_attack] deny packet-type ip-option
+[HUAWEI-cpu-defend-policy-anti_attack] quit
+
+[HUAWEI] cpu-defend-policy anti_attack global
+</code></pre>
+<h2 id="085-pfc-ecn-data-center-lossless">08.5 PFC / ECN (Data Center - Lossless)</h2>
+<pre><code class="language-bash">[HUAWEI] priority-flow-control enable
+[HUAWEI] interface eth-trunk 1
+[HUAWEI-Eth-Trunk1] priority-flow-control no-drop priority 3 4 5 6 7
+[HUAWEI-Eth-Trunk1] quit
+
+[HUAWEI] qos ecn enable
+[HUAWEI] traffic behavior ECN_BEHAVIOR
+[HUAWEI-behavior-ECN_BEHAVIOR] ecn
+[HUAWEI-behavior-ECN_BEHAVIOR] quit
+</code></pre>
+<hr />
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
