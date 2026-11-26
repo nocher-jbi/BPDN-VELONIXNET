@@ -33,7 +33,7 @@
     h+='<div class="nav-group"><div class="nav-title">Panduan Aplikasi e-monev</div><ul>';
     (NAV.aplikasi||[]).forEach(function(p){ h+='<li><a class="'+(isActive(p.u)?'active':'')+'" href="'+urlEncode(abs(p.u))+'">'+esc(p.t)+'</a></li>'; });
     h+='</ul></div>';
-    h+='<div class="nav-group"><div class="nav-title">Manual Lengkap 7.26</div>';
+    h+='<div class="nav-group"><div class="nav-title">Panduan MikroTik V7</div>';
     NAV.manual.forEach(function(sec){
       var open=sec.items.some(function(i){return isActive(i.u);});
       h+='<details class="nav-sec"'+(open?' open':'')+'><summary>'+esc(sec.section)+'</summary><ul>';
@@ -54,7 +54,7 @@
       if(info.kind==='panduan'){ h.push('<span class="sep">/</span><span>Panduan Praktis</span>'); }
       else if(info.kind==='huawei'){ h.push('<span class="sep">/</span><span>Panduan Huawei Switch</span>'); }
       else if(info.kind==='aplikasi'){ h.push('<span class="sep">/</span><span>Panduan Aplikasi</span>'); }
-      else { h.push('<span class="sep">/</span><span>Manual</span>'); h.push('<span class="sep">/</span><span>'+esc(info.section)+'</span>'); }
+      else { h.push('<span class="sep">/</span><span>Panduan MikroTik V7</span>'); h.push('<span class="sep">/</span><span>'+esc(info.section)+'</span>'); }
       h.push('<span class="sep">/</span><span>'+esc(info.title)+'</span>');
     }
     el.innerHTML=h.join(' ');

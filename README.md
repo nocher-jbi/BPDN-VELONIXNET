@@ -18,10 +18,11 @@ Situs statis murni (HTML/CSS/JS) — tanpa server, tanpa build tool. Buka
   Hardware & Diagnostics, Wired Switching, Network Services, Routing, MPLS & VPN,
   Reliability, QoS, Security, WLAN AC, Developer Guides, CLI Reference, Appendices.
   Mencakup seri campus (S220/S310/S530/S620, S5700/S6700) dan data center (CloudEngine).
-- **`manual/`** — salinan lengkap manual resmi RouterOS 7.26 (23 bab) dalam
-  bahasa Inggris, dari *Overview* sampai *CLI Reference* dan *Hardware Guides*.
+- **`manual/`** (**Panduan MikroTik V7**) — salinan lengkap manual resmi
+  RouterOS 7.26 (23 bab) dalam bahasa Inggris, dari *Overview* sampai
+  *CLI Reference* dan *Hardware Guides*. Salinan manual **V6 belum tersedia**.
 
-Total **261 halaman HTML**.
+Total **270 halaman HTML**.
 
 ## Fitur
 
@@ -56,5 +57,9 @@ Karena semua file ada di root repo, situs bisa langsung dipublikasikan:
 
 ## Catatan versi
 
-Konten manual mengikuti **RouterOS 7.26**. RouterOS v6 memiliki perbedaan pada
-beberapa menu (mis. Bridge VLAN filtering, `/routing`, paket Wi-Fi).
+- **Panduan MikroTik V7** (`manual/`) mengikuti **RouterOS 7.26** (23 bab).
+- **MikroTik V6 belum disertakan** — belum ada salinan manual V6 di repo ini.
+  Panduan praktis (`panduan/`) disusun untuk V7. Perbedaan penting V6 vs V7:
+  Bridge VLAN filtering, struktur menu `/routing`, dan paket Wi-Fi
+  (V6: `/interface wireless`, V7: `/interface wifi`). Bila ada sumber manual V6,
+  bisa ditambahkan sebagai bagian **Panduan MikroTik V6** tersendiri.
