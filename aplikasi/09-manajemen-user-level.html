@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manajemen User, Level &amp; Hak Akses Menu (RBAC) &middot; MikroTik Guide</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="iconbtn" aria-label="Menu">&#9776;</button>
+  <a class="brand" href="../index.html"><span class="mark">&#9672;</span><span>MikroTik Guide</span></a>
+  <div class="searchbox">
+    <span class="s-ico">&#128269;</span>
+    <input id="search" type="search" placeholder="Cari dokumentasi&hellip;" autocomplete="off" spellcheck="false">
+    <kbd class="s-kbd">/</kbd>
+  </div>
+  <button id="theme-toggle" class="iconbtn" aria-label="Ganti tema">&#9789;</button>
+</header>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="content">
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <article class="doc">
+      <p class="page-sub">Panduan Aplikasi e-monev PUPR (Bahasa Indonesia)</p>
+      <h1 id="manajemen-user-level">Manajemen User, Level &amp; Hak Akses Menu (RBAC)</h1>
+
+<p>Bab ini untuk admin yang mengatur siapa saja yang bisa login dan menu apa
+saja yang boleh mereka lihat/pakai. Ada 4 menu terkait: <strong>Users</strong>,
+<strong>Level</strong>, <strong>Master Menu</strong>, dan
+<strong>Master Menu Level</strong>.</p>
+
+<h2 id="users">Users (akun login)</h2>
+<p>Daftar seluruh akun: Nama, Username, Level, Last Login, status <strong>Online</strong>
+(badge hijau/merah), dan Aksi.</p>
+<ul>
+<li><strong>Tambah/Ubah user</strong>: Nama*, Username*, Password* (kosongkan saat
+mengubah = password tetap, tidak berubah), Foto (opsional), <strong>Level*</strong>
+(dropdown). Username harus unik.</li>
+<li><strong>Reset Password</strong> (tombol di daftar): sistem membuat password
+acak 10 karakter, menandai akun <strong>wajib ganti password</strong> di login
+berikutnya, dan menampilkan password sementara itu <strong>satu kali saja</strong>
+di layar — catat/sampaikan segera ke pemilik akun, karena tidak akan ditampilkan
+lagi setelah halaman ditutup.</li>
+</ul>
+
+<h2 id="level">Level</h2>
+<p>CRUD sederhana untuk nama peran/level (misalnya Administrator, PPTK, dst).
+Level inilah yang dipakai di menu Users dan diatur hak akses menunya lewat
+Master Menu Level di bawah.</p>
+
+<h2 id="master-menu">Master Menu</h2>
+<p>Daftar <strong>semua</strong> menu yang tersedia di aplikasi (template untuk
+semua level). Field: Nama Menu, Icon, Link (nama controller, atau
+<code>controller/method</code>), Status (menu induk atau submenu), Parent
+(menu induk, jika ini submenu). Biasanya hanya perlu diubah saat ada modul
+baru dikembangkan — jarang diubah oleh admin harian.</p>
+
+<h2 id="master-menu-level">Master Menu Level — mengatur hak akses per level</h2>
+<p>Ini cara admin menentukan menu &amp; hak akses apa saja yang dimiliki setiap
+level:</p>
+<ol>
+<li>Pilih <strong>Level</strong> dari dropdown, klik <strong>Pilih</strong>.</li>
+<li>Tampil tiga kolom drag-and-drop:
+  <ul>
+    <li><strong>Menu Level</strong> (kiri) — menu yang sudah aktif untuk level ini.</li>
+    <li><strong>Tong Sampah</strong> (tengah) — seret menu ke sini untuk
+    <strong>menghapus</strong> akses menu tersebut dari level ini.</li>
+    <li><strong>Menu Master</strong> (kanan) — semua menu yang tersedia; seret
+    ke kolom &ldquo;Menu Level&rdquo; untuk <strong>menambahkan</strong> akses.</li>
+  </ul>
+</li>
+<li>Urutan menu di kolom kiri bisa diatur langsung dengan menyeret (drag) item.</li>
+<li>Klik <strong>Simpan</strong> — aplikasi menyimpan ulang seluruh menu &amp;
+urutan untuk level ini, <strong>dan otomatis memperbarui hak akses modul</strong>
+(controller/method) yang sesuai, sehingga menu yang dihapus di sini juga akan
+diblokir aksesnya walau diakses lewat URL langsung.</li>
+</ol>
+<p>Tombol <strong>Tambah Manual</strong> tersedia untuk menambah satu entry
+menu-level tanpa drag-drop, dan setiap baris bisa diubah/dihapus langsung
+(Nama Menu, Icon, Link, Status, Parent, Urutan, Level, Aktif).</p>
+
+<h2 id="prosedur-user-baru">Prosedur: menambah user baru dengan akses yang benar</h2>
+<ol>
+<li>Pastikan <strong>Level</strong> yang sesuai sudah ada.</li>
+<li>Atur menu &amp; akses modul level itu lewat <strong>Master Menu Level</strong>
+(langkah di atas) — lakukan ini <em>sebelum</em> ada user yang memakai level
+tersebut, supaya saat pertama login menunya sudah benar.</li>
+<li>Buat akun baru lewat <strong>Users</strong> (untuk level non-PPTK), atau
+otomatis lewat <strong>Pegawai</strong> jika levelnya PPTK/operator bidang —
+lihat bab <a href="02-data-master.html">Data Master</a>.</li>
+<li>Sampaikan ke user: login pertama memakai password default/sementara, dan
+sistem akan memaksa ganti password sebelum bisa memakai menu lain (lihat bab
+<a href="01-pengenalan-login.html">Pengenalan &amp; Login</a>).</li>
+</ol>
+<p class="hint">Setelah hak akses menu suatu level diubah, user dengan level itu
+yang sedang login <strong>harus logout &amp; login ulang</strong> agar menunya
+diperbarui — perubahan akses tidak langsung berlaku pada sesi yang sedang
+berjalan.</p>
+
+    </article>
+    <nav id="pager" class="pager"></nav>
+  </main>
+</div>
+<div id="search-results" class="search-results" hidden></div>
+<button id="to-top" class="to-top" hidden aria-label="Ke atas">&#8593;</button>
+<script>window.ROOT="../";</script>
+<script src="../assets/nav-data.js"></script>
+<script src="../assets/search-index.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
